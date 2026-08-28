@@ -1,0 +1,15 @@
+/* MainLayout scoped styles — app shell structure */
+
+.tf-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: calc(var(--tf-z-sticky) - 1);
+    display: none;
+}
+
+@media (max-width: 1023px) {
+    .tf-sidebar-backdrop {
+        display: block;
+    }
+}

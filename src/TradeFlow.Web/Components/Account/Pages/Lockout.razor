@@ -1,0 +1,15 @@
+@page "/Account/Lockout"
+@layout LoginLayout
+
+<PageTitle>Tài khoản bị khóa — TradeFlow</PageTitle>
+
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--tf-bg);">
+    <div class="tf-login-card" style="max-width:400px;width:100%;text-align:center;">
+        <div style="font-size:48px;margin-bottom:16px;">🔒</div>
+        <h2 style="margin-bottom:8px;">Tài khoản bị tạm khóa</h2>
+        <p style="color:var(--tf-text-muted);margin-bottom:24px;font-size:14px;">
+            Tài khoản của bạn đã bị tạm khóa do nhập sai mật khẩu quá nhiều lần. Vui lòng thử lại sau 15 phút.
+        </p>
+        <a href="/Account/Login" class="tf-btn tf-btn-primary tf-btn-full">Quay lại đăng nhập</a>
+    </div>
+</div>

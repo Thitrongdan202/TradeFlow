@@ -1,0 +1,31 @@
+/* UserMenu scoped styles */
+
+.tf-user-name {
+    font-size: var(--tf-text-sm);
+    font-weight: var(--tf-font-medium);
+    color: var(--tf-text-primary);
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tf-user-menu {
+    right: 0;
+    min-width: 240px;
+    top: calc(100% + 8px);
+}
+
+.tf-user-menu-header {
+    display: flex;
+    align-items: center;
+    gap: var(--tf-space-3);
+    padding: var(--tf-space-3) var(--tf-space-3);
+}
+
+.tf-avatar-lg {
+    width: 40px;
+    height: 40px;
+    font-size: var(--tf-text-base);
+    flex-shrink: 0;
+}

@@ -1,0 +1,66 @@
+/* Home/Dashboard scoped styles */
+
+.tf-login-redirect {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - var(--tf-topbar-height));
+    text-align: center;
+    padding: var(--tf-space-8);
+}
+
+.tf-dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: var(--tf-space-4);
+    align-items: start;
+}
+
+.tf-dashboard-main { }
+.tf-dashboard-side { }
+
+.tf-quick-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--tf-space-2);
+}
+
+.tf-quick-action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--tf-space-2);
+    padding: var(--tf-space-3);
+    border-radius: var(--tf-radius);
+    border: 1px solid var(--tf-gray-200);
+    text-decoration: none;
+    color: var(--tf-text-secondary);
+    font-size: var(--tf-text-sm);
+    font-weight: var(--tf-font-medium);
+    text-align: center;
+    transition: border-color var(--tf-transition), background-color var(--tf-transition);
+    cursor: pointer;
+}
+
+.tf-quick-action:hover {
+    border-color: var(--tf-primary);
+    background-color: var(--tf-primary-light);
+    color: var(--tf-primary);
+    text-decoration: none;
+}
+
+.tf-quick-action-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--tf-radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (max-width: 1200px) {
+    .tf-dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}

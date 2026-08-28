@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TradeFlow.Application/TradeFlow.Application.csproj" />
+    <Project Path="src/TradeFlow.Domain/TradeFlow.Domain.csproj" />
+    <Project Path="src/TradeFlow.Infrastructure/TradeFlow.Infrastructure.csproj" />
+    <Project Path="src/TradeFlow.Web/TradeFlow.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TradeFlow.IntegrationTests/TradeFlow.IntegrationTests.csproj" />
+    <Project Path="tests/TradeFlow.UnitTests/TradeFlow.UnitTests.csproj" />
+  </Folder>
+</Solution>

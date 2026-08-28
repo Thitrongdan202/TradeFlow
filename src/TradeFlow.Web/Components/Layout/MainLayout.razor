@@ -1,0 +1,67 @@
+@inherits LayoutComponentBase
+
+<div class="tf-app">
+    <aside class="tf-sidebar @(_sidebarOpen ? "open" : "")">
+        <NavMenu OnNavClick="CloseSidebar" />
+    </aside>
+
+    @* Mobile overlay *@
+    @if (_sidebarOpen)
+    {
+        <div class="tf-sidebar-backdrop" @onclick="CloseSidebar"></div>
+    }
+
+    <div class="tf-main-wrapper">
+        <header class="tf-topbar">
+            @* Mobile menu toggle *@
+            <button class="tf-topbar-btn tf-sidebar-toggle" @onclick="ToggleSidebar" title="Mở menu" aria-label="Mở menu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <line x1="3" y1="12" x2="21" y2="12"/>
+                    <line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+            </button>
+
+            @* Global search *@
+            <div class="tf-search tf-topbar-search">
+                <svg class="tf-search-icon" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
+                </svg>
+                <input class="tf-search-input" type="search" placeholder="Tìm kiếm..." autocomplete="off" />
+            </div>
+
+            @* Right-side topbar actions *@
+            <div class="tf-topbar-actions">
+                @* Notifications *@
+                <button class="tf-topbar-btn" title="Thông báo" aria-label="Thông báo">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    </svg>
+                </button>
+
+                <div class="tf-topbar-divider"></div>
+
+                @* User menu *@
+                <UserMenu />
+            </div>
+        </header>
+
+        <main class="tf-content">
+            @Body
+        </main>
+    </div>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    Đã xảy ra lỗi không mong đợi.
+    <a href="." class="reload">Tải lại</a>
+    <span class="dismiss">✕</span>
+</div>
+
+@code {
+    private bool _sidebarOpen;
+
+    private void ToggleSidebar() => _sidebarOpen = !_sidebarOpen;
+    private void CloseSidebar() => _sidebarOpen = false;
+}

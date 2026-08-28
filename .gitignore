@@ -1,0 +1,83 @@
+# TradeFlow Solution
+## .NET build artifacts
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.idea/
+*.DotSettings.user
+
+## Environment and secrets (NEVER commit these)
+.env
+.env.*
+appsettings.local.json
+appsettings.*.local.json
+**/secrets.json
+**/usersecrets.json
+
+## Local .NET user secrets are stored outside of the project directory (safe)
+# %APPDATA%\Microsoft\UserSecrets\
+
+## Encryption keys (CRITICAL: Never commit)
+*.key
+*.pem
+*.pfx
+*.p12
+encryption.json
+encryption.config
+
+## Database files
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+local.db
+
+## PostgreSQL dumps
+*.sql.gz
+*.dump
+
+## Uploaded files / generated exports (managed storage, not in Git)
+uploads/
+wwwroot/uploads/
+storage/
+local-storage/
+exports/
+*.generated.xlsx
+*.export.xlsx
+
+## Company confidential files (NEVER commit)
+*.xlsx
+*.xls
+*.docx
+*.pdf
+company-data/
+price-lists/
+real-data/
+lacasa/
+GIA DAI LY*.xlsx
+0908*.xlsx
+
+## Product images (uploaded through the app)
+wwwroot/images/products/
+
+## NuGet
+.nuget/
+*.nupkg
+nuget.config.local
+
+## IDE / OS
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+
+## Logs
+*.log
+logs/
+
+## Docker (if added later)
+docker-compose.override.yml

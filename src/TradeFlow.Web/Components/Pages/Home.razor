@@ -1,0 +1,149 @@
+@page "/"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+
+<PageTitle>Tổng quan — TradeFlow</PageTitle>
+
+<AuthorizeView>
+    <Authorized>
+        <div class="tf-page-header">
+            <div class="tf-page-header-left">
+                <h1 class="tf-page-title">Tổng quan</h1>
+                <p class="tf-page-subtitle">Chào mừng trở lại, <strong>@context.User.Identity?.Name</strong></p>
+            </div>
+            <div class="tf-page-actions">
+                <button class="tf-btn tf-btn-secondary">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+                        <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
+                        <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+                    </svg>
+                    Báo cáo hôm nay
+                </button>
+            </div>
+        </div>
+
+        @* Stats *@
+        <div class="tf-stats-grid">
+            @foreach (var stat in _stats)
+            {
+                <div class="tf-stat-card">
+                    <div class="tf-stat-label">@stat.Label</div>
+                    <div class="tf-stat-value tf-text-@stat.Color">@stat.Value</div>
+                    <div class="tf-stat-meta">@stat.Meta</div>
+                </div>
+            }
+        </div>
+
+        @* Content grid *@
+        <div class="tf-dashboard-grid">
+            @* Recent activity *@
+            <div class="tf-card tf-dashboard-main">
+                <div class="tf-card-header">
+                    <h2 class="tf-card-title">Hoạt động gần đây</h2>
+                </div>
+                <div class="tf-card-body">
+                    <div class="tf-empty">
+                        <div class="tf-empty-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                <polyline points="10 9 9 9 8 9"/>
+                            </svg>
+                        </div>
+                        <div class="tf-empty-title">Chưa có dữ liệu</div>
+                        <div class="tf-empty-desc">Các giao dịch sẽ xuất hiện ở đây sau khi hệ thống đi vào hoạt động.</div>
+                    </div>
+                </div>
+            </div>
+
+            @* Quick actions *@
+            <div class="tf-dashboard-side">
+                <div class="tf-card tf-mb-4">
+                    <div class="tf-card-header">
+                        <h2 class="tf-card-title">Thao tác nhanh</h2>
+                    </div>
+                    <div class="tf-card-body" style="padding:12px;">
+                        <div class="tf-quick-actions">
+                            @foreach (var action in _quickActions)
+                            {
+                                <a href="@action.Href" class="tf-quick-action">
+                                    <div class="tf-quick-action-icon" style="background:@action.Color">
+                                        @((MarkupString)action.Icon)
+                                    </div>
+                                    <span>@action.Label</span>
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tf-card">
+                    <div class="tf-card-header">
+                        <h2 class="tf-card-title">Thông báo hệ thống</h2>
+                    </div>
+                    <div class="tf-card-body">
+                        <div class="tf-alert tf-alert-info" style="font-size:13px;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px;">
+                                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                            </svg>
+                            <span>Phase 1 hoàn thành. Hệ thống đang trong quá trình phát triển.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </Authorized>
+
+    <NotAuthorized>
+        <div class="tf-login-redirect">
+            <div class="tf-brand" style="justify-content:center;padding:0;margin-bottom:24px;">
+                <div class="tf-brand-logo" style="width:56px;height:56px;">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 3h7v7H3V3z" fill="white"/>
+                        <path d="M14 3h7v7h-7V3z" fill="white" opacity="0.6"/>
+                        <path d="M3 14h7v7H3v-7z" fill="white" opacity="0.6"/>
+                        <path d="M14 14h7v7h-7v-7z" fill="white"/>
+                    </svg>
+                </div>
+            </div>
+            <h1 style="font-size:28px;margin-bottom:8px;">TradeFlow</h1>
+            <p style="color:var(--tf-text-muted);margin-bottom:32px;font-size:15px;">Hệ thống quản lý thương mại</p>
+            <a href="/Account/Login" class="tf-btn tf-btn-primary tf-btn-xl">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/>
+                    <polyline points="10 17 15 12 10 7"/>
+                    <line x1="15" y1="12" x2="3" y2="12"/>
+                </svg>
+                Đăng nhập để tiếp tục
+            </a>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private record StatItem(string Label, string Value, string Meta, string Color);
+    private record QuickAction(string Label, string Href, string Color, string Icon);
+
+    private static readonly StatItem[] _stats =
+    [
+        new("Đơn bán hàng hôm nay", "—", "Chưa có dữ liệu", "primary"),
+        new("Doanh thu tháng này", "—", "Chưa có dữ liệu", "success"),
+        new("Đơn mua hàng chờ duyệt", "—", "Chưa có dữ liệu", "warning"),
+        new("Sản phẩm sắp hết hàng", "—", "Chưa có dữ liệu", "error"),
+    ];
+
+    private static readonly QuickAction[] _quickActions =
+    [
+        new("Tạo báo giá", "/ban-hang/bao-gia", "#e0e7ff",
+            """<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4338ca" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>"""),
+        new("Tạo đơn bán hàng", "/ban-hang/don-hang", "#dcfce7",
+            """<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>"""),
+        new("Nhập kho", "/kho/nhap-kho", "#fef3c7",
+            """<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>"""),
+        new("Thêm khách hàng", "/doi-tac/khach-hang", "#fee2e2",
+            """<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/><line x1="20" y1="8" x2="20" y2="14"/></svg>"""),
+    ];
+}

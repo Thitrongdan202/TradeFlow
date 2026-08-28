@@ -1,0 +1,62 @@
+/* Login page scoped styles */
+
+.tf-login-options {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--tf-space-6);
+    margin-top: var(--tf-space-1);
+}
+
+.tf-forgot-link {
+    font-size: var(--tf-text-sm);
+    color: var(--tf-primary);
+    text-decoration: none;
+    font-weight: var(--tf-font-medium);
+}
+
+.tf-forgot-link:hover {
+    text-decoration: underline;
+}
+
+.tf-login-features {
+    display: flex;
+    flex-direction: column;
+    gap: var(--tf-space-3);
+    margin-top: var(--tf-space-8);
+}
+
+.tf-login-feature {
+    display: flex;
+    align-items: center;
+    gap: var(--tf-space-3);
+    font-size: var(--tf-text-base);
+    color: rgba(255,255,255,0.85);
+}
+
+.tf-login-feature-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: white;
+}
+
+/* Loading spinner */
+.tf-btn-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: tf-spin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes tf-spin {
+    to { transform: rotate(360deg); }
+}

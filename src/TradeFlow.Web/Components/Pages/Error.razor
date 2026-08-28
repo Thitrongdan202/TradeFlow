@@ -1,0 +1,49 @@
+@page "/loi"
+@page "/loi/{statusCode}"
+@using Microsoft.AspNetCore.Diagnostics
+
+<PageTitle>Lỗi — TradeFlow</PageTitle>
+
+<div class="tf-error-page text-center py-5">
+    @if (StatusCode is not null && StatusCode == "404")
+    {
+        <div class="mb-4" style="font-size:4rem;">🔍</div>
+        <h2>404 — Không tìm thấy trang</h2>
+        <p class="text-muted">Trang bạn đang tìm kiếm không tồn tại hoặc đã được di chuyển.</p>
+    }
+    else
+    {
+        <div class="mb-4" style="font-size:4rem;">⚠️</div>
+        <h2>Đã xảy ra lỗi</h2>
+        <p class="text-muted">Đã xảy ra lỗi không mong đợi. Vui lòng thử lại.</p>
+        @if (ShowRequestId)
+        {
+            <p class="text-muted small">Mã yêu cầu: <code>@RequestId</code></p>
+        }
+    }
+    <div class="mt-4">
+        <a href="/" class="btn btn-primary me-2">
+            <span class="bi bi-house-fill me-1"></span>Về trang chủ
+        </a>
+        <a href="javascript:history.back()" class="btn btn-outline-secondary">
+            <span class="bi bi-arrow-left me-1"></span>Quay lại
+        </a>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string? StatusCode { get; set; }
+
+    private string? RequestId { get; set; }
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        RequestId = System.Diagnostics.Activity.Current?.Id
+            ?? HttpContext?.TraceIdentifier;
+    }
+}

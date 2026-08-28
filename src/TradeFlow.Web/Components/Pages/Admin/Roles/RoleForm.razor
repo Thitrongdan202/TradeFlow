@@ -1,0 +1,238 @@
+@page "/cai-dat/vai-tro/them-moi"
+@page "/cai-dat/vai-tro/sua/{Id}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
+@attribute [Authorize(Policy = "Permission:Roles:Edit")]
+
+@inject RoleManager<ApplicationRole> RoleManager
+@inject TradeFlowDbContext DbContext
+@inject NavigationManager Nav
+@inject IAuditService AuditService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>@(IsEdit ? "Sửa vai trò" : "Thêm vai trò") — TradeFlow</PageTitle>
+
+<div class="tf-page-header">
+    <div class="tf-page-header-left">
+        <h1 class="tf-page-title">@(IsEdit ? "Sửa vai trò" : "Thêm vai trò mới")</h1>
+    </div>
+    <div class="tf-page-actions">
+        <a href="/cai-dat/vai-tro" class="tf-btn tf-btn-secondary">Hủy bỏ</a>
+        <button class="tf-btn tf-btn-primary" @onclick="SaveRole">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+            </svg>
+            Lưu thay đổi
+        </button>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <div class="tf-alert tf-alert-error tf-mb-4">@_errorMessage</div>
+}
+
+@if (_role == null)
+{
+    <div>Đang tải...</div>
+}
+else
+{
+    <div class="tf-card tf-mb-6">
+        <div class="tf-card-header"><h2 class="tf-card-title">Thông tin chung</h2></div>
+        <div class="tf-card-body">
+            <div class="tf-field tf-mb-4">
+                <label class="tf-label">Tên vai trò *</label>
+                <div class="tf-input-wrapper">
+                    <input type="text" class="tf-input" @bind="_role.Name" disabled="@_role.IsSystem" />
+                </div>
+                @if (_role.IsSystem)
+                {
+                    <div class="tf-validation-message" style="color:var(--tf-text-muted)">Vai trò hệ thống không thể đổi tên.</div>
+                }
+            </div>
+
+            <div class="tf-field tf-mb-4">
+                <label class="tf-label">Mô tả</label>
+                <div class="tf-input-wrapper">
+                    <input type="text" class="tf-input" @bind="_role.Description" />
+                </div>
+            </div>
+
+            <div class="tf-field">
+                <label class="tf-checkbox-label" style="display:flex;align-items:center;gap:8px;">
+                    <input type="checkbox" @bind="_role.IsActive" disabled="@_role.IsSystem" />
+                    Đang hoạt động
+                </label>
+                @if (_role.IsSystem)
+                {
+                    <div class="tf-validation-message" style="color:var(--tf-text-muted);margin-left:24px;">Vai trò hệ thống không thể vô hiệu hóa.</div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="tf-card">
+        <div class="tf-card-header"><h2 class="tf-card-title">Phân quyền (Ma trận quyền)</h2></div>
+        <div class="tf-card-body" style="padding:0;overflow-x:auto;">
+            <table class="tf-table">
+                <thead>
+                    <tr>
+                        <th style="min-width:200px;">Tài nguyên</th>
+                        @foreach (var action in _allActions)
+                        {
+                            <th style="text-align:center;">@action.ToString()</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var resource in _allResources)
+                    {
+                        <tr>
+                            <td class="tf-font-medium">@resource.ToString()</td>
+                            @foreach (var action in _allActions)
+                            {
+                                var key = (resource, action);
+                                var isChecked = _matrix.ContainsKey(key) && _matrix[key];
+                                var isDisabled = _role.IsSystem && resource == ResourceType.Roles; // Protect Roles permissions from being removed from System admin
+
+                                <td style="text-align:center;">
+                                    <input type="checkbox" 
+                                           checked="@isChecked" 
+                                           disabled="@isDisabled"
+                                           @onchange="@(e => UpdateMatrix(resource, action, (bool)(e.Value ?? false)))" />
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    private bool IsEdit => !string.IsNullOrEmpty(Id);
+
+    private ApplicationRole? _role;
+    private string? _errorMessage;
+    private string? _currentUser;
+
+    private readonly ResourceType[] _allResources = Enum.GetValues<ResourceType>();
+    private readonly PermissionAction[] _allActions = Enum.GetValues<PermissionAction>();
+    
+    // Matrix to hold selected permissions
+    private Dictionary<(ResourceType, PermissionAction), bool> _matrix = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _currentUser = authState.User.Identity?.Name ?? "System";
+
+        if (IsEdit)
+        {
+            _role = await RoleManager.Roles.Include(r => r.Permissions).FirstOrDefaultAsync(r => r.Id == Id);
+            if (_role == null)
+            {
+                Nav.NavigateTo("/cai-dat/vai-tro");
+                return;
+            }
+
+            foreach (var p in _role.Permissions.Where(p => p.IsGranted))
+            {
+                _matrix[(p.Resource, p.Action)] = true;
+            }
+        }
+        else
+        {
+            _role = new ApplicationRole { IsActive = true };
+        }
+    }
+
+    private void UpdateMatrix(ResourceType r, PermissionAction a, bool val)
+    {
+        _matrix[(r, a)] = val;
+    }
+
+    private async Task SaveRole()
+    {
+        _errorMessage = null;
+
+        if (string.IsNullOrWhiteSpace(_role!.Name))
+        {
+            _errorMessage = "Tên vai trò không được để trống.";
+            return;
+        }
+
+        try
+        {
+            if (IsEdit)
+            {
+                // Update basic info
+                var existingRole = await RoleManager.FindByIdAsync(Id!);
+                if (!existingRole!.IsSystem)
+                {
+                    existingRole.Name = _role.Name;
+                    existingRole.IsActive = _role.IsActive;
+                }
+                existingRole.Description = _role.Description;
+                
+                await RoleManager.UpdateAsync(existingRole);
+
+                // Update permissions directly in DbContext for performance/simplicity
+                var existingPerms = await DbContext.RolePermissions.Where(p => p.RoleId == Id).ToListAsync();
+                DbContext.RolePermissions.RemoveRange(existingPerms);
+                
+                var newPerms = _matrix.Where(m => m.Value).Select(m => new RolePermission
+                {
+                    RoleId = Id!,
+                    Resource = m.Key.Item1,
+                    Action = m.Key.Item2,
+                    IsGranted = true,
+                    GrantedBy = _currentUser
+                });
+                
+                DbContext.RolePermissions.AddRange(newPerms);
+                await DbContext.SaveChangesAsync();
+
+                await AuditService.LogAsync(AuditEventType.RoleUpdated, _currentUser, "Role", existingRole.Name, "Updated role and permissions");
+            }
+            else
+            {
+                _role.CreatedBy = _currentUser;
+                var result = await RoleManager.CreateAsync(_role);
+                
+                if (!result.Succeeded)
+                {
+                    _errorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
+                    return;
+                }
+
+                var newPerms = _matrix.Where(m => m.Value).Select(m => new RolePermission
+                {
+                    RoleId = _role.Id,
+                    Resource = m.Key.Item1,
+                    Action = m.Key.Item2,
+                    IsGranted = true,
+                    GrantedBy = _currentUser
+                });
+                
+                DbContext.RolePermissions.AddRange(newPerms);
+                await DbContext.SaveChangesAsync();
+
+                await AuditService.LogAsync(AuditEventType.RoleCreated, _currentUser, "Role", _role.Name, "Created role and permissions");
+            }
+
+            Nav.NavigateTo("/cai-dat/vai-tro");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Đã xảy ra lỗi khi lưu vai trò: " + ex.Message;
+        }
+    }
+}

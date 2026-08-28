@@ -1,0 +1,136 @@
+@page "/cai-dat/cong-ty"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Domain.Entities.Settings
+@using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
+@attribute [Authorize(Policy = "Permission:CompanySettings:Edit")]
+
+@inject TradeFlowDbContext DbContext
+@inject IAuditService AuditService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Thông tin công ty — TradeFlow</PageTitle>
+
+<div class="tf-page-header">
+    <div class="tf-page-header-left">
+        <h1 class="tf-page-title">Thông tin công ty</h1>
+        <p class="tf-page-subtitle">Cấu hình thông tin doanh nghiệp sử dụng hệ thống</p>
+    </div>
+    <div class="tf-page-actions">
+        <button class="tf-btn tf-btn-primary" @onclick="SaveSettings">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+            </svg>
+            Lưu thay đổi
+        </button>
+    </div>
+</div>
+
+@if (_showSuccess)
+{
+    <div class="tf-alert tf-alert-success tf-mb-4">Đã lưu thông tin thành công.</div>
+}
+
+@if (_settings == null)
+{
+    <div>Đang tải...</div>
+}
+else
+{
+    <div class="tf-card" style="max-width: 800px;">
+        <div class="tf-card-body">
+            <div class="tf-field tf-mb-4">
+                <label class="tf-label">Tên công ty *</label>
+                <div class="tf-input-wrapper">
+                    <input type="text" class="tf-input" @bind="_settings.CompanyName" />
+                </div>
+            </div>
+
+            <div class="tf-field tf-mb-4">
+                <label class="tf-label">Tên giao dịch (Tiếng Anh / Viết tắt)</label>
+                <div class="tf-input-wrapper">
+                    <input type="text" class="tf-input" @bind="_settings.TradingName" />
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="tf-mb-4">
+                <div class="tf-field">
+                    <label class="tf-label">Mã số thuế</label>
+                    <div class="tf-input-wrapper">
+                        <input type="text" class="tf-input" @bind="_settings.TaxCode" />
+                    </div>
+                </div>
+                <div class="tf-field">
+                    <label class="tf-label">Điện thoại</label>
+                    <div class="tf-input-wrapper">
+                        <input type="text" class="tf-input" @bind="_settings.Phone" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="tf-field tf-mb-4">
+                <label class="tf-label">Địa chỉ</label>
+                <div class="tf-input-wrapper">
+                    <input type="text" class="tf-input" @bind="_settings.Address" />
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="tf-mb-4">
+                <div class="tf-field">
+                    <label class="tf-label">Email liên hệ</label>
+                    <div class="tf-input-wrapper">
+                        <input type="email" class="tf-input" @bind="_settings.Email" />
+                    </div>
+                </div>
+                <div class="tf-field">
+                    <label class="tf-label">Website</label>
+                    <div class="tf-input-wrapper">
+                        <input type="text" class="tf-input" @bind="_settings.Website" placeholder="https://" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private CompanySettings? _settings;
+    private bool _showSuccess;
+    private string? _currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _currentUser = authState.User.Identity?.Name ?? "System";
+
+        _settings = await DbContext.CompanySettings.FirstOrDefaultAsync();
+        if (_settings == null)
+        {
+            _settings = new CompanySettings("Công ty TNHH TradeFlow");
+            DbContext.CompanySettings.Add(_settings);
+            await DbContext.SaveChangesAsync();
+        }
+    }
+
+    private async Task SaveSettings()
+    {
+        _showSuccess = false;
+        
+        if (string.IsNullOrWhiteSpace(_settings!.CompanyName)) return;
+
+        DbContext.CompanySettings.Update(_settings);
+        await DbContext.SaveChangesAsync();
+
+        await AuditService.LogAsync(AuditEventType.CompanySettingsChanged, _currentUser, "CompanySettings", "1", "Updated company profile");
+        
+        _showSuccess = true;
+        StateHasChanged();
+
+        // Hide success message after 3 seconds
+        await Task.Delay(3000);
+        _showSuccess = false;
+        StateHasChanged();
+    }
+}

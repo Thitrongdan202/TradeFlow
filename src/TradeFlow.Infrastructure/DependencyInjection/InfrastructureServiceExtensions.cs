@@ -61,11 +61,15 @@ public static class InfrastructureServiceExtensions
             })
             .AddRoles<Persistence.ApplicationRole>()
             .AddEntityFrameworkStores<Persistence.TradeFlowDbContext>()
+            .AddClaimsPrincipalFactory<Persistence.CustomUserClaimsPrincipalFactory>()
             .AddSignInManager()
             .AddDefaultTokenProviders();
 
         // Register audit service
         services.AddScoped<IAuditService, Services.AuditService>();
+        
+        // Register database seeder
+        services.AddScoped<Persistence.DatabaseSeeder>();
 
         return services;
     }

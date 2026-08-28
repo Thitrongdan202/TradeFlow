@@ -1,0 +1,102 @@
+@page "/cai-dat/vai-tro"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Infrastructure.Persistence
+@attribute [Authorize(Policy = "Permission:Roles:View")]
+
+@inject RoleManager<ApplicationRole> RoleManager
+
+<PageTitle>Quản lý vai trò — TradeFlow</PageTitle>
+
+<div class="tf-page-header">
+    <div class="tf-page-header-left">
+        <h1 class="tf-page-title">Vai trò hệ thống</h1>
+        <p class="tf-page-subtitle">Quản lý các vai trò và quyền truy cập</p>
+    </div>
+    <div class="tf-page-actions">
+        <AuthorizeView Policy="Permission:Roles:Create">
+            <a href="/cai-dat/vai-tro/them-moi" class="tf-btn tf-btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Thêm vai trò
+            </a>
+        </AuthorizeView>
+    </div>
+</div>
+
+<div class="tf-card">
+    <div class="tf-card-body" style="padding:0;">
+        <table class="tf-table">
+            <thead>
+                <tr>
+                    <th>Tên vai trò</th>
+                    <th>Mô tả</th>
+                    <th style="text-align:center;">Hệ thống</th>
+                    <th style="text-align:center;">Trạng thái</th>
+                    <th style="text-align:right;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (_roles == null)
+                {
+                    <tr><td colspan="5" style="text-align:center;">Đang tải dữ liệu...</td></tr>
+                }
+                else if (!_roles.Any())
+                {
+                    <tr>
+                        <td colspan="5">
+                            <div class="tf-empty">
+                                <div class="tf-empty-title">Chưa có vai trò nào</div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var role in _roles)
+                    {
+                        <tr>
+                            <td class="tf-font-medium">@role.Name</td>
+                            <td style="color:var(--tf-text-muted);">@role.Description</td>
+                            <td style="text-align:center;">
+                                @if (role.IsSystem)
+                                {
+                                    <span class="tf-badge tf-badge-primary">Hệ thống</span>
+                                }
+                            </td>
+                            <td style="text-align:center;">
+                                @if (role.IsActive)
+                                {
+                                    <span class="tf-badge tf-badge-success">Hoạt động</span>
+                                }
+                                else
+                                {
+                                    <span class="tf-badge tf-badge-gray">Vô hiệu hóa</span>
+                                }
+                            </td>
+                            <td style="text-align:right;">
+                                <AuthorizeView Policy="Permission:Roles:Edit">
+                                    <a href="/cai-dat/vai-tro/sua/@role.Id" class="tf-btn tf-btn-ghost tf-btn-sm">Sửa</a>
+                                </AuthorizeView>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private List<ApplicationRole>? _roles;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _roles = await RoleManager.Roles
+            .OrderByDescending(r => r.IsSystem)
+            .ThenBy(r => r.Name)
+            .ToListAsync();
+    }
+}

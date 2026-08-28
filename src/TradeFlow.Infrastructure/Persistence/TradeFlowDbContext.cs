@@ -25,6 +25,7 @@ public class TradeFlowDbContext
     // === Audit & Settings ===
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<CompanySettings> CompanySettings => Set<CompanySettings>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

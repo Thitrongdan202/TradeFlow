@@ -35,6 +35,8 @@ builder.Services.AddAuthentication(options =>
     })
     .AddIdentityCookies();
 
+builder.Services.AddTradeFlowAuthorization();
+
 // No email sender needed for internal system (no email confirmation)
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
@@ -54,6 +56,11 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseMigrationsEndPoint();
+    
+    // Seed database on startup in Development
+    using var scope = app.Services.CreateScope();
+    var seeder = scope.ServiceProvider.GetRequiredService<TradeFlow.Infrastructure.Persistence.DatabaseSeeder>();
+    await seeder.SeedAsync();
 }
 else
 {

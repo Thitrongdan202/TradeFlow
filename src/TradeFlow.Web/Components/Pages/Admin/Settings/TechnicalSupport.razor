@@ -1,0 +1,142 @@
+@page "/cai-dat/ho-tro"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
+@attribute [Authorize(Policy = "Permission:TechnicalSupport:Create")]
+
+@inject UserManager<ApplicationUser> UserManager
+@inject RoleManager<ApplicationRole> RoleManager
+@inject IAuditService AuditService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Hỗ trợ kỹ thuật — TradeFlow</PageTitle>
+
+<div class="tf-page-header">
+    <div class="tf-page-header-left">
+        <h1 class="tf-page-title">Hỗ trợ kỹ thuật</h1>
+        <p class="tf-page-subtitle">Tạo tài khoản truy cập tạm thời cho nhân viên hỗ trợ (có thời hạn)</p>
+    </div>
+</div>
+
+<div class="tf-card" style="max-width: 600px;">
+    <div class="tf-card-body">
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="tf-alert tf-alert-error tf-mb-4">@_errorMessage</div>
+        }
+        @if (!string.IsNullOrEmpty(_generatedPassword))
+        {
+            <div class="tf-alert tf-alert-success tf-mb-4">
+                <p style="margin-bottom:8px;">Tài khoản hỗ trợ đã được tạo và sẽ tự động khóa sau 2 giờ.</p>
+                <div style="font-family:monospace;background:#fff;padding:8px;border-radius:4px;border:1px solid #ddd;">
+                    Email: <strong>support@tradeflow.local</strong><br/>
+                    Mật khẩu: <strong>@_generatedPassword</strong>
+                </div>
+                <p style="margin-top:8px;font-size:12px;">Vui lòng copy mật khẩu này và gửi cho nhân viên hỗ trợ. Mật khẩu không được lưu trữ.</p>
+            </div>
+        }
+
+        <p class="tf-mb-4">
+            Tính năng này sẽ tạo (hoặc mở khóa) tài khoản <strong>support@tradeflow.local</strong> và đặt thời hạn truy cập là 2 giờ.
+            Tất cả thao tác của tài khoản này sẽ được ghi lại trong <em>Nhật ký hoạt động</em>.
+        </p>
+
+        <button class="tf-btn tf-btn-primary" @onclick="GenerateSupportAccess" disabled="@(!string.IsNullOrEmpty(_generatedPassword))">
+            Tạo quyền truy cập (2 Giờ)
+        </button>
+        
+        <button class="tf-btn tf-btn-danger" style="margin-left:8px;" @onclick="RevokeSupportAccess">
+            Thu hồi quyền ngay lập tức
+        </button>
+    </div>
+</div>
+
+@code {
+    private string? _errorMessage;
+    private string? _generatedPassword;
+
+    private async Task GenerateSupportAccess()
+    {
+        _errorMessage = null;
+        _generatedPassword = null;
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var currentUser = authState.User.Identity?.Name;
+
+            var supportRole = await RoleManager.FindByNameAsync("Support");
+            if (supportRole == null)
+            {
+                supportRole = new ApplicationRole("Support") { Description = "Nhân viên hỗ trợ kỹ thuật", IsSystem = true };
+                await RoleManager.CreateAsync(supportRole);
+            }
+
+            var supportUser = await UserManager.FindByEmailAsync("support@tradeflow.local");
+            var password = GenerateRandomPassword();
+
+            if (supportUser == null)
+            {
+                supportUser = new ApplicationUser
+                {
+                    UserName = "support@tradeflow.local",
+                    Email = "support@tradeflow.local",
+                    FullName = "Technical Support",
+                    EmailConfirmed = true,
+                    CreatedBy = currentUser
+                };
+                await UserManager.CreateAsync(supportUser, password);
+                await UserManager.AddToRoleAsync(supportUser, "Support");
+            }
+            else
+            {
+                var token = await UserManager.GeneratePasswordResetTokenAsync(supportUser);
+                await UserManager.ResetPasswordAsync(supportUser, token, password);
+                
+                // Unlock
+                await UserManager.SetLockoutEndDateAsync(supportUser, null);
+                supportUser.Status = UserStatus.Active;
+                await UserManager.UpdateAsync(supportUser);
+            }
+
+            // Set lockout to 2 hours from now
+            await UserManager.SetLockoutEnabledAsync(supportUser, true);
+            await UserManager.SetLockoutEndDateAsync(supportUser, DateTimeOffset.UtcNow.AddHours(2));
+
+            await AuditService.LogAsync(AuditEventType.SupportAccessEnabled, currentUser, "User", supportUser.Email, "Granted 2-hour support access");
+            
+            _generatedPassword = password;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi: " + ex.Message;
+        }
+    }
+
+    private async Task RevokeSupportAccess()
+    {
+        _errorMessage = null;
+        _generatedPassword = null;
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var currentUser = authState.User.Identity?.Name;
+
+        var supportUser = await UserManager.FindByEmailAsync("support@tradeflow.local");
+        if (supportUser != null)
+        {
+            await UserManager.SetLockoutEndDateAsync(supportUser, DateTimeOffset.UtcNow.AddYears(100)); // Lock forever
+            supportUser.Status = UserStatus.Locked;
+            await UserManager.UpdateAsync(supportUser);
+
+            await AuditService.LogAsync(AuditEventType.SupportAccessRevoked, currentUser, "User", supportUser.Email, "Revoked support access manually");
+            _errorMessage = "Đã thu hồi quyền truy cập thành công.";
+        }
+    }
+
+    private string GenerateRandomPassword()
+    {
+        return "Tf" + Guid.NewGuid().ToString("N").Substring(0, 8) + "!";
+    }
+}

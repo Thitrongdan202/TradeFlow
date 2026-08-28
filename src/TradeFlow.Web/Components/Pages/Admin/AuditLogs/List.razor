@@ -1,0 +1,86 @@
+@page "/cai-dat/nhat-ky"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Domain.Entities.Users
+@using TradeFlow.Infrastructure.Persistence
+@attribute [Authorize(Policy = "Permission:AuditLog:View")]
+
+@inject TradeFlowDbContext DbContext
+
+<PageTitle>Nhật ký hoạt động — TradeFlow</PageTitle>
+
+<div class="tf-page-header">
+    <div class="tf-page-header-left">
+        <h1 class="tf-page-title">Nhật ký hoạt động</h1>
+        <p class="tf-page-subtitle">Theo dõi các thay đổi và sự kiện bảo mật trong hệ thống</p>
+    </div>
+</div>
+
+<div class="tf-card">
+    <div class="tf-card-body" style="padding:0;">
+        <table class="tf-table">
+            <thead>
+                <tr>
+                    <th style="width:160px;">Thời gian</th>
+                    <th style="width:120px;">Loại sự kiện</th>
+                    <th>Người thực hiện</th>
+                    <th>Tài nguyên</th>
+                    <th>Chi tiết</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (_logs == null)
+                {
+                    <tr><td colspan="5" style="text-align:center;">Đang tải dữ liệu...</td></tr>
+                }
+                else if (!_logs.Any())
+                {
+                    <tr><td colspan="5"><div class="tf-empty"><div class="tf-empty-title">Chưa có nhật ký nào</div></div></td></tr>
+                }
+                else
+                {
+                    foreach (var log in _logs)
+                    {
+                        <tr>
+                            <td style="color:var(--tf-text-muted);">@log.OccurredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</td>
+                            <td>
+                                @if (log.EventType == TradeFlow.Domain.Enums.AuditEventType.Login)
+                                {
+                                    <span class="tf-badge tf-badge-success">Đăng nhập</span>
+                                }
+                                else if (log.EventType >= TradeFlow.Domain.Enums.AuditEventType.UserCreated && log.EventType <= TradeFlow.Domain.Enums.AuditEventType.PermissionRevoked)
+                                {
+                                    <span class="tf-badge tf-badge-primary">Bảo mật</span>
+                                }
+                                else if (log.EventType >= TradeFlow.Domain.Enums.AuditEventType.SupportAccessEnabled)
+                                {
+                                    <span class="tf-badge tf-badge-error">Hỗ trợ</span>
+                                }
+                                else
+                                {
+                                    <span class="tf-badge tf-badge-gray">@log.EventType.ToString()</span>
+                                }
+                            </td>
+                            <td class="tf-font-medium">@(log.PerformedBy ?? "Hệ thống")</td>
+                            <td>@log.TargetEntity @(string.IsNullOrEmpty(log.TargetId) ? "" : $"({log.TargetId})")</td>
+                            <td style="color:var(--tf-text-muted);">@log.Details</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private List<AuditLog>? _logs;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load top 100 logs for now
+        _logs = await DbContext.AuditLogs
+            .OrderByDescending(x => x.OccurredAt)
+            .Take(100)
+            .ToListAsync();
+    }
+}

@@ -1,0 +1,97 @@
+@page "/cai-dat/nguoi-dung"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
+@attribute [Authorize(Policy = "Permission:Users:View")]
+
+@inject UserManager<ApplicationUser> UserManager
+
+<PageTitle>Quản lý người dùng — TradeFlow</PageTitle>
+
+<div class="tf-page-header">
+    <div class="tf-page-header-left">
+        <h1 class="tf-page-title">Người dùng</h1>
+        <p class="tf-page-subtitle">Quản lý tài khoản và phân quyền người dùng</p>
+    </div>
+    <div class="tf-page-actions">
+        <AuthorizeView Policy="Permission:Users:Create">
+            <a href="/cai-dat/nguoi-dung/them-moi" class="tf-btn tf-btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>
+                </svg>
+                Thêm người dùng
+            </a>
+        </AuthorizeView>
+    </div>
+</div>
+
+<div class="tf-card">
+    <div class="tf-card-body" style="padding:0;">
+        <table class="tf-table">
+            <thead>
+                <tr>
+                    <th>Tên đăng nhập / Email</th>
+                    <th>Họ và tên</th>
+                    <th style="text-align:center;">Trạng thái</th>
+                    <th>Đăng nhập cuối</th>
+                    <th style="text-align:right;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (_users == null)
+                {
+                    <tr><td colspan="5" style="text-align:center;">Đang tải dữ liệu...</td></tr>
+                }
+                else if (!_users.Any())
+                {
+                    <tr><td colspan="5"><div class="tf-empty"><div class="tf-empty-title">Chưa có người dùng</div></div></td></tr>
+                }
+                else
+                {
+                    foreach (var user in _users)
+                    {
+                        <tr>
+                            <td class="tf-font-medium">@user.Email</td>
+                            <td>@user.FullName</td>
+                            <td style="text-align:center;">
+                                @if (user.Status == UserStatus.Active)
+                                {
+                                    <span class="tf-badge tf-badge-success">Hoạt động</span>
+                                }
+                                else if (user.Status == UserStatus.Locked)
+                                {
+                                    <span class="tf-badge tf-badge-error">Bị khóa</span>
+                                }
+                                else
+                                {
+                                    <span class="tf-badge tf-badge-gray">@user.Status.ToString()</span>
+                                }
+                            </td>
+                            <td style="color:var(--tf-text-muted);font-size:13px;">
+                                @(user.LastLoginAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Chưa đăng nhập")
+                            </td>
+                            <td style="text-align:right;">
+                                <AuthorizeView Policy="Permission:Users:Edit">
+                                    <a href="/cai-dat/nguoi-dung/sua/@user.Id" class="tf-btn tf-btn-ghost tf-btn-sm">Sửa</a>
+                                </AuthorizeView>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private List<ApplicationUser>? _users;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _users = await UserManager.Users
+            .OrderBy(u => u.Email)
+            .ToListAsync();
+    }
+}

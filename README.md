@@ -12,7 +12,7 @@ Built with **C# / .NET 10 / Blazor Server / Entity Framework Core / PostgreSQL**
 |-------|---------|-----------|
 | **Phase 1** | Solution scaffold, EF Core, Identity, PostgreSQL | ✅ Hoàn thành |
 | **Phase 1.5** | UI Foundation — Design system, Login, App shell | ✅ Hoàn thành |
-| Phase 2 | Authentication flows, Users, Roles, Permissions | 🔄 Kế hoạch |
+| **Phase 2** | Authentication flows, Users, Roles, Permissions (Audit, Profile, Seeding) | ✅ Hoàn thành |
 | Phase 3 | Master data (Products, Customers, Suppliers…) | 🔄 Kế hoạch |
 | Phase 4 | Price lists, Excel import/export | 🔄 Kế hoạch |
 | Phase 5 | Sales — Quotations, Orders, Invoices | 🔄 Kế hoạch |

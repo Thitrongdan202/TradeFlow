@@ -6,12 +6,43 @@ using TradeFlow.Domain.Enums;
 
 namespace TradeFlow.Infrastructure.Persistence;
 
+/// <summary>
+/// Seeds the development database with default roles, permissions, and test accounts.
+/// Safe to run multiple times — idempotent by design.
+/// </summary>
 public class DatabaseSeeder
 {
     private readonly ILogger<DatabaseSeeder> _logger;
     private readonly TradeFlowDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
+
+    // ═══════════════════════════════════════════════════
+    // DEVELOPMENT CREDENTIALS — LOCAL ONLY
+    // Never use these passwords in staging or production.
+    // ═══════════════════════════════════════════════════
+    private const string DevPassword = "tradecore123";
+
+    private static readonly (string Username, string Email, string FullName, string RoleName)[] DevAccounts =
+    [
+        ("admin",        "admin@tradeflow.local",        "Quản trị viên",  "Administrator"),
+        ("quanly01",     "quanly01@tradeflow.local",     "Quản Lý 01",     "Manager"),
+        ("kinhdoanh01",  "kinhdoanh01@tradeflow.local",  "Kinh Doanh 01",  "Sales"),
+        ("muahang01",    "muahang01@tradeflow.local",    "Mua Hàng 01",    "Purchase"),
+        ("kho01",        "kho01@tradeflow.local",        "Kho 01",         "Warehouse"),
+        ("xnk01",        "xnk01@tradeflow.local",        "Xuất Nhập Khẩu", "Import-Export"),
+    ];
+
+    /// <summary>Role definitions: (name, description, isSystem)</summary>
+    private static readonly (string Name, string Description, bool IsSystem)[] RoleDefinitions =
+    [
+        ("Administrator", "Quản trị viên hệ thống (toàn quyền)", true),
+        ("Manager",       "Quản lý (xem và phê duyệt)",          false),
+        ("Sales",         "Nhân viên kinh doanh",                 false),
+        ("Purchase",      "Nhân viên mua hàng",                   false),
+        ("Warehouse",     "Nhân viên kho",                        false),
+        ("Import-Export", "Nhân viên xuất nhập khẩu",             false),
+    ];
 
     public DatabaseSeeder(
         ILogger<DatabaseSeeder> logger,
@@ -34,8 +65,10 @@ public class DatabaseSeeder
                 await _context.Database.MigrateAsync();
             }
 
-            await SeedRolesAndPermissionsAsync();
-            await SeedAdministratorAsync();
+            await CleanupLegacyAccountsAsync();
+            await SeedRolesAsync();
+            await SeedAdminPermissionsAsync();
+            await SeedDevAccountsAsync();
             await SeedCompanySettingsAsync();
         }
         catch (Exception ex)
@@ -45,87 +78,186 @@ public class DatabaseSeeder
         }
     }
 
-    private async Task SeedRolesAndPermissionsAsync()
+    // ──────────────────────────────────────────────────
+    // 0. Remove legacy email-as-username accounts
+    // ──────────────────────────────────────────────────
+    private async Task CleanupLegacyAccountsAsync()
     {
-        const string adminRoleName = "Administrator";
-
-        if (!await _roleManager.RoleExistsAsync(adminRoleName))
+        // The old Phase 2 seeder created "admin@tradeflow.local" as username.
+        // We now use "admin" as the username. Remove the stale email-based user.
+        var legacy = await _userManager.FindByNameAsync("admin@tradeflow.local");
+        if (legacy != null)
         {
-            _logger.LogInformation("Creating Administrator role.");
-            var adminRole = new ApplicationRole(adminRoleName)
-            {
-                Description = "Quản trị viên hệ thống (có toàn quyền)",
-                IsSystem = true, // Cannot be deleted
-                CreatedBy = "System"
-            };
-            await _roleManager.CreateAsync(adminRole);
+            _logger.LogInformation("Removing legacy account admin@tradeflow.local (superseded by 'admin').");
+            await _userManager.DeleteAsync(legacy);
         }
+    }
 
-        var role = await _roleManager.FindByNameAsync(adminRoleName);
-        if (role != null)
+    // ──────────────────────────────────────────────────
+    // 1. Roles
+    // ──────────────────────────────────────────────────
+    private async Task SeedRolesAsync()
+    {
+        foreach (var (name, description, isSystem) in RoleDefinitions)
         {
-            // Seed ALL permissions for the Administrator role
-            bool permissionsAdded = false;
-            foreach (ResourceType resource in Enum.GetValues(typeof(ResourceType)))
+            if (!await _roleManager.RoleExistsAsync(name))
             {
-                foreach (PermissionAction action in Enum.GetValues(typeof(PermissionAction)))
+                _logger.LogInformation("Creating role: {RoleName}", name);
+                var role = new ApplicationRole(name)
                 {
-                    var exists = await _context.RolePermissions
-                        .AnyAsync(p => p.RoleId == role.Id && p.Resource == resource && p.Action == action);
-
-                    if (!exists)
-                    {
-                        _context.RolePermissions.Add(new RolePermission
-                        {
-                            RoleId = role.Id,
-                            Resource = resource,
-                            Action = action,
-                            IsGranted = true,
-                            GrantedBy = "System"
-                        });
-                        permissionsAdded = true;
-                    }
+                    Description = description,
+                    IsSystem = isSystem,
+                    IsActive = true,
+                    CreatedBy = "System"
+                };
+                var result = await _roleManager.CreateAsync(role);
+                if (!result.Succeeded)
+                {
+                    _logger.LogError("Failed to create role {RoleName}: {Errors}",
+                        name, string.Join(", ", result.Errors.Select(e => e.Description)));
                 }
-            }
-
-            if (permissionsAdded)
-            {
-                await _context.SaveChangesAsync();
-                _logger.LogInformation("Administrator role permissions updated.");
             }
         }
     }
 
-    private async Task SeedAdministratorAsync()
+    // ──────────────────────────────────────────────────
+    // 2. Administrator permissions (all resources × all actions)
+    // ──────────────────────────────────────────────────
+    private async Task SeedAdminPermissionsAsync()
     {
-        const string adminEmail = "admin@tradeflow.local";
-
-        if (await _userManager.FindByEmailAsync(adminEmail) == null)
+        var adminRole = await _roleManager.FindByNameAsync("Administrator");
+        if (adminRole == null)
         {
-            _logger.LogInformation("Creating default Administrator user.");
-            var adminUser = new ApplicationUser
+            _logger.LogWarning("Administrator role not found — skipping permission seed.");
+            return;
+        }
+
+        bool anyAdded = false;
+        foreach (ResourceType resource in Enum.GetValues<ResourceType>())
+        {
+            foreach (PermissionAction action in Enum.GetValues<PermissionAction>())
             {
-                UserName = adminEmail,
-                Email = adminEmail,
-                FullName = "Quản trị viên",
+                var exists = await _context.RolePermissions
+                    .AnyAsync(p => p.RoleId == adminRole.Id
+                               && p.Resource == resource
+                               && p.Action == action);
+
+                if (!exists)
+                {
+                    _context.RolePermissions.Add(new RolePermission
+                    {
+                        RoleId = adminRole.Id,
+                        Resource = resource,
+                        Action = action,
+                        IsGranted = true,
+                        GrantedBy = "System"
+                    });
+                    anyAdded = true;
+                }
+            }
+        }
+
+        if (anyAdded)
+        {
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Administrator role permissions seeded/updated.");
+        }
+    }
+
+    // ──────────────────────────────────────────────────
+    // 3. Development accounts
+    // ──────────────────────────────────────────────────
+    private async Task SeedDevAccountsAsync()
+    {
+        foreach (var (username, email, fullName, roleName) in DevAccounts)
+        {
+            await EnsureDevUserAsync(username, email, fullName, roleName);
+        }
+    }
+
+    private async Task EnsureDevUserAsync(
+        string username, string email, string fullName, string roleName)
+    {
+        // Look up by username (canonical identifier)
+        var existing = await _userManager.FindByNameAsync(username);
+
+        if (existing == null)
+        {
+            _logger.LogInformation("Creating dev account: {Username}", username);
+
+            var user = new ApplicationUser
+            {
+                UserName = username,
+                Email = email,
+                FullName = fullName,
                 EmailConfirmed = true,
+                LockoutEnabled = false, // Never lock dev accounts during seeding
                 Status = UserStatus.Active,
                 CreatedBy = "System"
             };
 
-            var result = await _userManager.CreateAsync(adminUser, "TradeFlow@2026");
-            if (result.Succeeded)
+            var createResult = await _userManager.CreateAsync(user, DevPassword);
+            if (!createResult.Succeeded)
             {
-                await _userManager.AddToRoleAsync(adminUser, "Administrator");
+                _logger.LogError("Failed to create dev account {Username}: {Errors}",
+                    username,
+                    string.Join(", ", createResult.Errors.Select(e => e.Description)));
+                return;
+            }
+
+            existing = user;
+        }
+        else
+        {
+            _logger.LogDebug("Dev account already exists: {Username}", username);
+
+            // Make sure account is active and not locked — reset if needed
+            bool changed = false;
+
+            if (existing.Status != UserStatus.Active)
+            {
+                existing.Status = UserStatus.Active;
+                changed = true;
+            }
+
+            if (existing.LockoutEnd.HasValue)
+            {
+                await _userManager.SetLockoutEndDateAsync(existing, null);
+                changed = true;
+            }
+
+            if (changed)
+            {
+                await _userManager.UpdateAsync(existing);
+                _logger.LogInformation("Reset status/lockout for dev account: {Username}", username);
+            }
+        }
+
+        // Ensure correct role assignment
+        var currentRoles = await _userManager.GetRolesAsync(existing);
+        if (!currentRoles.Contains(roleName))
+        {
+            // Remove any old roles first (for dev accounts keep exactly one role)
+            if (currentRoles.Any())
+            {
+                await _userManager.RemoveFromRolesAsync(existing, currentRoles);
+            }
+
+            if (await _roleManager.RoleExistsAsync(roleName))
+            {
+                await _userManager.AddToRoleAsync(existing, roleName);
+                _logger.LogInformation("Assigned role {Role} to {Username}", roleName, username);
             }
             else
             {
-                _logger.LogError("Failed to create default administrator: {Errors}", 
-                    string.Join(", ", result.Errors.Select(e => e.Description)));
+                _logger.LogWarning("Role {Role} does not exist — cannot assign to {Username}", roleName, username);
             }
         }
     }
 
+    // ──────────────────────────────────────────────────
+    // 4. Company settings (singleton row)
+    // ──────────────────────────────────────────────────
     private async Task SeedCompanySettingsAsync()
     {
         if (!await _context.CompanySettings.AnyAsync())

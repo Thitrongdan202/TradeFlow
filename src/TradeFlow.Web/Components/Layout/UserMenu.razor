@@ -1,13 +1,16 @@
+@using Microsoft.AspNetCore.Identity
+@using TradeFlow.Infrastructure.Persistence
 @inject NavigationManager Nav
+@inject UserManager<ApplicationUser> UserManager
 
 <div class="tf-dropdown" @onclick:stopPropagation="true">
     <AuthorizeView>
         <Authorized>
             <button class="tf-user-btn" @onclick="ToggleMenu" aria-label="Tài khoản của tôi">
-                <div class="tf-avatar" title="@context.User.Identity?.Name">
-                    @GetInitials(context.User.Identity?.Name)
+                <div class="tf-avatar" title="@_displayName">
+                    @GetInitials(_displayName)
                 </div>
-                <span class="tf-user-name">@TruncateName(context.User.Identity?.Name)</span>
+                <span class="tf-user-name">@TruncateName(_displayName)</span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="6 9 12 15 18 9"/>
                 </svg>
@@ -17,10 +20,10 @@
             {
                 <div class="tf-dropdown-menu tf-user-menu">
                     <div class="tf-user-menu-header">
-                        <div class="tf-avatar tf-avatar-lg">@GetInitials(context.User.Identity?.Name)</div>
+                        <div class="tf-avatar tf-avatar-lg">@GetInitials(_displayName)</div>
                         <div>
-                            <div class="tf-font-semibold">@context.User.Identity?.Name</div>
-                            <div class="tf-text-xs tf-text-muted">Quản trị viên</div>
+                            <div class="tf-font-semibold">@_displayName</div>
+                            <div class="tf-text-xs tf-text-muted">@context.User.Identity?.Name</div>
                         </div>
                     </div>
 
@@ -69,6 +72,36 @@
 
 @code {
     private bool _isOpen;
+    private string _displayName = "";
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserNameAsync();
+    }
+
+    private async Task LoadUserNameAsync()
+    {
+        if (AuthState == null) return;
+
+        var authState = await AuthState;
+        var username = authState.User.Identity?.Name;
+        if (string.IsNullOrEmpty(username)) return;
+
+        // Try to get FullName from the FullName claim (injected by CustomUserClaimsPrincipalFactory)
+        var fullNameClaim = authState.User.FindFirst("FullName")?.Value;
+        if (!string.IsNullOrEmpty(fullNameClaim))
+        {
+            _displayName = fullNameClaim;
+            return;
+        }
+
+        // Fallback: load from DB via UserManager
+        var user = await UserManager.FindByNameAsync(username);
+        _displayName = user?.FullName ?? username;
+    }
 
     private void ToggleMenu() => _isOpen = !_isOpen;
     private void CloseMenu() => _isOpen = false;

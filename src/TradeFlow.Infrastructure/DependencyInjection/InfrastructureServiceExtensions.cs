@@ -43,10 +43,12 @@ public static class InfrastructureServiceExtensions
         // ASP.NET Core Identity with dynamic roles
         services.AddIdentityCore<Persistence.ApplicationUser>(options =>
             {
-                // Password policy - can be configured per environment
+                // Password policy
+                // tradecore123 satisfies: digit + lowercase + length>=8
+                // Uppercase NOT required so simple dev passwords work
                 options.Password.RequireDigit = true;
                 options.Password.RequireLowercase = true;
-                options.Password.RequireUppercase = true;
+                options.Password.RequireUppercase = false;
                 options.Password.RequireNonAlphanumeric = false;
                 options.Password.RequiredLength = 8;
 

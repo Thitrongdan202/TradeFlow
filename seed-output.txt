@@ -1,0 +1,1192 @@
+Using launch settings from src\TradeFlow.Web\Properties\launchSettings.json...
+warn: Microsoft.EntityFrameworkCore.Model.Validation[20601]
+      The 'UserStatus' property 'Status' on entity type 'ApplicationUser' is configured with a database-generated default, but has no configured sentinel value. The database-generated default will always be used for inserts when the property has the value '0', since this is the CLR default for the 'UserStatus' type. Consider using a nullable type, using a nullable backing field, or setting the sentinel value for the property to ensure the database default is used when, and only when, appropriate. See https://aka.ms/efcore-docs-default-values for more information.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (21ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "MigrationId", "ProductVersion"
+      FROM "__EFMigrationsHistory"
+      ORDER BY "MigrationId";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (9ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+          "MigrationId" character varying(150) NOT NULL,
+          "ProductVersion" character varying(32) NOT NULL,
+          CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "MigrationId", "ProductVersion"
+      FROM "__EFMigrationsHistory"
+      ORDER BY "MigrationId";
+info: Microsoft.EntityFrameworkCore.Migrations[20405]
+      No migrations were applied. The database is already up to date.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (10ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedName
+      LIMIT 1
+info: TradeFlow.Infrastructure.Persistence.DatabaseSeeder[0]
+      Creating role: Manager
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[@p0='?', @p1='?', @p2='?' (DbType = DateTime), @p3='?', @p4='?', @p5='?', @p6='?'], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "Roles" ("Id", "ConcurrencyStamp", "CreatedAt", "CreatedBy", "Description", "Name", "NormalizedName")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6)
+      RETURNING "IsActive", "IsSystem";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedName
+      LIMIT 1
+info: TradeFlow.Infrastructure.Persistence.DatabaseSeeder[0]
+      Creating role: Sales
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@p0='?', @p1='?', @p2='?' (DbType = DateTime), @p3='?', @p4='?', @p5='?', @p6='?'], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "Roles" ("Id", "ConcurrencyStamp", "CreatedAt", "CreatedBy", "Description", "Name", "NormalizedName")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6)
+      RETURNING "IsActive", "IsSystem";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedName
+      LIMIT 1
+info: TradeFlow.Infrastructure.Persistence.DatabaseSeeder[0]
+      Creating role: Purchase
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p0='?', @p1='?', @p2='?' (DbType = DateTime), @p3='?', @p4='?', @p5='?', @p6='?'], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "Roles" ("Id", "ConcurrencyStamp", "CreatedAt", "CreatedBy", "Description", "Name", "NormalizedName")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6)
+      RETURNING "IsActive", "IsSystem";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedName
+      LIMIT 1
+info: TradeFlow.Infrastructure.Persistence.DatabaseSeeder[0]
+      Creating role: Warehouse
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p0='?', @p1='?', @p2='?' (DbType = DateTime), @p3='?', @p4='?', @p5='?', @p6='?'], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "Roles" ("Id", "ConcurrencyStamp", "CreatedAt", "CreatedBy", "Description", "Name", "NormalizedName")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6)
+      RETURNING "IsActive", "IsSystem";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedName
+      LIMIT 1
+info: TradeFlow.Infrastructure.Persistence.DatabaseSeeder[0]
+      Creating role: Import-Export
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p0='?', @p1='?', @p2='?' (DbType = DateTime), @p3='?', @p4='?', @p5='?', @p6='?'], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "Roles" ("Id", "ConcurrencyStamp", "CreatedAt", "CreatedBy", "Description", "Name", "NormalizedName")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6)
+      RETURNING "IsActive", "IsSystem";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@_8__locals2_8__locals1_adminRole_Id='?', @_8__locals2_resource='?' (DbType = Int32), @action='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "RolePermissions" AS r
+          WHERE r."RoleId" = @_8__locals2_8__locals1_adminRole_Id AND r."Resource" = @_8__locals2_resource AND r."Action" = @action)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[@normalizedUserName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."Id", u."AccessFailedCount", u."ConcurrencyStamp", u."CreatedAt", u."CreatedBy", u."Email", u."EmailConfirmed", u."EncryptedPassword", u."FullName", u."LastLoginAt", u."LockoutEnabled", u."LockoutEnd", u."NormalizedEmail", u."NormalizedUserName", u."PasswordHash", u."PhoneNumber", u."PhoneNumberConfirmed", u."SecurityStamp", u."Status", u."TwoFactorEnabled", u."UserName"
+      FROM "Users" AS u
+      WHERE u."NormalizedUserName" = @normalizedUserName
+      LIMIT 1
+info: TradeFlow.Infrastructure.Persistence.DatabaseSeeder[0]
+      Creating dev account: admin
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@normalizedUserName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."Id", u."AccessFailedCount", u."ConcurrencyStamp", u."CreatedAt", u."CreatedBy", u."Email", u."EmailConfirmed", u."EncryptedPassword", u."FullName", u."LastLoginAt", u."LockoutEnabled", u."LockoutEnd", u."NormalizedEmail", u."NormalizedUserName", u."PasswordHash", u."PhoneNumber", u."PhoneNumberConfirmed", u."SecurityStamp", u."Status", u."TwoFactorEnabled", u."UserName"
+      FROM "Users" AS u
+      WHERE u."NormalizedUserName" = @normalizedUserName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[@p0='?', @p1='?' (DbType = Int32), @p2='?', @p3='?' (DbType = DateTime), @p4='?', @p5='?', @p6='?' (DbType = Boolean), @p7='?', @p8='?', @p9='?' (DbType = DateTime), @p10='?' (DbType = Boolean), @p11='?' (DbType = DateTime), @p12='?', @p13='?', @p14='?', @p15='?', @p16='?' (DbType = Boolean), @p17='?', @p18='?' (DbType = Int32), @p19='?' (DbType = Boolean), @p20='?'], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "Users" ("Id", "AccessFailedCount", "ConcurrencyStamp", "CreatedAt", "CreatedBy", "Email", "EmailConfirmed", "EncryptedPassword", "FullName", "LastLoginAt", "LockoutEnabled", "LockoutEnd", "NormalizedEmail", "NormalizedUserName", "PasswordHash", "PhoneNumber", "PhoneNumberConfirmed", "SecurityStamp", "Status", "TwoFactorEnabled", "UserName")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18, @p19, @p20);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[@userId='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Name"
+      FROM "UserRoles" AS u
+      INNER JOIN "Roles" AS r ON u."RoleId" = r."Id"
+      WHERE u."UserId" = @userId
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedRoleName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedRoleName
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@p='?', @p1='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."UserId", u."RoleId"
+      FROM "UserRoles" AS u
+      WHERE u."UserId" = @p AND u."RoleId" = @p1
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedRoleName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedRoleName
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@normalizedUserName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."Id", u."AccessFailedCount", u."ConcurrencyStamp", u."CreatedAt", u."CreatedBy", u."Email", u."EmailConfirmed", u."EncryptedPassword", u."FullName", u."LastLoginAt", u."LockoutEnabled", u."LockoutEnd", u."NormalizedEmail", u."NormalizedUserName", u."PasswordHash", u."PhoneNumber", u."PhoneNumberConfirmed", u."SecurityStamp", u."Status", u."TwoFactorEnabled", u."UserName"
+      FROM "Users" AS u
+      WHERE u."NormalizedUserName" = @normalizedUserName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@p0='?', @p1='?', @p22='?', @p2='?' (DbType = Int32), @p3='?', @p23='?', @p4='?' (DbType = DateTime), @p5='?', @p6='?', @p7='?' (DbType = Boolean), @p8='?', @p9='?', @p10='?' (DbType = DateTime), @p11='?' (DbType = Boolean), @p12='?' (DbType = DateTime), @p13='?', @p14='?', @p15='?', @p16='?', @p17='?' (DbType = Boolean), @p18='?', @p19='?' (DbType = Int32), @p20='?' (DbType = Boolean), @p21='?'], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "UserRoles" ("RoleId", "UserId")
+      VALUES (@p0, @p1);
+      UPDATE "Users" SET "AccessFailedCount" = @p2, "ConcurrencyStamp" = @p3, "CreatedAt" = @p4, "CreatedBy" = @p5, "Email" = @p6, "EmailConfirmed" = @p7, "EncryptedPassword" = @p8, "FullName" = @p9, "LastLoginAt" = @p10, "LockoutEnabled" = @p11, "LockoutEnd" = @p12, "NormalizedEmail" = @p13, "NormalizedUserName" = @p14, "PasswordHash" = @p15, "PhoneNumber" = @p16, "PhoneNumberConfirmed" = @p17, "SecurityStamp" = @p18, "Status" = @p19, "TwoFactorEnabled" = @p20, "UserName" = @p21
+      WHERE "Id" = @p22 AND "ConcurrencyStamp" = @p23;
+info: TradeFlow.Infrastructure.Persistence.DatabaseSeeder[0]
+      Assigned role Administrator to admin
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedUserName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."Id", u."AccessFailedCount", u."ConcurrencyStamp", u."CreatedAt", u."CreatedBy", u."Email", u."EmailConfirmed", u."EncryptedPassword", u."FullName", u."LastLoginAt", u."LockoutEnabled", u."LockoutEnd", u."NormalizedEmail", u."NormalizedUserName", u."PasswordHash", u."PhoneNumber", u."PhoneNumberConfirmed", u."SecurityStamp", u."Status", u."TwoFactorEnabled", u."UserName"
+      FROM "Users" AS u
+      WHERE u."NormalizedUserName" = @normalizedUserName
+      LIMIT 1
+info: TradeFlow.Infrastructure.Persistence.DatabaseSeeder[0]
+      Creating dev account: quanly01
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@normalizedUserName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."Id", u."AccessFailedCount", u."ConcurrencyStamp", u."CreatedAt", u."CreatedBy", u."Email", u."EmailConfirmed", u."EncryptedPassword", u."FullName", u."LastLoginAt", u."LockoutEnabled", u."LockoutEnd", u."NormalizedEmail", u."NormalizedUserName", u."PasswordHash", u."PhoneNumber", u."PhoneNumberConfirmed", u."SecurityStamp", u."Status", u."TwoFactorEnabled", u."UserName"
+      FROM "Users" AS u
+      WHERE u."NormalizedUserName" = @normalizedUserName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@p0='?', @p1='?' (DbType = Int32), @p2='?', @p3='?' (DbType = DateTime), @p4='?', @p5='?', @p6='?' (DbType = Boolean), @p7='?', @p8='?', @p9='?' (DbType = DateTime), @p10='?' (DbType = Boolean), @p11='?' (DbType = DateTime), @p12='?', @p13='?', @p14='?', @p15='?', @p16='?' (DbType = Boolean), @p17='?', @p18='?' (DbType = Int32), @p19='?' (DbType = Boolean), @p20='?'], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "Users" ("Id", "AccessFailedCount", "ConcurrencyStamp", "CreatedAt", "CreatedBy", "Email", "EmailConfirmed", "EncryptedPassword", "FullName", "LastLoginAt", "LockoutEnabled", "LockoutEnd", "NormalizedEmail", "NormalizedUserName", "PasswordHash", "PhoneNumber", "PhoneNumberConfirmed", "SecurityStamp", "Status", "TwoFactorEnabled", "UserName")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18, @p19, @p20);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@userId='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Name"
+      FROM "UserRoles" AS u
+      INNER JOIN "Roles" AS r ON u."RoleId" = r."Id"
+      WHERE u."UserId" = @userId
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedRoleName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedRoleName
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p='?', @p1='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."UserId", u."RoleId"
+      FROM "UserRoles" AS u
+      WHERE u."UserId" = @p AND u."RoleId" = @p1
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedRoleName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedRoleName
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedUserName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."Id", u."AccessFailedCount", u."ConcurrencyStamp", u."CreatedAt", u."CreatedBy", u."Email", u."EmailConfirmed", u."EncryptedPassword", u."FullName", u."LastLoginAt", u."LockoutEnabled", u."LockoutEnd", u."NormalizedEmail", u."NormalizedUserName", u."PasswordHash", u."PhoneNumber", u."PhoneNumberConfirmed", u."SecurityStamp", u."Status", u."TwoFactorEnabled", u."UserName"
+      FROM "Users" AS u
+      WHERE u."NormalizedUserName" = @normalizedUserName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@p0='?', @p1='?', @p22='?', @p2='?' (DbType = Int32), @p3='?', @p23='?', @p4='?' (DbType = DateTime), @p5='?', @p6='?', @p7='?' (DbType = Boolean), @p8='?', @p9='?', @p10='?' (DbType = DateTime), @p11='?' (DbType = Boolean), @p12='?' (DbType = DateTime), @p13='?', @p14='?', @p15='?', @p16='?', @p17='?' (DbType = Boolean), @p18='?', @p19='?' (DbType = Int32), @p20='?' (DbType = Boolean), @p21='?'], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "UserRoles" ("RoleId", "UserId")
+      VALUES (@p0, @p1);
+      UPDATE "Users" SET "AccessFailedCount" = @p2, "ConcurrencyStamp" = @p3, "CreatedAt" = @p4, "CreatedBy" = @p5, "Email" = @p6, "EmailConfirmed" = @p7, "EncryptedPassword" = @p8, "FullName" = @p9, "LastLoginAt" = @p10, "LockoutEnabled" = @p11, "LockoutEnd" = @p12, "NormalizedEmail" = @p13, "NormalizedUserName" = @p14, "PasswordHash" = @p15, "PhoneNumber" = @p16, "PhoneNumberConfirmed" = @p17, "SecurityStamp" = @p18, "Status" = @p19, "TwoFactorEnabled" = @p20, "UserName" = @p21
+      WHERE "Id" = @p22 AND "ConcurrencyStamp" = @p23;
+info: TradeFlow.Infrastructure.Persistence.DatabaseSeeder[0]
+      Assigned role Manager to quanly01
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedUserName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."Id", u."AccessFailedCount", u."ConcurrencyStamp", u."CreatedAt", u."CreatedBy", u."Email", u."EmailConfirmed", u."EncryptedPassword", u."FullName", u."LastLoginAt", u."LockoutEnabled", u."LockoutEnd", u."NormalizedEmail", u."NormalizedUserName", u."PasswordHash", u."PhoneNumber", u."PhoneNumberConfirmed", u."SecurityStamp", u."Status", u."TwoFactorEnabled", u."UserName"
+      FROM "Users" AS u
+      WHERE u."NormalizedUserName" = @normalizedUserName
+      LIMIT 1
+info: TradeFlow.Infrastructure.Persistence.DatabaseSeeder[0]
+      Creating dev account: kinhdoanh01
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@normalizedUserName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."Id", u."AccessFailedCount", u."ConcurrencyStamp", u."CreatedAt", u."CreatedBy", u."Email", u."EmailConfirmed", u."EncryptedPassword", u."FullName", u."LastLoginAt", u."LockoutEnabled", u."LockoutEnd", u."NormalizedEmail", u."NormalizedUserName", u."PasswordHash", u."PhoneNumber", u."PhoneNumberConfirmed", u."SecurityStamp", u."Status", u."TwoFactorEnabled", u."UserName"
+      FROM "Users" AS u
+      WHERE u."NormalizedUserName" = @normalizedUserName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p0='?', @p1='?' (DbType = Int32), @p2='?', @p3='?' (DbType = DateTime), @p4='?', @p5='?', @p6='?' (DbType = Boolean), @p7='?', @p8='?', @p9='?' (DbType = DateTime), @p10='?' (DbType = Boolean), @p11='?' (DbType = DateTime), @p12='?', @p13='?', @p14='?', @p15='?', @p16='?' (DbType = Boolean), @p17='?', @p18='?' (DbType = Int32), @p19='?' (DbType = Boolean), @p20='?'], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "Users" ("Id", "AccessFailedCount", "ConcurrencyStamp", "CreatedAt", "CreatedBy", "Email", "EmailConfirmed", "EncryptedPassword", "FullName", "LastLoginAt", "LockoutEnabled", "LockoutEnd", "NormalizedEmail", "NormalizedUserName", "PasswordHash", "PhoneNumber", "PhoneNumberConfirmed", "SecurityStamp", "Status", "TwoFactorEnabled", "UserName")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18, @p19, @p20);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@userId='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Name"
+      FROM "UserRoles" AS u
+      INNER JOIN "Roles" AS r ON u."RoleId" = r."Id"
+      WHERE u."UserId" = @userId
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedRoleName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedRoleName
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p='?', @p1='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."UserId", u."RoleId"
+      FROM "UserRoles" AS u
+      WHERE u."UserId" = @p AND u."RoleId" = @p1
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedRoleName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedRoleName
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedUserName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."Id", u."AccessFailedCount", u."ConcurrencyStamp", u."CreatedAt", u."CreatedBy", u."Email", u."EmailConfirmed", u."EncryptedPassword", u."FullName", u."LastLoginAt", u."LockoutEnabled", u."LockoutEnd", u."NormalizedEmail", u."NormalizedUserName", u."PasswordHash", u."PhoneNumber", u."PhoneNumberConfirmed", u."SecurityStamp", u."Status", u."TwoFactorEnabled", u."UserName"
+      FROM "Users" AS u
+      WHERE u."NormalizedUserName" = @normalizedUserName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@p0='?', @p1='?', @p22='?', @p2='?' (DbType = Int32), @p3='?', @p23='?', @p4='?' (DbType = DateTime), @p5='?', @p6='?', @p7='?' (DbType = Boolean), @p8='?', @p9='?', @p10='?' (DbType = DateTime), @p11='?' (DbType = Boolean), @p12='?' (DbType = DateTime), @p13='?', @p14='?', @p15='?', @p16='?', @p17='?' (DbType = Boolean), @p18='?', @p19='?' (DbType = Int32), @p20='?' (DbType = Boolean), @p21='?'], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "UserRoles" ("RoleId", "UserId")
+      VALUES (@p0, @p1);
+      UPDATE "Users" SET "AccessFailedCount" = @p2, "ConcurrencyStamp" = @p3, "CreatedAt" = @p4, "CreatedBy" = @p5, "Email" = @p6, "EmailConfirmed" = @p7, "EncryptedPassword" = @p8, "FullName" = @p9, "LastLoginAt" = @p10, "LockoutEnabled" = @p11, "LockoutEnd" = @p12, "NormalizedEmail" = @p13, "NormalizedUserName" = @p14, "PasswordHash" = @p15, "PhoneNumber" = @p16, "PhoneNumberConfirmed" = @p17, "SecurityStamp" = @p18, "Status" = @p19, "TwoFactorEnabled" = @p20, "UserName" = @p21
+      WHERE "Id" = @p22 AND "ConcurrencyStamp" = @p23;
+info: TradeFlow.Infrastructure.Persistence.DatabaseSeeder[0]
+      Assigned role Sales to kinhdoanh01
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedUserName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."Id", u."AccessFailedCount", u."ConcurrencyStamp", u."CreatedAt", u."CreatedBy", u."Email", u."EmailConfirmed", u."EncryptedPassword", u."FullName", u."LastLoginAt", u."LockoutEnabled", u."LockoutEnd", u."NormalizedEmail", u."NormalizedUserName", u."PasswordHash", u."PhoneNumber", u."PhoneNumberConfirmed", u."SecurityStamp", u."Status", u."TwoFactorEnabled", u."UserName"
+      FROM "Users" AS u
+      WHERE u."NormalizedUserName" = @normalizedUserName
+      LIMIT 1
+info: TradeFlow.Infrastructure.Persistence.DatabaseSeeder[0]
+      Creating dev account: muahang01
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@normalizedUserName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."Id", u."AccessFailedCount", u."ConcurrencyStamp", u."CreatedAt", u."CreatedBy", u."Email", u."EmailConfirmed", u."EncryptedPassword", u."FullName", u."LastLoginAt", u."LockoutEnabled", u."LockoutEnd", u."NormalizedEmail", u."NormalizedUserName", u."PasswordHash", u."PhoneNumber", u."PhoneNumberConfirmed", u."SecurityStamp", u."Status", u."TwoFactorEnabled", u."UserName"
+      FROM "Users" AS u
+      WHERE u."NormalizedUserName" = @normalizedUserName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@p0='?', @p1='?' (DbType = Int32), @p2='?', @p3='?' (DbType = DateTime), @p4='?', @p5='?', @p6='?' (DbType = Boolean), @p7='?', @p8='?', @p9='?' (DbType = DateTime), @p10='?' (DbType = Boolean), @p11='?' (DbType = DateTime), @p12='?', @p13='?', @p14='?', @p15='?', @p16='?' (DbType = Boolean), @p17='?', @p18='?' (DbType = Int32), @p19='?' (DbType = Boolean), @p20='?'], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "Users" ("Id", "AccessFailedCount", "ConcurrencyStamp", "CreatedAt", "CreatedBy", "Email", "EmailConfirmed", "EncryptedPassword", "FullName", "LastLoginAt", "LockoutEnabled", "LockoutEnd", "NormalizedEmail", "NormalizedUserName", "PasswordHash", "PhoneNumber", "PhoneNumberConfirmed", "SecurityStamp", "Status", "TwoFactorEnabled", "UserName")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18, @p19, @p20);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@userId='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Name"
+      FROM "UserRoles" AS u
+      INNER JOIN "Roles" AS r ON u."RoleId" = r."Id"
+      WHERE u."UserId" = @userId
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedRoleName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedRoleName
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p='?', @p1='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."UserId", u."RoleId"
+      FROM "UserRoles" AS u
+      WHERE u."UserId" = @p AND u."RoleId" = @p1
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedRoleName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedRoleName
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedUserName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."Id", u."AccessFailedCount", u."ConcurrencyStamp", u."CreatedAt", u."CreatedBy", u."Email", u."EmailConfirmed", u."EncryptedPassword", u."FullName", u."LastLoginAt", u."LockoutEnabled", u."LockoutEnd", u."NormalizedEmail", u."NormalizedUserName", u."PasswordHash", u."PhoneNumber", u."PhoneNumberConfirmed", u."SecurityStamp", u."Status", u."TwoFactorEnabled", u."UserName"
+      FROM "Users" AS u
+      WHERE u."NormalizedUserName" = @normalizedUserName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@p0='?', @p1='?', @p22='?', @p2='?' (DbType = Int32), @p3='?', @p23='?', @p4='?' (DbType = DateTime), @p5='?', @p6='?', @p7='?' (DbType = Boolean), @p8='?', @p9='?', @p10='?' (DbType = DateTime), @p11='?' (DbType = Boolean), @p12='?' (DbType = DateTime), @p13='?', @p14='?', @p15='?', @p16='?', @p17='?' (DbType = Boolean), @p18='?', @p19='?' (DbType = Int32), @p20='?' (DbType = Boolean), @p21='?'], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "UserRoles" ("RoleId", "UserId")
+      VALUES (@p0, @p1);
+      UPDATE "Users" SET "AccessFailedCount" = @p2, "ConcurrencyStamp" = @p3, "CreatedAt" = @p4, "CreatedBy" = @p5, "Email" = @p6, "EmailConfirmed" = @p7, "EncryptedPassword" = @p8, "FullName" = @p9, "LastLoginAt" = @p10, "LockoutEnabled" = @p11, "LockoutEnd" = @p12, "NormalizedEmail" = @p13, "NormalizedUserName" = @p14, "PasswordHash" = @p15, "PhoneNumber" = @p16, "PhoneNumberConfirmed" = @p17, "SecurityStamp" = @p18, "Status" = @p19, "TwoFactorEnabled" = @p20, "UserName" = @p21
+      WHERE "Id" = @p22 AND "ConcurrencyStamp" = @p23;
+info: TradeFlow.Infrastructure.Persistence.DatabaseSeeder[0]
+      Assigned role Purchase to muahang01
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedUserName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."Id", u."AccessFailedCount", u."ConcurrencyStamp", u."CreatedAt", u."CreatedBy", u."Email", u."EmailConfirmed", u."EncryptedPassword", u."FullName", u."LastLoginAt", u."LockoutEnabled", u."LockoutEnd", u."NormalizedEmail", u."NormalizedUserName", u."PasswordHash", u."PhoneNumber", u."PhoneNumberConfirmed", u."SecurityStamp", u."Status", u."TwoFactorEnabled", u."UserName"
+      FROM "Users" AS u
+      WHERE u."NormalizedUserName" = @normalizedUserName
+      LIMIT 1
+info: TradeFlow.Infrastructure.Persistence.DatabaseSeeder[0]
+      Creating dev account: kho01
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@normalizedUserName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."Id", u."AccessFailedCount", u."ConcurrencyStamp", u."CreatedAt", u."CreatedBy", u."Email", u."EmailConfirmed", u."EncryptedPassword", u."FullName", u."LastLoginAt", u."LockoutEnabled", u."LockoutEnd", u."NormalizedEmail", u."NormalizedUserName", u."PasswordHash", u."PhoneNumber", u."PhoneNumberConfirmed", u."SecurityStamp", u."Status", u."TwoFactorEnabled", u."UserName"
+      FROM "Users" AS u
+      WHERE u."NormalizedUserName" = @normalizedUserName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@p0='?', @p1='?' (DbType = Int32), @p2='?', @p3='?' (DbType = DateTime), @p4='?', @p5='?', @p6='?' (DbType = Boolean), @p7='?', @p8='?', @p9='?' (DbType = DateTime), @p10='?' (DbType = Boolean), @p11='?' (DbType = DateTime), @p12='?', @p13='?', @p14='?', @p15='?', @p16='?' (DbType = Boolean), @p17='?', @p18='?' (DbType = Int32), @p19='?' (DbType = Boolean), @p20='?'], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "Users" ("Id", "AccessFailedCount", "ConcurrencyStamp", "CreatedAt", "CreatedBy", "Email", "EmailConfirmed", "EncryptedPassword", "FullName", "LastLoginAt", "LockoutEnabled", "LockoutEnd", "NormalizedEmail", "NormalizedUserName", "PasswordHash", "PhoneNumber", "PhoneNumberConfirmed", "SecurityStamp", "Status", "TwoFactorEnabled", "UserName")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18, @p19, @p20);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@userId='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Name"
+      FROM "UserRoles" AS u
+      INNER JOIN "Roles" AS r ON u."RoleId" = r."Id"
+      WHERE u."UserId" = @userId
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedRoleName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedRoleName
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p='?', @p1='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."UserId", u."RoleId"
+      FROM "UserRoles" AS u
+      WHERE u."UserId" = @p AND u."RoleId" = @p1
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedRoleName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedRoleName
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedUserName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."Id", u."AccessFailedCount", u."ConcurrencyStamp", u."CreatedAt", u."CreatedBy", u."Email", u."EmailConfirmed", u."EncryptedPassword", u."FullName", u."LastLoginAt", u."LockoutEnabled", u."LockoutEnd", u."NormalizedEmail", u."NormalizedUserName", u."PasswordHash", u."PhoneNumber", u."PhoneNumberConfirmed", u."SecurityStamp", u."Status", u."TwoFactorEnabled", u."UserName"
+      FROM "Users" AS u
+      WHERE u."NormalizedUserName" = @normalizedUserName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@p0='?', @p1='?', @p22='?', @p2='?' (DbType = Int32), @p3='?', @p23='?', @p4='?' (DbType = DateTime), @p5='?', @p6='?', @p7='?' (DbType = Boolean), @p8='?', @p9='?', @p10='?' (DbType = DateTime), @p11='?' (DbType = Boolean), @p12='?' (DbType = DateTime), @p13='?', @p14='?', @p15='?', @p16='?', @p17='?' (DbType = Boolean), @p18='?', @p19='?' (DbType = Int32), @p20='?' (DbType = Boolean), @p21='?'], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "UserRoles" ("RoleId", "UserId")
+      VALUES (@p0, @p1);
+      UPDATE "Users" SET "AccessFailedCount" = @p2, "ConcurrencyStamp" = @p3, "CreatedAt" = @p4, "CreatedBy" = @p5, "Email" = @p6, "EmailConfirmed" = @p7, "EncryptedPassword" = @p8, "FullName" = @p9, "LastLoginAt" = @p10, "LockoutEnabled" = @p11, "LockoutEnd" = @p12, "NormalizedEmail" = @p13, "NormalizedUserName" = @p14, "PasswordHash" = @p15, "PhoneNumber" = @p16, "PhoneNumberConfirmed" = @p17, "SecurityStamp" = @p18, "Status" = @p19, "TwoFactorEnabled" = @p20, "UserName" = @p21
+      WHERE "Id" = @p22 AND "ConcurrencyStamp" = @p23;
+info: TradeFlow.Infrastructure.Persistence.DatabaseSeeder[0]
+      Assigned role Warehouse to kho01
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedUserName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."Id", u."AccessFailedCount", u."ConcurrencyStamp", u."CreatedAt", u."CreatedBy", u."Email", u."EmailConfirmed", u."EncryptedPassword", u."FullName", u."LastLoginAt", u."LockoutEnabled", u."LockoutEnd", u."NormalizedEmail", u."NormalizedUserName", u."PasswordHash", u."PhoneNumber", u."PhoneNumberConfirmed", u."SecurityStamp", u."Status", u."TwoFactorEnabled", u."UserName"
+      FROM "Users" AS u
+      WHERE u."NormalizedUserName" = @normalizedUserName
+      LIMIT 1
+info: TradeFlow.Infrastructure.Persistence.DatabaseSeeder[0]
+      Creating dev account: xnk01
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@normalizedUserName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."Id", u."AccessFailedCount", u."ConcurrencyStamp", u."CreatedAt", u."CreatedBy", u."Email", u."EmailConfirmed", u."EncryptedPassword", u."FullName", u."LastLoginAt", u."LockoutEnabled", u."LockoutEnd", u."NormalizedEmail", u."NormalizedUserName", u."PasswordHash", u."PhoneNumber", u."PhoneNumberConfirmed", u."SecurityStamp", u."Status", u."TwoFactorEnabled", u."UserName"
+      FROM "Users" AS u
+      WHERE u."NormalizedUserName" = @normalizedUserName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@p0='?', @p1='?' (DbType = Int32), @p2='?', @p3='?' (DbType = DateTime), @p4='?', @p5='?', @p6='?' (DbType = Boolean), @p7='?', @p8='?', @p9='?' (DbType = DateTime), @p10='?' (DbType = Boolean), @p11='?' (DbType = DateTime), @p12='?', @p13='?', @p14='?', @p15='?', @p16='?' (DbType = Boolean), @p17='?', @p18='?' (DbType = Int32), @p19='?' (DbType = Boolean), @p20='?'], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "Users" ("Id", "AccessFailedCount", "ConcurrencyStamp", "CreatedAt", "CreatedBy", "Email", "EmailConfirmed", "EncryptedPassword", "FullName", "LastLoginAt", "LockoutEnabled", "LockoutEnd", "NormalizedEmail", "NormalizedUserName", "PasswordHash", "PhoneNumber", "PhoneNumberConfirmed", "SecurityStamp", "Status", "TwoFactorEnabled", "UserName")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18, @p19, @p20);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@userId='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Name"
+      FROM "UserRoles" AS u
+      INNER JOIN "Roles" AS r ON u."RoleId" = r."Id"
+      WHERE u."UserId" = @userId
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedRoleName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedRoleName
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@p='?', @p1='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."UserId", u."RoleId"
+      FROM "UserRoles" AS u
+      WHERE u."UserId" = @p AND u."RoleId" = @p1
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedRoleName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT r."Id", r."ConcurrencyStamp", r."CreatedAt", r."CreatedBy", r."Description", r."IsActive", r."IsSystem", r."Name", r."NormalizedName"
+      FROM "Roles" AS r
+      WHERE r."NormalizedName" = @normalizedRoleName
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@normalizedUserName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT u."Id", u."AccessFailedCount", u."ConcurrencyStamp", u."CreatedAt", u."CreatedBy", u."Email", u."EmailConfirmed", u."EncryptedPassword", u."FullName", u."LastLoginAt", u."LockoutEnabled", u."LockoutEnd", u."NormalizedEmail", u."NormalizedUserName", u."PasswordHash", u."PhoneNumber", u."PhoneNumberConfirmed", u."SecurityStamp", u."Status", u."TwoFactorEnabled", u."UserName"
+      FROM "Users" AS u
+      WHERE u."NormalizedUserName" = @normalizedUserName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@p0='?', @p1='?', @p22='?', @p2='?' (DbType = Int32), @p3='?', @p23='?', @p4='?' (DbType = DateTime), @p5='?', @p6='?', @p7='?' (DbType = Boolean), @p8='?', @p9='?', @p10='?' (DbType = DateTime), @p11='?' (DbType = Boolean), @p12='?' (DbType = DateTime), @p13='?', @p14='?', @p15='?', @p16='?', @p17='?' (DbType = Boolean), @p18='?', @p19='?' (DbType = Int32), @p20='?' (DbType = Boolean), @p21='?'], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "UserRoles" ("RoleId", "UserId")
+      VALUES (@p0, @p1);
+      UPDATE "Users" SET "AccessFailedCount" = @p2, "ConcurrencyStamp" = @p3, "CreatedAt" = @p4, "CreatedBy" = @p5, "Email" = @p6, "EmailConfirmed" = @p7, "EncryptedPassword" = @p8, "FullName" = @p9, "LastLoginAt" = @p10, "LockoutEnabled" = @p11, "LockoutEnd" = @p12, "NormalizedEmail" = @p13, "NormalizedUserName" = @p14, "PasswordHash" = @p15, "PhoneNumber" = @p16, "PhoneNumberConfirmed" = @p17, "SecurityStamp" = @p18, "Status" = @p19, "TwoFactorEnabled" = @p20, "UserName" = @p21
+      WHERE "Id" = @p22 AND "ConcurrencyStamp" = @p23;
+info: TradeFlow.Infrastructure.Persistence.DatabaseSeeder[0]
+      Assigned role Import-Export to xnk01
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "CompanySettings" AS c)
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:5169
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\Users\thitr\.gemini\antigravity\scratch\TradeFlow\src\TradeFlow.Web

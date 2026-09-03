@@ -1,11 +1,18 @@
 @page "/cai-dat/vai-tro"
+@rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Domain.Enums
 @using TradeFlow.Infrastructure.Persistence
 @attribute [Authorize(Policy = "Permission:Roles:View")]
 
 @inject RoleManager<ApplicationRole> RoleManager
+@inject UserManager<ApplicationUser> UserManager
+@inject TradeFlowDbContext DbContext
+@inject IAuditService AuditService
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Quản lý vai trò — TradeFlow</PageTitle>
 
@@ -26,6 +33,13 @@
     </div>
 </div>
 
+@if (!string.IsNullOrEmpty(_actionMessage))
+{
+    <div class="tf-alert @(_actionSuccess ? "tf-alert-success" : "tf-alert-error") tf-mb-4">
+        @_actionMessage
+    </div>
+}
+
 <div class="tf-card">
     <div class="tf-card-body" style="padding:0;">
         <table class="tf-table">
@@ -33,6 +47,7 @@
                 <tr>
                     <th>Tên vai trò</th>
                     <th>Mô tả</th>
+                    <th style="text-align:center;">Số người dùng</th>
                     <th style="text-align:center;">Hệ thống</th>
                     <th style="text-align:center;">Trạng thái</th>
                     <th style="text-align:right;">Thao tác</th>
@@ -41,12 +56,12 @@
             <tbody>
                 @if (_roles == null)
                 {
-                    <tr><td colspan="5" style="text-align:center;">Đang tải dữ liệu...</td></tr>
+                    <tr><td colspan="6" style="text-align:center;">Đang tải dữ liệu...</td></tr>
                 }
                 else if (!_roles.Any())
                 {
                     <tr>
-                        <td colspan="5">
+                        <td colspan="6">
                             <div class="tf-empty">
                                 <div class="tf-empty-title">Chưa có vai trò nào</div>
                             </div>
@@ -55,19 +70,37 @@
                 }
                 else
                 {
-                    foreach (var role in _roles)
+                    foreach (var entry in _roles)
                     {
                         <tr>
-                            <td class="tf-font-medium">@role.Name</td>
-                            <td style="color:var(--tf-text-muted);">@role.Description</td>
-                            <td style="text-align:center;">
-                                @if (role.IsSystem)
+                            <td class="tf-font-medium">
+                                @entry.Role.Name
+                                @if (entry.Role.IsSystem)
                                 {
-                                    <span class="tf-badge tf-badge-primary">Hệ thống</span>
+                                    <span class="tf-badge tf-badge-primary" style="margin-left:6px;font-size:10px;">Hệ thống</span>
+                                }
+                            </td>
+                            <td style="color:var(--tf-text-muted);">@entry.Role.Description</td>
+                            <td style="text-align:center;">
+                                @if (entry.UserCount > 0)
+                                {
+                                    <a href="#" style="color:var(--tf-primary);">@entry.UserCount người dùng</a>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--tf-text-muted);">—</span>
                                 }
                             </td>
                             <td style="text-align:center;">
-                                @if (role.IsActive)
+                                @if (entry.Role.IsSystem)
+                                {
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tf-primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"/>
+                                    </svg>
+                                }
+                            </td>
+                            <td style="text-align:center;">
+                                @if (entry.Role.IsActive)
                                 {
                                     <span class="tf-badge tf-badge-success">Hoạt động</span>
                                 }
@@ -77,9 +110,27 @@
                                 }
                             </td>
                             <td style="text-align:right;">
-                                <AuthorizeView Policy="Permission:Roles:Edit">
-                                    <a href="/cai-dat/vai-tro/sua/@role.Id" class="tf-btn tf-btn-ghost tf-btn-sm">Sửa</a>
-                                </AuthorizeView>
+                                <div style="display:flex;gap:4px;justify-content:flex-end;">
+                                    <AuthorizeView Policy="Permission:Roles:Edit">
+                                        <a href="/cai-dat/vai-tro/sua/@entry.Role.Id" class="tf-btn tf-btn-ghost tf-btn-sm">Sửa</a>
+                                        @if (!entry.Role.IsSystem && entry.UserCount == 0)
+                                        {
+                                            <button class="tf-btn tf-btn-ghost tf-btn-sm"
+                                                    style="color:var(--tf-error);"
+                                                    @onclick="() => DeleteRole(entry.Role)"
+                                                    title="Xóa vai trò (chỉ khi không có người dùng)">
+                                                Xóa
+                                            </button>
+                                        }
+                                        else if (!entry.Role.IsSystem && entry.UserCount > 0)
+                                        {
+                                            <span style="font-size:12px;color:var(--tf-text-muted);padding:0 8px;align-self:center;"
+                                                  title="Không thể xóa khi còn người dùng">
+                                                Không thể xóa
+                                            </span>
+                                        }
+                                    </AuthorizeView>
+                                </div>
                             </td>
                         </tr>
                     }
@@ -90,13 +141,69 @@
 </div>
 
 @code {
-    private List<ApplicationRole>? _roles;
+    private record RoleEntry(ApplicationRole Role, int UserCount);
+    private List<RoleEntry>? _roles;
+    private string? _actionMessage;
+    private bool _actionSuccess;
+    private string? _currentUsername;
 
     protected override async Task OnInitializedAsync()
     {
-        _roles = await RoleManager.Roles
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _currentUsername = authState.User.Identity?.Name;
+        await LoadRolesAsync();
+    }
+
+    private async Task LoadRolesAsync()
+    {
+        var roles = await RoleManager.Roles
             .OrderByDescending(r => r.IsSystem)
             .ThenBy(r => r.Name)
             .ToListAsync();
+
+        var entries = new List<RoleEntry>();
+        foreach (var r in roles)
+        {
+            var users = await UserManager.GetUsersInRoleAsync(r.Name!);
+            entries.Add(new RoleEntry(r, users.Count));
+        }
+        _roles = entries;
+    }
+
+    private async Task DeleteRole(ApplicationRole role)
+    {
+        _actionMessage = null;
+        if (role.IsSystem)
+        {
+            _actionMessage = "Không thể xóa vai trò hệ thống.";
+            _actionSuccess = false;
+            return;
+        }
+
+        try
+        {
+            // Remove all permissions first
+            var perms = await DbContext.RolePermissions.Where(p => p.RoleId == role.Id).ToListAsync();
+            DbContext.RolePermissions.RemoveRange(perms);
+            await DbContext.SaveChangesAsync();
+
+            var result = await RoleManager.DeleteAsync(role);
+            if (!result.Succeeded)
+            {
+                _actionMessage = string.Join("; ", result.Errors.Select(e => e.Description));
+                _actionSuccess = false;
+                return;
+            }
+
+            await AuditService.LogAsync(AuditEventType.RoleDeleted, _currentUsername, "Role", role.Name, "Deleted custom role");
+            _actionMessage = $"Đã xóa vai trò \"{role.Name}\".";
+            _actionSuccess = true;
+            await LoadRolesAsync();
+        }
+        catch (Exception ex)
+        {
+            _actionMessage = "Lỗi: " + ex.Message;
+            _actionSuccess = false;
+        }
     }
 }

@@ -23,6 +23,9 @@
     <div class="tf-page-actions">
         <a href="/cai-dat/nguoi-dung" class="tf-btn tf-btn-secondary">Hủy bỏ</a>
         <button class="tf-btn tf-btn-primary" @onclick="SaveUser">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+            </svg>
             Lưu thay đổi
         </button>
     </div>
@@ -30,7 +33,17 @@
 
 @if (!string.IsNullOrEmpty(_errorMessage))
 {
-    <div class="tf-alert tf-alert-error tf-mb-4">@_errorMessage</div>
+    <div class="tf-alert tf-alert-error tf-mb-4">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        @_errorMessage
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(_successMessage))
+{
+    <div class="tf-alert tf-alert-success tf-mb-4">@_successMessage</div>
 }
 
 @if (_user == null || _allRoles == null)
@@ -46,26 +59,80 @@ else
                 <div class="tf-field tf-mb-4">
                     <label class="tf-label">Họ và tên *</label>
                     <div class="tf-input-wrapper">
-                        <input type="text" class="tf-input" @bind="_user.FullName" />
+                        <input type="text" class="tf-input" @bind="_user.FullName" placeholder="Nguyễn Văn A" />
+                    </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="tf-mb-4">
+                    <div class="tf-field">
+                        <label class="tf-label">Tên đăng nhập *</label>
+                        <div class="tf-input-wrapper">
+                            <input type="text" class="tf-input" @bind="_username"
+                                   disabled="@IsEdit"
+                                   placeholder="nguyenvana" autocomplete="username" />
+                        </div>
+                        @if (IsEdit)
+                        {
+                            <div style="font-size:12px;color:var(--tf-text-muted);margin-top:4px;">Không thể thay đổi tên đăng nhập.</div>
+                        }
+                    </div>
+                    <div class="tf-field">
+                        <label class="tf-label">Email *</label>
+                        <div class="tf-input-wrapper">
+                            <input type="email" class="tf-input" @bind="_user.Email"
+                                   disabled="@IsEdit"
+                                   placeholder="nguyenvana@congtytoi.com" />
+                        </div>
+                        @if (IsEdit)
+                        {
+                            <div style="font-size:12px;color:var(--tf-text-muted);margin-top:4px;">Không thể thay đổi email.</div>
+                        }
                     </div>
                 </div>
 
                 <div class="tf-field tf-mb-4">
-                    <label class="tf-label">Email (Tên đăng nhập) *</label>
+                    <label class="tf-label">Số điện thoại</label>
                     <div class="tf-input-wrapper">
-                        <input type="email" class="tf-input" @bind="_user.Email" disabled="@IsEdit" />
+                        <input type="tel" class="tf-input" @bind="_user.PhoneNumber" placeholder="0901234567" />
                     </div>
-                    @if (IsEdit)
+                </div>
+
+                <div class="tf-field tf-mb-4">
+                    <label class="tf-label">
+                        Mật khẩu @(IsEdit ? "(để trống nếu không đổi)" : "*")
+                    </label>
+                    <div class="tf-input-wrapper">
+                        <input type="@(_showPassword ? "text" : "password")"
+                               class="tf-input"
+                               @bind="_password"
+                               placeholder="@(IsEdit ? "••••••••" : "Tối thiểu 8 ký tự")"
+                               autocomplete="@(IsEdit ? "new-password" : "new-password")" />
+                        <button type="button" class="tf-input-suffix"
+                                @onclick="TogglePasswordVisibility"
+                                aria-label="@(_showPassword ? "Ẩn mật khẩu" : "Hiển thị mật khẩu")"
+                                title="@(_showPassword ? "Ẩn mật khẩu" : "Hiển thị mật khẩu")">
+                            @if (_showPassword)
+                            {
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
+                                    <line x1="1" y1="1" x2="23" y2="23"/>
+                                </svg>
+                            }
+                            else
+                            {
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            }
+                        </button>
+                    </div>
+                    @if (!IsEdit)
                     {
-                        <div class="tf-validation-message" style="color:var(--tf-text-muted)">Không thể thay đổi email sau khi tạo.</div>
+                        <div style="font-size:12px;color:var(--tf-text-muted);margin-top:4px;">
+                            Tối thiểu 8 ký tự, cần có chữ thường và số.
+                        </div>
                     }
-                </div>
-
-                <div class="tf-field tf-mb-4">
-                    <label class="tf-label">Mật khẩu @(IsEdit ? "(Để trống nếu không đổi)" : "*")</label>
-                    <div class="tf-input-wrapper">
-                        <input type="password" class="tf-input" @bind="_password" />
-                    </div>
                 </div>
 
                 <div class="tf-field">
@@ -74,12 +141,12 @@ else
                         <select class="tf-input" @bind="_userStatusInt" disabled="@_isCurrentUser">
                             <option value="1">Hoạt động (Active)</option>
                             <option value="2">Khóa (Locked)</option>
-                            <option value="0">Chờ duyệt (Pending)</option>
+                            <option value="3">Vô hiệu hóa (Disabled)</option>
                         </select>
                     </div>
                     @if (_isCurrentUser)
                     {
-                        <div class="tf-validation-message" style="color:var(--tf-text-muted)">Bạn không thể tự khóa tài khoản của mình.</div>
+                        <div style="font-size:12px;color:var(--tf-text-muted);margin-top:4px;">Bạn không thể tự khóa tài khoản của mình.</div>
                     }
                 </div>
             </div>
@@ -91,22 +158,30 @@ else
                 @foreach (var role in _allRoles)
                 {
                     <div class="tf-field tf-mb-2">
-                        <label class="tf-checkbox-label" style="display:flex;align-items:center;gap:8px;">
-                            <input type="checkbox" 
+                        <label class="tf-checkbox-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                            <input type="checkbox"
+                                   class="tf-checkbox"
                                    checked="@_selectedRoles.Contains(role.Name!)"
                                    disabled="@(role.Name == "Administrator" && _isCurrentUser)"
                                    @onchange="@(e => ToggleRole(role.Name!, (bool)(e.Value ?? false)))" />
                             <div>
                                 <div class="tf-font-medium">@role.Name</div>
-                                <div style="font-size:12px;color:var(--tf-text-muted);">@role.Description</div>
+                                @if (!string.IsNullOrEmpty(role.Description))
+                                {
+                                    <div style="font-size:12px;color:var(--tf-text-muted);">@role.Description</div>
+                                }
                             </div>
                         </label>
                     </div>
                 }
+                @if (!_allRoles.Any())
+                {
+                    <div style="color:var(--tf-text-muted);font-size:13px;">Chưa có vai trò nào được tạo.</div>
+                }
                 @if (_isCurrentUser)
                 {
-                    <div class="tf-validation-message" style="color:var(--tf-text-muted);margin-top:16px;">
-                        Bạn không thể tự gỡ vai trò Administrator của chính mình để tránh mất quyền.
+                    <div style="font-size:12px;color:var(--tf-text-muted);margin-top:12px;padding-top:12px;border-top:1px solid var(--tf-border);">
+                        Bạn không thể tự gỡ vai trò Administrator.
                     </div>
                 }
             </div>
@@ -121,9 +196,12 @@ else
     private ApplicationUser? _user;
     private List<ApplicationRole>? _allRoles;
     private HashSet<string> _selectedRoles = new();
-    
+
+    private string _username = "";
     private string? _password;
+    private bool _showPassword;
     private string? _errorMessage;
+    private string? _successMessage;
     private string? _currentUsername;
     private bool _isCurrentUser;
 
@@ -138,7 +216,11 @@ else
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         _currentUsername = authState.User.Identity?.Name;
 
-        _allRoles = await RoleManager.Roles.Where(r => r.IsActive).ToListAsync();
+        _allRoles = await RoleManager.Roles
+            .Where(r => r.IsActive && r.Name != "Support") // hide support role from assignment
+            .OrderByDescending(r => r.IsSystem)
+            .ThenBy(r => r.Name)
+            .ToListAsync();
 
         if (IsEdit)
         {
@@ -149,6 +231,7 @@ else
                 return;
             }
 
+            _username = _user.UserName ?? "";
             _isCurrentUser = _user.UserName == _currentUsername;
 
             var roles = await UserManager.GetRolesAsync(_user);
@@ -160,6 +243,8 @@ else
         }
     }
 
+    private void TogglePasswordVisibility() => _showPassword = !_showPassword;
+
     private void ToggleRole(string roleName, bool isSelected)
     {
         if (isSelected) _selectedRoles.Add(roleName);
@@ -169,10 +254,27 @@ else
     private async Task SaveUser()
     {
         _errorMessage = null;
+        _successMessage = null;
 
-        if (string.IsNullOrWhiteSpace(_user!.Email) || string.IsNullOrWhiteSpace(_user.FullName))
+        // Validation
+        if (string.IsNullOrWhiteSpace(_user!.FullName))
         {
-            _errorMessage = "Email và Họ tên không được để trống.";
+            _errorMessage = "Họ và tên không được để trống.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(_user.Email))
+        {
+            _errorMessage = "Email không được để trống.";
+            return;
+        }
+        if (!IsEdit && string.IsNullOrWhiteSpace(_username))
+        {
+            _errorMessage = "Tên đăng nhập không được để trống.";
+            return;
+        }
+        if (!IsEdit && string.IsNullOrWhiteSpace(_password))
+        {
+            _errorMessage = "Vui lòng nhập mật khẩu cho người dùng mới.";
             return;
         }
 
@@ -181,67 +283,66 @@ else
             if (IsEdit)
             {
                 var existingUser = await UserManager.FindByIdAsync(Id!);
-                
-                existingUser!.FullName = _user.FullName;
-                if (!_isCurrentUser)
-                {
-                    existingUser.Status = _user.Status;
-                }
+                if (existingUser == null) { _errorMessage = "Không tìm thấy người dùng."; return; }
+
+                existingUser.FullName = _user.FullName.Trim();
+                existingUser.PhoneNumber = _user.PhoneNumber;
+                if (!_isCurrentUser) existingUser.Status = _user.Status;
 
                 var updateResult = await UserManager.UpdateAsync(existingUser);
                 if (!updateResult.Succeeded)
                 {
-                    _errorMessage = string.Join(", ", updateResult.Errors.Select(e => e.Description));
+                    _errorMessage = string.Join("; ", updateResult.Errors.Select(e => e.Description));
                     return;
                 }
 
-                // Password reset
+                // Password reset (optional on edit)
                 if (!string.IsNullOrWhiteSpace(_password))
                 {
                     var token = await UserManager.GeneratePasswordResetTokenAsync(existingUser);
                     var passResult = await UserManager.ResetPasswordAsync(existingUser, token, _password);
                     if (!passResult.Succeeded)
                     {
-                        _errorMessage = string.Join(", ", passResult.Errors.Select(e => e.Description));
+                        _errorMessage = string.Join("; ", passResult.Errors.Select(e => e.Description));
                         return;
                     }
                 }
 
-                // Roles update
+                // Roles
                 var currentRoles = await UserManager.GetRolesAsync(existingUser);
-                await UserManager.RemoveFromRolesAsync(existingUser, currentRoles.Except(_selectedRoles));
-                await UserManager.AddToRolesAsync(existingUser, _selectedRoles.Except(currentRoles));
+                if (!(_isCurrentUser && _selectedRoles.Contains("Administrator")))
+                {
+                    await UserManager.RemoveFromRolesAsync(existingUser, currentRoles.Except(_selectedRoles));
+                    await UserManager.AddToRolesAsync(existingUser, _selectedRoles.Except(currentRoles));
+                }
 
-                await AuditService.LogAsync(AuditEventType.UserUpdated, _currentUsername, "User", existingUser.Email, "Updated user");
+                await AuditService.LogAsync(AuditEventType.UserUpdated, _currentUsername, "User", existingUser.UserName, "Updated user profile");
             }
             else
             {
-                if (string.IsNullOrWhiteSpace(_password))
-                {
-                    _errorMessage = "Vui lòng nhập mật khẩu cho người dùng mới.";
-                    return;
-                }
-
-                _user.UserName = _user.Email;
-                _user.EmailConfirmed = true; // Internal system
+                _user.UserName = _username.Trim().ToLower();
+                _user.Email = _user.Email!.Trim().ToLower();
+                _user.EmailConfirmed = true;
                 _user.CreatedBy = _currentUsername;
 
-                var result = await UserManager.CreateAsync(_user, _password);
+                var result = await UserManager.CreateAsync(_user, _password!);
                 if (!result.Succeeded)
                 {
-                    _errorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
+                    _errorMessage = string.Join("; ", result.Errors.Select(e => e.Description));
                     return;
                 }
 
-                await UserManager.AddToRolesAsync(_user, _selectedRoles);
-                await AuditService.LogAsync(AuditEventType.UserCreated, _currentUsername, "User", _user.Email, "Created user");
+                if (_selectedRoles.Any())
+                    await UserManager.AddToRolesAsync(_user, _selectedRoles);
+
+                await AuditService.LogAsync(AuditEventType.UserCreated, _currentUsername, "User", _user.UserName, "Created new user");
             }
 
             Nav.NavigateTo("/cai-dat/nguoi-dung");
         }
         catch (Exception ex)
         {
-            _errorMessage = "Lỗi: " + ex.Message;
+            _errorMessage = "Lỗi hệ thống: " + ex.Message;
         }
     }
 }

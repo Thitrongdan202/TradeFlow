@@ -1530,3 +1530,46 @@ h1:focus { outline: none; }
     align-items: flex-start;
   }
 }
+/* ===================================================
+   PHASE 2 ADDITIONS
+   =================================================== */
+
+/* Transparent backdrop to close dropdown menus on click-outside */
+.tf-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  background: transparent;
+  cursor: default;
+}
+
+/* Ensure the dropdown menu sits above the backdrop */
+.tf-dropdown-menu {
+  z-index: 100;
+}
+
+/* Utility spacing */
+.tf-mt-1 { margin-top: 4px; }
+.tf-mb-6 { margin-bottom: 24px; }
+
+/* Disabled button state */
+.tf-btn:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+
+/* Text muted utility */
+.tf-text-muted { color: var(--tf-text-muted); }
+
+.tf-nav-chevron-btn {
+    background: transparent;
+    border: none;
+    padding: 4px;
+    margin-left: auto;
+    color: currentColor;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.tf-nav-chevron-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}

@@ -1,12 +1,16 @@
 @page "/cai-dat/nguoi-dung"
+@rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Interfaces
 @using TradeFlow.Domain.Enums
 @using TradeFlow.Infrastructure.Persistence
 @attribute [Authorize(Policy = "Permission:Users:View")]
 
 @inject UserManager<ApplicationUser> UserManager
+@inject IAuditService AuditService
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Quản lý người dùng — TradeFlow</PageTitle>
 
@@ -27,13 +31,34 @@
     </div>
 </div>
 
+@if (!string.IsNullOrEmpty(_actionMessage))
+{
+    <div class="tf-alert @(_actionSuccess ? "tf-alert-success" : "tf-alert-error") tf-mb-4">
+        @_actionMessage
+    </div>
+}
+
+@if (_resetPasswordInfo != null)
+{
+    <div class="tf-alert tf-alert-success tf-mb-4" style="flex-direction:column;align-items:flex-start;gap:8px;">
+        <div style="font-weight:600;">✅ Mật khẩu đã được đặt lại</div>
+        <div>Tài khoản: <strong>@_resetPasswordInfo.Value.Username</strong></div>
+        <div style="font-family:monospace;background:rgba(0,0,0,0.05);padding:6px 12px;border-radius:6px;">
+            Mật khẩu mới: <strong>@_resetPasswordInfo.Value.TempPassword</strong>
+        </div>
+        <div style="font-size:12px;color:var(--tf-text-muted);">Gửi mật khẩu này cho người dùng. Khuyến khích đổi ngay sau khi đăng nhập.</div>
+        <button class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _resetPasswordInfo = null">Đóng</button>
+    </div>
+}
+
 <div class="tf-card">
     <div class="tf-card-body" style="padding:0;">
         <table class="tf-table">
             <thead>
                 <tr>
-                    <th>Tên đăng nhập / Email</th>
+                    <th>Tên đăng nhập</th>
                     <th>Họ và tên</th>
+                    <th>Vai trò</th>
                     <th style="text-align:center;">Trạng thái</th>
                     <th>Đăng nhập cuối</th>
                     <th style="text-align:right;">Thao tác</th>
@@ -42,40 +67,98 @@
             <tbody>
                 @if (_users == null)
                 {
-                    <tr><td colspan="5" style="text-align:center;">Đang tải dữ liệu...</td></tr>
+                    <tr><td colspan="6" style="text-align:center;">Đang tải dữ liệu...</td></tr>
                 }
                 else if (!_users.Any())
                 {
-                    <tr><td colspan="5"><div class="tf-empty"><div class="tf-empty-title">Chưa có người dùng</div></div></td></tr>
+                    <tr><td colspan="6"><div class="tf-empty"><div class="tf-empty-title">Chưa có người dùng</div></div></td></tr>
                 }
                 else
                 {
-                    foreach (var user in _users)
+                    foreach (var entry in _users)
                     {
                         <tr>
-                            <td class="tf-font-medium">@user.Email</td>
-                            <td>@user.FullName</td>
+                            <td>
+                                <div class="tf-font-medium">@entry.User.UserName</div>
+                                <div style="font-size:12px;color:var(--tf-text-muted);">@entry.User.Email</div>
+                            </td>
+                            <td>@entry.User.FullName</td>
+                            <td>
+                                @if (entry.Roles.Any())
+                                {
+                                    foreach (var role in entry.Roles)
+                                    {
+                                        <span class="tf-badge tf-badge-primary" style="margin-right:4px;margin-bottom:2px;">@role</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span style="color:var(--tf-text-muted);font-size:13px;">—</span>
+                                }
+                            </td>
                             <td style="text-align:center;">
-                                @if (user.Status == UserStatus.Active)
+                                @if (entry.User.Status == UserStatus.Active)
                                 {
                                     <span class="tf-badge tf-badge-success">Hoạt động</span>
                                 }
-                                else if (user.Status == UserStatus.Locked)
+                                else if (entry.User.Status == UserStatus.Locked)
                                 {
                                     <span class="tf-badge tf-badge-error">Bị khóa</span>
                                 }
                                 else
                                 {
-                                    <span class="tf-badge tf-badge-gray">@user.Status.ToString()</span>
+                                    <span class="tf-badge tf-badge-gray">Vô hiệu hóa</span>
                                 }
                             </td>
                             <td style="color:var(--tf-text-muted);font-size:13px;">
-                                @(user.LastLoginAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Chưa đăng nhập")
+                                @(entry.User.LastLoginAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Chưa đăng nhập")
                             </td>
                             <td style="text-align:right;">
-                                <AuthorizeView Policy="Permission:Users:Edit">
-                                    <a href="/cai-dat/nguoi-dung/sua/@user.Id" class="tf-btn tf-btn-ghost tf-btn-sm">Sửa</a>
-                                </AuthorizeView>
+                                <div style="display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap;">
+                                    <AuthorizeView Policy="Permission:Users:Edit">
+                                        <a href="/cai-dat/nguoi-dung/sua/@entry.User.Id"
+                                           class="tf-btn tf-btn-ghost tf-btn-sm" title="Sửa">
+                                            Sửa
+                                        </a>
+                                        <a href="/cai-dat/nguoi-dung/@entry.User.Id/quyen"
+                                           class="tf-btn tf-btn-ghost tf-btn-sm" title="Xem quyền">
+                                            Quyền
+                                        </a>
+                                        @if (entry.User.Status == UserStatus.Locked || entry.User.Status == UserStatus.Disabled)
+                                        {
+                                            <button class="tf-btn tf-btn-ghost tf-btn-sm"
+                                                    style="color:var(--tf-success);"
+                                                    @onclick="() => UnlockUser(entry.User)"
+                                                    title="Mở khóa tài khoản">
+                                                Mở khóa
+                                            </button>
+                                        }
+                                        else if (_currentUsername != entry.User.UserName)
+                                        {
+                                            <button class="tf-btn tf-btn-ghost tf-btn-sm"
+                                                    style="color:var(--tf-warning);"
+                                                    @onclick="() => LockUser(entry.User)"
+                                                    title="Khóa tài khoản">
+                                                Khóa
+                                            </button>
+                                        }
+                                        <button class="tf-btn tf-btn-ghost tf-btn-sm"
+                                                style="color:var(--tf-error);"
+                                                @onclick="() => ResetPassword(entry.User)"
+                                                title="Đặt lại mật khẩu">
+                                            Đặt lại MK
+                                        </button>
+                                        @if (_currentUsername != entry.User.UserName)
+                                        {
+                                            <button class="tf-btn tf-btn-ghost tf-btn-sm"
+                                                    style="color:var(--tf-error);"
+                                                    @onclick="() => RevokeSessions(entry.User)"
+                                                    title="Thu hồi tất cả phiên đăng nhập">
+                                                Thu hồi phiên
+                                            </button>
+                                        }
+                                    </AuthorizeView>
+                                </div>
                             </td>
                         </tr>
                     }
@@ -86,12 +169,117 @@
 </div>
 
 @code {
-    private List<ApplicationUser>? _users;
+    private record UserEntry(ApplicationUser User, IList<string> Roles);
+
+    private List<UserEntry>? _users;
+    private string? _actionMessage;
+    private bool _actionSuccess;
+    private string? _currentUsername;
+    private (string Username, string TempPassword)? _resetPasswordInfo;
 
     protected override async Task OnInitializedAsync()
     {
-        _users = await UserManager.Users
-            .OrderBy(u => u.Email)
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _currentUsername = authState.User.Identity?.Name;
+        await LoadUsersAsync();
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        var users = await UserManager.Users
+            .OrderBy(u => u.UserName)
             .ToListAsync();
+
+        var entries = new List<UserEntry>();
+        foreach (var u in users)
+        {
+            var roles = await UserManager.GetRolesAsync(u);
+            entries.Add(new UserEntry(u, roles));
+        }
+        _users = entries;
+    }
+
+    private async Task LockUser(ApplicationUser user)
+    {
+        _actionMessage = null;
+        try
+        {
+            user.Status = UserStatus.Locked;
+            await UserManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddYears(100));
+            await UserManager.UpdateAsync(user);
+            await AuditService.LogAsync(AuditEventType.UserLocked, _currentUsername, "User", user.UserName, "Administrator locked account");
+            _actionMessage = $"Đã khóa tài khoản {user.UserName}.";
+            _actionSuccess = true;
+            await LoadUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            _actionMessage = "Lỗi: " + ex.Message;
+            _actionSuccess = false;
+        }
+    }
+
+    private async Task UnlockUser(ApplicationUser user)
+    {
+        _actionMessage = null;
+        try
+        {
+            user.Status = UserStatus.Active;
+            await UserManager.SetLockoutEndDateAsync(user, null);
+            await UserManager.ResetAccessFailedCountAsync(user);
+            await UserManager.UpdateAsync(user);
+            await AuditService.LogAsync(AuditEventType.UserUnlocked, _currentUsername, "User", user.UserName, "Administrator unlocked account");
+            _actionMessage = $"Đã mở khóa tài khoản {user.UserName}.";
+            _actionSuccess = true;
+            await LoadUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            _actionMessage = "Lỗi: " + ex.Message;
+            _actionSuccess = false;
+        }
+    }
+
+    private async Task ResetPassword(ApplicationUser user)
+    {
+        _actionMessage = null;
+        try
+        {
+            // Generate a random temporary password
+            var tempPw = "Tf" + Guid.NewGuid().ToString("N")[..8] + "1!";
+            var token = await UserManager.GeneratePasswordResetTokenAsync(user);
+            var result = await UserManager.ResetPasswordAsync(user, token, tempPw);
+            if (!result.Succeeded)
+            {
+                _actionMessage = string.Join("; ", result.Errors.Select(e => e.Description));
+                _actionSuccess = false;
+                return;
+            }
+            await AuditService.LogAsync(AuditEventType.PasswordReset, _currentUsername, "User", user.UserName, "Administrator reset password (no plaintext logged)");
+            _resetPasswordInfo = (user.UserName ?? user.Email ?? user.Id, tempPw);
+        }
+        catch (Exception ex)
+        {
+            _actionMessage = "Lỗi: " + ex.Message;
+            _actionSuccess = false;
+        }
+    }
+
+    private async Task RevokeSessions(ApplicationUser user)
+    {
+        _actionMessage = null;
+        try
+        {
+            // Updating SecurityStamp invalidates all active sessions
+            await UserManager.UpdateSecurityStampAsync(user);
+            await AuditService.LogAsync(AuditEventType.UserUpdated, _currentUsername, "User", user.UserName, "Administrator revoked all active sessions");
+            _actionMessage = $"Đã thu hồi tất cả phiên đăng nhập của {user.UserName}.";
+            _actionSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            _actionMessage = "Lỗi: " + ex.Message;
+            _actionSuccess = false;
+        }
     }
 }

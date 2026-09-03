@@ -1,0 +1,190 @@
+@page "/cai-dat/nguoi-dung/{Id}/quyen"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
+@attribute [Authorize(Policy = "Permission:Users:View")]
+
+@inject UserManager<ApplicationUser> UserManager
+@inject RoleManager<ApplicationRole> RoleManager
+@inject TradeFlowDbContext DbContext
+@inject NavigationManager Nav
+
+<PageTitle>Quyền hiệu lực — TradeFlow</PageTitle>
+
+<div class="tf-page-header">
+    <div class="tf-page-header-left">
+        <div style="font-size:13px;color:var(--tf-text-muted);margin-bottom:4px;">
+            <a href="/cai-dat/nguoi-dung" style="color:var(--tf-text-muted);text-decoration:none;">Người dùng</a>
+            <span style="margin:0 6px;">›</span>
+            Quyền hiệu lực
+        </div>
+        <h1 class="tf-page-title">
+            @(_user?.FullName ?? _user?.UserName ?? "...")
+        </h1>
+        @if (_user != null)
+        {
+            <p class="tf-page-subtitle">@_user.UserName · @_user.Email</p>
+        }
+    </div>
+    <div class="tf-page-actions">
+        <a href="/cai-dat/nguoi-dung/sua/@Id" class="tf-btn tf-btn-secondary">Sửa người dùng</a>
+        <a href="/cai-dat/nguoi-dung" class="tf-btn tf-btn-ghost">Quay lại</a>
+    </div>
+</div>
+
+@if (_user == null)
+{
+    <div>Đang tải...</div>
+}
+else
+{
+    @* Roles summary *@
+    <div class="tf-card tf-mb-6">
+        <div class="tf-card-header">
+            <h2 class="tf-card-title">Vai trò được gán</h2>
+        </div>
+        <div class="tf-card-body">
+            @if (_userRoles.Any())
+            {
+                <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                    @foreach (var r in _userRoles)
+                    {
+                        <div style="display:flex;flex-direction:column;gap:4px;padding:12px 16px;background:var(--tf-surface);border:1px solid var(--tf-border);border-radius:8px;min-width:160px;">
+                            <span class="tf-badge tf-badge-primary" style="align-self:flex-start;">@r.Name</span>
+                            @if (!string.IsNullOrEmpty(r.Description))
+                            {
+                                <div style="font-size:12px;color:var(--tf-text-muted);">@r.Description</div>
+                            }
+                            @if (r.IsSystem)
+                            {
+                                <div style="font-size:11px;color:var(--tf-text-muted);">● Vai trò hệ thống</div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div style="color:var(--tf-text-muted);">Người dùng chưa được gán vai trò nào.</div>
+            }
+        </div>
+    </div>
+
+    @* Effective permissions matrix *@
+    <div class="tf-card">
+        <div class="tf-card-header">
+            <h2 class="tf-card-title">Ma trận quyền hiệu lực</h2>
+            <p style="font-size:13px;color:var(--tf-text-muted);margin-top:4px;">
+                Tổng hợp quyền từ tất cả vai trò của người dùng. Quyền có hiệu lực nếu ít nhất một vai trò cấp quyền đó.
+            </p>
+        </div>
+        <div class="tf-card-body" style="padding:0;overflow-x:auto;">
+            <table class="tf-table">
+                <thead>
+                    <tr>
+                        <th style="min-width:200px;">Tài nguyên</th>
+                        @foreach (var action in _allActions)
+                        {
+                            <th style="text-align:center;min-width:80px;">@GetActionLabel(action)</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var resource in _allResources)
+                    {
+                        var hasAny = _allActions.Any(a => _effectivePerms.Contains((resource, a)));
+                        <tr style="@(hasAny ? "" : "opacity:0.5;")">
+                            <td class="tf-font-medium">@GetResourceLabel(resource)</td>
+                            @foreach (var action in _allActions)
+                            {
+                                var granted = _effectivePerms.Contains((resource, action));
+                                <td style="text-align:center;">
+                                    @if (granted)
+                                    {
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tf-success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
+                                    }
+                                    else
+                                    {
+                                        <span style="color:var(--tf-border);">—</span>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string? Id { get; set; }
+
+    private ApplicationUser? _user;
+    private List<ApplicationRole> _userRoles = new();
+    private HashSet<(ResourceType, PermissionAction)> _effectivePerms = new();
+
+    private static readonly ResourceType[] _allResources = Enum.GetValues<ResourceType>();
+    private static readonly PermissionAction[] _allActions = Enum.GetValues<PermissionAction>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrEmpty(Id)) { Nav.NavigateTo("/cai-dat/nguoi-dung"); return; }
+
+        _user = await UserManager.FindByIdAsync(Id);
+        if (_user == null) { Nav.NavigateTo("/cai-dat/nguoi-dung"); return; }
+
+        // Get all roles for this user
+        var roleNames = await UserManager.GetRolesAsync(_user);
+        _userRoles = await RoleManager.Roles
+            .Where(r => roleNames.Contains(r.Name!))
+            .Include(r => r.Permissions)
+            .ToListAsync();
+
+        // Aggregate permissions from all roles
+        foreach (var role in _userRoles)
+        {
+            foreach (var perm in role.Permissions.Where(p => p.IsGranted))
+            {
+                _effectivePerms.Add((perm.Resource, perm.Action));
+            }
+        }
+    }
+
+    private static string GetResourceLabel(ResourceType resource) => resource switch
+    {
+        ResourceType.Users => "Người dùng",
+        ResourceType.Roles => "Vai trò",
+        ResourceType.CompanySettings => "Thông tin công ty",
+        ResourceType.AuditLog => "Nhật ký hoạt động",
+        ResourceType.TechnicalSupport => "Hỗ trợ kỹ thuật",
+        ResourceType.Products => "Sản phẩm",
+        ResourceType.ProductCategories => "Danh mục sản phẩm",
+        ResourceType.UnitOfMeasures => "Đơn vị tính",
+        ResourceType.Currencies => "Loại tiền",
+        ResourceType.Customers => "Khách hàng",
+        ResourceType.Suppliers => "Nhà cung cấp",
+        ResourceType.Warehouses => "Kho hàng",
+        ResourceType.PriceLists => "Bảng giá",
+        ResourceType.Quotations => "Báo giá",
+        ResourceType.SalesOrders => "Đơn bán hàng",
+        ResourceType.Invoices => "Hóa đơn",
+        _ => resource.ToString()
+    };
+
+    private static string GetActionLabel(PermissionAction action) => action switch
+    {
+        PermissionAction.View => "Xem",
+        PermissionAction.Create => "Thêm",
+        PermissionAction.Edit => "Sửa",
+        PermissionAction.Delete => "Xóa",
+        PermissionAction.Approve => "Duyệt",
+        PermissionAction.Import => "Nhập",
+        PermissionAction.Export => "Xuất",
+        _ => action.ToString()
+    };
+}

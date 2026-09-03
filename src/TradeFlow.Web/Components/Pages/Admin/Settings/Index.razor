@@ -1,0 +1,44 @@
+﻿@page "/cai-dat"
+@attribute [Authorize]
+@using TradeFlow.Web.Components.Layout
+@layout MainLayout
+
+<PageTitle>Cài đặt hệ thống - TradeFlow</PageTitle>
+
+<div class="tf-page-header">
+    <div>
+        <h1 class="tf-page-title">Cài đặt hệ thống</h1>
+        <p class="tf-page-subtitle">Quản lý cấu hình chung của toàn hệ thống</p>
+    </div>
+</div>
+
+<div class="tf-card" style="max-width: 600px;">
+    <div class="tf-card-body">
+        <ul style="list-style: none; padding: 0; margin: 0;">
+            <AuthorizeView Policy="Permission:CompanySettings:View">
+                <li style="margin-bottom: 12px;">
+                    <a href="/cai-dat/cong-ty" style="font-weight: 600; font-size: 15px; color: var(--tf-text-primary); text-decoration: none;">Thông tin công ty</a>
+                    <p style="margin: 4px 0 0; font-size: 13px; color: var(--tf-text-muted);">Cập nhật tên công ty, địa chỉ, số điện thoại, MST</p>
+                </li>
+            </AuthorizeView>
+            <AuthorizeView Policy="Permission:Users:View">
+                <li style="margin-bottom: 12px;">
+                    <a href="/cai-dat/nguoi-dung" style="font-weight: 600; font-size: 15px; color: var(--tf-text-primary); text-decoration: none;">Quản lý người dùng</a>
+                    <p style="margin: 4px 0 0; font-size: 13px; color: var(--tf-text-muted);">Thêm, sửa, xóa tài khoản và phân quyền</p>
+                </li>
+            </AuthorizeView>
+            <AuthorizeView Policy="Permission:Roles:View">
+                <li style="margin-bottom: 12px;">
+                    <a href="/cai-dat/vai-tro" style="font-weight: 600; font-size: 15px; color: var(--tf-text-primary); text-decoration: none;">Vai trò &amp; Quyền hạn</a>
+                    <p style="margin: 4px 0 0; font-size: 13px; color: var(--tf-text-muted);">Định nghĩa nhóm quyền cho người dùng</p>
+                </li>
+            </AuthorizeView>
+            <AuthorizeView Policy="Permission:AuditLog:View">
+                <li style="margin-bottom: 12px;">
+                    <a href="/cai-dat/nhat-ky" style="font-weight: 600; font-size: 15px; color: var(--tf-text-primary); text-decoration: none;">Nhật ký hệ thống</a>
+                    <p style="margin: 4px 0 0; font-size: 13px; color: var(--tf-text-muted);">Theo dõi lịch sử thao tác của các tài khoản</p>
+                </li>
+            </AuthorizeView>
+        </ul>
+    </div>
+</div>

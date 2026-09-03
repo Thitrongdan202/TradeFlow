@@ -85,7 +85,7 @@ else
                         <th style="min-width:200px;">Tài nguyên</th>
                         @foreach (var action in _allActions)
                         {
-                            <th style="text-align:center;">@action.ToString()</th>
+                            <th style="text-align:center;min-width:70px;">@GetActionLabel(action)</th>
                         }
                     </tr>
                 </thead>
@@ -93,16 +93,16 @@ else
                     @foreach (var resource in _allResources)
                     {
                         <tr>
-                            <td class="tf-font-medium">@resource.ToString()</td>
+                            <td class="tf-font-medium">@GetResourceLabel(resource)</td>
                             @foreach (var action in _allActions)
                             {
                                 var key = (resource, action);
                                 var isChecked = _matrix.ContainsKey(key) && _matrix[key];
-                                var isDisabled = _role.IsSystem && resource == ResourceType.Roles; // Protect Roles permissions from being removed from System admin
+                                var isDisabled = _role!.IsSystem && resource == ResourceType.Roles;
 
                                 <td style="text-align:center;">
-                                    <input type="checkbox" 
-                                           checked="@isChecked" 
+                                    <input type="checkbox"
+                                           checked="@isChecked"
                                            disabled="@isDisabled"
                                            @onchange="@(e => UpdateMatrix(resource, action, (bool)(e.Value ?? false)))" />
                                 </td>
@@ -235,4 +235,37 @@ else
             _errorMessage = "Đã xảy ra lỗi khi lưu vai trò: " + ex.Message;
         }
     }
+
+    private static string GetResourceLabel(ResourceType resource) => resource switch
+    {
+        ResourceType.Users => "Người dùng",
+        ResourceType.Roles => "Vai trò",
+        ResourceType.CompanySettings => "Thông tin công ty",
+        ResourceType.AuditLog => "Nhật ký hoạt động",
+        ResourceType.TechnicalSupport => "Hỗ trợ kỹ thuật",
+        ResourceType.Products => "Sản phẩm",
+        ResourceType.ProductCategories => "Danh mục sản phẩm",
+        ResourceType.UnitOfMeasures => "Đơn vị tính",
+        ResourceType.Currencies => "Loại tiền",
+        ResourceType.Customers => "Khách hàng",
+        ResourceType.Suppliers => "Nhà cung cấp",
+        ResourceType.Warehouses => "Kho hàng",
+        ResourceType.PriceLists => "Bảng giá",
+        ResourceType.Quotations => "Báo giá",
+        ResourceType.SalesOrders => "Đơn bán hàng",
+        ResourceType.Invoices => "Hóa đơn",
+        _ => resource.ToString()
+    };
+
+    private static string GetActionLabel(PermissionAction action) => action switch
+    {
+        PermissionAction.View => "Xem",
+        PermissionAction.Create => "Thêm",
+        PermissionAction.Edit => "Sửa",
+        PermissionAction.Delete => "Xóa",
+        PermissionAction.Approve => "Duyệt",
+        PermissionAction.Import => "Nhập",
+        PermissionAction.Export => "Xuất",
+        _ => action.ToString()
+    };
 }

@@ -108,37 +108,16 @@
                     <ValidationMessage For="() => Input.Username" id="login-username-error" class="tf-validation-message" />
                 </div>
 
-                @* Password with JavaScript eye toggle *@
+                @* Password with Interactive Blazor eye toggle *@
                 <div class="tf-field tf-mb-4">
                     <label class="tf-label" for="login-password">Mật khẩu</label>
-                    <div class="tf-input-wrapper">
-                        <input type="password"
-                               name="Input.Password"
-                               id="login-password"
-                               class="@PasswordInputClass"
-                               autocomplete="current-password"
-                               placeholder="Nhập mật khẩu"
-                               aria-required="true"
-                               value="@Input.Password"
-                               @oninput="OnPasswordInput" />
-                        <button type="button"
-                                class="tf-input-suffix"
-                                id="login-pw-toggle"
-                                onclick="tfTogglePassword('login-password','login-pw-toggle','login-pw-show-icon','login-pw-hide-icon')"
-                                aria-label="Hiển thị mật khẩu"
-                                title="Hiển thị mật khẩu">
-                            @* Eye-open icon (shown by default = password is hidden) *@
-                            <svg id="login-pw-show-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                <circle cx="12" cy="12" r="3"/>
-                            </svg>
-                            @* Eye-off icon (hidden by default) *@
-                            <svg id="login-pw-hide-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
-                                <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
-                                <line x1="1" y1="1" x2="23" y2="23"/>
-                            </svg>
-                        </button>
-                    </div>
+                    <TradeFlow.Web.Components.Account.Shared.PasswordToggleInput
+                        Name="Input.Password"
+                        Id="login-password"
+                        CssClass="@PasswordInputClass"
+                        Placeholder="Nhập mật khẩu"
+                        Autocomplete="current-password"
+                        InitialValue="@Input.Password" />
                     <ValidationMessage For="() => Input.Password" class="tf-validation-message" />
                 </div>
 
@@ -166,30 +145,7 @@
     </div>
 </div>
 
-@* Client-side password visibility toggle — pure JavaScript, no Blazor interactivity needed *@
-<script>
-    function tfTogglePassword(inputId, btnId, showIconId, hideIconId) {
-        var input = document.getElementById(inputId);
-        var btn = document.getElementById(btnId);
-        var showIcon = document.getElementById(showIconId);
-        var hideIcon = document.getElementById(hideIconId);
-        if (!input) return;
 
-        if (input.type === 'password') {
-            input.type = 'text';
-            btn.setAttribute('aria-label', 'Ẩn mật khẩu');
-            btn.setAttribute('title', 'Ẩn mật khẩu');
-            if (showIcon) showIcon.style.display = 'none';
-            if (hideIcon) hideIcon.style.display = '';
-        } else {
-            input.type = 'password';
-            btn.setAttribute('aria-label', 'Hiển thị mật khẩu');
-            btn.setAttribute('title', 'Hiển thị mật khẩu');
-            if (showIcon) showIcon.style.display = '';
-            if (hideIcon) hideIcon.style.display = 'none';
-        }
-    }
-</script>
 
 @code {
     private string? _errorMessage;
@@ -228,10 +184,6 @@
         }
     }
 
-    private void OnPasswordInput(ChangeEventArgs e)
-    {
-        Input.Password = e.Value?.ToString() ?? "";
-    }
 
     public async Task LoginUser()
     {

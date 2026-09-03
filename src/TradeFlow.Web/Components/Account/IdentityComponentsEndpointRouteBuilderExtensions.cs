@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
@@ -42,11 +42,29 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
         });
 
         accountGroup.MapPost("/Logout", async (
+            HttpContext context,
             ClaimsPrincipal user,
             [FromServices] SignInManager<ApplicationUser> signInManager,
+            [FromServices] TradeFlow.Application.Common.Interfaces.IAuditService auditService,
             [FromForm] string returnUrl) =>
         {
+            var userName = user.Identity?.Name;
+
             await signInManager.SignOutAsync();
+
+            if (!string.IsNullOrEmpty(userName))
+            {
+                var ip = context.Connection.RemoteIpAddress?.ToString();
+                var userAgent = context.Request.Headers.UserAgent.ToString();
+
+                await auditService.LogAsync(
+                    TradeFlow.Domain.Enums.AuditEventType.Logout,
+                    performedBy: userName,
+                    details: "NgÆ°á»i dÃ¹ng Ä‘Äƒng xuáº¥t",
+                    ipAddress: ip,
+                    userAgent: userAgent);
+            }
+
             return TypedResults.LocalRedirect($"~/{returnUrl}");
         });
 

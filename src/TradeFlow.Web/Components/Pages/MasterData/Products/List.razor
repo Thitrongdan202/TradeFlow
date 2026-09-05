@@ -1,0 +1,199 @@
+﻿@page "/danh-muc/san-pham"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Domain.Entities.MasterData
+@using TradeFlow.Infrastructure.Persistence
+@attribute [Authorize(Policy = "Permission:Products:View")]
+
+@inject TradeFlowDbContext DbContext
+@inject NavigationManager Nav
+
+<PageTitle>Sản phẩm - TradeFlow</PageTitle>
+
+<div class="tf-page-header">
+    <div class="tf-page-header-left">
+        <h1 class="tf-page-title">Sản phẩm</h1>
+        <p class="tf-page-subtitle">Danh mục sản phẩm, quy cách và đơn vị tính</p>
+    </div>
+    <div class="tf-page-actions">
+        <AuthorizeView Policy="Permission:Products:Create">
+            <a href="/danh-muc/san-pham/them-moi" class="tf-btn tf-btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Thêm sản phẩm
+            </a>
+        </AuthorizeView>
+    </div>
+</div>
+
+<div class="tf-card tf-mb-4" style="padding: 12px 16px;">
+    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 260px; position: relative;">
+            <input type="text"
+                   class="tf-input"
+                   placeholder="Tìm theo mã hệ thống, mã mới, mã cũ, tên sản phẩm..."
+                   value="@_searchTerm"
+                   @oninput="OnSearchInput" />
+        </div>
+        <div style="width: 200px;">
+            <select class="tf-select" @onchange="OnCategoryFilterChanged">
+                <option value="">-- Tất cả danh mục --</option>
+                @if (_categories != null)
+                {
+                    @foreach (var c in _categories)
+                    {
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                }
+            </select>
+        </div>
+    </div>
+</div>
+
+<div class="tf-card">
+    <div class="tf-card-body" style="padding:0; overflow-x: auto;">
+        <table class="tf-table">
+            <thead>
+                <tr>
+                    <th style="min-width: 120px;">Mã hệ thống</th>
+                    <th style="min-width: 110px;">Mã hàng mới</th>
+                    <th style="min-width: 110px;">Mã hàng cũ</th>
+                    <th style="min-width: 220px;">Tên sản phẩm</th>
+                    <th>Danh mục</th>
+                    <th>Đơn vị tính</th>
+                    <th style="text-align:center;">Trạng thái</th>
+                    <th style="text-align:right;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (_items == null)
+                {
+                    <tr><td colspan="8" style="text-align:center; padding: 24px;">Đang tải dữ liệu...</td></tr>
+                }
+                else if (!FilteredItems.Any())
+                {
+                    <tr><td colspan="8"><div class="tf-empty"><div class="tf-empty-title">Chưa có sản phẩm phù hợp</div></div></td></tr>
+                }
+                else
+                {
+                    foreach (var item in FilteredItems)
+                    {
+                        <tr>
+                            <td>
+                                <span style="font-family: monospace; font-weight: 600; color: var(--tf-primary);">@item.Code</span>
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(item.NewCode))
+                                {
+                                    <span class="tf-badge tf-badge-info" style="font-weight: 600;">@item.NewCode</span>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--tf-text-muted);">-</span>
+                                }
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(item.LegacyCode))
+                                {
+                                    <span style="color:var(--tf-text-secondary); font-family: monospace;">@item.LegacyCode</span>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--tf-text-muted);">-</span>
+                                }
+                            </td>
+                            <td style="font-weight: 500;">@item.Name</td>
+                            <td>@(item.Category?.Name ?? "-")</td>
+                            <td>@(item.Unit?.Name ?? "-")</td>
+                            <td style="text-align:center;">
+                                @if (item.IsActive)
+                                {
+                                    <span class="tf-badge tf-badge-success">Hoạt động</span>
+                                }
+                                else
+                                {
+                                    <span class="tf-badge tf-badge-neutral">Tạm dừng</span>
+                                }
+                            </td>
+                            <td style="text-align:right;">
+                                <AuthorizeView Policy="Permission:Products:Edit">
+                                    <a href="/danh-muc/san-pham/sua/@item.Id" class="tf-btn tf-btn-ghost tf-btn-sm">Sửa</a>
+                                </AuthorizeView>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private List<Product>? _items;
+    private List<ProductCategory>? _categories;
+    private string _searchTerm = string.Empty;
+    private int? _selectedCategoryId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _categories = await DbContext.ProductCategories.Where(c => c.IsActive).OrderBy(c => c.Name).ToListAsync();
+        await LoadProductsAsync();
+    }
+
+    private async Task LoadProductsAsync()
+    {
+        _items = await DbContext.Products
+            .Include(p => p.Category)
+            .Include(p => p.Unit)
+            .OrderBy(x => x.Code)
+            .ToListAsync();
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        _searchTerm = e.Value?.ToString() ?? string.Empty;
+    }
+
+    private void OnCategoryFilterChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var catId))
+        {
+            _selectedCategoryId = catId;
+        }
+        else
+        {
+            _selectedCategoryId = null;
+        }
+    }
+
+    private IEnumerable<Product> FilteredItems
+    {
+        get
+        {
+            if (_items == null) return Enumerable.Empty<Product>();
+
+            var q = _items.AsEnumerable();
+
+            if (_selectedCategoryId.HasValue)
+            {
+                q = q.Where(x => x.CategoryId == _selectedCategoryId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(_searchTerm))
+            {
+                var term = _searchTerm.Trim().ToLower();
+                q = q.Where(x =>
+                    (x.Code != null && x.Code.ToLower().Contains(term)) ||
+                    (x.NewCode != null && x.NewCode.ToLower().Contains(term)) ||
+                    (x.LegacyCode != null && x.LegacyCode.ToLower().Contains(term)) ||
+                    (x.Name != null && x.Name.ToLower().Contains(term)) ||
+                    (x.ShortName != null && x.ShortName.ToLower().Contains(term)));
+            }
+
+            return q;
+        }
+    }
+}

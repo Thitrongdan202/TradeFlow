@@ -1,0 +1,176 @@
+﻿@page "/danh-muc/danh-muc-san-pham/them-moi"
+@page "/danh-muc/danh-muc-san-pham/sua/{Id:int}"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Constants
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Domain.Entities.MasterData
+@using TradeFlow.Infrastructure.Persistence
+@using TradeFlow.Domain.Enums
+@attribute [Authorize]
+
+@inject TradeFlowDbContext DbContext
+@inject ISystemCodeGenerator CodeGenerator
+@inject IAuditService AuditService
+@inject NavigationManager Nav
+@inject ICurrentUserService CurrentUser
+
+<PageTitle>@(IsEdit ? "Sửa" : "Thêm") Danh mục sản phẩm - TradeFlow</PageTitle>
+
+<div class="tf-page-header">
+    <div class="tf-page-header-left">
+        <h1 class="tf-page-title">@(IsEdit ? "Sửa" : "Thêm") Danh mục sản phẩm</h1>
+        <p class="tf-page-subtitle">Phân cấp và nhóm các chủng loại sản phẩm trong doanh nghiệp</p>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <div class="tf-alert tf-alert-error tf-mb-4">@_errorMessage</div>
+}
+
+@if (_model == null)
+{
+    <div style="padding:24px;text-align:center;">Đang tải thông tin...</div>
+}
+else
+{
+    <div class="tf-card" style="max-width: 650px;">
+        <div class="tf-card-body">
+            <EditForm Model="_model" OnValidSubmit="HandleValidSubmit">
+                <DataAnnotationsValidator />
+
+                <div class="tf-form-group">
+                    <label class="tf-label">Mã danh mục <span style="font-size:12px;color:var(--tf-text-muted);">(Tự động sinh)</span></label>
+                    <input type="text" class="tf-input" value="@_displaySystemCode" readonly disabled style="background:var(--tf-gray-100);cursor:not-allowed;font-weight:600;" />
+                </div>
+
+                <div class="tf-form-group">
+                    <label class="tf-label">Tên danh mục <span style="color:var(--tf-error);">*</span></label>
+                    <InputText @bind-Value="_model.Name" class="tf-input" placeholder="Tên danh mục sản phẩm" />
+                </div>
+
+                <div class="tf-form-group">
+                    <label class="tf-label">Danh mục cha</label>
+                    <InputSelect @bind-Value="_model.ParentCategoryId" class="tf-select">
+                        <option value="">-- Không có (Danh mục gốc) --</option>
+                        @if (_parents != null)
+                        {
+                            @foreach (var p in _parents)
+                            {
+                                if (!IsEdit || p.Id != Id)
+                                {
+                                    <option value="@p.Id">@p.Name (@p.Code)</option>
+                                }
+                            }
+                        }
+                    </InputSelect>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div class="tf-form-group">
+                        <label class="tf-label">Thứ tự hiển thị</label>
+                        <InputNumber @bind-Value="_model.DisplayOrder" class="tf-input" />
+                    </div>
+                    <div class="tf-form-group" style="display:flex;align-items:center;padding-top:28px;">
+                        <label class="tf-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0;">
+                            <InputCheckbox @bind-Value="_model.IsActive" />
+                            <span>Đang hoạt động</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="tf-form-group">
+                    <label class="tf-label">Mô tả</label>
+                    <InputTextArea @bind-Value="_model.Description" class="tf-input" rows="2" placeholder="Mô tả phạm vi nhóm sản phẩm..." />
+                </div>
+
+                <div class="tf-form-actions" style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                    <a href="/danh-muc/danh-muc-san-pham" class="tf-btn tf-btn-secondary">Hủy bỏ</a>
+                    <button type="submit" class="tf-btn tf-btn-primary">@(IsEdit ? "Lưu thay đổi" : "Tạo danh mục")</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int? Id { get; set; }
+    private bool IsEdit => Id.HasValue;
+    private ProductCategory? _model;
+    private List<ProductCategory>? _parents;
+    private string _displaySystemCode = string.Empty;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _parents = await DbContext.ProductCategories
+            .Where(c => c.IsActive)
+            .OrderBy(c => c.Name)
+            .ToListAsync();
+
+        if (IsEdit)
+        {
+            if (!CurrentUser.HasPermission("ProductCategories", "Edit"))
+            {
+                Nav.NavigateTo("/Account/AccessDenied");
+                return;
+            }
+            _model = await DbContext.ProductCategories.FindAsync(Id);
+            if (_model == null)
+            {
+                Nav.NavigateTo("/danh-muc/danh-muc-san-pham");
+                return;
+            }
+            _displaySystemCode = _model.Code;
+        }
+        else
+        {
+            if (!CurrentUser.HasPermission("ProductCategories", "Create"))
+            {
+                Nav.NavigateTo("/Account/AccessDenied");
+                return;
+            }
+            _model = new ProductCategory { IsActive = true, DisplayOrder = 0 };
+            _displaySystemCode = await CodeGenerator.PeekNextCodeAsync(SystemCodeConstants.ProductCategory) + " (Tự sinh)";
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            _errorMessage = null;
+
+            if (string.IsNullOrWhiteSpace(_model!.Name))
+            {
+                _errorMessage = "Tên danh mục là bắt buộc.";
+                return;
+            }
+
+            if (IsEdit)
+            {
+                _model.UpdatedAt = DateTime.UtcNow;
+                _model.UpdatedBy = CurrentUser.UserName;
+                DbContext.ProductCategories.Update(_model);
+                await AuditService.LogAsync(AuditEventType.CategoryUpdated, CurrentUser.UserName, "ProductCategory", _model.Id.ToString());
+            }
+            else
+            {
+                _model.Code = await CodeGenerator.GenerateCodeAsync(SystemCodeConstants.ProductCategory);
+                _model.CreatedAt = DateTime.UtcNow;
+                _model.CreatedBy = CurrentUser.UserName;
+                DbContext.ProductCategories.Add(_model);
+                await AuditService.LogAsync(AuditEventType.CategoryCreated, CurrentUser.UserName, "ProductCategory", _model.Code);
+            }
+
+            await DbContext.SaveChangesAsync();
+            Nav.NavigateTo("/danh-muc/danh-muc-san-pham");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Có lỗi xảy ra: " + ex.Message;
+        }
+    }
+}

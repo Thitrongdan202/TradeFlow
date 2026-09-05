@@ -1,14 +1,17 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using TradeFlow.Application.Common.Constants;
+using TradeFlow.Domain.Entities.MasterData;
 using TradeFlow.Domain.Entities.Settings;
+using TradeFlow.Domain.Entities.Users;
 using TradeFlow.Domain.Enums;
 
 namespace TradeFlow.Infrastructure.Persistence;
 
 /// <summary>
-/// Seeds the development database with default roles, permissions, and test accounts.
-/// Safe to run multiple times — idempotent by design.
+/// Seeds the development database with default roles, permissions, sequences, and test accounts.
+/// Safe to run multiple times - idempotent by design.
 /// </summary>
 public class DatabaseSeeder
 {
@@ -17,23 +20,18 @@ public class DatabaseSeeder
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
 
-    // ═══════════════════════════════════════════════════
-    // DEVELOPMENT CREDENTIALS — LOCAL ONLY
-    // Never use these passwords in staging or production.
-    // ═══════════════════════════════════════════════════
     private const string DevPassword = "tradecore123";
 
     private static readonly (string Username, string Email, string FullName, string RoleName)[] DevAccounts =
     [
-        ("admin",        "admin@tradeflow.local",        "Quản trị viên",  "Administrator"),
-        ("quanly01",     "quanly01@tradeflow.local",     "Quản Lý 01",     "Manager"),
-        ("kinhdoanh01",  "kinhdoanh01@tradeflow.local",  "Kinh Doanh 01",  "Sales"),
-        ("muahang01",    "muahang01@tradeflow.local",    "Mua Hàng 01",    "Purchase"),
-        ("kho01",        "kho01@tradeflow.local",        "Kho 01",         "Warehouse"),
-        ("xnk01",        "xnk01@tradeflow.local",        "Xuất Nhập Khẩu", "Import-Export"),
+        ("admin",        "admin@tradeflow.local",        "Quản trị viên",      "Administrator"),
+        ("quanly01",     "quanly01@tradeflow.local",     "Quản Lý 01",         "Manager"),
+        ("kinhdoanh01",  "kinhdoanh01@tradeflow.local",  "Kinh Doanh 01",      "Sales"),
+        ("muahang01",    "muahang01@tradeflow.local",    "Mua Hàng 01",        "Purchase"),
+        ("kho01",        "kho01@tradeflow.local",        "Kho 01",             "Warehouse"),
+        ("xnk01",        "xnk01@tradeflow.local",        "Xuất Nhập Khẩu 01",  "Import-Export"),
     ];
 
-    /// <summary>Role definitions: (name, description, isSystem)</summary>
     private static readonly (string Name, string Description, bool IsSystem)[] RoleDefinitions =
     [
         ("Administrator", "Quản trị viên hệ thống (toàn quyền)", true),
@@ -70,6 +68,8 @@ public class DatabaseSeeder
             await SeedAdminPermissionsAsync();
             await SeedDevAccountsAsync();
             await SeedCompanySettingsAsync();
+            await SeedSystemSequencesAsync();
+            await SeedReferenceDataAsync();
         }
         catch (Exception ex)
         {
@@ -78,13 +78,8 @@ public class DatabaseSeeder
         }
     }
 
-    // ──────────────────────────────────────────────────
-    // 0. Remove legacy email-as-username accounts
-    // ──────────────────────────────────────────────────
     private async Task CleanupLegacyAccountsAsync()
     {
-        // The old Phase 2 seeder created "admin@tradeflow.local" as username.
-        // We now use "admin" as the username. Remove the stale email-based user.
         var legacy = await _userManager.FindByNameAsync("admin@tradeflow.local");
         if (legacy != null)
         {
@@ -93,9 +88,6 @@ public class DatabaseSeeder
         }
     }
 
-    // ──────────────────────────────────────────────────
-    // 1. Roles
-    // ──────────────────────────────────────────────────
     private async Task SeedRolesAsync()
     {
         foreach (var (name, description, isSystem) in RoleDefinitions)
@@ -120,15 +112,12 @@ public class DatabaseSeeder
         }
     }
 
-    // ──────────────────────────────────────────────────
-    // 2. Administrator permissions (all resources × all actions)
-    // ──────────────────────────────────────────────────
     private async Task SeedAdminPermissionsAsync()
     {
         var adminRole = await _roleManager.FindByNameAsync("Administrator");
         if (adminRole == null)
         {
-            _logger.LogWarning("Administrator role not found — skipping permission seed.");
+            _logger.LogWarning("Administrator role not found - skipping permission seed.");
             return;
         }
 
@@ -164,9 +153,6 @@ public class DatabaseSeeder
         }
     }
 
-    // ──────────────────────────────────────────────────
-    // 3. Development accounts
-    // ──────────────────────────────────────────────────
     private async Task SeedDevAccountsAsync()
     {
         foreach (var (username, email, fullName, roleName) in DevAccounts)
@@ -178,7 +164,6 @@ public class DatabaseSeeder
     private async Task EnsureDevUserAsync(
         string username, string email, string fullName, string roleName)
     {
-        // Look up by username (canonical identifier)
         var existing = await _userManager.FindByNameAsync(username);
 
         if (existing == null)
@@ -191,7 +176,7 @@ public class DatabaseSeeder
                 Email = email,
                 FullName = fullName,
                 EmailConfirmed = true,
-                LockoutEnabled = false, // Never lock dev accounts during seeding
+                LockoutEnabled = false,
                 Status = UserStatus.Active,
                 CreatedBy = "System"
             };
@@ -211,7 +196,6 @@ public class DatabaseSeeder
         {
             _logger.LogDebug("Dev account already exists: {Username}", username);
 
-            // Make sure account is active and not locked — reset if needed
             bool changed = false;
 
             if (existing.Status != UserStatus.Active)
@@ -233,11 +217,9 @@ public class DatabaseSeeder
             }
         }
 
-        // Ensure correct role assignment
         var currentRoles = await _userManager.GetRolesAsync(existing);
         if (!currentRoles.Contains(roleName))
         {
-            // Remove any old roles first (for dev accounts keep exactly one role)
             if (currentRoles.Any())
             {
                 await _userManager.RemoveFromRolesAsync(existing, currentRoles);
@@ -250,14 +232,11 @@ public class DatabaseSeeder
             }
             else
             {
-                _logger.LogWarning("Role {Role} does not exist — cannot assign to {Username}", roleName, username);
+                _logger.LogWarning("Role {Role} does not exist - cannot assign to {Username}", roleName, username);
             }
         }
     }
 
-    // ──────────────────────────────────────────────────
-    // 4. Company settings (singleton row)
-    // ──────────────────────────────────────────────────
     private async Task SeedCompanySettingsAsync()
     {
         if (!await _context.CompanySettings.AnyAsync())
@@ -273,5 +252,62 @@ public class DatabaseSeeder
             });
             await _context.SaveChangesAsync();
         }
+    }
+
+    private async Task SeedSystemSequencesAsync()
+    {
+        _logger.LogInformation("Seeding system sequences...");
+        var now = DateTime.UtcNow;
+
+        foreach (var (key, (prefix, description)) in SystemCodeConstants.Defaults)
+        {
+            if (!await _context.SystemSequences.AnyAsync(s => s.SequenceKey == key))
+            {
+                _context.SystemSequences.Add(new SystemSequence(key, prefix, "{Prefix}{Number:D6}", description)
+                {
+                    CurrentNumber = 0,
+                    Step = 1,
+                    CreatedAt = now,
+                    CreatedBy = "System"
+                });
+            }
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task SeedReferenceDataAsync()
+    {
+        _logger.LogInformation("Seeding reference data...");
+        var now = DateTime.UtcNow;
+
+        if (!await _context.Currencies.AnyAsync(c => c.Code == "VND"))
+        {
+            _context.Currencies.Add(new Currency { Code = "VND", Name = "Việt Nam đồng", Symbol = "₫", ExchangeRate = 1, IsDefault = true, IsActive = true, CreatedAt = now, CreatedBy = "System" });
+        }
+        if (!await _context.Currencies.AnyAsync(c => c.Code == "USD"))
+        {
+            _context.Currencies.Add(new Currency { Code = "USD", Name = "Đô la Mỹ", Symbol = "$", ExchangeRate = 25000, IsDefault = false, IsActive = true, CreatedAt = now, CreatedBy = "System" });
+        }
+
+        var units = new[]
+        {
+            new UnitOfMeasure { Code = "CAI", Name = "Cái", Symbol = "cái", IsActive = true, CreatedAt = now, CreatedBy = "System" },
+            new UnitOfMeasure { Code = "BO", Name = "Bộ", Symbol = "bộ", IsActive = true, CreatedAt = now, CreatedBy = "System" },
+            new UnitOfMeasure { Code = "CHIEC", Name = "Chiếc", Symbol = "chiếc", IsActive = true, CreatedAt = now, CreatedBy = "System" },
+            new UnitOfMeasure { Code = "THUNG", Name = "Thùng", Symbol = "thùng", IsActive = true, CreatedAt = now, CreatedBy = "System" },
+            new UnitOfMeasure { Code = "KG", Name = "Kilogram", Symbol = "kg", IsActive = true, CreatedAt = now, CreatedBy = "System" },
+            new UnitOfMeasure { Code = "M", Name = "Mét", Symbol = "m", IsActive = true, CreatedAt = now, CreatedBy = "System" }
+        };
+
+        foreach (var unit in units)
+        {
+            if (!await _context.UnitOfMeasures.AnyAsync(u => u.Code == unit.Code))
+            {
+                _context.UnitOfMeasures.Add(unit);
+            }
+        }
+
+        await _context.SaveChangesAsync();
     }
 }

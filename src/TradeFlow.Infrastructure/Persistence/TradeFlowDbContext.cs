@@ -1,8 +1,9 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using TradeFlow.Application.Common.Interfaces;
 using TradeFlow.Domain.Entities.Settings;
+using TradeFlow.Domain.Entities.MasterData;
 using TradeFlow.Domain.Entities.Users;
 
 namespace TradeFlow.Infrastructure.Persistence;
@@ -26,6 +27,17 @@ public class TradeFlowDbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<CompanySettings> CompanySettings => Set<CompanySettings>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+    public DbSet<SystemSequence> SystemSequences => Set<SystemSequence>();
+
+    // === Phase 3 — Master Data ===
+    public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
+    public DbSet<UnitOfMeasure> UnitOfMeasures => Set<UnitOfMeasure>();
+    public DbSet<Currency> Currencies => Set<Currency>();
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<ProductImage> ProductImages => Set<ProductImage>();
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
+    public DbSet<Warehouse> Warehouses => Set<Warehouse>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

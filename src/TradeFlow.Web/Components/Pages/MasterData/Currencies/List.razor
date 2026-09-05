@@ -1,0 +1,141 @@
+﻿@page "/danh-muc/loai-tien"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Domain.Entities.MasterData
+@using TradeFlow.Infrastructure.Persistence
+@attribute [Authorize(Policy = "Permission:Currencies:View")]
+
+@inject TradeFlowDbContext DbContext
+@inject NavigationManager Nav
+
+<PageTitle>Loại tiền - TradeFlow</PageTitle>
+
+<div class="tf-page-header">
+    <div class="tf-page-header-left">
+        <h1 class="tf-page-title">Loại tiền</h1>
+        <p class="tf-page-subtitle">Quản lý các loại tiền tệ giao dịch và tỷ giá quy đổi</p>
+    </div>
+    <div class="tf-page-actions">
+        <AuthorizeView Policy="Permission:Currencies:Create">
+            <a href="/danh-muc/loai-tien/them-moi" class="tf-btn tf-btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Thêm loại tiền
+            </a>
+        </AuthorizeView>
+    </div>
+</div>
+
+<div class="tf-card tf-mb-4" style="padding: 12px 16px;">
+    <input type="text"
+           class="tf-input"
+           placeholder="Tìm theo mã tiền tệ, tên..."
+           value="@_searchTerm"
+           @oninput="OnSearchInput" />
+</div>
+
+<div class="tf-card">
+    <div class="tf-card-body" style="padding:0; overflow-x: auto;">
+        <table class="tf-table">
+            <thead>
+                <tr>
+                    <th style="min-width: 100px;">Mã tiền tệ</th>
+                    <th style="min-width: 180px;">Tên loại tiền</th>
+                    <th>Ký hiệu</th>
+                    <th style="text-align:right;">Tỷ giá (VND)</th>
+                    <th style="text-align:center;">Mặc định</th>
+                    <th style="text-align:center;">Trạng thái</th>
+                    <th style="text-align:right;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (_items == null)
+                {
+                    <tr><td colspan="7" style="text-align:center; padding: 24px;">Đang tải dữ liệu...</td></tr>
+                }
+                else if (!FilteredItems.Any())
+                {
+                    <tr><td colspan="7"><div class="tf-empty"><div class="tf-empty-title">Chưa có loại tiền phù hợp</div></div></td></tr>
+                }
+                else
+                {
+                    foreach (var item in FilteredItems)
+                    {
+                        <tr>
+                            <td>
+                                <span style="font-family: monospace; font-weight: 600; color: var(--tf-primary);">@item.Code</span>
+                            </td>
+                            <td style="font-weight: 500;">@item.Name</td>
+                            <td>@(item.Symbol ?? "-")</td>
+                            <td style="text-align:right; font-family: monospace;">@item.ExchangeRate.ToString("N0")</td>
+                            <td style="text-align:center;">
+                                @if (item.IsDefault)
+                                {
+                                    <span class="tf-badge tf-badge-info">Mặc định</span>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--tf-text-muted);">-</span>
+                                }
+                            </td>
+                            <td style="text-align:center;">
+                                @if (item.IsActive)
+                                {
+                                    <span class="tf-badge tf-badge-success">Hoạt động</span>
+                                }
+                                else
+                                {
+                                    <span class="tf-badge tf-badge-neutral">Tạm dừng</span>
+                                }
+                            </td>
+                            <td style="text-align:right;">
+                                <AuthorizeView Policy="Permission:Currencies:Edit">
+                                    <a href="/danh-muc/loai-tien/sua/@item.Id" class="tf-btn tf-btn-ghost tf-btn-sm">Sửa</a>
+                                </AuthorizeView>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private List<Currency>? _items;
+    private string _searchTerm = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _items = await DbContext.Currencies
+            .OrderByDescending(x => x.IsDefault)
+            .ThenBy(x => x.Code)
+            .ToListAsync();
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        _searchTerm = e.Value?.ToString() ?? string.Empty;
+    }
+
+    private IEnumerable<Currency> FilteredItems
+    {
+        get
+        {
+            if (_items == null) return Enumerable.Empty<Currency>();
+
+            if (string.IsNullOrWhiteSpace(_searchTerm))
+            {
+                return _items;
+            }
+
+            var term = _searchTerm.Trim().ToLower();
+            return _items.Where(x =>
+                (x.Code != null && x.Code.ToLower().Contains(term)) ||
+                (x.Name != null && x.Name.ToLower().Contains(term)));
+        }
+    }
+}

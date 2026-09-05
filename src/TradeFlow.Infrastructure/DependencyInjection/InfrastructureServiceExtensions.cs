@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -68,10 +68,16 @@ public static class InfrastructureServiceExtensions
             .AddDefaultTokenProviders();
 
         // Register audit service
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentUserService, Services.CurrentUserService>();
         services.AddScoped<IAuditService, Services.AuditService>();
         
         // Register database seeder
         services.AddScoped<Persistence.DatabaseSeeder>();
+
+        // Register system code generator and file storage
+        services.AddScoped<ISystemCodeGenerator, Services.SystemCodeGenerator>();
+        services.AddScoped<IFileStorageService, Services.LocalFileStorageService>();
 
         return services;
     }

@@ -1,4 +1,4 @@
-namespace TradeFlow.Application.Common.Interfaces;
+﻿namespace TradeFlow.Application.Common.Interfaces;
 
 /// <summary>
 /// Abstraction over the database context, used by Application layer.

@@ -1,4 +1,4 @@
-namespace TradeFlow.Domain.Enums;
+﻿namespace TradeFlow.Domain.Enums;
 
 /// <summary>Loại sự kiện nhật ký hoạt động</summary>
 public enum AuditEventType
@@ -36,4 +36,27 @@ public enum AuditEventType
     SupportAccessEnabled = 50,
     SupportAccessRevoked = 51,
     SupportActionPerformed = 52,
+
+    // === Danh mục chính ===
+    ProductCreated = 60,
+    ProductUpdated = 61,
+    ProductDeleted = 62,
+    CategoryCreated = 63,
+    CategoryUpdated = 64,
+    CategoryDeleted = 65,
+    UnitCreated = 66,
+    UnitUpdated = 67,
+    UnitDeleted = 68,
+    CurrencyCreated = 69,
+    CurrencyUpdated = 70,
+    CurrencyDeleted = 71,
+    CustomerCreated = 72,
+    CustomerUpdated = 73,
+    CustomerDeleted = 74,
+    SupplierCreated = 75,
+    SupplierUpdated = 76,
+    SupplierDeleted = 77,
+    WarehouseCreated = 78,
+    WarehouseUpdated = 79,
+    WarehouseDeleted = 80,
 }

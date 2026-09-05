@@ -1,4 +1,4 @@
-namespace TradeFlow.Domain.Enums;
+﻿namespace TradeFlow.Domain.Enums;
 
 /// <summary>Tài nguyên hệ thống được phân quyền</summary>
 public enum ResourceType

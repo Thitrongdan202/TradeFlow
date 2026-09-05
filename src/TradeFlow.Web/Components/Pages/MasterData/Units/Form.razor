@@ -1,0 +1,147 @@
+﻿@page "/danh-muc/don-vi-tinh/them-moi"
+@page "/danh-muc/don-vi-tinh/sua/{Id:int}"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Constants
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Domain.Entities.MasterData
+@using TradeFlow.Infrastructure.Persistence
+@using TradeFlow.Domain.Enums
+@attribute [Authorize]
+
+@inject TradeFlowDbContext DbContext
+@inject ISystemCodeGenerator CodeGenerator
+@inject IAuditService AuditService
+@inject NavigationManager Nav
+@inject ICurrentUserService CurrentUser
+
+<PageTitle>@(IsEdit ? "Sửa" : "Thêm") Đơn vị tính - TradeFlow</PageTitle>
+
+<div class="tf-page-header">
+    <div class="tf-page-header-left">
+        <h1 class="tf-page-title">@(IsEdit ? "Sửa" : "Thêm") Đơn vị tính</h1>
+        <p class="tf-page-subtitle">Quản lý các đơn vị đo lường sử dụng trong nhập xuất kho và bán hàng</p>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <div class="tf-alert tf-alert-error tf-mb-4">@_errorMessage</div>
+}
+
+@if (_model == null)
+{
+    <div style="padding:24px;text-align:center;">Đang tải thông tin...</div>
+}
+else
+{
+    <div class="tf-card" style="max-width: 600px;">
+        <div class="tf-card-body">
+            <EditForm Model="_model" OnValidSubmit="HandleValidSubmit">
+                <DataAnnotationsValidator />
+
+                <div class="tf-form-group">
+                    <label class="tf-label">Mã đơn vị tính <span style="font-size:12px;color:var(--tf-text-muted);">(Tự động sinh)</span></label>
+                    <input type="text" class="tf-input" value="@_displaySystemCode" readonly disabled style="background:var(--tf-gray-100);cursor:not-allowed;font-weight:600;" />
+                </div>
+
+                <div class="tf-form-group">
+                    <label class="tf-label">Tên đơn vị tính <span style="color:var(--tf-error);">*</span></label>
+                    <InputText @bind-Value="_model.Name" class="tf-input" placeholder="Ví dụ: Cái, Hộp, Mét, Kilogram..." />
+                </div>
+
+                <div class="tf-form-group">
+                    <label class="tf-label">Ký hiệu</label>
+                    <InputText @bind-Value="_model.Symbol" class="tf-input" placeholder="Ví dụ: cái, hộp, m, kg..." />
+                </div>
+
+                <div class="tf-form-group">
+                    <label class="tf-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <InputCheckbox @bind-Value="_model.IsActive" />
+                        <span>Đang hoạt động</span>
+                    </label>
+                </div>
+
+                <div class="tf-form-actions" style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                    <a href="/danh-muc/don-vi-tinh" class="tf-btn tf-btn-secondary">Hủy bỏ</a>
+                    <button type="submit" class="tf-btn tf-btn-primary">@(IsEdit ? "Lưu thay đổi" : "Tạo đơn vị tính")</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int? Id { get; set; }
+    private bool IsEdit => Id.HasValue;
+    private UnitOfMeasure? _model;
+    private string _displaySystemCode = string.Empty;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsEdit)
+        {
+            if (!CurrentUser.HasPermission("UnitOfMeasures", "Edit"))
+            {
+                Nav.NavigateTo("/Account/AccessDenied");
+                return;
+            }
+            _model = await DbContext.UnitOfMeasures.FindAsync(Id);
+            if (_model == null)
+            {
+                Nav.NavigateTo("/danh-muc/don-vi-tinh");
+                return;
+            }
+            _displaySystemCode = _model.Code;
+        }
+        else
+        {
+            if (!CurrentUser.HasPermission("UnitOfMeasures", "Create"))
+            {
+                Nav.NavigateTo("/Account/AccessDenied");
+                return;
+            }
+            _model = new UnitOfMeasure { IsActive = true };
+            _displaySystemCode = await CodeGenerator.PeekNextCodeAsync(SystemCodeConstants.UnitOfMeasure) + " (Tự sinh)";
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            _errorMessage = null;
+
+            if (string.IsNullOrWhiteSpace(_model!.Name))
+            {
+                _errorMessage = "Tên đơn vị tính là bắt buộc.";
+                return;
+            }
+
+            if (IsEdit)
+            {
+                _model.UpdatedAt = DateTime.UtcNow;
+                _model.UpdatedBy = CurrentUser.UserName;
+                DbContext.UnitOfMeasures.Update(_model);
+                await AuditService.LogAsync(AuditEventType.UnitUpdated, CurrentUser.UserName, "UnitOfMeasure", _model.Id.ToString());
+            }
+            else
+            {
+                _model.Code = await CodeGenerator.GenerateCodeAsync(SystemCodeConstants.UnitOfMeasure);
+                _model.CreatedAt = DateTime.UtcNow;
+                _model.CreatedBy = CurrentUser.UserName;
+                DbContext.UnitOfMeasures.Add(_model);
+                await AuditService.LogAsync(AuditEventType.UnitCreated, CurrentUser.UserName, "UnitOfMeasure", _model.Code);
+            }
+
+            await DbContext.SaveChangesAsync();
+            Nav.NavigateTo("/danh-muc/don-vi-tinh");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Có lỗi xảy ra: " + ex.Message;
+        }
+    }
+}

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\TradeFlow.Domain\TradeFlow.Domain.csproj" />
     <ProjectReference Include="..\..\src\TradeFlow.Application\TradeFlow.Application.csproj" />
+    <ProjectReference Include="..\..\src\TradeFlow.Infrastructure\TradeFlow.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

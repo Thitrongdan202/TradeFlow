@@ -1,0 +1,171 @@
+﻿@page "/kho/kho-hang/them-moi"
+@page "/kho/kho-hang/sua/{Id:int}"
+@page "/kho-hang/them-moi"
+@page "/kho-hang/sua/{Id:int}"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Constants
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Domain.Entities.MasterData
+@using TradeFlow.Infrastructure.Persistence
+@using TradeFlow.Domain.Enums
+@attribute [Authorize]
+
+@inject TradeFlowDbContext DbContext
+@inject ISystemCodeGenerator CodeGenerator
+@inject IAuditService AuditService
+@inject NavigationManager Nav
+@inject ICurrentUserService CurrentUser
+
+<PageTitle>@(IsEdit ? "Sửa" : "Thêm") Kho hàng - TradeFlow</PageTitle>
+
+<div class="tf-page-header">
+    <div class="tf-page-header-left">
+        <h1 class="tf-page-title">@(IsEdit ? "Sửa" : "Thêm") Kho hàng</h1>
+        <p class="tf-page-subtitle">Quản lý hệ thống kho bãi, địa điểm lưu kho và thủ kho phụ trách</p>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <div class="tf-alert tf-alert-error tf-mb-4">@_errorMessage</div>
+}
+
+@if (_model == null)
+{
+    <div style="padding:24px;text-align:center;">Đang tải thông tin...</div>
+}
+else
+{
+    <div class="tf-card" style="max-width: 800px;">
+        <div class="tf-card-body">
+            <EditForm Model="_model" OnValidSubmit="HandleValidSubmit">
+                <DataAnnotationsValidator />
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div class="tf-form-group">
+                        <label class="tf-label">Mã kho <span style="font-size:12px;color:var(--tf-text-muted);">(Tự động sinh)</span></label>
+                        <input type="text" class="tf-input" value="@_displaySystemCode" readonly disabled style="background:var(--tf-gray-100);cursor:not-allowed;font-weight:600;" />
+                    </div>
+                    <div class="tf-form-group">
+                        <label class="tf-label">Mã nội bộ <span style="font-size:12px;color:var(--tf-text-muted);">(Tùy chọn)</span></label>
+                        <InputText @bind-Value="_model.BusinessCode" class="tf-input" placeholder="Mã quản lý kho riêng" />
+                    </div>
+                </div>
+
+                <div class="tf-form-group">
+                    <label class="tf-label">Tên kho hàng <span style="color:var(--tf-error);">*</span></label>
+                    <InputText @bind-Value="_model.Name" class="tf-input" placeholder="Tên kho hàng (vd: Kho tổng Hà Nội, Kho lạnh...)" />
+                </div>
+
+                <div class="tf-form-group">
+                    <label class="tf-label">Địa chỉ kho</label>
+                    <InputText @bind-Value="_model.Address" class="tf-input" placeholder="Địa chỉ chi tiết kho hàng" />
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div class="tf-form-group">
+                        <label class="tf-label">Người phụ trách / Thủ kho</label>
+                        <InputText @bind-Value="_model.ManagerName" class="tf-input" placeholder="Họ và tên thủ kho / quản lý" />
+                    </div>
+                    <div class="tf-form-group">
+                        <label class="tf-label">Số điện thoại liên hệ</label>
+                        <InputText @bind-Value="_model.Phone" class="tf-input" placeholder="Số điện thoại liên hệ kho" />
+                    </div>
+                </div>
+
+                <div class="tf-form-group">
+                    <label class="tf-label">Ghi chú</label>
+                    <InputTextArea @bind-Value="_model.Notes" class="tf-input" rows="2" placeholder="Ghi chú diện tích, loại mặt hàng ưu tiên..." />
+                </div>
+
+                <div class="tf-form-group">
+                    <label class="tf-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <InputCheckbox @bind-Value="_model.IsActive" />
+                        <span>Đang hoạt động</span>
+                    </label>
+                </div>
+
+                <div class="tf-form-actions" style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                    <a href="/kho/kho-hang" class="tf-btn tf-btn-secondary">Hủy bỏ</a>
+                    <button type="submit" class="tf-btn tf-btn-primary">@(IsEdit ? "Lưu thay đổi" : "Tạo kho hàng")</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int? Id { get; set; }
+    private bool IsEdit => Id.HasValue;
+    private Warehouse? _model;
+    private string _displaySystemCode = string.Empty;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsEdit)
+        {
+            if (!CurrentUser.HasPermission("Warehouses", "Edit"))
+            {
+                Nav.NavigateTo("/Account/AccessDenied");
+                return;
+            }
+            _model = await DbContext.Warehouses.FindAsync(Id);
+            if (_model == null)
+            {
+                Nav.NavigateTo("/kho/kho-hang");
+                return;
+            }
+            _displaySystemCode = _model.Code;
+        }
+        else
+        {
+            if (!CurrentUser.HasPermission("Warehouses", "Create"))
+            {
+                Nav.NavigateTo("/Account/AccessDenied");
+                return;
+            }
+            _model = new Warehouse { IsActive = true };
+            _displaySystemCode = await CodeGenerator.PeekNextCodeAsync(SystemCodeConstants.Warehouse) + " (Tự sinh)";
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            _errorMessage = null;
+
+            if (string.IsNullOrWhiteSpace(_model!.Name))
+            {
+                _errorMessage = "Tên kho hàng là bắt buộc.";
+                return;
+            }
+
+            if (IsEdit)
+            {
+                _model.UpdatedAt = DateTime.UtcNow;
+                _model.UpdatedBy = CurrentUser.UserName;
+                DbContext.Warehouses.Update(_model);
+                await AuditService.LogAsync(AuditEventType.WarehouseUpdated, CurrentUser.UserName, "Warehouse", _model.Id.ToString());
+            }
+            else
+            {
+                _model.Code = await CodeGenerator.GenerateCodeAsync(SystemCodeConstants.Warehouse);
+                _model.CreatedAt = DateTime.UtcNow;
+                _model.CreatedBy = CurrentUser.UserName;
+                DbContext.Warehouses.Add(_model);
+                await AuditService.LogAsync(AuditEventType.WarehouseCreated, CurrentUser.UserName, "Warehouse", _model.Code);
+            }
+
+            await DbContext.SaveChangesAsync();
+            Nav.NavigateTo("/kho/kho-hang");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Có lỗi xảy ra: " + ex.Message;
+        }
+    }
+}

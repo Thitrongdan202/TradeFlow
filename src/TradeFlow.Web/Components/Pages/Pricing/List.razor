@@ -9,12 +9,12 @@
 @inject IPriceListService PriceListService
 @inject NavigationManager Nav
 
-<PageTitle>Quản lý bảng giá - TradeFlow</PageTitle>
+<PageTitle>Quýản lý bảng giá - TradeFlow</PageTitle>
 
 <div class="tf-page-header">
     <div class="tf-page-header-left">
         <h1 class="tf-page-title">Bảng giá & Báo giá</h1>
-        <p class="tf-page-subtitle">Quản lý các đợt ban hành bảng giá, chương trình khuyến mãi và báo giá đại lý theo kỳ</p>
+        <p class="tf-page-subtitle">Quýản lý các đợt ban hành bảng giá, chương trình khuyến mãi và báo giá đại lý theo kỳ</p>
     </div>
     <div class="tf-page-actions" style="display:flex; gap:8px;">
         <AuthorizeView Policy="Permission:PriceLists:Create">
@@ -94,7 +94,7 @@
         </div>
         <div>
             <select class="tf-input" value="@_filterYear" @onchange="OnYearChanged">
-                <option value="0">-- Tất cả các năm --</option>
+                <option value="0">-- Tất cả cácầnăm --</option>
                 <option value="2027">Năm 2027</option>
                 <option value="2026">Năm 2026</option>
                 <option value="2025">Năm 2025</option>
@@ -104,10 +104,10 @@
         <div>
             <select class="tf-input" value="@_filterQuarter" @onchange="OnQuarterChanged">
                 <option value="0">-- Tất cả các quý --</option>
-                <option value="1">Quý 1</option>
-                <option value="2">Quý 2</option>
-                <option value="3">Quý 3</option>
-                <option value="4">Quý 4</option>
+                <option value="1">Quýý 1</option>
+                <option value="2">Quýý 2</option>
+                <option value="3">Quýý 3</option>
+                <option value="4">Quýý 4</option>
             </select>
         </div>
         <div>
@@ -279,14 +279,14 @@
 {
     <div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; display:flex; align-items:center; justify-content:center;">
         <div class="tf-card" style="width: 450px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);">
-            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px; color: #b91c1c;">Xác nhận xóa bảng giá</h3>
+            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px; color: #b91c1c;">Xácầnhận xóa bảng giá</h3>
             <p style="color: var(--tf-text-main); margin-bottom: 16px;">
                 Bạn có chắc chắn muốn xóa bảng giá <strong>@_selectedPriceList.Code - @_selectedPriceList.Name</strong>?
                 Tất cả @_selectedPriceList.TotalItems dòng sản phẩm trong bảng giá này sẽ bị xóa khỏi hệ thống.
             </p>
             <div style="display:flex; justify-content: flex-end; gap: 8px;">
                 <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showDeleteModal = false">Hủy bỏ</button>
-                <button type="button" class="tf-btn tf-btn-primary" style="background:#dc2626;" @onclick="ExecuteDelete">Xác nhận xóa</button>
+                <button type="button" class="tf-btn tf-btn-primary" style="background:#dc2626;" @onclick="ExecuteDelete">Xácầnhận xóa</button>
             </div>
         </div>
     </div>

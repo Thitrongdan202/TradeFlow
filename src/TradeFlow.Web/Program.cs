@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Components.Authorization;
+﻿using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using TradeFlow.Application.Common.Interfaces;
 using TradeFlow.Application.DependencyInjection;
@@ -19,6 +19,8 @@ builder.Services.AddApplication();
 // ============================================================
 // Blazor / Razor Components
 // ============================================================
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options => { options.MultipartBodyLengthLimit = 209715200; });
+builder.WebHost.ConfigureKestrel(serverOptions => { serverOptions.Limits.MaxRequestBodySize = 209715200; });
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 

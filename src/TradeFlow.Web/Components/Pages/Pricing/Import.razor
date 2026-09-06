@@ -1,4 +1,4 @@
-@page "/bang-gia/nhap-excel"
+﻿@page "/bang-gia/nhap-excel"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Forms
@@ -69,7 +69,7 @@
             </button>
         </div>
         <div style="margin-top: 12px; font-size: 12px; color: var(--tf-text-muted);">
-            Dung lượng tối đa 20MB. Đảm bảo file có định dạng .xlsx
+            Dung lượng tối đa 200MB. Đảm bảo file có định dạng .xlsx
         </div>
     </div>
 }
@@ -127,13 +127,13 @@ else
                 <input type="number" class="tf-input" @bind="_importRequest.Year" min="2020" max="2035" />
             </div>
             <div>
-                <label style="display:block; font-size: 12px; font-weight: 600; margin-bottom: 4px;">Quý áp dụng</label>
+                <label style="display:block; font-size: 12px; font-weight: 600; margin-bottom: 4px;">Quýý áp dụng</label>
                 <select class="tf-input" @bind="_importRequest.Quarter">
                     <option value="">-- Chọn quý --</option>
-                    <option value="1">Quý 1</option>
-                    <option value="2">Quý 2</option>
-                    <option value="3">Quý 3</option>
-                    <option value="4">Quý 4</option>
+                    <option value="1">Quýý 1</option>
+                    <option value="2">Quýý 2</option>
+                    <option value="3">Quýý 3</option>
+                    <option value="4">Quýý 4</option>
                 </select>
             </div>
         </div>
@@ -187,7 +187,7 @@ else
                     }
                     else
                     {
-                        <span>Xác nhận nhập @_analysisResult.Items.Count mặt hàng</span>
+                        <span>Xácầnhận nhập @_analysisResult.Items.Count mặt hàng</span>
                     }
                 </button>
             </div>
@@ -286,8 +286,8 @@ else
         _isAnalyzing = true;
         try
         {
-            // Max 20MB
-            using var stream = file.OpenReadStream(maxAllowedSize: 20 * 1024 * 1024);
+            // Max 200MB
+            using var stream = file.OpenReadStream(maxAllowedSize: 209715200);
             _analysisResult = await ExcelPricingService.AnalyzeAndDryRunAsync(stream, file.Name);
 
             if (_analysisResult.Errors.Any())

@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.IO.Compression;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
@@ -40,22 +40,24 @@ public class ExcelPricingService : IExcelPricingService
             FileName = fileName
         };
 
-        // 1. Copy stream to memory to allow multiple reads (ClosedXML + ZipArchive)
-        using var memoryStream = new MemoryStream();
-        await fileStream.CopyToAsync(memoryStream, cancellationToken);
-        memoryStream.Position = 0;
+        // 1. Save original file as temporary upload directly from the incoming stream
+        result.TempFileReference = await _fileStorage.SaveFileAsync(fileStream, fileName, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "pricing_originals", cancellationToken);
 
-        // 2. Save original file as temporary upload
-        result.TempFileReference = await _fileStorage.SaveFileAsync(memoryStream, fileName, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "pricing_originals", cancellationToken);
-        memoryStream.Position = 0;
+        // 2. Open the saved file as a seekable FileStream
+        using var diskStream = await _fileStorage.GetFileAsync(result.TempFileReference, cancellationToken);
+        if (diskStream == null)
+        {
+            result.Errors.Add("Không thể đọc file tạm sau khi lưu.");
+            return result;
+        }
 
         // 3. Extract embedded pictures mapping to row index (1-based Excel row number)
-        var rowImageMap = ExtractImagesByRow(memoryStream);
+        var rowImageMap = ExtractImagesByRow(diskStream);
         result.ImagesFound = rowImageMap.Count;
-        memoryStream.Position = 0;
+        diskStream.Position = 0;
 
         // 4. Parse workbook structure via ClosedXML
-        using var workbook = new XLWorkbook(memoryStream);
+        using var workbook = new XLWorkbook(diskStream);
         var worksheet = workbook.Worksheets.FirstOrDefault();
         if (worksheet == null)
         {

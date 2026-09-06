@@ -13,6 +13,7 @@
 @inject NavigationManager Nav
 @inject IAuditService AuditService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IPermissionService PermissionService
 
 <PageTitle>@(IsEdit ? "Sửa vai trò" : "Thêm vai trò") — TradeFlow</PageTitle>
 
@@ -228,6 +229,7 @@ else
                 await AuditService.LogAsync(AuditEventType.RoleCreated, _currentUser, "Role", _role.Name, "Created role and permissions");
             }
 
+            PermissionService.InvalidateAllPermissions();
             Nav.NavigateTo("/cai-dat/vai-tro");
         }
         catch (Exception ex)

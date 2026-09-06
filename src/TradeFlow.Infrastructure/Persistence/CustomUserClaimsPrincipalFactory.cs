@@ -1,22 +1,21 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace TradeFlow.Infrastructure.Persistence;
 
+/// <summary>
+/// Thêm các claim định danh cần thiết vào ClaimsIdentity (FullName, Status).
+/// Không lưu ma trận quyền hạn vào cookie để đảm bảo cookie luôn nhẹ (< 1 KB) và không gây lỗi HTTP 431.
+/// </summary>
 public class CustomUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<ApplicationUser, ApplicationRole>
 {
-    private readonly TradeFlowDbContext _context;
-
     public CustomUserClaimsPrincipalFactory(
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
-        IOptions<IdentityOptions> optionsAccessor,
-        TradeFlowDbContext context)
+        IOptions<IdentityOptions> optionsAccessor)
         : base(userManager, roleManager, optionsAccessor)
     {
-        _context = context;
     }
 
     protected override async Task<ClaimsIdentity> GenerateClaimsAsync(ApplicationUser user)
@@ -31,28 +30,6 @@ public class CustomUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<Appli
 
         // Include Status
         identity.AddClaim(new Claim("Status", user.Status.ToString()));
-
-        // Add granular permissions from all roles the user belongs to
-        var roles = await UserManager.GetRolesAsync(user);
-        if (roles.Any())
-        {
-            var roleIds = await _context.Roles
-                .Where(r => roles.Contains(r.Name!))
-                .Select(r => r.Id)
-                .ToListAsync();
-
-            var permissions = await _context.RolePermissions
-                .Where(rp => roleIds.Contains(rp.RoleId) && rp.IsGranted)
-                .Select(rp => new { rp.Resource, rp.Action })
-                .Distinct()
-                .ToListAsync();
-
-            foreach (var perm in permissions)
-            {
-                // Format: Permission:Resource:Action
-                identity.AddClaim(new Claim("Permission", $"{perm.Resource}:{perm.Action}"));
-            }
-        }
 
         return identity;
     }

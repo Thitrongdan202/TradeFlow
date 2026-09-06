@@ -1,0 +1,417 @@
+﻿@page "/bang-gia/chi-tiet/{Id:int}"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Pricing
+@using TradeFlow.Domain.Enums
+@attribute [Authorize(Policy = "Permission:PriceLists:View")]
+
+@inject IPriceListService PriceListService
+@inject IFileStorageService FileStorage
+@inject NavigationManager Nav
+
+<PageTitle>Chi tiết bảng giá - TradeFlow</PageTitle>
+
+@if (_isLoading)
+{
+    <div class="tf-card" style="padding: 40px; text-align: center;">
+        <p>Đang tải thông tin bảng giá...</p>
+    </div>
+}
+else if (_priceList == null)
+{
+    <div class="tf-card" style="padding: 40px; text-align: center;">
+        <h3 style="color: #b91c1c;">Không tìm thấy bảng giá</h3>
+        <p style="margin-top: 8px;">Bảng giá với mã #@Id không tồn tại hoặc đã bị xóa.</p>
+        <a href="/bang-gia" class="tf-btn tf-btn-secondary" style="margin-top: 16px; display:inline-flex;">Quay lại danh sách</a>
+    </div>
+}
+else
+{
+    @* Page Header *@
+    <div class="tf-page-header">
+        <div class="tf-page-header-left">
+            <div style="display:flex; align-items:center; gap: 8px;">
+                <a href="/bang-gia" style="color: var(--tf-text-muted); text-decoration:none; display:inline-flex; align-items:center;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                    Bảng giá
+                </a>
+                <span style="color: var(--tf-text-muted);">/</span>
+                <span style="font-weight: 600;">@_priceList.Code</span>
+            </div>
+            <h1 class="tf-page-title" style="margin-top: 4px;">@_priceList.Name</h1>
+        </div>
+        <div class="tf-page-actions" style="display:flex; gap:8px;">
+            @if (_priceList.Status == PriceListStatus.Draft)
+            {
+                <AuthorizeView Policy="Permission:PriceLists:Edit">
+                    <button type="button" class="tf-btn tf-btn-primary" style="background:#059669;" @onclick="ApproveThisPriceList">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                        Phê duyệt áp dụng
+                    </button>
+                </AuthorizeView>
+            }
+            <a href="/api/pricing/@Id/export-excel" class="tf-btn tf-btn-secondary" target="_blank">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Xuất Excel
+            </a>
+            @if (!string.IsNullOrEmpty(_priceList.OriginalFileStorageRef))
+            {
+                <a href="/api/pricing/@Id/download-original" class="tf-btn tf-btn-secondary" target="_blank">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    Tải file gốc
+                </a>
+            }
+            <a href="/bang-gia/so-sanh?baseId=@Id" class="tf-btn tf-btn-secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                So sánh giá
+            </a>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_toastMessage))
+    {
+        <div class="tf-alert tf-alert-success tf-mb-4">
+            @_toastMessage
+        </div>
+    }
+
+    @* Reference Document Header Container (Modeled after original document) *@
+    <div class="tf-card tf-mb-4" style="border: 2px solid #ea580c; background: #fff; padding: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e5e7eb; padding-bottom: 16px; margin-bottom: 16px;">
+            <div>
+                <div style="font-size: 18px; font-weight: 800; color: #78350f; letter-spacing: 0.5px;">
+                    TỔNG KHO PHÂN PHỐI TRADEFLOW
+                </div>
+                <div style="font-size: 13px; color: #4b5563; margin-top: 4px;">
+                    Hệ thống cung ứng thiết bị vệ sinh, vật tư và thiết bị thương mại
+                </div>
+                <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">
+                    Hotline: 1900 1234 • Email: sales@tradeflow.local
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-size: 20px; font-weight: 800; color: #ea580c;">
+                    @(_priceList.ProgramTitle ?? _priceList.Name.ToUpper())
+                </div>
+                <div style="margin-top: 4px; font-size: 13px; color: #374151;">
+                    <strong>Số Báo Giá:</strong> @(_priceList.QuotationNumber ?? "-")
+                </div>
+                <div style="font-size: 13px; color: #374151;">
+                    <strong>Ngày Báo Giá:</strong> @(_priceList.QuotationDate?.ToString("dd/MM/yyyy") ?? "-")
+                </div>
+                <div style="margin-top: 4px;">
+                    @switch (_priceList.Status)
+                    {
+                        case PriceListStatus.Active:
+                            <span class="tf-badge tf-badge-success" style="background:#ecfdf5; color:#065f46; font-weight:700;">ĐANG ÁP DỤNG</span>
+                            break;
+                        case PriceListStatus.Draft:
+                            <span class="tf-badge tf-badge-warning" style="background:#fffbeb; color:#92400e; font-weight:700;">BẢN NHÁP</span>
+                            break;
+                        case PriceListStatus.Expired:
+                            <span class="tf-badge" style="background:#f3f4f6; color:#4b5563;">HẾT HIỆU LỰC</span>
+                            break;
+                        case PriceListStatus.Cancelled:
+                            <span class="tf-badge tf-badge-danger" style="background:#fef2f2; color:#991b1b;">ĐÃ HỦY</span>
+                            break;
+                    }
+                </div>
+            </div>
+        </div>
+
+        @* Red / Highlight notice box matching reference screenshot *@
+        <div style="background: #fff7ed; border-left: 4px solid #ea580c; padding: 12px 16px; border-radius: 4px;">
+            <div style="font-weight: 700; color: #b91c1c; font-size: 13px; line-height: 1.6;">
+                - Thời gian áp dụng: từ ngày @(_priceList.EffectiveFrom?.ToString("dd/MM/yyyy") ?? "áp dụng")
+                @if (_priceList.EffectiveTo.HasValue)
+                {
+                    <span> đến ngày @_priceList.EffectiveTo.Value.ToString("dd/MM/yyyy")</span>
+                }
+                else
+                {
+                    <span> đến khi có thông báo mới.</span>
+                }
+            </div>
+            <div style="font-weight: 700; color: #b91c1c; font-size: 13px; line-height: 1.6; margin-top: 4px;">
+                - Điều kiện giá: @(_priceList.PriceCondition ?? "Giá bán tại kho"). @(_priceList.VatNote ?? "Giá chưa bao gồm thuế VAT.")
+            </div>
+            @if (!string.IsNullOrEmpty(_priceList.Notes))
+            {
+                <div style="color: #4b5563; font-size: 12px; margin-top: 4px;">
+                    * Ghi chú: @_priceList.Notes
+                </div>
+            }
+        </div>
+    </div>
+
+    @* Table Search & Group Filter *@
+    <div class="tf-card tf-mb-4" style="padding: 12px 16px;">
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <div style="flex: 2;">
+                <input type="text"
+                       class="tf-input"
+                       placeholder="Tìm theo mã hàng mới, mã cũ, tên hoặc thông số sản phẩm..."
+                       value="@_searchTerm"
+                       @oninput="OnSearchInput" />
+            </div>
+            <div style="flex: 1;">
+                <select class="tf-input" value="@_filterGroup" @onchange="OnGroupChanged">
+                    <option value="">-- Tất cả nhóm sản phẩm --</option>
+                    @foreach (var g in AvailableGroups)
+                    {
+                        <option value="@g">@g</option>
+                    }
+                </select>
+            </div>
+            <div style="flex: 1;">
+                <select class="tf-input" value="@_filterMatchStatus" @onchange="OnMatchStatusChanged">
+                    <option value="">-- Tất cả đối soát --</option>
+                    <option value="@PriceMatchStatus.Matched">Đã khớp danh mục</option>
+                    <option value="@PriceMatchStatus.ReviewRequired">Cần kiểm tra</option>
+                    <option value="@PriceMatchStatus.NewProduct">Sản phẩm mới</option>
+                </select>
+            </div>
+            <div style="color: var(--tf-text-muted); font-size: 13px; white-space: nowrap;">
+                Hiển thị: <strong>@FilteredItems.Count()</strong> / @_priceList.Items.Count mặt hàng
+            </div>
+        </div>
+    </div>
+
+    @* Items Table *@
+    <div class="tf-card">
+        <div class="tf-card-body" style="padding:0; overflow-x: auto;">
+            <table class="tf-table" style="font-size: 13px;">
+                <thead>
+                    <tr style="background: #ea580c; color: #fff;">
+                        <th style="width: 50px; text-align: center; color: #fff;">STT</th>
+                        <th style="min-width: 140px; color: #fff;">NHÓM</th>
+                        <th style="width: 70px; text-align: center; color: #fff;">HÌNH ẢNH</th>
+                        <th style="min-width: 130px; color: #fff;">MÃ HÀNG MỚI</th>
+                        <th style="min-width: 110px; color: #fff;">MÃ HÀNG CŨ</th>
+                        <th style="min-width: 260px; color: #fff;">THÔNG TIN SẢN PHẨM</th>
+                        <th style="min-width: 130px; text-align: right; color: #fff;">GIÁ ĐẠI LÝ (VNĐ)</th>
+                        <th style="min-width: 110px; color: #fff;">GHI CHÚ</th>
+                        <th style="min-width: 130px; text-align: center; color: #fff;">ĐỐI SOÁT</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!FilteredItems.Any())
+                    {
+                        <tr>
+                            <td colspan="9" style="text-align:center; padding: 24px;">Không có mặt hàng nào khớp bộ lọc.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var item in FilteredItems)
+                        {
+                            <tr>
+                                <td style="text-align: center; font-weight: 600; color: #6b7280;">
+                                    @item.SortOrder
+                                </td>
+                                <td>
+                                    <span style="font-weight: 600; color: #374151;">@(item.Group ?? "-")</span>
+                                </td>
+                                <td style="text-align: center;">
+                                    @if (!string.IsNullOrEmpty(item.ImageStorageRef))
+                                    {
+                                        <div style="cursor: pointer;" @onclick="() => OpenImagePreview(item)">
+                                            <img src="@FileStorage.GetPublicUrl(item.ImageStorageRef)"
+                                                 alt="@item.NewCode"
+                                                 style="width: 48px; height: 48px; object-fit: contain; border-radius: 4px; border: 1px solid #e5e7eb; background: #fff;" />
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div style="width: 48px; height: 48px; background: #f3f4f6; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 10px;">
+                                            Không ảnh
+                                        </div>
+                                    }
+                                </td>
+                                <td>
+                                    <div style="font-weight: 800; color: #dc2626; font-size: 14px;">
+                                        @item.NewCode
+                                    </div>
+                                    @if (item.ProductId.HasValue)
+                                    {
+                                        <a href="/danh-muc/san-pham" style="font-size: 11px; color: #2563eb; text-decoration:none;">
+                                            Xem sản phẩm ↗
+                                        </a>
+                                    }
+                                </td>
+                                <td>
+                                    <span style="color: #4b5563; font-weight: 500;">@(item.LegacyCode ?? "-")</span>
+                                </td>
+                                <td>
+                                    <div style="line-height: 1.4; color: #1f2937;">
+                                        @(item.ProductInfo ?? item.ProductName ?? "-")
+                                    </div>
+                                </td>
+                                <td style="text-align: right;">
+                                    <span style="font-weight: 700; font-size: 14px; color: #047857;">
+                                        @item.UnitPrice.ToString("N0") ₫
+                                    </span>
+                                </td>
+                                <td>
+                                    <span style="color: #6b7280; font-size: 12px;">@(item.Note ?? "-")</span>
+                                </td>
+                                <td style="text-align: center;">
+                                    @switch (item.MatchStatus)
+                                    {
+                                        case PriceMatchStatus.Matched:
+                                            <span class="tf-badge tf-badge-success" style="font-size: 11px;">Đã khớp SP</span>
+                                            break;
+                                        case PriceMatchStatus.ReviewRequired:
+                                            <span class="tf-badge tf-badge-warning" style="font-size: 11px;">Cần kiểm tra</span>
+                                            break;
+                                        case PriceMatchStatus.NewProduct:
+                                            <span class="tf-badge tf-badge-info" style="font-size: 11px;">SP mới</span>
+                                            break;
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@* Image Modal Preview *@
+@if (_previewItem != null)
+{
+    <div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:9999; display:flex; align-items:center; justify-content:center;" @onclick="CloseImagePreview">
+        <div class="tf-card" style="max-width: 500px; width: 90%; padding: 20px; background:#fff; border-radius:8px;" @onclick:stopPropagation>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 12px;">
+                <div>
+                    <h3 style="font-size: 16px; font-weight: 700; color: #dc2626;">@_previewItem.NewCode</h3>
+                    <div style="font-size: 12px; color: #6b7280;">@( _previewItem.Group ?? "Sản phẩm")</div>
+                </div>
+                <button type="button" style="background:none; border:none; font-size: 20px; cursor:pointer;" @onclick="CloseImagePreview">✕</button>
+            </div>
+            <div style="text-align: center; padding: 12px 0; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                <img src="@FileStorage.GetPublicUrl(_previewItem.ImageStorageRef ?? "")"
+                     alt="@_previewItem.NewCode"
+                     style="max-height: 320px; max-width: 100%; object-fit: contain;" />
+            </div>
+            <div style="margin-top: 14px; font-size: 13px; color: #374151;">
+                <p><strong>Thông tin:</strong> @(_previewItem.ProductInfo ?? "-")</p>
+                <p style="margin-top: 4px;"><strong>Giá đại lý:</strong> <span style="color:#047857; font-weight:700;">@_previewItem.UnitPrice.ToString("N0") ₫</span></p>
+            </div>
+            <div style="margin-top: 16px; text-align: right;">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="CloseImagePreview">Đóng</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private PriceListDto? _priceList;
+    private bool _isLoading = true;
+    private string _searchTerm = "";
+    private string _filterGroup = "";
+    private string _filterMatchStatus = "";
+    private string? _toastMessage;
+
+    private PriceListItemDto? _previewItem;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDetail();
+    }
+
+    private async Task LoadDetail()
+    {
+        _isLoading = true;
+        try
+        {
+            _priceList = await PriceListService.GetPriceListDetailAsync(Id);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private IEnumerable<string> AvailableGroups =>
+        _priceList?.Items
+            .Where(i => !string.IsNullOrEmpty(i.Group))
+            .Select(i => i.Group!)
+            .Distinct()
+            .OrderBy(g => g)
+        ?? Enumerable.Empty<string>();
+
+    private IEnumerable<PriceListItemDto> FilteredItems
+    {
+        get
+        {
+            if (_priceList == null) return Enumerable.Empty<PriceListItemDto>();
+
+            var res = _priceList.Items.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(_searchTerm))
+            {
+                var term = _searchTerm.Trim().ToLower();
+                res = res.Where(i =>
+                    i.NewCode.ToLower().Contains(term) ||
+                    (i.LegacyCode != null && i.LegacyCode.ToLower().Contains(term)) ||
+                    (i.ProductInfo != null && i.ProductInfo.ToLower().Contains(term)) ||
+                    (i.ProductName != null && i.ProductName.ToLower().Contains(term)));
+            }
+
+            if (!string.IsNullOrWhiteSpace(_filterGroup))
+            {
+                res = res.Where(i => i.Group == _filterGroup);
+            }
+
+            if (!string.IsNullOrWhiteSpace(_filterMatchStatus) && Enum.TryParse<PriceMatchStatus>(_filterMatchStatus, out var st))
+            {
+                res = res.Where(i => i.MatchStatus == st);
+            }
+
+            return res;
+        }
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        _searchTerm = e.Value?.ToString() ?? "";
+    }
+
+    private void OnGroupChanged(ChangeEventArgs e)
+    {
+        _filterGroup = e.Value?.ToString() ?? "";
+    }
+
+    private void OnMatchStatusChanged(ChangeEventArgs e)
+    {
+        _filterMatchStatus = e.Value?.ToString() ?? "";
+    }
+
+    private void OpenImagePreview(PriceListItemDto item)
+    {
+        _previewItem = item;
+    }
+
+    private void CloseImagePreview()
+    {
+        _previewItem = null;
+    }
+
+    private async Task ApproveThisPriceList()
+    {
+        if (_priceList != null)
+        {
+            var ok = await PriceListService.ApprovePriceListAsync(_priceList.Id);
+            if (ok)
+            {
+                _toastMessage = "Đã phê duyệt áp dụng bảng giá thành công.";
+                await LoadDetail();
+            }
+        }
+    }
+}

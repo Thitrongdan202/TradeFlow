@@ -1,0 +1,408 @@
+﻿@page "/bang-gia"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Pricing
+@using TradeFlow.Domain.Enums
+@attribute [Authorize(Policy = "Permission:PriceLists:View")]
+
+@inject IPriceListService PriceListService
+@inject NavigationManager Nav
+
+<PageTitle>Quản lý bảng giá - TradeFlow</PageTitle>
+
+<div class="tf-page-header">
+    <div class="tf-page-header-left">
+        <h1 class="tf-page-title">Bảng giá & Báo giá</h1>
+        <p class="tf-page-subtitle">Quản lý các đợt ban hành bảng giá, chương trình khuyến mãi và báo giá đại lý theo kỳ</p>
+    </div>
+    <div class="tf-page-actions" style="display:flex; gap:8px;">
+        <AuthorizeView Policy="Permission:PriceLists:Create">
+            <a href="/bang-gia/nhap-excel" class="tf-btn tf-btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                Nhập từ Excel
+            </a>
+        </AuthorizeView>
+        <a href="/bang-gia/so-sanh" class="tf-btn tf-btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+            </svg>
+            So sánh giá
+        </a>
+        <a href="/bang-gia/lich-su" class="tf-btn tf-btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            Tra cứu lịch sử
+        </a>
+    </div>
+</div>
+
+@* Summary metrics cards *@
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px;">
+    <div class="tf-card" style="padding: 16px; display: flex; align-items: center; gap: 16px;">
+        <div style="width: 44px; height: 44px; border-radius: 8px; background: rgba(59, 130, 246, 0.1); color: #2563eb; display: flex; align-items: center; justify-content: center;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div>
+            <div style="font-size: 12px; color: var(--tf-text-muted); font-weight: 500;">TỔNG SỐ BẢNG GIÁ</div>
+            <div style="font-size: 22px; font-weight: 700; color: var(--tf-text-main);">@_priceLists.Count</div>
+        </div>
+    </div>
+    <div class="tf-card" style="padding: 16px; display: flex; align-items: center; gap: 16px;">
+        <div style="width: 44px; height: 44px; border-radius: 8px; background: rgba(16, 185, 129, 0.1); color: #059669; display: flex; align-items: center; justify-content: center;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <div>
+            <div style="font-size: 12px; color: var(--tf-text-muted); font-weight: 500;">ĐANG ÁP DỤNG</div>
+            <div style="font-size: 22px; font-weight: 700; color: #059669;">@_priceLists.Count(p => p.Status == PriceListStatus.Active)</div>
+        </div>
+    </div>
+    <div class="tf-card" style="padding: 16px; display: flex; align-items: center; gap: 16px;">
+        <div style="width: 44px; height: 44px; border-radius: 8px; background: rgba(245, 158, 11, 0.1); color: #d97706; display: flex; align-items: center; justify-content: center;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div>
+            <div style="font-size: 12px; color: var(--tf-text-muted); font-weight: 500;">BẢN NHÁP / CHỜ DUYỆT</div>
+            <div style="font-size: 22px; font-weight: 700; color: #d97706;">@_priceLists.Count(p => p.Status == PriceListStatus.Draft)</div>
+        </div>
+    </div>
+    <div class="tf-card" style="padding: 16px; display: flex; align-items: center; gap: 16px;">
+        <div style="width: 44px; height: 44px; border-radius: 8px; background: rgba(99, 102, 241, 0.1); color: #4f46e5; display: flex; align-items: center; justify-content: center;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        </div>
+        <div>
+            <div style="font-size: 12px; color: var(--tf-text-muted); font-weight: 500;">TỔNG MẶT HÀNG ĐỊNH GIÁ</div>
+            <div style="font-size: 22px; font-weight: 700; color: #4f46e5;">@_priceLists.Sum(p => p.TotalItems).ToString("N0")</div>
+        </div>
+    </div>
+</div>
+
+@* Filter controls *@
+<div class="tf-card tf-mb-4" style="padding: 16px;">
+    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 12px; align-items: center;">
+        <div>
+            <input type="text"
+                   class="tf-input"
+                   placeholder="Tìm theo mã bảng giá, tên, số báo giá..."
+                   value="@_searchTerm"
+                   @oninput="OnSearchChanged" />
+        </div>
+        <div>
+            <select class="tf-input" value="@_filterYear" @onchange="OnYearChanged">
+                <option value="0">-- Tất cả các năm --</option>
+                <option value="2027">Năm 2027</option>
+                <option value="2026">Năm 2026</option>
+                <option value="2025">Năm 2025</option>
+                <option value="2024">Năm 2024</option>
+            </select>
+        </div>
+        <div>
+            <select class="tf-input" value="@_filterQuarter" @onchange="OnQuarterChanged">
+                <option value="0">-- Tất cả các quý --</option>
+                <option value="1">Quý 1</option>
+                <option value="2">Quý 2</option>
+                <option value="3">Quý 3</option>
+                <option value="4">Quý 4</option>
+            </select>
+        </div>
+        <div>
+            <select class="tf-input" value="@_filterMonth" @onchange="OnMonthChanged">
+                <option value="0">-- Tất cả tháng --</option>
+                @for (int m = 1; m <= 12; m++)
+                {
+                    <option value="@m">Tháng @m</option>
+                }
+            </select>
+        </div>
+        <div>
+            <select class="tf-input" value="@_filterStatus" @onchange="OnStatusChanged">
+                <option value="">-- Tất cả trạng thái --</option>
+                <option value="@PriceListStatus.Draft">Bản nháp</option>
+                <option value="@PriceListStatus.Active">Đang áp dụng</option>
+                <option value="@PriceListStatus.Expired">Hết hiệu lực</option>
+                <option value="@PriceListStatus.Cancelled">Đã hủy</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(_toastMessage))
+{
+    <div class="tf-alert tf-alert-success tf-mb-4" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>@_toastMessage</span>
+        <button type="button" style="background:none; border:none; cursor:pointer;" @onclick="() => _toastMessage = null">✕</button>
+    </div>
+}
+
+@* Table of price lists *@
+<div class="tf-card">
+    <div class="tf-card-body" style="padding:0; overflow-x: auto;">
+        <table class="tf-table">
+            <thead>
+                <tr>
+                    <th style="min-width: 110px;">Mã bảng giá</th>
+                    <th style="min-width: 200px;">Tên bảng giá</th>
+                    <th style="min-width: 140px;">Số & Ngày BG</th>
+                    <th style="min-width: 100px;">Kỳ áp dụng</th>
+                    <th style="min-width: 150px;">Thời gian hiệu lực</th>
+                    <th style="min-width: 90px; text-align:right;">Số hàng</th>
+                    <th style="min-width: 120px; text-align:center;">Trạng thái</th>
+                    <th style="min-width: 180px; text-align:right;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (_isLoading)
+                {
+                    <tr><td colspan="8" style="text-align:center; padding: 28px;">Đang tải danh sách bảng giá...</td></tr>
+                }
+                else if (!FilteredList.Any())
+                {
+                    <tr>
+                        <td colspan="8">
+                            <div class="tf-empty" style="padding: 40px 16px; text-align: center;">
+                                <div style="font-size: 16px; font-weight: 600; color: var(--tf-text-main);">Chưa có bảng giá nào</div>
+                                <p style="color: var(--tf-text-muted); margin-top: 6px;">Bấm "Nhập từ Excel" để tải lên file báo giá từ nhà cung cấp hoặc tự tạo đợt báo giá mới.</p>
+                                <a href="/bang-gia/nhap-excel" class="tf-btn tf-btn-primary" style="margin-top: 12px; display:inline-flex;">Nhập từ Excel</a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var item in FilteredList)
+                    {
+                        <tr>
+                            <td>
+                                <a href="/bang-gia/chi-tiet/@item.Id" style="font-family: monospace; font-weight: 700; color: var(--tf-primary); text-decoration:none;">
+                                    @item.Code
+                                </a>
+                            </td>
+                            <td>
+                                <div style="font-weight: 600; color: var(--tf-text-main);">@item.Name</div>
+                                @if (!string.IsNullOrEmpty(item.ProgramTitle))
+                                {
+                                    <div style="font-size: 12px; color: var(--tf-text-muted); max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                        @item.ProgramTitle
+                                    </div>
+                                }
+                            </td>
+                            <td>
+                                <div>@(item.QuotationNumber ?? "-")</div>
+                                @if (item.QuotationDate.HasValue)
+                                {
+                                    <div style="font-size: 12px; color: var(--tf-text-muted);">@item.QuotationDate.Value.ToString("dd/MM/yyyy")</div>
+                                }
+                            </td>
+                            <td>
+                                <span class="tf-badge tf-badge-info">
+                                    Năm @item.Year
+                                    @if (item.Quarter.HasValue) { <span> - Q@item.Quarter</span> }
+                                    @if (item.Month.HasValue) { <span> (T@(item.Month))</span> }
+                                </span>
+                            </td>
+                            <td>
+                                @if (item.EffectiveFrom.HasValue || item.EffectiveTo.HasValue)
+                                {
+                                    <div style="font-size: 13px;">
+                                        @(item.EffectiveFrom?.ToString("dd/MM/yyyy") ?? "...") - @(item.EffectiveTo?.ToString("dd/MM/yyyy") ?? "áp dụng tiếp")
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span style="color: var(--tf-text-muted); font-size: 13px;">Chưa đặt</span>
+                                }
+                            </td>
+                            <td style="text-align: right; font-weight: 600;">
+                                @item.TotalItems.ToString("N0")
+                            </td>
+                            <td style="text-align: center;">
+                                @switch (item.Status)
+                                {
+                                    case PriceListStatus.Active:
+                                        <span class="tf-badge tf-badge-success" style="background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;">Đang áp dụng</span>
+                                        break;
+                                    case PriceListStatus.Draft:
+                                        <span class="tf-badge tf-badge-warning" style="background:#fffbeb; color:#92400e; border:1px solid #fde68a;">Bản nháp</span>
+                                        break;
+                                    case PriceListStatus.Expired:
+                                        <span class="tf-badge" style="background:#f3f4f6; color:#4b5563; border:1px solid #e5e7eb;">Hết hiệu lực</span>
+                                        break;
+                                    case PriceListStatus.Cancelled:
+                                        <span class="tf-badge tf-badge-danger" style="background:#fef2f2; color:#991b1b; border:1px solid #fecaca;">Đã hủy</span>
+                                        break;
+                                }
+                            </td>
+                            <td style="text-align: right;">
+                                <div style="display:inline-flex; gap: 4px;">
+                                    <a href="/bang-gia/chi-tiet/@item.Id" class="tf-btn tf-btn-secondary" style="padding: 4px 8px; font-size: 12px;" title="Xem chi tiết">
+                                        Xem
+                                    </a>
+                                    <a href="/api/pricing/@item.Id/export-excel" class="tf-btn tf-btn-secondary" style="padding: 4px 8px; font-size: 12px;" title="Xuất file Excel chuẩn" target="_blank">
+                                        Xuất
+                                    </a>
+                                    @if (!string.IsNullOrEmpty(item.OriginalFileStorageRef))
+                                    {
+                                        <a href="/api/pricing/@item.Id/download-original" class="tf-btn tf-btn-secondary" style="padding: 4px 8px; font-size: 12px;" title="Tải file Excel gốc" target="_blank">
+                                            File gốc
+                                        </a>
+                                    }
+                                    @if (item.Status == PriceListStatus.Draft)
+                                    {
+                                        <AuthorizeView Policy="Permission:PriceLists:Edit">
+                                            <button type="button" class="tf-btn tf-btn-primary" style="padding: 4px 8px; font-size: 12px; background:#059669;" @onclick="() => ApprovePriceList(item.Id)">
+                                                Duyệt
+                                            </button>
+                                        </AuthorizeView>
+                                    }
+                                    <AuthorizeView Policy="Permission:PriceLists:Delete">
+                                        <button type="button" class="tf-btn tf-btn-secondary" style="padding: 4px 8px; font-size: 12px; color: #dc2626;" @onclick="() => ConfirmDelete(item)">
+                                            Xóa
+                                        </button>
+                                    </AuthorizeView>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@* Delete Confirmation Modal *@
+@if (_showDeleteModal && _selectedPriceList != null)
+{
+    <div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; display:flex; align-items:center; justify-content:center;">
+        <div class="tf-card" style="width: 450px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);">
+            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px; color: #b91c1c;">Xác nhận xóa bảng giá</h3>
+            <p style="color: var(--tf-text-main); margin-bottom: 16px;">
+                Bạn có chắc chắn muốn xóa bảng giá <strong>@_selectedPriceList.Code - @_selectedPriceList.Name</strong>?
+                Tất cả @_selectedPriceList.TotalItems dòng sản phẩm trong bảng giá này sẽ bị xóa khỏi hệ thống.
+            </p>
+            <div style="display:flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showDeleteModal = false">Hủy bỏ</button>
+                <button type="button" class="tf-btn tf-btn-primary" style="background:#dc2626;" @onclick="ExecuteDelete">Xác nhận xóa</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<PriceListDto> _priceLists = new();
+    private bool _isLoading = true;
+    private string _searchTerm = "";
+    private int _filterYear = 0;
+    private int _filterQuarter = 0;
+    private int _filterMonth = 0;
+    private string _filterStatus = "";
+    private string? _toastMessage;
+
+    private bool _showDeleteModal = false;
+    private PriceListDto? _selectedPriceList;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _isLoading = true;
+        try
+        {
+            int? y = _filterYear > 0 ? _filterYear : null;
+            int? q = _filterQuarter > 0 ? _filterQuarter : null;
+            int? m = _filterMonth > 0 ? _filterMonth : null;
+            PriceListStatus? st = !string.IsNullOrEmpty(_filterStatus) ? Enum.Parse<PriceListStatus>(_filterStatus) : null;
+
+            _priceLists = await PriceListService.GetPriceListsAsync(y, q, m, st);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private IEnumerable<PriceListDto> FilteredList
+    {
+        get
+        {
+            var res = _priceLists.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(_searchTerm))
+            {
+                var term = _searchTerm.Trim().ToLower();
+                res = res.Where(p =>
+                    p.Code.ToLower().Contains(term) ||
+                    p.Name.ToLower().Contains(term) ||
+                    (p.QuotationNumber != null && p.QuotationNumber.ToLower().Contains(term)) ||
+                    (p.ProgramTitle != null && p.ProgramTitle.ToLower().Contains(term)));
+            }
+            return res;
+        }
+    }
+
+    private async Task OnSearchChanged(ChangeEventArgs e)
+    {
+        _searchTerm = e.Value?.ToString() ?? "";
+    }
+
+    private async Task OnYearChanged(ChangeEventArgs e)
+    {
+        _filterYear = int.TryParse(e.Value?.ToString(), out var y) ? y : 0;
+        await LoadData();
+    }
+
+    private async Task OnQuarterChanged(ChangeEventArgs e)
+    {
+        _filterQuarter = int.TryParse(e.Value?.ToString(), out var q) ? q : 0;
+        await LoadData();
+    }
+
+    private async Task OnMonthChanged(ChangeEventArgs e)
+    {
+        _filterMonth = int.TryParse(e.Value?.ToString(), out var m) ? m : 0;
+        await LoadData();
+    }
+
+    private async Task OnStatusChanged(ChangeEventArgs e)
+    {
+        _filterStatus = e.Value?.ToString() ?? "";
+        await LoadData();
+    }
+
+    private async Task ApprovePriceList(int id)
+    {
+        var ok = await PriceListService.ApprovePriceListAsync(id);
+        if (ok)
+        {
+            _toastMessage = "Đã phê duyệt và kích hoạt áp dụng bảng giá thành công.";
+            await LoadData();
+        }
+    }
+
+    private void ConfirmDelete(PriceListDto item)
+    {
+        _selectedPriceList = item;
+        _showDeleteModal = true;
+    }
+
+    private async Task ExecuteDelete()
+    {
+        if (_selectedPriceList != null)
+        {
+            var ok = await PriceListService.DeletePriceListAsync(_selectedPriceList.Id);
+            if (ok)
+            {
+                _toastMessage = $"Đã xóa bảng giá {_selectedPriceList.Code} thành công.";
+                _showDeleteModal = false;
+                _selectedPriceList = null;
+                await LoadData();
+            }
+        }
+    }
+}

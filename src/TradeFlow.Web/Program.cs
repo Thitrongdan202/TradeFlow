@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
+using TradeFlow.Application.Common.Interfaces;
 using TradeFlow.Application.DependencyInjection;
+using TradeFlow.Domain.Enums;
 using TradeFlow.Infrastructure.DependencyInjection;
 using TradeFlow.Infrastructure.Persistence;
 using TradeFlow.Web.Components;
@@ -64,20 +66,42 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-    app.UseExceptionHandler("/loi", createScopeForErrors: true);
+    //app.UseExceptionHandler("/loi", createScopeForErrors: true);
     app.UseHsts();
 }
 
-app.UseStatusCodePagesWithReExecute("/loi/{0}");
+//app.UseStatusCodePagesWithReExecute("/loi/{0}");
 app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
+app.UseStaticFiles();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 // Identity endpoints (login, logout, etc.)
 app.MapAdditionalIdentityEndpoints();
+
+// Pricing Excel Export & Original File Downloads
+app.MapGet("/api/pricing/{id:int}/export-excel", async (int id, IExcelPricingService excelService, TradeFlowDbContext dbContext) =>
+{
+    var list = await dbContext.PriceLists.FindAsync(id);
+    if (list == null) return Results.NotFound();
+    var bytes = await excelService.ExportPriceListAsync(id);
+    return Results.File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"BangGia_{list.Code}_{DateTime.Now:yyyyMMdd}.xlsx");
+}).RequireAuthorization("Permission:PriceLists:View");
+
+app.MapGet("/api/pricing/{id:int}/download-original", async (int id, IFileStorageService fileStorage, TradeFlowDbContext dbContext, IAuditService auditService, ICurrentUserService user) =>
+{
+    var list = await dbContext.PriceLists.FindAsync(id);
+    if (list == null || string.IsNullOrEmpty(list.OriginalFileStorageRef)) return Results.NotFound();
+    var stream = await fileStorage.GetFileAsync(list.OriginalFileStorageRef);
+    if (stream == null) return Results.NotFound();
+    await auditService.LogAsync(AuditEventType.PriceListOriginalDownloaded, user.UserName ?? "System", "PriceList", list.Id.ToString(), $"Tải file Excel gốc: {list.OriginalFileName}");
+    return Results.File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", list.OriginalFileName ?? $"BangGia_{list.Code}_Goc.xlsx");
+}).RequireAuthorization("Permission:PriceLists:View");
 
 app.Run();
 

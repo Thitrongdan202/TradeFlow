@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -78,6 +78,10 @@ public static class InfrastructureServiceExtensions
         // Register system code generator and file storage
         services.AddScoped<ISystemCodeGenerator, Services.SystemCodeGenerator>();
         services.AddScoped<IFileStorageService, Services.LocalFileStorageService>();
+
+        // Register Phase 4 Pricing services
+        services.AddScoped<IPriceListService, Services.PriceListService>();
+        services.AddScoped<IExcelPricingService, Services.ExcelPricingService>();
 
         return services;
     }

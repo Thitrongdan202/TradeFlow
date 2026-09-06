@@ -1,0 +1,130 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="TradeFlow — Hệ thống quản lý kinh doanh nội bộ">
+    <base href="/">
+    
+    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.46ein0sx1k.css">
+    <link rel="stylesheet" href="app.lekttf7jqc.css">
+    <link rel="stylesheet" href="TradeFlow.Web.iblhqhgy6b.styles.css">
+    <script type="importmap">{
+  "imports": {
+    "./Components/Account/Shared/PasskeySubmit.razor.js": "./Components/Account/Shared/PasskeySubmit.pr21mg9rrw.razor.js",
+    "./Components/Layout/ReconnectModal.razor.js": "./Components/Layout/ReconnectModal.abdmv1u4y3.razor.js",
+    "./_framework/blazor.server.js": "./_framework/blazor.server.wfr2hj6447.js",
+    "./_framework/blazor.web.js": "./_framework/blazor.web.wyu7y4jcvb.js",
+    "./lib/bootstrap/dist/js/bootstrap.bundle.js": "./lib/bootstrap/dist/js/bootstrap.bundle.6cfz1n2cew.js",
+    "./lib/bootstrap/dist/js/bootstrap.bundle.min.js": "./lib/bootstrap/dist/js/bootstrap.bundle.min.493y06b0oq.js",
+    "./lib/bootstrap/dist/js/bootstrap.esm.min.js": "./lib/bootstrap/dist/js/bootstrap.esm.min.jj8uyg4cgr.js",
+    "./lib/bootstrap/dist/js/bootstrap.esm.js": "./lib/bootstrap/dist/js/bootstrap.esm.vr1egmr9el.js",
+    "./lib/bootstrap/dist/js/bootstrap.min.js": "./lib/bootstrap/dist/js/bootstrap.min.63fj8s7r0e.js",
+    "./lib/bootstrap/dist/js/bootstrap.js": "./lib/bootstrap/dist/js/bootstrap.notf2xhcfb.js"
+  }
+}</script>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <title>Đăng nhập — TradeFlow</title></head>
+
+<body>
+
+<div class="tf-login-page" b-x3v2j732uh=""><div class="tf-login-left" b-x3v2j732uh=""><div class="tf-login-left-content" b-x3v2j732uh=""><div class="tf-login-left-brand" b-x3v2j732uh=""><div class="tf-brand-logo" style="width:42px;height:42px;" b-x3v2j732uh=""><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" b-x3v2j732uh=""><path d="M3 3h7v7H3V3z" fill="white" b-x3v2j732uh=""></path>
+                        <path d="M14 3h7v7h-7V3z" fill="white" opacity="0.6" b-x3v2j732uh=""></path>
+                        <path d="M3 14h7v7H3v-7z" fill="white" opacity="0.6" b-x3v2j732uh=""></path>
+                        <path d="M14 14h7v7h-7v-7z" fill="white" b-x3v2j732uh=""></path></svg></div>
+                <div b-x3v2j732uh=""><div style="font-size:20px;font-weight:700;color:white;letter-spacing:-0.01em;" b-x3v2j732uh="">TradeFlow</div>
+                    <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.6);letter-spacing:0.08em;text-transform:uppercase;" b-x3v2j732uh="">Quản lý thương mại</div></div></div>
+
+            <div class="tf-login-visual" b-x3v2j732uh=""><div class="tf-login-visual-title" b-x3v2j732uh="">
+                    Quản lý toàn bộ<br b-x3v2j732uh="">hoạt động thương mại<br b-x3v2j732uh="">của bạn.
+                </div>
+                <div class="tf-login-visual-desc" b-x3v2j732uh="">
+                    Hệ thống quản lý bán hàng, mua hàng, kho hàng và đối tác trên một nền tảng duy nhất — nhanh, chính xác, dễ dùng.
+                </div>
+
+                <div class="tf-login-features" b-x3v2j732uh=""><div class="tf-login-feature" b-x3v2j732uh=""><div class="tf-login-feature-icon" b-x3v2j732uh=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" b-x3v2j732uh=""><polyline points="20 6 9 17 4 12" b-x3v2j732uh=""></polyline></svg></div>
+                            <span b-x3v2j732uh="">Bán hàng &amp; quản lý đơn hàng</span></div><div class="tf-login-feature" b-x3v2j732uh=""><div class="tf-login-feature-icon" b-x3v2j732uh=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" b-x3v2j732uh=""><polyline points="20 6 9 17 4 12" b-x3v2j732uh=""></polyline></svg></div>
+                            <span b-x3v2j732uh="">Mua hàng &amp; nhà cung cấp</span></div><div class="tf-login-feature" b-x3v2j732uh=""><div class="tf-login-feature-icon" b-x3v2j732uh=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" b-x3v2j732uh=""><polyline points="20 6 9 17 4 12" b-x3v2j732uh=""></polyline></svg></div>
+                            <span b-x3v2j732uh="">Quản lý kho hàng</span></div><div class="tf-login-feature" b-x3v2j732uh=""><div class="tf-login-feature-icon" b-x3v2j732uh=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" b-x3v2j732uh=""><polyline points="20 6 9 17 4 12" b-x3v2j732uh=""></polyline></svg></div>
+                            <span b-x3v2j732uh="">Báo cáo doanh thu</span></div></div></div></div></div>
+
+    <div class="tf-login-right" b-x3v2j732uh=""><div class="tf-login-card" b-x3v2j732uh=""><div class="tf-login-brand" b-x3v2j732uh=""><div class="tf-login-logo" b-x3v2j732uh=""><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" b-x3v2j732uh=""><path d="M3 3h7v7H3V3z" fill="white" b-x3v2j732uh=""></path>
+                        <path d="M14 3h7v7h-7V3z" fill="white" opacity="0.6" b-x3v2j732uh=""></path>
+                        <path d="M3 14h7v7H3v-7z" fill="white" opacity="0.6" b-x3v2j732uh=""></path>
+                        <path d="M14 14h7v7h-7v-7z" fill="white" b-x3v2j732uh=""></path></svg></div>
+                <div class="tf-login-brand-name" b-x3v2j732uh="">TradeFlow</div>
+                <div class="tf-login-brand-tagline" b-x3v2j732uh="">Quản lý thương mại</div></div>
+
+            <div class="tf-login-form-title" b-x3v2j732uh="">Đăng nhập</div>
+            <div class="tf-login-form-subtitle" b-x3v2j732uh="">Chào mừng bạn quay trở lại!</div><form method="post" action="/Account/Login"><input type="hidden" name="_handler" value="login"><input type="hidden" name="__RequestVerificationToken" value="CfDJ8CTLSgricaBAtsSR2Zi5dtdzJVLWmsiHQyvjeKK3h-fPHi1qva6BGsJa0R0KJPHyrJQvoY_DRuehNJHkj9d-o5XJt2IdWwLCckwGJGcLBguhf-x-j1kEEeIKWo33_RW2Rf1qqK1ok21CPs2hS6-wrvI">
+
+                <div class="tf-field tf-mb-4" b-x3v2j732uh=""><label class="tf-label" for="login-username" b-x3v2j732uh="">Tên đăng nhập</label>
+                    <div class="tf-input-wrapper" b-x3v2j732uh=""><input id="login-username" autocomplete="username" placeholder="Tên đăng nhập hoặc email" aria-required="true" aria-describedby="login-username-error" name="Input.Username" class="tf-input valid" value=""></div>
+                    </div>
+
+                <div class="tf-field tf-mb-4" b-x3v2j732uh=""><label class="tf-label" for="login-password" b-x3v2j732uh="">Mật khẩu</label>
+                    <div class="tf-input-wrapper"><input type="password" name="Input.Password" id="login-password" class="tf-input" placeholder="Nhập mật khẩu" autocomplete="current-password" aria-required="true" value="">
+    <button type="button" class="tf-input-suffix" onclick="tfTogglePassword('login-password', this)" aria-label="Hiển thị mật khẩu" title="Hiển thị mật khẩu"><svg class="tf-eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle></svg>
+        <svg class="tf-eye-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"></path>
+            <line x1="1" y1="1" x2="23" y2="23"></line></svg></button></div>
+
+<script>
+    if (typeof window.tfTogglePassword === 'undefined') {
+        window.tfTogglePassword = function(inputId, btn) {
+            var input = document.getElementById(inputId);
+            if (!input) return;
+            var isPass = input.type === 'password';
+            input.type = isPass ? 'text' : 'password';
+            var showSvg = btn.querySelector('.tf-eye-show');
+            var hideSvg = btn.querySelector('.tf-eye-hide');
+            if (showSvg && hideSvg) {
+                showSvg.style.display = isPass ? 'none' : 'block';
+                hideSvg.style.display = isPass ? 'block' : 'none';
+            }
+            var label = isPass ? 'Ẩn mật khẩu' : 'Hiển thị mật khẩu';
+            btn.setAttribute('aria-label', label);
+            btn.title = label;
+        };
+    }
+</script>
+                    </div>
+
+                <div class="tf-login-options" b-x3v2j732uh=""><label class="tf-checkbox-label" b-x3v2j732uh=""><input type="checkbox" name="Input.RememberMe" class="tf-checkbox valid" value="True">
+                        Duy trì đăng nhập
+                    </label>
+                    <a href="/Account/ForgotPassword" class="tf-forgot-link" b-x3v2j732uh="">Quên mật khẩu?</a></div>
+
+                <button type="submit" class="tf-btn tf-btn-primary tf-btn-lg tf-btn-full" b-x3v2j732uh=""><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" b-x3v2j732uh=""><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4" b-x3v2j732uh=""></path>
+                        <polyline points="10 17 15 12 10 7" b-x3v2j732uh=""></polyline>
+                        <line x1="15" y1="12" x2="3" y2="12" b-x3v2j732uh=""></line></svg>
+                    <span b-x3v2j732uh="">Đăng nhập</span></button></form></div></div></div>
+
+<div id="blazor-error-ui" data-nosnippet="">
+    Đã xảy ra lỗi không mong đợi.
+    <a href="." class="reload">Tải lại</a>
+    <span class="dismiss">✕</span></div>
+        <blazor-focus-on-navigate selector="h1"></blazor-focus-on-navigate>
+    <script type="module" src="Components/Layout/ReconnectModal.abdmv1u4y3.razor.js" b-owqttt722i=""></script>
+
+<dialog id="components-reconnect-modal" data-nosnippet="" b-owqttt722i=""><div class="components-reconnect-container" b-owqttt722i=""><div class="components-rejoining-animation" aria-hidden="true" b-owqttt722i=""><div b-owqttt722i=""></div>
+            <div b-owqttt722i=""></div></div>
+        <p class="components-reconnect-first-attempt-visible" b-owqttt722i="">
+            Rejoining the server...
+        </p>
+        <p class="components-reconnect-repeated-attempt-visible" b-owqttt722i="">
+            Rejoin failed... trying again in <span id="components-seconds-to-next-attempt" b-owqttt722i=""></span> seconds.
+        </p>
+        <p class="components-reconnect-failed-visible" b-owqttt722i="">
+            Failed to rejoin.<br b-owqttt722i="">Please retry or reload the page.
+        </p>
+        <button id="components-reconnect-button" class="components-reconnect-failed-visible" b-owqttt722i="">
+            Retry
+        </button>
+        <p class="components-pause-visible" b-owqttt722i="">
+            The session has been paused by the server.
+        </p>
+        <p class="components-resume-failed-visible" b-owqttt722i="">
+            Failed to resume the session.<br b-owqttt722i="">Please retry or reload the page.
+        </p>
+        <button id="components-resume-button" class="components-pause-visible components-resume-failed-visible" b-owqttt722i="">
+            Resume
+        </button></div></dialog>
+    <script src="_framework/blazor.web.wyu7y4jcvb.js"></script></body></html><!--Blazor-Server-Component-State:CfDJ8CTLSgricaBAtsSR2Zi5dtfmtgn3Yx/HFSoqgGppkai+aB5P7KmzCJB1kUfvgHpiZF5CILqJIiSbomdSv1Tyjpu05Ayik4Aw9zEgbs+hyLFvrhgxkFB1C7uiUpvLXSulaw8xaGjJXIz4U1l783pmridnJssUeE7MqarZ634jL0ycNoFd2SGYA1dyL4/9iFg2qmLjQ0/ue49dO7t9I5M7ZY0UQpegN7YzEbezx6mZiksb4ukae2dRy5LY4R7qry6mih1+Tn6SyuVMWLIq87ZMmVs1FCmPTADjGJseWJPrbLDT3VmaCrXN+xOUfjGVplP7UUxcsIL3SHENoLuSKFGDfkVpePUonJ/u2OBNpW9rarxDUkn2cd8yrV58hV9ufrZoKCjTED41ft+ZMEe0kGj47qPFHqQx+om87UeBmAznDA5lNg3NS71TBgnrvmNkOQfbgoUNRjSN+RV5eCsPnUk5Z6oZTHVgzCtrF45Wd5cRKGE0MHWcnveQxtqBV6h1xrz3roDL1ztvDM7obaIyzlSfBoHzV4rJMwr1TK2F9bFR8CZslrot7BBgTNbMBOwMpPTus0MovoiaTVIV3Eh1wvWN92rqh0uEhTno/m4p4AtG0NX8L/FOWC4UwfhGtUxOzFPEbwW3SO/aCxm7WClscQEVJ9gDb0Bhlql/lZwyO8rvJyfvhcBaklMGn4AZkFojXh7LoOM5kV4ZV/2s66mWiYfeaAopMn31meHj8Hdk+UJhT7JBbi8wLAonw+hDq7SvxUhtUcdQFV8SfvAmgfUhxVOddZqhly78WmiEZb50f975u8+joFA78CMbmIm2YJgfIULbHE+AIzOY+TuLOGbjCt+ScuPz180rZyd8tBa/Qmzk7q1B6IXqwpZxbBZMmzqeyfKKNCOHe/CRi/0avG3lJliOXha68okT88YeVno8LVBV1y3AdXVzV1c5/3k47XqfXerzL92El6i9KI++ugWPLzs+GQQxta78+mLnSuC2/xgmX4XS9PXQCj95sPebpAv9Wgi+LCTYUzHG1YTn7fdAsQTRDpGAkv2RpwOGhISsaa+LaAEFy6AjodrTrfGIw0jaZkZAtj/HzipDahJkdeUC1uI26gKCIyv5J0LXVDvWcek71wn7ungJsUV9AwqM9baZGaQIuA==-->

@@ -59,4 +59,15 @@ public enum AuditEventType
     WarehouseCreated = 78,
     WarehouseUpdated = 79,
     WarehouseDeleted = 80,
+
+    // === Bảng giá (Phase 4) ===
+    PriceListCreated = 90,
+    PriceListUpdated = 91,
+    PriceListDeleted = 92,
+    PriceListApproved = 93,
+    PriceListImported = 94,
+    PriceListExported = 95,
+    PriceListOriginalDownloaded = 96,
+    PriceChanged = 97,
+    ProductImageMapped = 98,
 }

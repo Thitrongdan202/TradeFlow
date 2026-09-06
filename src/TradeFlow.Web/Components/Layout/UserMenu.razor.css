@@ -1,31 +1,78 @@
-/* UserMenu scoped styles */
+﻿/* UserMenu scoped styles */
+
+.tf-user-dropdown-container {
+    position: relative;
+}
 
 .tf-user-name {
     font-size: var(--tf-text-sm);
     font-weight: var(--tf-font-medium);
     color: var(--tf-text-primary);
-    max-width: 120px;
+    max-width: 140px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
+.tf-user-chevron {
+    transition: transform 0.2s ease;
+}
+
+.tf-user-chevron.expanded {
+    transform: rotate(180deg);
+}
+
 .tf-user-menu {
     right: 0;
-    min-width: 240px;
+    min-width: 250px;
     top: calc(100% + 8px);
+    background: var(--tf-white);
+    border: 1px solid var(--tf-border);
+    border-radius: 8px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    padding: 6px 0;
+    animation: tf-dropdown-fade 0.15s ease-out;
+}
+
+@keyframes tf-dropdown-fade {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .tf-user-menu-header {
     display: flex;
     align-items: center;
     gap: var(--tf-space-3);
-    padding: var(--tf-space-3) var(--tf-space-3);
+    padding: 10px 16px;
 }
 
 .tf-avatar-lg {
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
     font-size: var(--tf-text-base);
+    font-weight: 600;
     flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--tf-primary-light);
+    color: var(--tf-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tf-user-btn:focus-visible {
+    outline: 2px solid var(--tf-primary);
+    outline-offset: 2px;
+}
+
+.tf-dropdown-item:focus-visible {
+    outline: 2px solid var(--tf-primary);
+    outline-offset: -2px;
+    background: var(--tf-gray-100);
 }

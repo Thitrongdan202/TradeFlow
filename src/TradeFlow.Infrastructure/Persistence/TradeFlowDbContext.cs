@@ -2,8 +2,9 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using TradeFlow.Application.Common.Interfaces;
-using TradeFlow.Domain.Entities.Settings;
 using TradeFlow.Domain.Entities.MasterData;
+using TradeFlow.Domain.Entities.Pricing;
+using TradeFlow.Domain.Entities.Settings;
 using TradeFlow.Domain.Entities.Users;
 
 namespace TradeFlow.Infrastructure.Persistence;
@@ -38,6 +39,10 @@ public class TradeFlowDbContext
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Supplier> Suppliers => Set<Supplier>();
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
+
+    // === Phase 4 — Bảng giá & Giá cả ===
+    public DbSet<PriceList> PriceLists => Set<PriceList>();
+    public DbSet<PriceListItem> PriceListItems => Set<PriceListItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -8,6 +8,7 @@ public static class SystemCodeConstants
     public const string Warehouse = "Warehouse";
     public const string ProductCategory = "ProductCategory";
     public const string UnitOfMeasure = "UnitOfMeasure";
+    public const string PriceList = "PriceList";
 
     public static readonly IReadOnlyDictionary<string, (string Prefix, string Description)> Defaults =
         new Dictionary<string, (string Prefix, string Description)>
@@ -18,5 +19,6 @@ public static class SystemCodeConstants
             [Warehouse] = ("KHO", "Mã kho hàng hệ thống"),
             [ProductCategory] = ("DM", "Mã danh mục sản phẩm hệ thống"),
             [UnitOfMeasure] = ("DV", "Mã đơn vị tính hệ thống"),
+            [PriceList] = ("BG", "Mã bảng giá hệ thống"),
         };
 }

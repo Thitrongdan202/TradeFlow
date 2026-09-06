@@ -1,0 +1,221 @@
+﻿@page "/bang-gia/lich-su"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Pricing
+@using TradeFlow.Domain.Enums
+@attribute [Authorize(Policy = "Permission:PriceLists:View")]
+
+@inject IPriceListService PriceListService
+@inject IFileStorageService FileStorage
+@inject NavigationManager Nav
+
+<PageTitle>Tra cứu lịch sử giá - TradeFlow</PageTitle>
+
+<div class="tf-page-header">
+    <div class="tf-page-header-left">
+        <div style="display:flex; align-items:center; gap: 8px;">
+            <a href="/bang-gia" style="color: var(--tf-text-muted); text-decoration:none; display:inline-flex; align-items:center;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                Bảng giá
+            </a>
+            <span style="color: var(--tf-text-muted);">/</span>
+            <span style="font-weight: 600;">Lịch sử giá</span>
+        </div>
+        <h1 class="tf-page-title" style="margin-top: 4px;">Tra cứu lịch sử biến động giá sản phẩm</h1>
+        <p class="tf-page-subtitle">Theo dõi diễn biến giá đại lý qua từng quý, từng năm và từng đợt ban hành bảng giá</p>
+    </div>
+</div>
+
+@* Search Box *@
+<div class="tf-card tf-mb-4" style="padding: 20px;">
+    <div style="display: flex; gap: 12px; align-items: center;">
+        <div style="flex: 1;">
+            <input type="text"
+                   class="tf-input"
+                   placeholder="Nhập mã hàng mới (vd: TL2138, K8012), mã cũ, hoặc mã sản phẩm hệ thống..."
+                   value="@_searchQuery"
+                   @oninput="OnQueryInput"
+                   @onkeydown="OnKeyDown" />
+        </div>
+        <button type="button" class="tf-btn tf-btn-primary" style="padding: 9px 24px;" @onclick="ExecuteSearch" disabled="@_isSearching">
+            @if (_isSearching)
+            {
+                <span>Đang tìm...</span>
+            }
+            else
+            {
+                <span>Tra cứu</span>
+            }
+        </button>
+    </div>
+</div>
+
+@if (_hasSearched)
+{
+    @if (!_historyItems.Any())
+    {
+        <div class="tf-card" style="padding: 40px; text-align: center;">
+            <div style="font-size: 16px; font-weight: 600; color: var(--tf-text-main);">
+                Không tìm thấy dữ liệu giá cho từ khóa "@_searchedKeyword"
+            </div>
+            <p style="color: var(--tf-text-muted); margin-top: 6px; font-size: 13px;">
+                Vui lòng kiểm tra lại mã hàng mới hoặc mã cũ theo đúng định dạng trong bảng giá đã nhập.
+            </p>
+        </div>
+    }
+    else
+    {
+        var firstItem = _historyItems.First();
+        <div class="tf-card tf-mb-4" style="padding: 20px; display:flex; gap: 20px; align-items: center; background: #fff;">
+            @if (!string.IsNullOrEmpty(firstItem.ImageStorageRef))
+            {
+                <img src="@FileStorage.GetPublicUrl(firstItem.ImageStorageRef)"
+                     alt="@firstItem.NewCode"
+                     style="width: 80px; height: 80px; object-fit: contain; border-radius: 8px; border: 1px solid #e5e7eb; padding: 4px;" />
+            }
+            <div>
+                <span class="tf-badge tf-badge-info">@(firstItem.Group ?? "Sản phẩm")</span>
+                <h2 style="font-size: 20px; font-weight: 800; color: #dc2626; margin: 4px 0;">
+                    @firstItem.NewCode
+                    @if (!string.IsNullOrEmpty(firstItem.LegacyCode))
+                    {
+                        <span style="font-size: 14px; font-weight: normal; color: #6b7280;">(Mã cũ: @firstItem.LegacyCode)</span>
+                    }
+                </h2>
+                <div style="color: #4b5563; font-size: 13px;">
+                    @(firstItem.ProductName ?? firstItem.ProductInfo ?? "Thông tin sản phẩm")
+                </div>
+            </div>
+        </div>
+
+        @* Timeline / History Table *@
+        <div class="tf-card">
+            <div class="tf-card-header" style="padding: 16px;">
+                <h3 style="font-size: 16px; font-weight: 700;">Lịch sử giá qua các đợt ban hành (@_historyItems.Count lần ghi nhận)</h3>
+            </div>
+            <div class="tf-card-body" style="padding:0; overflow-x: auto;">
+                <table class="tf-table" style="font-size: 13px;">
+                    <thead>
+                        <tr style="background: #1e293b; color: #fff;">
+                            <th style="min-width: 140px; color:#fff;">Mã bảng giá</th>
+                            <th style="min-width: 220px; color:#fff;">Tên bảng giá / Chương trình</th>
+                            <th style="min-width: 120px; color:#fff;">Mã hàng mới</th>
+                            <th style="min-width: 130px; text-align: right; color:#fff;">Giá đại lý (VNĐ)</th>
+                            <th style="min-width: 100px; text-align: center; color:#fff;">Thuế VAT</th>
+                            <th style="min-width: 150px; text-align: right; color:#fff;">Biến động</th>
+                            <th style="min-width: 120px; text-align: center; color:#fff;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < _historyItems.Count; i++)
+                        {
+                            var item = _historyItems[i];
+                            decimal? prevPrice = (i + 1 < _historyItems.Count) ? _historyItems[i + 1].UnitPrice : null;
+                            decimal? diff = prevPrice.HasValue ? item.UnitPrice - prevPrice.Value : null;
+                            decimal? pct = (prevPrice.HasValue && prevPrice.Value > 0)
+                                ? Math.Round((diff!.Value / prevPrice.Value) * 100m, 1)
+                                : null;
+
+                            <tr>
+                                <td>
+                                    <a href="/bang-gia/chi-tiet/@item.PriceListId" style="font-family: monospace; font-weight: 700; color: var(--tf-primary); text-decoration:none;">
+                                        Xem BG #@item.PriceListId ↗
+                                    </a>
+                                </td>
+                                <td>
+                                    <span style="font-weight: 600;">@item.Note</span>
+                                </td>
+                                <td>
+                                    <strong style="color: #dc2626;">@item.NewCode</strong>
+                                </td>
+                                <td style="text-align: right; font-weight: 700; font-size: 14px; color: #047857;">
+                                    @item.UnitPrice.ToString("N0") ₫
+                                </td>
+                                <td style="text-align: center;">
+                                    @(item.VatRate.HasValue ? $"{item.VatRate.Value}%" : "Chưa VAT")
+                                </td>
+                                <td style="text-align: right; font-weight: 700;">
+                                    @if (diff.HasValue)
+                                    {
+                                        if (diff.Value > 0)
+                                        {
+                                            <span style="color: #ea580c;">▲ +@diff.Value.ToString("N0") ₫ (+@pct%)</span>
+                                        }
+                                        else if (diff.Value < 0)
+                                        {
+                                            <span style="color: #059669;">▼ @diff.Value.ToString("N0") ₫ (@pct%)</span>
+                                        }
+                                        else
+                                        {
+                                            <span style="color: #64748b;">▬ Không đổi</span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span style="color: #9ca3af; font-size: 12px;">(Kỳ đầu tiên)</span>
+                                    }
+                                </td>
+                                <td style="text-align: center;">
+                                    <a href="/bang-gia/chi-tiet/@item.PriceListId" class="tf-btn tf-btn-secondary" style="padding: 4px 8px; font-size: 12px;">
+                                        Xem bảng giá
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [SupplyParameterFromQuery] public string? Code { get; set; }
+
+    private string _searchQuery = "";
+    private string _searchedKeyword = "";
+    private bool _isSearching = false;
+    private bool _hasSearched = false;
+    private List<PriceListItemDto> _historyItems = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(Code))
+        {
+            _searchQuery = Code;
+            await ExecuteSearch();
+        }
+    }
+
+    private void OnQueryInput(ChangeEventArgs e)
+    {
+        _searchQuery = e.Value?.ToString() ?? "";
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await ExecuteSearch();
+        }
+    }
+
+    private async Task ExecuteSearch()
+    {
+        if (string.IsNullOrWhiteSpace(_searchQuery)) return;
+
+        _isSearching = true;
+        _searchedKeyword = _searchQuery.Trim();
+
+        try
+        {
+            _historyItems = await PriceListService.GetProductPriceHistoryAsync(_searchedKeyword);
+            _hasSearched = true;
+        }
+        finally
+        {
+            _isSearching = false;
+        }
+    }
+}

@@ -1,4 +1,4 @@
-﻿@implements IDisposable
+@implements IDisposable
 @inject NavigationManager Nav
 
 <nav class="tf-sidebar-inner">
@@ -155,7 +155,54 @@
             </div>
         </div>
 
-        @if (false)
+        @* ---- BẢNG GIÁ (Phase 4) ---- *@
+        <div class="tf-nav-section">
+            <div class="tf-nav-section-label">Bảng giá</div>
+
+            <div class="tf-nav-item">
+                <button type="button" class="tf-nav-link" @onclick="TogglePricing">
+                    <span class="tf-nav-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+                        </svg>
+                    </span>
+                    <span class="tf-nav-label">Bảng giá</span>
+                    <svg class="tf-nav-chevron @(IsPricingOpen ? "expanded" : "")" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                </button>
+                <div class="tf-nav-sub @(IsPricingOpen ? "expanded" : "")">
+                    <AuthorizeView Policy="Permission:PriceLists:View">
+                        <div class="tf-nav-sub-item">
+                            <NavLink class="tf-nav-sub-link" href="/bang-gia" Match="NavLinkMatch.All" ActiveClass="active" @onclick="OnNavClick">
+                                <span class="tf-nav-sub-dot"></span>Danh sách bảng giá
+                            </NavLink>
+                        </div>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permission:PriceLists:Create">
+                        <div class="tf-nav-sub-item">
+                            <NavLink class="tf-nav-sub-link" href="/bang-gia/nhap-excel" ActiveClass="active" @onclick="OnNavClick">
+                                <span class="tf-nav-sub-dot"></span>Nhập từ Excel
+                            </NavLink>
+                        </div>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permission:PriceLists:View">
+                        <div class="tf-nav-sub-item">
+                            <NavLink class="tf-nav-sub-link" href="/bang-gia/so-sanh" ActiveClass="active" @onclick="OnNavClick">
+                                <span class="tf-nav-sub-dot"></span>So sánh bảng giá
+                            </NavLink>
+                        </div>
+                        <div class="tf-nav-sub-item">
+                            <NavLink class="tf-nav-sub-link" href="/bang-gia/lich-su" ActiveClass="active" @onclick="OnNavClick">
+                                <span class="tf-nav-sub-dot"></span>Lịch sử giá SP
+                            </NavLink>
+                        </div>
+                    </AuthorizeView>
+                </div>
+            </div>
+        </div>
+
+        @if (_showFutureModules)
         {
             @* ---- BÁN HÀNG (Phase 5) ---- *@
             <div class="tf-nav-section">
@@ -311,9 +358,11 @@
 @code {
     [Parameter] public EventCallback OnNavClick { get; set; }
 
+    private readonly bool _showFutureModules = false;
     private bool IsCatalogOpen { get; set; }
     private bool IsPartnersOpen { get; set; }
     private bool IsWarehouseOpen { get; set; }
+    private bool IsPricingOpen { get; set; }
     private bool IsSalesOpen { get; set; }
     private bool IsPurchaseOpen { get; set; }
     private bool IsSettingsOpen { get; set; }
@@ -339,6 +388,7 @@
         if (url.StartsWith("danh-muc")) IsCatalogOpen = true;
         if (url.StartsWith("doi-tac")) IsPartnersOpen = true;
         if (url.StartsWith("kho")) IsWarehouseOpen = true;
+        if (url.StartsWith("bang-gia")) IsPricingOpen = true;
         if (url.StartsWith("ban-hang")) IsSalesOpen = true;
         if (url.StartsWith("mua-hang")) IsPurchaseOpen = true;
         if (url.StartsWith("cai-dat")) IsSettingsOpen = true;
@@ -347,6 +397,7 @@
     private void ToggleCatalog() => IsCatalogOpen = !IsCatalogOpen;
     private void TogglePartners() => IsPartnersOpen = !IsPartnersOpen;
     private void ToggleWarehouse() => IsWarehouseOpen = !IsWarehouseOpen;
+    private void TogglePricing() => IsPricingOpen = !IsPricingOpen;
     private void ToggleSales() => IsSalesOpen = !IsSalesOpen;
     private void TogglePurchase() => IsPurchaseOpen = !IsPurchaseOpen;
     private void ToggleSettings() => IsSettingsOpen = !IsSettingsOpen;

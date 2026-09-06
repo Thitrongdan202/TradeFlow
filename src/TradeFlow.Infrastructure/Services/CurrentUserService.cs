@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -70,7 +70,11 @@ public class CurrentUserService : ICurrentUserService
 
         if (Principal.IsInRole("Administrator")) return true;
 
-        var targetPermission = $"{resource}:{action}";
-        return Principal.Claims.Any(c => c.Type == "Permission" && c.Value == targetPermission);
+        if (string.IsNullOrEmpty(UserId)) return false;
+
+        var permissionService = _serviceProvider.GetService<IPermissionService>();
+        if (permissionService == null) return false;
+
+        return permissionService.HasPermission(UserId, resource, action);
     }
 }

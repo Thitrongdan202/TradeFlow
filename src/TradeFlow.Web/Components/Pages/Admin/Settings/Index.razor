@@ -1,42 +1,86 @@
 ﻿@page "/cai-dat"
 @attribute [Authorize]
-@using TradeFlow.Web.Components.Layout
-@layout MainLayout
+@rendermode InteractiveServer
 
-<PageTitle>Cài đặt hệ thống - TradeFlow</PageTitle>
+<PageTitle>Cài đặt hệ thống — TradeFlow</PageTitle>
 
 <div class="tf-page-header">
     <div>
         <h1 class="tf-page-title">Cài đặt hệ thống</h1>
-        <p class="tf-page-subtitle">Quản lý cấu hình chung của toàn hệ thống</p>
+        <p class="tf-page-subtitle">Quản lý cấu hình chung, người dùng, phân quyền và giám sát hệ thống</p>
     </div>
 </div>
 
-<div class="tf-card" style="max-width: 600px;">
+<div class="tf-card" style="max-width: 800px;">
     <div class="tf-card-body">
-        <ul style="list-style: none; padding: 0; margin: 0;">
+        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 16px;">
             <AuthorizeView Policy="Permission:CompanySettings:View">
-                <li style="margin-bottom: 12px;">
-                    <a href="/cai-dat/cong-ty" style="font-weight: 600; font-size: 15px; color: var(--tf-text-primary); text-decoration: none;">Thông tin công ty</a>
-                    <p style="margin: 4px 0 0; font-size: 13px; color: var(--tf-text-muted);">Cập nhật tên công ty, địa chỉ, số điện thoại, MST</p>
+                <li style="padding: 12px; border: 1px solid var(--tf-border); border-radius: 8px; transition: background 0.15s ease;">
+                    <a href="/cai-dat/cong-ty" style="font-weight: 600; font-size: 15px; color: var(--tf-primary); text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M14 9h1"/><path d="M14 13h1"/><path d="M14 17h1"/>
+                        </svg>
+                        Thông tin công ty
+                    </a>
+                    <p style="margin: 6px 0 0; font-size: 13px; color: var(--tf-text-secondary); padding-left: 26px;">
+                        Cập nhật tên pháp nhân công ty, địa chỉ trụ sở, số điện thoại liên hệ và mã số thuế.
+                    </p>
                 </li>
             </AuthorizeView>
+
             <AuthorizeView Policy="Permission:Users:View">
-                <li style="margin-bottom: 12px;">
-                    <a href="/cai-dat/nguoi-dung" style="font-weight: 600; font-size: 15px; color: var(--tf-text-primary); text-decoration: none;">Quản lý người dùng</a>
-                    <p style="margin: 4px 0 0; font-size: 13px; color: var(--tf-text-muted);">Thêm, sửa, xóa tài khoản và phân quyền</p>
+                <li style="padding: 12px; border: 1px solid var(--tf-border); border-radius: 8px; transition: background 0.15s ease;">
+                    <a href="/cai-dat/nguoi-dung" style="font-weight: 600; font-size: 15px; color: var(--tf-primary); text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+                        </svg>
+                        Quản lý người dùng
+                    </a>
+                    <p style="margin: 6px 0 0; font-size: 13px; color: var(--tf-text-secondary); padding-left: 26px;">
+                        Thêm mới tài khoản, phân vai trò, khóa/mở khóa tài khoản và thiết lập lại mật khẩu.
+                    </p>
                 </li>
             </AuthorizeView>
+
             <AuthorizeView Policy="Permission:Roles:View">
-                <li style="margin-bottom: 12px;">
-                    <a href="/cai-dat/vai-tro" style="font-weight: 600; font-size: 15px; color: var(--tf-text-primary); text-decoration: none;">Vai trò &amp; Quyền hạn</a>
-                    <p style="margin: 4px 0 0; font-size: 13px; color: var(--tf-text-muted);">Định nghĩa nhóm quyền cho người dùng</p>
+                <li style="padding: 12px; border: 1px solid var(--tf-border); border-radius: 8px; transition: background 0.15s ease;">
+                    <a href="/cai-dat/vai-tro" style="font-weight: 600; font-size: 15px; color: var(--tf-primary); text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                        Vai trò &amp; Phân quyền
+                    </a>
+                    <p style="margin: 6px 0 0; font-size: 13px; color: var(--tf-text-secondary); padding-left: 26px;">
+                        Định nghĩa các nhóm vai trò và phân quyền chi tiết (Xem, Thêm, Sửa, Xóa, Phê duyệt, Import, Export).
+                    </p>
                 </li>
             </AuthorizeView>
+
             <AuthorizeView Policy="Permission:AuditLog:View">
-                <li style="margin-bottom: 12px;">
-                    <a href="/cai-dat/nhat-ky" style="font-weight: 600; font-size: 15px; color: var(--tf-text-primary); text-decoration: none;">Nhật ký hệ thống</a>
-                    <p style="margin: 4px 0 0; font-size: 13px; color: var(--tf-text-muted);">Theo dõi lịch sử thao tác của các tài khoản</p>
+                <li style="padding: 12px; border: 1px solid var(--tf-border); border-radius: 8px; transition: background 0.15s ease;">
+                    <a href="/cai-dat/nhat-ky" style="font-weight: 600; font-size: 15px; color: var(--tf-primary); text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                        </svg>
+                        Nhật ký hoạt động hệ thống
+                    </a>
+                    <p style="margin: 6px 0 0; font-size: 13px; color: var(--tf-text-secondary); padding-left: 26px;">
+                        Tra cứu lịch sử thao tác của tất cả tài khoản, địa chỉ IP và thời gian truy cập.
+                    </p>
+                </li>
+            </AuthorizeView>
+
+            <AuthorizeView Policy="Permission:TechnicalSupport:View">
+                <li style="padding: 12px; border: 1px solid var(--tf-border); border-radius: 8px; transition: background 0.15s ease;">
+                    <a href="/cai-dat/ho-tro" style="font-weight: 600; font-size: 15px; color: var(--tf-primary); text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                        </svg>
+                        Hỗ trợ kỹ thuật &amp; Khôi phục
+                    </a>
+                    <p style="margin: 6px 0 0; font-size: 13px; color: var(--tf-text-secondary); padding-left: 26px;">
+                        Công cụ cứu hộ tài khoản quản trị viên và xử lý sự cố bảo mật nâng cao.
+                    </p>
                 </li>
             </AuthorizeView>
         </ul>

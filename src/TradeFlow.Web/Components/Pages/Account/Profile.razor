@@ -1,8 +1,9 @@
-@page "/tai-khoan"
+﻿@page "/tai-khoan"
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Identity
 @using TradeFlow.Domain.Enums
 @using TradeFlow.Infrastructure.Persistence
+@rendermode InteractiveServer
 @attribute [Authorize]
 
 @inject UserManager<ApplicationUser> UserManager
@@ -14,6 +15,7 @@
 <div class="tf-page-header">
     <div class="tf-page-header-left">
         <h1 class="tf-page-title">Tài khoản của tôi</h1>
+        <p class="tf-page-subtitle">Quản lý thông tin hồ sơ cá nhân và bảo mật</p>
     </div>
     <div class="tf-page-actions">
         <a href="/tai-khoan/doi-mat-khau" class="tf-btn tf-btn-secondary">
@@ -28,84 +30,114 @@
 
 @if (_showSuccess)
 {
-    <div class="tf-alert tf-alert-success tf-mb-4">Cập nhật thông tin thành công.</div>
+    <div class="tf-alert tf-alert-success tf-mb-4">Cập nhật thông tin tài khoản thành công.</div>
+}
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <div class="tf-alert tf-alert-error tf-mb-4">@_errorMessage</div>
 }
 
 @if (_user == null)
 {
-    <div>Đang tải...</div>
+    <div style="padding:24px;text-align:center;">Đang tải thông tin cá nhân...</div>
 }
 else
 {
-    <div class="tf-dashboard-grid" style="grid-template-columns: 2fr 1fr;">
+    <div class="tf-dashboard-grid" style="grid-template-columns: 2fr 1fr; gap: 24px;">
         <div class="tf-card">
-            <div class="tf-card-header"><h2 class="tf-card-title">Thông tin cá nhân</h2></div>
+            <div class="tf-card-header">
+                <h2 class="tf-card-title">Thông tin cá nhân</h2>
+            </div>
             <div class="tf-card-body">
-                <div class="tf-field tf-mb-4">
-                    <label class="tf-label">Tên đăng nhập / Email</label>
-                    <div class="tf-input-wrapper">
-                        <input type="text" class="tf-input" value="@_user.Email" disabled />
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div class="tf-form-group tf-mb-4">
+                        <label class="tf-label">Tên đăng nhập</label>
+                        <input type="text" class="tf-input" value="@_user.UserName" disabled style="background:var(--tf-gray-100);cursor:not-allowed;" />
+                        <span style="font-size:12px;color:var(--tf-text-muted);">Tên đăng nhập cố định của hệ thống</span>
                     </div>
-                    <div class="tf-validation-message" style="color:var(--tf-text-muted)">Không thể thay đổi email.</div>
+
+                    <div class="tf-form-group tf-mb-4">
+                        <label class="tf-label">Địa chỉ Email</label>
+                        <input type="text" class="tf-input" value="@_user.Email" disabled style="background:var(--tf-gray-100);cursor:not-allowed;" />
+                        <span style="font-size:12px;color:var(--tf-text-muted);">Email liên hệ nhận thông báo</span>
+                    </div>
                 </div>
 
-                <div class="tf-field tf-mb-4">
-                    <label class="tf-label">Họ và tên *</label>
-                    <div class="tf-input-wrapper">
-                        <input type="text" class="tf-input" @bind="_user.FullName" />
-                    </div>
+                <div class="tf-form-group tf-mb-4">
+                    <label class="tf-label">Họ và tên <span style="color:var(--tf-error);">*</span></label>
+                    <input type="text" class="tf-input" @bind="_user.FullName" placeholder="Nhập họ và tên đầy đủ" />
                 </div>
 
-                <div class="tf-field tf-mb-4">
+                <div class="tf-form-group tf-mb-4">
                     <label class="tf-label">Số điện thoại</label>
-                    <div class="tf-input-wrapper">
-                        <input type="text" class="tf-input" @bind="_user.PhoneNumber" />
-                    </div>
+                    <input type="text" class="tf-input" @bind="_user.PhoneNumber" placeholder="Nhập số điện thoại liên hệ" />
                 </div>
 
-                <button class="tf-btn tf-btn-primary" @onclick="UpdateProfile">Lưu thông tin</button>
+                <div style="margin-top:24px;">
+                    <button class="tf-btn tf-btn-primary" @onclick="UpdateProfile">Lưu thông tin</button>
+                </div>
             </div>
         </div>
 
         <div>
             <div class="tf-card tf-mb-4">
-                <div class="tf-card-header"><h2 class="tf-card-title">Chi tiết tài khoản</h2></div>
+                <div class="tf-card-header">
+                    <h2 class="tf-card-title">Chi tiết tài khoản</h2>
+                </div>
                 <div class="tf-card-body">
-                    <div style="margin-bottom:12px;">
-                        <div style="font-size:12px;color:var(--tf-text-muted);">Trạng thái</div>
-                        <div class="tf-font-medium">
-                            @if (_user.Status == UserStatus.Active) { <span class="tf-badge tf-badge-success">Hoạt động</span> }
-                            else { <span class="tf-badge tf-badge-error">Bị khóa</span> }
-                        </div>
-                    </div>
-                    <div style="margin-bottom:12px;">
-                        <div style="font-size:12px;color:var(--tf-text-muted);">Vai trò của tôi</div>
-                        <div class="tf-font-medium">
-                            @if (_roles.Any())
+                    <div style="margin-bottom:14px;">
+                        <div style="font-size:12px;color:var(--tf-text-muted);margin-bottom:2px;">Trạng thái tài khoản</div>
+                        <div>
+                            @if (_user.Status == UserStatus.Active)
                             {
-                                @string.Join(", ", _roles)
+                                <span class="tf-badge tf-badge-success">Đang hoạt động</span>
                             }
                             else
                             {
-                                <span style="color:var(--tf-text-muted);">Không có vai trò</span>
+                                <span class="tf-badge tf-badge-error">Bị khóa</span>
                             }
                         </div>
                     </div>
-                    <div style="margin-bottom:12px;">
-                        <div style="font-size:12px;color:var(--tf-text-muted);">Ngày tạo</div>
+
+                    <div style="margin-bottom:14px;">
+                        <div style="font-size:12px;color:var(--tf-text-muted);margin-bottom:2px;">Vai trò hệ thống</div>
+                        <div class="tf-font-medium">
+                            @if (_roles.Any())
+                            {
+                                @foreach (var r in _roles)
+                                {
+                                    <span class="tf-badge tf-badge-primary" style="margin-right:4px;">@r</span>
+                                }
+                            }
+                            else
+                            {
+                                <span style="color:var(--tf-text-muted);">Chưa phân vai trò</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom:14px;">
+                        <div style="font-size:12px;color:var(--tf-text-muted);margin-bottom:2px;">Ngày tạo tài khoản</div>
                         <div class="tf-font-medium">@_user.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
                     </div>
+
                     <div>
-                        <div style="font-size:12px;color:var(--tf-text-muted);">Lần đăng nhập gần nhất</div>
-                        <div class="tf-font-medium">@(_user.LastLoginAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Chưa rõ")</div>
+                        <div style="font-size:12px;color:var(--tf-text-muted);margin-bottom:2px;">Lần đăng nhập gần nhất</div>
+                        <div class="tf-font-medium">@(_user.LastLoginAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Chưa ghi nhận")</div>
                     </div>
                 </div>
             </div>
 
             <div class="tf-card">
-                <div class="tf-card-header"><h2 class="tf-card-title">Bảo mật</h2></div>
+                <div class="tf-card-header">
+                    <h2 class="tf-card-title">Bảo mật tài khoản</h2>
+                </div>
                 <div class="tf-card-body">
-                    <a href="/tai-khoan/doi-mat-khau" class="tf-btn tf-btn-secondary tf-btn-full">
+                    <p style="font-size:13px;color:var(--tf-text-secondary);margin-bottom:16px;">
+                        Để đảm bảo an toàn, khuyến nghị thay đổi mật khẩu định kỳ và không dùng chung mật khẩu.
+                    </p>
+                    <a href="/tai-khoan/doi-mat-khau" class="tf-btn tf-btn-secondary tf-btn-full" style="justify-content:center;">
                         Đổi mật khẩu
                     </a>
                 </div>
@@ -118,12 +150,13 @@ else
     private ApplicationUser? _user;
     private IList<string> _roles = new List<string>();
     private bool _showSuccess;
+    private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var username = authState.User.Identity?.Name;
-        
+
         if (username != null)
         {
             _user = await UserManager.FindByNameAsync(username);
@@ -136,18 +169,33 @@ else
 
     private async Task UpdateProfile()
     {
-        if (_user == null || string.IsNullOrWhiteSpace(_user.FullName)) return;
+        _errorMessage = null;
+        if (_user == null) return;
+
+        if (string.IsNullOrWhiteSpace(_user.FullName))
+        {
+            _errorMessage = "Họ và tên không được để trống.";
+            return;
+        }
 
         var existingUser = await UserManager.FindByIdAsync(_user.Id);
-        existingUser!.FullName = _user.FullName;
-        existingUser.PhoneNumber = _user.PhoneNumber;
+        if (existingUser == null) return;
 
-        await UserManager.UpdateAsync(existingUser);
-        
-        _showSuccess = true;
-        StateHasChanged();
-        await Task.Delay(3000);
-        _showSuccess = false;
-        StateHasChanged();
+        existingUser.FullName = _user.FullName.Trim();
+        existingUser.PhoneNumber = _user.PhoneNumber?.Trim();
+
+        var result = await UserManager.UpdateAsync(existingUser);
+        if (result.Succeeded)
+        {
+            _showSuccess = true;
+            StateHasChanged();
+            await Task.Delay(3000);
+            _showSuccess = false;
+            StateHasChanged();
+        }
+        else
+        {
+            _errorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
+        }
     }
 }

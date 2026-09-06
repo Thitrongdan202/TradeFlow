@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TradeFlow.Application.Common.Constants;
@@ -208,6 +208,13 @@ public class DatabaseSeeder
             {
                 await _userManager.SetLockoutEndDateAsync(existing, null);
                 changed = true;
+            }
+
+            if (!await _userManager.CheckPasswordAsync(existing, DevPassword))
+            {
+                var token = await _userManager.GeneratePasswordResetTokenAsync(existing);
+                await _userManager.ResetPasswordAsync(existing, token, DevPassword);
+                _logger.LogInformation("Reset password to default for dev account: {Username}", username);
             }
 
             if (changed)

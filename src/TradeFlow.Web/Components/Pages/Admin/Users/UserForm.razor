@@ -13,6 +13,7 @@
 @inject NavigationManager Nav
 @inject IAuditService AuditService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IPermissionService PermissionService
 
 <PageTitle>@(IsEdit ? "Sửa người dùng" : "Thêm người dùng") — TradeFlow</PageTitle>
 
@@ -338,6 +339,7 @@ else
                 await AuditService.LogAsync(AuditEventType.UserCreated, _currentUsername, "User", _user.UserName, "Created new user");
             }
 
+            PermissionService.InvalidateUserPermissions(Id ?? _user.Id);
             Nav.NavigateTo("/cai-dat/nguoi-dung");
         }
         catch (Exception ex)

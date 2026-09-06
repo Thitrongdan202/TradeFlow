@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="TradeFlow — Hệ thống quản lý kinh doanh nội bộ">
+    <base href="/">
+    
+    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.46ein0sx1k.css" />
+    <link rel="stylesheet" href="app.lekttf7jqc.css" />
+    <link rel="stylesheet" href="TradeFlow.Web.iblhqhgy6b.styles.css" />
+    <script type="importmap">{
+  "imports": {
+    "./Components/Account/Shared/PasskeySubmit.razor.js": "./Components/Account/Shared/PasskeySubmit.pr21mg9rrw.razor.js",
+    "./Components/Layout/ReconnectModal.razor.js": "./Components/Layout/ReconnectModal.abdmv1u4y3.razor.js",
+    "./_framework/blazor.server.js": "./_framework/blazor.server.wfr2hj6447.js",
+    "./_framework/blazor.web.js": "./_framework/blazor.web.wyu7y4jcvb.js",
+    "./lib/bootstrap/dist/js/bootstrap.bundle.js": "./lib/bootstrap/dist/js/bootstrap.bundle.6cfz1n2cew.js",
+    "./lib/bootstrap/dist/js/bootstrap.bundle.min.js": "./lib/bootstrap/dist/js/bootstrap.bundle.min.493y06b0oq.js",
+    "./lib/bootstrap/dist/js/bootstrap.esm.min.js": "./lib/bootstrap/dist/js/bootstrap.esm.min.jj8uyg4cgr.js",
+    "./lib/bootstrap/dist/js/bootstrap.esm.js": "./lib/bootstrap/dist/js/bootstrap.esm.vr1egmr9el.js",
+    "./lib/bootstrap/dist/js/bootstrap.min.js": "./lib/bootstrap/dist/js/bootstrap.min.63fj8s7r0e.js",
+    "./lib/bootstrap/dist/js/bootstrap.js": "./lib/bootstrap/dist/js/bootstrap.notf2xhcfb.js"
+  }
+}</script>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <!--Blazor:{"type":"server","prerenderId":"4d58f45571e842d78079dddb33737629","key":{"locationHash":"77D12F14A8105320B1AAED6AE7E689DA0EC4483270A645E84079EAA0FFDF550D:21","formattedComponentKey":""},"sequence":0,"descriptor":"CfDJ8CTLSgricaBAtsSR2Zi5dtc6myEz4BppkcOZcojFsicivmA\u002B/GzdHcLoK31chPxFFFgzxoQOD2kD8H0Z6rbvm\u002BsaQJGqEOdVZgU/bSENEdNSmqauOQb/XXHB60ey2bC0geK/R2/jtVKPtflX0Gn25aiLwGpzfwVLp\u002BVuwBVnnNDgSX0keb\u002BXEUzTiFI9d8TiWAKdMfLxLg9AWIiHcEt8U215EO5LZ2II92sLQW9MDNVob2JcLpJ\u002Bjv3Tf4hSTeV3ZPjFapc5niz9fo07BqtX9JV/pRbuDhc6uwsZKsXo4Mu\u002BwVEgLoAUu99Jfwj/VkEYexBelCtBBLQCs16Ze475WTKB85vTOJOVkTAyT7NpxK0GTlLtGa2Q3IpypjPd12HQHpnA6RDQ/CiKpt\u002B6LnoF5gw/UYWFIm\u002BmxWeZtDJWt6SgvZjuU7mKlJ8/UETqHGCkaBNBY9JtoKX3eakedvDvnQrxh/u64AscTPCuGa3b9jM/sZU9bci9uKgPrphiQgfdeEOpVXvxKpcvUNg821kmvoTNQ7Hl62lO4GmN7\u002BrxJI1OdSfl6aS81oo5RDSl1DC12SDLWZSsbjaDXTlHcb\u002B/XMQ="}--><title>Đăng nhập — TradeFlow</title><!--Blazor:{"prerenderId":"4d58f45571e842d78079dddb33737629"}--></head>
+
+<body><!--Blazor:{"type":"server","prerenderId":"dbb3af231aa64ff7bfc5d9e073f8f177","key":{"locationHash":"69CA27DD77A13A6B2CDF5ECB9BE5CDEFD25245E092AAEC6C0F9883E00FA38B74:24","formattedComponentKey":""},"sequence":1,"descriptor":"CfDJ8CTLSgricaBAtsSR2Zi5dtdPw6tCB9cbxLzXguRZy5BaCmHNj2Fjh5uez711uWulLLipiw9WZXKrPyIeouqojgu2VwJgeIZimWfoyG2MHlGxawSqdofrgOzyeVc5GgDL9\u002BM7W/fKhfEvkKLIU0mo8NscfDiRAiVWCncIWLBYjckeYefBiF0LmrKavK9dmdegj0mHr6T3HwCuv35XrCcCrJfVg74MRB9TcZnfftB7hxftcFT0eoxsesUI2\u002BC9OJld8AU4n2OsTpv/uwMzRWLvP/lCDmV9IYt\u002BbPUTrZp58a75tz83Vlsk6/tPI5Z89Mu/GaZMGinRiH9nlO12v\u002B64gEU6mBZFzrPE1PrshGmNFfJbSIwMEDOgrKHXfJEEHBq/I7ifsOYLI4MIF67Xk4Iti3cXDFA5r3gMmTOWaLQwyyzflhoVxfI7S6fJmfAkwZUYh\u002BcZVReXNIQyQZJaAn\u002B8toL4eIds921AFV4NkhOzDUnNjunrrbHCQSZMOx5xiu39\u002B/MftIeAvPqB57tK6Xck9yM="}-->
+
+<div class="tf-login-page" b-x3v2j732uh><div class="tf-login-left" b-x3v2j732uh><div class="tf-login-left-content" b-x3v2j732uh><div class="tf-login-left-brand" b-x3v2j732uh><div class="tf-brand-logo" style="width:42px;height:42px;" b-x3v2j732uh><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" b-x3v2j732uh><path d="M3 3h7v7H3V3z" fill="white" b-x3v2j732uh></path>
+                        <path d="M14 3h7v7h-7V3z" fill="white" opacity="0.6" b-x3v2j732uh></path>
+                        <path d="M3 14h7v7H3v-7z" fill="white" opacity="0.6" b-x3v2j732uh></path>
+                        <path d="M14 14h7v7h-7v-7z" fill="white" b-x3v2j732uh></path></svg></div>
+                <div b-x3v2j732uh><div style="font-size:20px;font-weight:700;color:white;letter-spacing:-0.01em;" b-x3v2j732uh>TradeFlow</div>
+                    <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.6);letter-spacing:0.08em;text-transform:uppercase;" b-x3v2j732uh>Quản lý thương mại</div></div></div>
+
+            <div class="tf-login-visual" b-x3v2j732uh><div class="tf-login-visual-title" b-x3v2j732uh>
+                    Quản lý toàn bộ<br b-x3v2j732uh>hoạt động thương mại<br b-x3v2j732uh>của bạn.
+                </div>
+                <div class="tf-login-visual-desc" b-x3v2j732uh>
+                    Hệ thống quản lý bán hàng, mua hàng, kho hàng và đối tác trên một nền tảng duy nhất — nhanh, chính xác, dễ dùng.
+                </div>
+
+                <div class="tf-login-features" b-x3v2j732uh><div class="tf-login-feature" b-x3v2j732uh><div class="tf-login-feature-icon" b-x3v2j732uh><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" b-x3v2j732uh><polyline points="20 6 9 17 4 12" b-x3v2j732uh></polyline></svg></div>
+                            <span b-x3v2j732uh>B&#xE1;n h&#xE0;ng &amp; qu&#x1EA3;n l&#xFD; &#x111;&#x1A1;n h&#xE0;ng</span></div><div class="tf-login-feature" b-x3v2j732uh><div class="tf-login-feature-icon" b-x3v2j732uh><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" b-x3v2j732uh><polyline points="20 6 9 17 4 12" b-x3v2j732uh></polyline></svg></div>
+                            <span b-x3v2j732uh>Mua h&#xE0;ng &amp; nh&#xE0; cung c&#x1EA5;p</span></div><div class="tf-login-feature" b-x3v2j732uh><div class="tf-login-feature-icon" b-x3v2j732uh><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" b-x3v2j732uh><polyline points="20 6 9 17 4 12" b-x3v2j732uh></polyline></svg></div>
+                            <span b-x3v2j732uh>Qu&#x1EA3;n l&#xFD; kho h&#xE0;ng</span></div><div class="tf-login-feature" b-x3v2j732uh><div class="tf-login-feature-icon" b-x3v2j732uh><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" b-x3v2j732uh><polyline points="20 6 9 17 4 12" b-x3v2j732uh></polyline></svg></div>
+                            <span b-x3v2j732uh>B&#xE1;o c&#xE1;o doanh thu</span></div></div></div></div></div>
+
+    <div class="tf-login-right" b-x3v2j732uh><div class="tf-login-card" b-x3v2j732uh><div class="tf-login-brand" b-x3v2j732uh><div class="tf-login-logo" b-x3v2j732uh><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" b-x3v2j732uh><path d="M3 3h7v7H3V3z" fill="white" b-x3v2j732uh></path>
+                        <path d="M14 3h7v7h-7V3z" fill="white" opacity="0.6" b-x3v2j732uh></path>
+                        <path d="M3 14h7v7H3v-7z" fill="white" opacity="0.6" b-x3v2j732uh></path>
+                        <path d="M14 14h7v7h-7v-7z" fill="white" b-x3v2j732uh></path></svg></div>
+                <div class="tf-login-brand-name" b-x3v2j732uh>TradeFlow</div>
+                <div class="tf-login-brand-tagline" b-x3v2j732uh>Quản lý thương mại</div></div>
+
+            <div class="tf-login-form-title" b-x3v2j732uh>Đăng nhập</div>
+            <div class="tf-login-form-subtitle" b-x3v2j732uh>Chào mừng bạn quay trở lại!</div><form method="post" action="/Account/Login"><input type="hidden" name="_handler" value="login" /><input type="hidden" name="__RequestVerificationToken" value="CfDJ8CTLSgricaBAtsSR2Zi5dtd3wHk5AXhK5pF1OcLAQmypb_fsreSEGIznGP2ywNl1WW4Hiq9k7qs3qt9TVlxNThnf98umMv6SbiTZp1_Aut7yc7sgrGrS_-0yOfFF3cP5klql85cR_1BcPoAh9gMrrRE" />
+
+                <div class="tf-field tf-mb-4" b-x3v2j732uh><label class="tf-label" for="login-username" b-x3v2j732uh>Tên đăng nhập</label>
+                    <div class="tf-input-wrapper" b-x3v2j732uh><input id="login-username" autocomplete="username" placeholder="T&#xEA;n &#x111;&#x103;ng nh&#x1EAD;p ho&#x1EB7;c email" aria-required="true" aria-describedby="login-username-error" name="Input.Username" class="tf-input valid" value="" /></div>
+                    </div>
+
+                <div class="tf-field tf-mb-4" b-x3v2j732uh><label class="tf-label" for="login-password" b-x3v2j732uh>Mật khẩu</label>
+                    <div class="tf-input-wrapper"><input type="password" name="Input.Password" id="login-password" class="tf-input" placeholder="Nh&#x1EAD;p m&#x1EAD;t kh&#x1EA9;u" autocomplete="current-password" aria-required="true" value="" />
+    <button type="button" class="tf-input-suffix" onclick="tfTogglePassword(&#x27;login-password&#x27;, this)" aria-label="Hi&#x1EC3;n th&#x1ECB; m&#x1EAD;t kh&#x1EA9;u" title="Hi&#x1EC3;n th&#x1ECB; m&#x1EAD;t kh&#x1EA9;u"><svg class="tf-eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle></svg>
+        <svg class="tf-eye-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"></path>
+            <line x1="1" y1="1" x2="23" y2="23"></line></svg></button></div>
+
+<script>
+    if (typeof window.tfTogglePassword === 'undefined') {
+        window.tfTogglePassword = function(inputId, btn) {
+            var input = document.getElementById(inputId);
+            if (!input) return;
+            var isPass = input.type === 'password';
+            input.type = isPass ? 'text' : 'password';
+            var showSvg = btn.querySelector('.tf-eye-show');
+            var hideSvg = btn.querySelector('.tf-eye-hide');
+            if (showSvg && hideSvg) {
+                showSvg.style.display = isPass ? 'none' : 'block';
+                hideSvg.style.display = isPass ? 'block' : 'none';
+            }
+            var label = isPass ? 'Ẩn mật khẩu' : 'Hiển thị mật khẩu';
+            btn.setAttribute('aria-label', label);
+            btn.title = label;
+        };
+    }
+</script>
+                    </div>
+
+                <div class="tf-login-options" b-x3v2j732uh><label class="tf-checkbox-label" b-x3v2j732uh><input type="checkbox" name="Input.RememberMe" class="tf-checkbox valid" value="True" />
+                        Duy trì đăng nhập
+                    </label>
+                    <a href="/Account/ForgotPassword" class="tf-forgot-link" b-x3v2j732uh>Quên mật khẩu?</a></div>
+
+                <button type="submit" class="tf-btn tf-btn-primary tf-btn-lg tf-btn-full" b-x3v2j732uh><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" b-x3v2j732uh><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4" b-x3v2j732uh></path>
+                        <polyline points="10 17 15 12 10 7" b-x3v2j732uh></polyline>
+                        <line x1="15" y1="12" x2="3" y2="12" b-x3v2j732uh></line></svg>
+                    <span b-x3v2j732uh>Đăng nhập</span></button></form></div></div></div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    Đã xảy ra lỗi không mong đợi.
+    <a href="." class="reload">Tải lại</a>
+    <span class="dismiss">✕</span></div>
+        <!--Blazor:{"prerenderId":"dbb3af231aa64ff7bfc5d9e073f8f177"}-->
+    <script type="module" src="Components/Layout/ReconnectModal.abdmv1u4y3.razor.js" b-owqttt722i></script>
+
+<dialog id="components-reconnect-modal" data-nosnippet b-owqttt722i><div class="components-reconnect-container" b-owqttt722i><div class="components-rejoining-animation" aria-hidden="true" b-owqttt722i><div b-owqttt722i></div>
+            <div b-owqttt722i></div></div>
+        <p class="components-reconnect-first-attempt-visible" b-owqttt722i>
+            Rejoining the server...
+        </p>
+        <p class="components-reconnect-repeated-attempt-visible" b-owqttt722i>
+            Rejoin failed... trying again in <span id="components-seconds-to-next-attempt" b-owqttt722i></span> seconds.
+        </p>
+        <p class="components-reconnect-failed-visible" b-owqttt722i>
+            Failed to rejoin.<br b-owqttt722i>Please retry or reload the page.
+        </p>
+        <button id="components-reconnect-button" class="components-reconnect-failed-visible" b-owqttt722i>
+            Retry
+        </button>
+        <p class="components-pause-visible" b-owqttt722i>
+            The session has been paused by the server.
+        </p>
+        <p class="components-resume-failed-visible" b-owqttt722i>
+            Failed to resume the session.<br b-owqttt722i>Please retry or reload the page.
+        </p>
+        <button id="components-resume-button" class="components-pause-visible components-resume-failed-visible" b-owqttt722i>
+            Resume
+        </button></div></dialog>
+    <script src="_framework/blazor.web.wyu7y4jcvb.js"></script></body></html><!--Blazor-Server-Component-State:CfDJ8CTLSgricaBAtsSR2Zi5dtczsSA3G3q/jQymn4a9ZNl+LbpI36pu6s8ny9aPAQp3t0+5flILqD+S6d7XglCIiQmlUQm/WL/vSEOxE50JnFjF7cDwBNt5cx/HOu7Sqf+Hz5korWOrSslzy6qXWwvjuZe/Qdupnp2RrBVK0Oep1d3H4px1hURKe2QBqz3apbAZcaHMnAAZwHyG/uu0HOXztfA4cyT/Ks0W/9nXH3CJgonqslj+kM4XJf/iSSUNL6H/kdFsB1baWth8cy7PP+xaQZfRkip2T4EOdJRUIP1PjPzsptpZlasYeyvxdJYWadxesrMfZlyY/Y13kJOj1VAFQotlDdqf8SB1WOUgEIW6Kewwk882BGU+KqCrv1z6CBGK3EsWVsngn4jUGsFbWrWf2isP8C6w6uu28K41Ry28dz/LAOeuF73h+ve1QJja5I3KkvizS3RFxG5Sfm/a71opTxViGPe6wTC9dyguZCrRWeUz6ZVg5/29q4fu/LYq6ciIzxlEkT7qqrRJu6+fr6B/O9sAmRrBiGol0C+mMg6xk5cHWnNwG/TYH/ZGWxNVJaooXOAg97vlHwVxc/aqcvsS3mK8gSBSpeQ55w4lFTQWFA1RZ36ivqSESsKQ8BjHYngWRwuc375YXsC3usbSJfKi0jtgKwH5nzVS3TesuCVF4/JRIwm2BBHknTdmPyIftF9gdh/pwiY9AnwyQcg/xKrhwxhxkZCTffZOxb1YRH+6ocxlvVWnK84Dp9U1FLq3BBTpUAlSEwqVR5vEghMflwFt1ZQyzZ2/mR9uhhw7RMlr/JG+h0R3BVgE/xiqMjAjy8xMgACeNCF29gRw7eESkyGI2UE+6WPJcR/oXUsUh8DYz/JVdt5kO4wBxJ2SWHX5vNy5Gm0kBP+gpy385ILNKFCX0k37KWNsCPmuS4AuaHyNHPVSz0+7yatw/47GBXDRIbnxsbUpYhqnvsW+3jx9VY5wCr0toOnp6K7aQlNo9B2z92TFck3YxJ8wTlS8HNOkHkh+bPTcENnY0aXQBPjPcn3BA1450D2dIWCMTb6UIMfbzDQg+Ol7ARqDXUqYnlcMyHoUGLLw15vu5vzNXTZGgKdq6hXBsYieXPV28bsU7av0vp5zT42FG8cOwn0cYWH8hAm+jA==-->

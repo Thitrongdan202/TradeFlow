@@ -14,17 +14,20 @@ public class PriceListService : IPriceListService
     private readonly ISystemCodeGenerator _codeGenerator;
     private readonly ICurrentUserService _currentUserService;
     private readonly IAuditService _auditService;
+    private readonly IFileStorageService _fileStorage;
 
     public PriceListService(
         TradeFlowDbContext context,
         ISystemCodeGenerator codeGenerator,
         ICurrentUserService currentUserService,
-        IAuditService auditService)
+        IAuditService auditService,
+        IFileStorageService fileStorage)
     {
         _context = context;
         _codeGenerator = codeGenerator;
         _currentUserService = currentUserService;
         _auditService = auditService;
+        _fileStorage = fileStorage;
     }
 
     public async Task<List<PriceListDto>> GetPriceListsAsync(
@@ -445,5 +448,30 @@ public class PriceListService : IPriceListService
             .ToListAsync(cancellationToken);
 
         return items;
+    }
+
+
+    public async Task<bool> DeleteOriginalFileAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var entity = await _context.PriceLists.FindAsync(new object[] { id }, cancellationToken);
+        if (entity == null || string.IsNullOrEmpty(entity.OriginalFileStorageRef))
+        {
+            return false;
+        }
+
+        await _fileStorage.DeleteFileAsync(entity.OriginalFileStorageRef, cancellationToken);
+        entity.OriginalFileStorageRef = null;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        await _auditService.LogAsync(
+            AuditEventType.PriceListUpdated,
+            _currentUserService.UserName ?? "System",
+            nameof(PriceList),
+            id.ToString(),
+            $"Xóa file Excel gốc của bảng giá {entity.Code}",
+            cancellationToken: cancellationToken);
+
+        return true;
     }
 }

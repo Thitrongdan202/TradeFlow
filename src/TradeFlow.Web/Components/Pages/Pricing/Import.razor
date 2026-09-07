@@ -1,6 +1,7 @@
-﻿@page "/bang-gia/nhap-excel"
+@page "/bang-gia/nhap-excel"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
+@using System.Threading
 @using Microsoft.AspNetCore.Components.Forms
 @using TradeFlow.Application.Common.Interfaces
 @using TradeFlow.Application.Common.Models.Pricing
@@ -60,7 +61,7 @@
             <button type="button" class="tf-btn tf-btn-primary" style="padding: 10px 24px; font-size: 15px;" disabled="@_isAnalyzing">
                 @if (_isAnalyzing)
                 {
-                    <span>Đang phân tích dữ liệu & trích xuất hình ảnh...</span>
+                    <span>@(_progressMessage ?? "Đang phân tích dữ liệu...")</span>
                 }
                 else
                 {
@@ -84,7 +85,7 @@ else
                     File: @_analysisResult.FileName
                 </h2>
             </div>
-            <button type="button" class="tf-btn tf-btn-secondary" @onclick="ResetAnalysis">
+            <button type="button" class="tf-btn tf-btn-secondary" @onclick="CancelAndCleanupAsync">
                 Chọn file khác
             </button>
         </div>
@@ -177,7 +178,7 @@ else
                 <span>Tự động tạo bản ghi sản phẩm mới vào danh mục sản phẩm nếu chưa tồn tại</span>
             </label>
             <div style="display:flex; gap: 8px;">
-                <button type="button" class="tf-btn tf-btn-secondary" @onclick="ResetAnalysis" disabled="@_isCommitting">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="CancelAndCleanupAsync" disabled="@_isCommitting">
                     Hủy bỏ
                 </button>
                 <button type="button" class="tf-btn tf-btn-primary" style="background:#059669; padding: 8px 20px;" @onclick="CommitImport" disabled="@_isCommitting">
@@ -265,15 +266,21 @@ else
 }
 
 @code {
+    
     private bool _isAnalyzing = false;
     private bool _isCommitting = false;
     private string? _errorMessage;
+    private string? _progressMessage;
+    private CancellationTokenSource? _cts;
     private ExcelAnalysisResultDto? _analysisResult;
     private ExcelImportCommitRequest _importRequest = new();
 
+
+    
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
         _errorMessage = null;
+        _progressMessage = "Đang tải file...";
         var file = e.File;
         if (file == null) return;
 
@@ -284,11 +291,18 @@ else
         }
 
         _isAnalyzing = true;
+        _cts = new CancellationTokenSource(TimeSpan.FromMinutes(5)); // 5 minute timeout
+
         try
         {
             // Max 200MB
             using var stream = file.OpenReadStream(maxAllowedSize: 209715200);
-            _analysisResult = await ExcelPricingService.AnalyzeAndDryRunAsync(stream, file.Name);
+            _analysisResult = await ExcelPricingService.AnalyzeAndDryRunAsync(
+                stream, 
+                file.Name, 
+                msg => { _progressMessage = msg; InvokeAsync(StateHasChanged); },
+                _cts.Token
+            );
 
             if (_analysisResult.Errors.Any())
             {
@@ -316,6 +330,10 @@ else
                 Items = _analysisResult.Items
             };
         }
+        catch (OperationCanceledException)
+        {
+            _errorMessage = "Quá trình đọc file Excel đã bị hủy hoặc vượt quá thời gian cho phép (5 phút).";
+        }
         catch (Exception ex)
         {
             _errorMessage = $"Lỗi đọc file Excel: {ex.Message}";
@@ -323,11 +341,30 @@ else
         finally
         {
             _isAnalyzing = false;
+            _progressMessage = null;
+            _cts?.Dispose();
+            _cts = null;
         }
     }
 
-    private void ResetAnalysis()
+    private async Task CancelAndCleanupAsync()
     {
+        if (_analysisResult != null)
+        {
+            // Clean up temporary excel file
+            if (!string.IsNullOrEmpty(_analysisResult.TempFileReference))
+            {
+                await FileStorage.DeleteFileAsync(_analysisResult.TempFileReference);
+            }
+            // Clean up temporary extracted images
+            foreach (var item in _analysisResult.Items)
+            {
+                if (!string.IsNullOrEmpty(item.ImageStorageRef))
+                {
+                    await FileStorage.DeleteFileAsync(item.ImageStorageRef);
+                }
+            }
+        }
         _analysisResult = null;
         _errorMessage = null;
     }
@@ -350,6 +387,7 @@ else
         else _importRequest.EffectiveTo = null;
     }
 
+    
     private async Task CommitImport()
     {
         if (string.IsNullOrWhiteSpace(_importRequest.Name))
@@ -360,17 +398,33 @@ else
 
         _isCommitting = true;
         _errorMessage = null;
+        _cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
 
         try
         {
             var user = CurrentUserService.UserName ?? "admin";
-            var result = await ExcelPricingService.CommitImportAsync(_importRequest, user);
+            var result = await ExcelPricingService.CommitImportAsync(
+                _importRequest, 
+                user,
+                null,
+                _cts.Token
+            );
             Nav.NavigateTo($"/bang-gia/chi-tiet/{result.Id}");
+        }
+        catch (OperationCanceledException)
+        {
+            _errorMessage = "Quá trình lưu bảng giá đã vượt quá thời gian cho phép.";
+            _isCommitting = false;
         }
         catch (Exception ex)
         {
             _errorMessage = $"Lỗi lưu bảng giá: {ex.Message}";
             _isCommitting = false;
+        }
+        finally
+        {
+            _cts?.Dispose();
+            _cts = null;
         }
     }
 }

@@ -9,6 +9,7 @@
 @inject IPriceListService PriceListService
 @inject IFileStorageService FileStorage
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <PageTitle>Chi tiết bảng giá - TradeFlow</PageTitle>
 
@@ -57,10 +58,15 @@ else
             </a>
             @if (!string.IsNullOrEmpty(_priceList.OriginalFileStorageRef))
             {
+
                 <a href="/api/pricing/@Id/download-original" class="tf-btn tf-btn-secondary" target="_blank">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                     Tải file gốc
                 </a>
+                <button type="button" class="tf-btn tf-btn-secondary" style="color: #ef4444; border-color: #fecaca; background: #fef2f2;" @onclick="DeleteOriginalFile">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    Xóa file gốc
+                </button>
             }
             <a href="/bang-gia/so-sanh?baseId=@Id" class="tf-btn tf-btn-secondary">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
@@ -400,6 +406,20 @@ else
     private void CloseImagePreview()
     {
         _previewItem = null;
+    }
+
+
+    private async Task DeleteOriginalFile()
+    {
+        bool confirm = await JS.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn xóa file Excel gốc đã upload không? Hành động này sẽ dọn dẹp dung lượng và không xóa dữ liệu bảng giá trong hệ thống.");
+        if (confirm)
+        {
+            var result = await PriceListService.DeleteOriginalFileAsync(Id);
+            if (result)
+            {
+                await LoadDetail();
+            }
+        }
     }
 
     private async Task ApproveThisPriceList()

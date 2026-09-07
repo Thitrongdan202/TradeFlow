@@ -1,4 +1,4 @@
-﻿using TradeFlow.Application.Common.Models.Pricing;
+using TradeFlow.Application.Common.Models.Pricing;
 using TradeFlow.Domain.Enums;
 
 namespace TradeFlow.Application.Common.Interfaces;
@@ -13,4 +13,5 @@ public interface IPriceListService
     Task<bool> ApprovePriceListAsync(int id, CancellationToken cancellationToken = default);
     Task<PriceComparisonResultDto> ComparePriceListsAsync(int basePriceListId, int targetPriceListId, CancellationToken cancellationToken = default);
     Task<List<PriceListItemDto>> GetProductPriceHistoryAsync(string productCodeOrNewCode, CancellationToken cancellationToken = default);
+    Task<bool> DeleteOriginalFileAsync(int id, CancellationToken cancellationToken = default);
 }

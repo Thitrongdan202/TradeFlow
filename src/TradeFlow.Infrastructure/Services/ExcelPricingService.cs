@@ -33,16 +33,18 @@ public class ExcelPricingService : IExcelPricingService
         _auditService = auditService;
     }
 
-    public async Task<ExcelAnalysisResultDto> AnalyzeAndDryRunAsync(Stream fileStream, string fileName, CancellationToken cancellationToken = default)
+    public async Task<ExcelAnalysisResultDto> AnalyzeAndDryRunAsync(Stream fileStream, string fileName, Action<string>? onProgress = null, CancellationToken cancellationToken = default)
     {
         var result = new ExcelAnalysisResultDto
         {
             FileName = fileName
         };
 
+        onProgress?.Invoke("1/6 Đang lưu file gốc vào storage...");
         // 1. Save original file as temporary upload directly from the incoming stream
         result.TempFileReference = await _fileStorage.SaveFileAsync(fileStream, fileName, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "pricing_originals", cancellationToken);
 
+        onProgress?.Invoke("2/6 Đang mở file...");
         // 2. Open the saved file as a seekable FileStream
         using var diskStream = await _fileStorage.GetFileAsync(result.TempFileReference, cancellationToken);
         if (diskStream == null)
@@ -51,11 +53,7 @@ public class ExcelPricingService : IExcelPricingService
             return result;
         }
 
-        // 3. Extract embedded pictures mapping to row index (1-based Excel row number)
-        var rowImageMap = ExtractImagesByRow(diskStream);
-        result.ImagesFound = rowImageMap.Count;
-        diskStream.Position = 0;
-
+        onProgress?.Invoke("3/6 Đang phân tích cấu trúc Excel (Bước này có thể mất vài phút với file lớn)...");
         // 4. Parse workbook structure via ClosedXML
         using var workbook = new XLWorkbook(diskStream);
         var worksheet = workbook.Worksheets.FirstOrDefault();
@@ -90,13 +88,29 @@ public class ExcelPricingService : IExcelPricingService
             return result;
         }
 
+        onProgress?.Invoke("4/6 Đang trích xuất dữ liệu sản phẩm...");
+        int lastRow = worksheet.LastRowUsed()?.RowNumber() ?? headerRow;
+        var validRows = new HashSet<int>();
+        for (int r = headerRow + 1; r <= lastRow; r++)
+        {
+            var testRow = worksheet.Row(r);
+            if (!testRow.IsEmpty()) {
+                validRows.Add(r);
+            }
+        }
+
+        onProgress?.Invoke($"5/6 Đang trích xuất hình ảnh cho {validRows.Count} sản phẩm...");
+        diskStream.Position = 0;
+        var rowImageMap = await ExtractImagesByRowAsync(diskStream, validRows);
+        result.ImagesFound = rowImageMap.Count;
+
+        onProgress?.Invoke("6/6 Đang đối chiếu danh mục...");
         // 7. Load all existing products from DB for matching
         var existingProducts = await _context.Products
             .AsNoTracking()
             .Select(p => new { p.Id, p.Code, p.NewCode, p.LegacyCode, p.Name })
             .ToListAsync(cancellationToken);
 
-        int lastRow = worksheet.LastRowUsed()?.RowNumber() ?? headerRow;
         int currentOrder = 1;
         string currentGroup = "";
 
@@ -202,7 +216,7 @@ public class ExcelPricingService : IExcelPricingService
         return result;
     }
 
-    public async Task<PriceListDto> CommitImportAsync(ExcelImportCommitRequest request, string currentUserName, CancellationToken cancellationToken = default)
+    public async Task<PriceListDto> CommitImportAsync(ExcelImportCommitRequest request, string currentUserName, Action<string>? onProgress = null, CancellationToken cancellationToken = default)
     {
         var priceListCode = await _codeGenerator.GenerateCodeAsync(SystemCodeConstants.PriceList, cancellationToken);
 
@@ -314,7 +328,7 @@ public class ExcelPricingService : IExcelPricingService
         };
     }
 
-    public async Task<byte[]> ExportPriceListAsync(int priceListId, CancellationToken cancellationToken = default)
+    public async Task<byte[]> ExportPriceListAsync(int priceListId, Action<string>? onProgress = null, CancellationToken cancellationToken = default)
     {
         var priceList = await _context.PriceLists
             .Include(p => p.Items.OrderBy(i => i.SortOrder))
@@ -529,7 +543,7 @@ public class ExcelPricingService : IExcelPricingService
         return -1;
     }
 
-    private Dictionary<int, string> ExtractImagesByRow(Stream stream)
+    private async Task<Dictionary<int, string>> ExtractImagesByRowAsync(Stream stream, HashSet<int>? targetRows = null)
     {
         var rowImageMap = new Dictionary<int, string>();
         try
@@ -600,7 +614,8 @@ public class ExcelPricingService : IExcelPricingService
                         _ => "application/octet-stream"
                     };
 
-                    var storageRef = _fileStorage.SaveFileAsync(ms, $"row_{excelRow}{ext}", contentType, "pricing").GetAwaiter().GetResult();
+                    if (targetRows != null && !targetRows.Contains(excelRow)) continue;
+                    var storageRef = await _fileStorage.SaveFileAsync(ms, $"row_{excelRow}{ext}", contentType, "pricing");
                     rowImageMap[excelRow] = storageRef;
                 }
             }

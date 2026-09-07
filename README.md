@@ -36,7 +36,7 @@ Phase 4 tập trung vào nghiệp vụ Bảng giá và xử lý file Excel dung 
     *   **Xuất Excel (Export)**: Sinh file Excel báo giá chuẩn hóa trực tiếp từ dữ liệu trong PostgreSQL qua thư viện ClosedXML.
 *   **RBAC & Audit**: Mọi hành vi (tạo bảng giá, nhập Excel, xuất Excel, tải file gốc) đều được phân quyền chặt chẽ bằng Role-Based Access Control tại server và ghi nhận đầy đủ vào hệ thống Nhật ký hoạt động (Audit Log).
 
-## Trải nghiệm Người dùng (UI/UX) và Khắc phục lỗi
+## Tối ưu hóa Import Excel & Tiến trình\n\n*   **Tiến trình thời gian thực**: Giao diện hiển thị trực tiếp các bước xử lý (đọc file, phân tích Excel, trích xuất dữ liệu, trích xuất hình ảnh, đối chiếu danh mục). Bỏ qua việc trích xuất hình ảnh của các dòng trống/không hợp lệ.\n*   **Hủy bỏ an toàn (Cancellation)**: Hỗ trợ thời gian timeout an toàn để chống treo ứng dụng (5 phút cho đọc file, 2 phút cho lưu DB).\n\n## Quản lý Storage & Dữ liệu Riêng tư\n\n*   **Dữ liệu riêng tư**: Mọi file Excel tải lên đều được lưu bên ngoài thư mục được theo dõi bởi Git để bảo vệ dữ liệu công ty.\n*   **Dọn dẹp hệ thống (Cleanup)**: Hệ thống cho phép người dùng Hủy bỏ trong quá trình import hoặc Xóa file gốc sau khi đã import thành công để giải phóng dung lượng đĩa mà không ảnh hưởng đến dữ liệu đã lưu trong cơ sở dữ liệu.\n\n## Trải nghiệm Người dùng (UI/UX) và Khắc phục lỗi
 
 *   **Menu Chức năng (Sidebar)**:
     *   Hiển thị đúng các nghiệp vụ của Phase 3/4 (Tổng quan, Danh mục, Đối tác, Kho hàng, Bảng giá, Cài đặt).

@@ -81,3 +81,14 @@ logs/
 
 ## Docker (if added later)
 docker-compose.override.yml
+## TradeFlow Private Data
+data/
+storage/
+uploads/
+imports/
+exports/
+*.xlsx
+*.xls
+*.csv
+.user_uploaded/
+.tempmediaStorage/

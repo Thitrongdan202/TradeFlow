@@ -7,15 +7,15 @@ public interface IExcelPricingService
     /// <summary>
     /// Phân tích file Excel tải lên, phát hiện các vùng tiêu đề, chuỗi hàng, và trích xuất hình ảnh nhúng.
     /// </summary>
-    Task<ExcelAnalysisResultDto> AnalyzeAndDryRunAsync(Stream fileStream, string fileName, CancellationToken cancellationToken = default);
+    Task<ExcelAnalysisResultDto> AnalyzeAndDryRunAsync(Stream fileStream, string fileName, Action<string>? onProgress = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Xác nhận và ghi nhận Bảng giá vào cơ sở dữ liệu từ kết quả phân tích.
     /// </summary>
-    Task<PriceListDto> CommitImportAsync(ExcelImportCommitRequest request, string currentUserName, CancellationToken cancellationToken = default);
+    Task<PriceListDto> CommitImportAsync(ExcelImportCommitRequest request, string currentUserName, Action<string>? onProgress = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Xuất dữ liệu Bảng giá từ hệ thống ra file Excel (.xlsx) chuẩn mẫu tài liệu công ty.
     /// </summary>
-    Task<byte[]> ExportPriceListAsync(int priceListId, CancellationToken cancellationToken = default);
+    Task<byte[]> ExportPriceListAsync(int priceListId, Action<string>? onProgress = null, CancellationToken cancellationToken = default);
 }

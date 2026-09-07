@@ -267,6 +267,20 @@ public class PriceListService : IPriceListService
             return false;
         }
 
+        if (entity.Status != PriceListStatus.Draft)
+        {
+            entity.Status = PriceListStatus.Cancelled;
+            await _context.SaveChangesAsync(cancellationToken);
+            await _auditService.LogAsync(
+                AuditEventType.PriceListDeleted,
+                _currentUserService.UserName ?? "System",
+                nameof(PriceList),
+                id.ToString(),
+                $"Ngừng áp dụng bảng giá {entity.Code} - {entity.Name}",
+                cancellationToken: cancellationToken);
+            return true;
+        }
+
         _context.PriceListItems.RemoveRange(entity.Items);
         _context.PriceLists.Remove(entity);
         await _context.SaveChangesAsync(cancellationToken);

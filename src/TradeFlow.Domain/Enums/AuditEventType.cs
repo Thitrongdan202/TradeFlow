@@ -70,4 +70,20 @@ public enum AuditEventType
     PriceListOriginalDownloaded = 96,
     PriceChanged = 97,
     ProductImageMapped = 98,
+
+    // === Bán hàng & Hóa đơn ===
+    SalesOrderCreated = 110,
+    SalesOrderUpdated = 111,
+    SalesOrderConfirmed = 112,
+    SalesOrderCancelled = 113,
+    SalesOrderDeleted = 114,
+
+    InvoiceCreated = 120,
+    InvoiceUpdated = 127,
+    InvoiceIssued = 121,
+    InvoiceAdjusted = 122,
+    InvoiceReplaced = 123,
+    InvoiceCancelled = 124,
+    InvoiceDeleted = 125,
+    InvoiceExportedPdf = 126
 }

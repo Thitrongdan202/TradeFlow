@@ -9,6 +9,9 @@
 
 @inject TradeFlowDbContext DbContext
 @inject NavigationManager Nav
+@inject IAuthorizationService AuthService
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+@inject IAuditService AuditService
 
 <PageTitle>Sản phẩm - TradeFlow</PageTitle>
 
@@ -122,6 +125,9 @@
                                 <AuthorizeView Policy="Permission:Products:Edit">
                                     <a href="/danh-muc/san-pham/sua/@item.Id" class="tf-btn tf-btn-ghost tf-btn-sm">Sửa</a>
                                 </AuthorizeView>
+                                <AuthorizeView Policy="Permission:Products:Delete">
+                                    <button class="tf-btn tf-btn-ghost tf-btn-sm" style="color:var(--tf-danger);" @onclick="() => ConfirmDelete(item.Id, item.Name ?? string.Empty)">Xóa</button>
+                                </AuthorizeView>
                             </td>
                         </tr>
                     }
@@ -132,6 +138,10 @@
 </div>
 
 @code {
+    private int? _itemToDeleteId;
+    private string _itemToDeleteName = "";
+    private string? _deleteError;
+
     private List<Product>? _items;
     private List<ProductCategory>? _categories;
     private string _searchTerm = string.Empty;
@@ -194,6 +204,63 @@
             }
 
             return q;
+        }
+    }
+
+    private void ConfirmDelete(int id, string name)
+    {
+        _itemToDeleteId = id;
+        _itemToDeleteName = name;
+        _deleteError = null;
+    }
+
+    private void CancelDelete()
+    {
+        _itemToDeleteId = null;
+        _deleteError = null;
+    }
+
+    private async Task ExecuteDelete()
+    {
+        if (_itemToDeleteId == null) return;
+        
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (!(await AuthService.AuthorizeAsync(authState.User, "Permission:Products:Delete")).Succeeded)
+        {
+            _deleteError = "Bạn không có quyền thực hiện thao tác này.";
+            return;
+        }
+
+        try
+        {
+            int id = _itemToDeleteId.Value;
+            var entity = await DbContext.Products.FindAsync(id);
+            if (entity == null)
+            {
+                CancelDelete();
+                return;
+            }
+
+            bool isReferenced = await DbContext.PriceListItems.AnyAsync(x => x.ProductId == id) || await DbContext.SalesOrderItems.AnyAsync(x => x.ProductId == id) || await DbContext.InvoiceItems.AnyAsync(x => x.ProductId == id);
+
+            if (isReferenced)
+            {
+                entity.IsActive = false;
+            }
+            else
+            {
+                DbContext.Remove(entity);
+            }
+
+            await DbContext.SaveChangesAsync();
+            await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.ProductDeleted, authState.User.Identity?.Name ?? "System", "Product", id.ToString(), "Xóa hoặc ngừng hoạt động sản phẩm", authState.User.Identity?.Name);
+            CancelDelete();
+            
+            await OnInitializedAsync();
+        }
+        catch (Exception ex)
+        {
+            _deleteError = "Đã xảy ra lỗi: " + ex.Message;
         }
     }
 }

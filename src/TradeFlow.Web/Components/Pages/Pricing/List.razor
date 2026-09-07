@@ -1,4 +1,4 @@
-﻿@page "/bang-gia"
+@page "/bang-gia"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @using TradeFlow.Application.Common.Interfaces
@@ -8,6 +8,9 @@
 
 @inject IPriceListService PriceListService
 @inject NavigationManager Nav
+@inject IAuthorizationService AuthService
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+@inject IAuditService AuditService
 
 <PageTitle>Quýản lý bảng giá - TradeFlow</PageTitle>
 
@@ -258,6 +261,9 @@
                                                 Duyệt
                                             </button>
                                         </AuthorizeView>
+                                <AuthorizeView Policy="Permission:PriceLists:Delete">
+                                    <button class="tf-btn tf-btn-ghost tf-btn-sm" style="color:var(--tf-danger);" @onclick="() => ConfirmDelete(item)">Xóa</button>
+                                </AuthorizeView>
                                     }
                                     <AuthorizeView Policy="Permission:PriceLists:Delete">
                                         <button type="button" class="tf-btn tf-btn-secondary" style="padding: 4px 8px; font-size: 12px; color: #dc2626;" @onclick="() => ConfirmDelete(item)">
@@ -293,6 +299,7 @@
 }
 
 @code {
+
     private List<PriceListDto> _priceLists = new();
     private bool _isLoading = true;
     private string _searchTerm = "";
@@ -348,7 +355,7 @@
 
     private async Task OnSearchChanged(ChangeEventArgs e)
     {
-        _searchTerm = e.Value?.ToString() ?? "";
+        _searchTerm = e.Value?.ToString() ?? string.Empty;
     }
 
     private async Task OnYearChanged(ChangeEventArgs e)
@@ -371,7 +378,7 @@
 
     private async Task OnStatusChanged(ChangeEventArgs e)
     {
-        _filterStatus = e.Value?.ToString() ?? "";
+        _filterStatus = e.Value?.ToString() ?? string.Empty;
         await LoadData();
     }
 

@@ -9,6 +9,9 @@
 
 @inject TradeFlowDbContext DbContext
 @inject NavigationManager Nav
+@inject IAuthorizationService AuthService
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+@inject IAuditService AuditService
 
 <PageTitle>Khách hàng - TradeFlow</PageTitle>
 
@@ -99,6 +102,9 @@
                                 <AuthorizeView Policy="Permission:Customers:Edit">
                                     <a href="/doi-tac/khach-hang/sua/@item.Id" class="tf-btn tf-btn-ghost tf-btn-sm">Sửa</a>
                                 </AuthorizeView>
+                                <AuthorizeView Policy="Permission:Customers:Delete">
+                                    <button class="tf-btn tf-btn-ghost tf-btn-sm" style="color:var(--tf-danger);" @onclick="() => ConfirmDelete(item.Id, item.Name ?? string.Empty)">Xóa</button>
+                                </AuthorizeView>
                             </td>
                         </tr>
                     }
@@ -109,6 +115,10 @@
 </div>
 
 @code {
+    private int? _itemToDeleteId;
+    private string _itemToDeleteName = "";
+    private string? _deleteError;
+
     private List<Customer>? _items;
     private string _searchTerm = string.Empty;
 
@@ -144,6 +154,63 @@
                 (x.TaxCode != null && x.TaxCode.ToLower().Contains(term)) ||
                 (x.Phone != null && x.Phone.ToLower().Contains(term)) ||
                 (x.Email != null && x.Email.ToLower().Contains(term)));
+        }
+    }
+
+    private void ConfirmDelete(int id, string name)
+    {
+        _itemToDeleteId = id;
+        _itemToDeleteName = name;
+        _deleteError = null;
+    }
+
+    private void CancelDelete()
+    {
+        _itemToDeleteId = null;
+        _deleteError = null;
+    }
+
+    private async Task ExecuteDelete()
+    {
+        if (_itemToDeleteId == null) return;
+        
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (!(await AuthService.AuthorizeAsync(authState.User, "Permission:Customers:Delete")).Succeeded)
+        {
+            _deleteError = "Bạn không có quyền thực hiện thao tác này.";
+            return;
+        }
+
+        try
+        {
+            int id = _itemToDeleteId.Value;
+            var entity = await DbContext.Customers.FindAsync(id);
+            if (entity == null)
+            {
+                CancelDelete();
+                return;
+            }
+
+            bool isReferenced = await DbContext.SalesOrders.AnyAsync(x => x.CustomerId == id) || await DbContext.Invoices.AnyAsync(x => x.CustomerId == id);
+
+            if (isReferenced)
+            {
+                entity.IsActive = false;
+            }
+            else
+            {
+                DbContext.Remove(entity);
+            }
+
+            await DbContext.SaveChangesAsync();
+            await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.CustomerDeleted, authState.User.Identity?.Name ?? "System", "Customer", id.ToString(), "Xóa hoặc ngừng hoạt động khách hàng", authState.User.Identity?.Name);
+            CancelDelete();
+            
+            await OnInitializedAsync();
+        }
+        catch (Exception ex)
+        {
+            _deleteError = "Đã xảy ra lỗi: " + ex.Message;
         }
     }
 }

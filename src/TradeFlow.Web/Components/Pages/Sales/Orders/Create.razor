@@ -1,0 +1,329 @@
+@page "/ban-hang/don-ban-hang/tao-moi"
+@using Microsoft.AspNetCore.Authorization
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Sales
+@using TradeFlow.Domain.Entities.MasterData
+@inject ISalesService SalesService
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permission:SalesOrders:Create")]
+
+<PageTitle>Tạo đơn bán hàng | TradeFlow</PageTitle>
+
+<div class="tf-page-header">
+    <div class="tf-page-header-content">
+        <h1 class="tf-page-title">Tạo đơn bán hàng</h1>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <div class="tf-alert tf-alert-danger tf-mb-4">
+        @_errorMessage
+        <button type="button" style="float:right; background:none; border:none; cursor:pointer;" @onclick="() => _errorMessage = null">✕</button>
+    </div>
+}
+
+<div class="tf-card tf-mb-4">
+    <div style="padding: 20px; border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+        <h3 style="margin: 0 0 16px 0; font-size: 16px;">THÔNG TIN ĐƠN BÁN HÀNG</h3>
+        
+        <div class="tf-form-group">
+            <label class="tf-form-label">Khách hàng <span style="color:red">*</span></label>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <input type="text" class="tf-form-control" placeholder="🔍 Tìm khách hàng (Tên, Mã, SĐT...)" @bind="_customerSearch" @bind:event="oninput" @onkeyup="SearchCustomers" style="flex:1;" />
+                @if (_selectedCustomer != null)
+                {
+                    <span style="color:green; font-weight:bold;">Đã chọn: @_selectedCustomer.Name</span>
+                    <button class="tf-btn tf-btn-sm tf-btn-outline-danger" @onclick="ClearCustomer">Bỏ chọn</button>
+                }
+            </div>
+            @if (_isCustomerSearched)
+            {
+                <div style="position:relative; z-index:100;">
+                    <ul style="position:absolute; top:0; left:0; right:0; background:white; border:1px solid #ccc; list-style:none; padding:0; margin:0; max-height:200px; overflow-y:auto; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+                        @if (!_customerSearchResults.Any())
+                        {
+                            <li style="padding:10px; color:var(--tf-text-muted);">Chưa có khách hàng</li>
+                            <li style="padding:10px; border-top:1px solid #eee; text-align:center;">
+                                <a href="/doi-tac/khach-hang/tao-moi" class="tf-btn tf-btn-sm tf-btn-outline-primary">+ Thêm khách hàng</a>
+                            </li>
+                        }
+                        else
+                        {
+                            @foreach (var c in _customerSearchResults)
+                            {
+                                <li style="padding:10px; border-bottom:1px solid #eee; cursor:pointer;" @onclick="() => SelectCustomer(c)">
+                                    <strong>@c.Name</strong> - @c.Phone - @c.Address
+                                </li>
+                            }
+                        }
+                    </ul>
+                </div>
+            }
+        </div>
+        
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-top: 16px;">
+            <div class="tf-form-group">
+                <label class="tf-form-label">Ngày tạo</label>
+                <input type="date" class="tf-form-control" @bind="_orderRequest.OrderDate" />
+            </div>
+            <div class="tf-form-group">
+                <label class="tf-form-label">Ngày giao hàng</label>
+                <input type="date" class="tf-form-control" @bind="_orderRequest.DeliveryDate" />
+            </div>
+        </div>
+        <div class="tf-form-group">
+            <label class="tf-form-label">Ghi chú</label>
+            <textarea class="tf-form-control" @bind="_orderRequest.Notes"></textarea>
+        </div>
+    </div>
+</div>
+
+<div class="tf-card tf-mb-4">
+    <div style="padding: 20px;">
+        <h3 style="margin: 0 0 16px 0; font-size: 16px;">SẢN PHẨM</h3>
+        
+        <div class="tf-form-group" style="margin-bottom:20px;">
+            <input type="text" class="tf-form-control" placeholder="🔍 Tìm sản phẩm (Tên, Mã)..." @bind="_productSearch" @bind:event="oninput" @onkeyup="SearchProducts" />
+            @if (_isProductSearched)
+            {
+                <div style="position:relative; z-index:90;">
+                    <ul style="position:absolute; top:0; left:0; right:0; background:white; border:1px solid #ccc; list-style:none; padding:0; margin:0; max-height:200px; overflow-y:auto; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+                        @if (!_productSearchResults.Any())
+                        {
+                            <li style="padding:10px; color:var(--tf-text-muted);">Chưa có sản phẩm</li>
+                            <li style="padding:10px; border-top:1px solid #eee; text-align:center;">
+                                <a href="/danh-muc/san-pham/tao-moi" class="tf-btn tf-btn-sm tf-btn-outline-primary">+ Thêm sản phẩm</a>
+                            </li>
+                        }
+                        else
+                        {
+                            @foreach (var p in _productSearchResults)
+                            {
+                                <li style="padding:10px; border-bottom:1px solid #eee; cursor:pointer;" @onclick="() => SelectProduct(p)">
+                                    <strong>@p.Code</strong> - @p.Name (@p.Unit?.Name)
+                                </li>
+                            }
+                        }
+                    </ul>
+                </div>
+            }
+        </div>
+
+        <div class="tf-table-responsive">
+            <table class="tf-table">
+                <thead>
+                    <tr>
+                        <th>Mã</th>
+                        <th>Sản phẩm</th>
+                        <th>ĐVT</th>
+                        <th style="width:100px;">SL</th>
+                        <th style="width:150px;">Đơn giá</th>
+                        <th style="width:100px;">Chiết khấu</th>
+                        <th style="width:150px;">Thành tiền</th>
+                        <th style="width:50px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in _orderRequest.Items)
+                    {
+                        <tr>
+                            <td>@item.ProductCode</td>
+                            <td>@item.ProductName</td>
+                            <td>@item.UnitName</td>
+                            <td>
+                                <input type="number" class="tf-form-control" style="padding:4px;" @bind="item.Quantity" @bind:after="CalculateTotals" min="0.01" step="any" />
+                            </td>
+                            <td>
+                                <input type="number" class="tf-form-control" style="padding:4px;" @bind="item.UnitPrice" @bind:after="CalculateTotals" min="0" step="any" />
+                            </td>
+                            <td>
+                                <input type="number" class="tf-form-control" style="padding:4px;" @bind="item.DiscountAmount" @bind:after="CalculateTotals" min="0" step="any" />
+                            </td>
+                            <td><strong style="color:var(--tf-color-danger);">@item.LineTotal.ToString("N0")</strong></td>
+                            <td>
+                                <button class="tf-btn-icon" style="color:red;" @onclick="() => RemoveItem(item)">🗑</button>
+                            </td>
+                        </tr>
+                    }
+                    @if (!_orderRequest.Items.Any())
+                    {
+                        <tr>
+                            <td colspan="8" class="tf-text-center" style="color:var(--tf-text-muted);">Chưa có sản phẩm nào.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="margin-top:24px; display:flex; justify-content:flex-end;">
+            <div style="width:300px; background:#f8fafc; padding:20px; border-radius:8px; border:1px solid #e2e8f0;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <span style="color:var(--tf-text-muted);">Tổng tiền hàng:</span>
+                    <strong>@_orderRequest.SubTotal.ToString("N0")</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <span style="color:var(--tf-text-muted);">Chiết khấu:</span>
+                    <strong>@_orderRequest.TotalDiscount.ToString("N0")</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:16px; padding-top:16px; border-top:1px dashed #cbd5e1; font-size:18px;">
+                    <span>Khách cần trả:</span>
+                    <strong style="color:var(--tf-color-danger);">@_orderRequest.GrandTotal.ToString("N0")</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="tf-form-actions" style="margin-bottom: 40px; display:flex; gap:12px;">
+    <button type="button" class="tf-btn tf-btn-secondary" @onclick='() => Nav.NavigateTo("/ban-hang/don-ban-hang")'>Hủy</button>
+    <button type="button" class="tf-btn tf-btn-primary" @onclick="SaveDraft" disabled="@_isSaving">
+        @if (_isSaving) { <span>Đang lưu...</span> } else { <span>Lưu nháp</span> }
+    </button>
+</div>
+
+@code {
+    private SalesOrderDto _orderRequest = new() { OrderDate = DateTime.Now };
+    private Customer? _selectedCustomer;
+    private string _customerSearch = "";
+    private string _productSearch = "";
+    private List<Customer> _customerSearchResults = new();
+    private List<Product> _productSearchResults = new();
+    private bool _isCustomerSearched = false;
+    private bool _isProductSearched = false;
+    
+    private string? _errorMessage;
+    private bool _isSaving = false;
+
+    private async Task SearchCustomers(KeyboardEventArgs e)
+    {
+        _isCustomerSearched = true;
+        if (_customerSearch.Length >= 2)
+        {
+            _customerSearchResults = await SalesService.SearchCustomersAsync(_customerSearch);
+        }
+        else
+        {
+            _customerSearchResults.Clear();
+            _isCustomerSearched = false;
+        }
+    }
+
+    private void SelectCustomer(Customer c)
+    {
+        _selectedCustomer = c;
+        _orderRequest.CustomerId = c.Id;
+        _orderRequest.CustomerName = c.Name;
+        _orderRequest.CustomerTaxCode = c.TaxCode;
+        _orderRequest.CustomerAddress = c.Address;
+        _orderRequest.CustomerPhone = c.Phone;
+        _customerSearch = "";
+        _customerSearchResults.Clear();
+        _isCustomerSearched = false;
+    }
+
+    private void ClearCustomer()
+    {
+        _selectedCustomer = null;
+        _orderRequest.CustomerId = 0;
+        _isCustomerSearched = false;
+    }
+
+    private async Task SearchProducts(KeyboardEventArgs e)
+    {
+        _isProductSearched = true;
+        if (_productSearch.Length >= 2)
+        {
+            _productSearchResults = await SalesService.SearchProductsAsync(_productSearch);
+        }
+        else
+        {
+            _productSearchResults.Clear();
+            _isProductSearched = false;
+        }
+    }
+
+    private async Task SelectProduct(Product p)
+    {
+        _productSearch = "";
+        _productSearchResults.Clear();
+        _isProductSearched = false;
+        
+        // Find if already exists
+        var existing = _orderRequest.Items.FirstOrDefault(x => x.ProductId == p.Id);
+        if (existing != null)
+        {
+            existing.Quantity += 1;
+        }
+        else
+        {
+            // Fetch price from Phase 4 Price List
+            var price = await SalesService.GetActivePriceAsync(p.Id, _orderRequest.OrderDate);
+            
+            _orderRequest.Items.Add(new SalesOrderItemDto
+            {
+                ProductId = p.Id,
+                ProductCode = p.Code,
+                ProductName = p.Name,
+                UnitName = p.Unit?.Name ?? string.Empty,
+                Quantity = 1,
+                UnitPrice = price,
+                DiscountAmount = 0,
+                TaxRate = 0,
+                TaxAmount = 0,
+            });
+        }
+        
+        CalculateTotals();
+    }
+
+    private void RemoveItem(SalesOrderItemDto item)
+    {
+        _orderRequest.Items.Remove(item);
+        CalculateTotals();
+    }
+
+    private void CalculateTotals()
+    {
+        foreach (var item in _orderRequest.Items)
+        {
+            item.LineTotal = (item.Quantity * item.UnitPrice) - item.DiscountAmount + item.TaxAmount;
+        }
+        
+        _orderRequest.SubTotal = _orderRequest.Items.Sum(x => x.Quantity * x.UnitPrice);
+        _orderRequest.TotalDiscount = _orderRequest.Items.Sum(x => x.DiscountAmount);
+        _orderRequest.TotalTax = _orderRequest.Items.Sum(x => x.TaxAmount);
+        _orderRequest.GrandTotal = _orderRequest.SubTotal - _orderRequest.TotalDiscount + _orderRequest.TotalTax;
+    }
+
+    private async Task SaveDraft()
+    {
+        _errorMessage = null;
+        if (_orderRequest.CustomerId <= 0)
+        {
+            _errorMessage = "Vui lòng chọn khách hàng.";
+            return;
+        }
+        if (!_orderRequest.Items.Any())
+        {
+            _errorMessage = "Vui lòng thêm ít nhất một sản phẩm.";
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            var saved = await SalesService.CreateOrderAsync(_orderRequest);
+            Nav.NavigateTo($"/ban-hang/don-ban-hang/chi-tiet/{saved.Id}");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+}

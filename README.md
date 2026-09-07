@@ -10,8 +10,8 @@ Hệ thống quản lý thương mại toàn diện (ERP/CRM) xây dựng trên 
 - [x] **Phase 3A**: Chuẩn hóa Master Data + mã hệ thống
 - [x] **Phase 3B**: Kiểm tra quan hệ dữ liệu + UX
 - [x] **Phase 4**: Bảng giá + Excel + hình ảnh + lịch sử giá
-- [ ] **Phase 5**: Báo giá + tài liệu/chứng từ + PDF
-- [ ] **Phase 6**: Đơn bán hàng + hóa đơn
+- [x] **Phase 5**: Bán hàng + Đơn bán hàng + Hóa đơn + PDF
+- [ ] **Phase 6**: Báo giá + tài liệu/chứng từ (Đã dời từ Phase 5)
 - [ ] **Phase 7**: Mua hàng
 - [ ] **Phase 8**: Kho
 - [ ] **Phase 9**: XNK
@@ -92,3 +92,19 @@ Khi chạy ở môi trường Development, `DatabaseSeeder.cs` sẽ tự động
 *   Tài khoản Admin: `admin` / `tradecore123`
 *   Các vai trò và phân quyền cơ bản đã được thiết lập sẵn. Mọi tài khoản mới có mật khẩu mặc định là `tradecore123`.
 
+
+## Cac tinh nang hoan thanh trong Phase 5 (Ban hang & Hoa don)
+* **Tao Don ban hang (Sales Order)**:
+  * Ho tro tim kiem, them san pham va tu dong ap dung gia ban moi nhat tu PriceList hien tai (Phase 4).
+  * Tu dong tinh toan tong tien, chiet khau va thue.
+* **Hoa don (Invoice)**:
+  * Tu dong sinh hoa don khi Don ban hang duoc xac nhan.
+  * Hoa don bao ton thong tin (Snapshot) tai thoi diem xuat de khong bi thay doi boi Master Data sau nay.
+* **Xuat PDF Hoa don**: Mo phong xuat PDF hoa don truc tiep tren trinh duyet.
+* **Audit Logging**: Moi thao tac tao, cap nhat, huy don hang va hoa don deu duoc ghi lai.
+
+## Xóa dữ liệu (Delete Functionality)
+- **Master Data**: Đã thêm chức năng Xóa an toàn tại cả danh sách (List) và biểu mẫu (Form).
+- **Nguyên tắc**: Xóa vật lý các bản ghi chưa sử dụng. Nếu dữ liệu đang bị ràng buộc (ví dụ Sản phẩm trong Đơn hàng), hệ thống sẽ vô hiệu hóa (soft-delete) hoặc chặn lệnh xóa kèm theo thông báo lỗi rõ ràng.
+- **Bảng giá, Đơn bán hàng, Hóa đơn**: Áp dụng quy tắc tương tự, không xóa các chứng từ đã xác nhận/phát hành.
+- **Bảo mật**: Sử dụng RBAC server-side xác thực quyền người dùng. Mọi thao tác xóa thành công đều được lưu vết qua AuditService.

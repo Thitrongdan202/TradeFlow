@@ -1,0 +1,157 @@
+@page "/ban-hang/don-ban-hang"
+@using Microsoft.AspNetCore.Authorization
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Sales
+@using TradeFlow.Domain.Enums
+@inject ISalesService SalesService
+@inject NavigationManager Nav
+@inject IAuthorizationService AuthService
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+@inject IAuditService AuditService
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permission:SalesOrders:View")]
+
+<PageTitle>Danh sách đơn bán hàng | TradeFlow</PageTitle>
+
+<div class="tf-page-header">
+    <div class="tf-page-header-content">
+        <h1 class="tf-page-title">Đơn bán hàng</h1>
+        <p class="tf-page-subtitle">Quản lý và theo dõi các đơn hàng bán cho khách hàng.</p>
+    </div>
+    <div class="tf-page-header-actions">
+        <AuthorizeView Policy="Permission:SalesOrders:Create">
+            <a href="/ban-hang/don-ban-hang/tao-moi" class="tf-btn tf-btn-primary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                Tạo đơn hàng mới
+            </a>
+        </AuthorizeView>
+    </div>
+</div>
+
+@if (_isLoading)
+{
+    <div class="tf-loading">Đang tải dữ liệu...</div>
+}
+else if (!_orders.Any())
+{
+    <div class="tf-empty-state">
+        <div class="tf-empty-icon">📦</div>
+        <h3>Chưa có đơn bán hàng nào</h3>
+        <p>Bắt đầu bằng cách tạo đơn bán hàng mới cho khách hàng của bạn.</p>
+    </div>
+}
+else
+{
+    <div class="tf-card">
+        <div class="tf-table-responsive">
+            <table class="tf-table">
+                <thead>
+                    <tr>
+                        <th>Mã đơn</th>
+                        <th>Ngày tạo</th>
+                        <th>Khách hàng</th>
+                        <th>Tổng tiền</th>
+                        <th>Trạng thái</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var order in _orders)
+                    {
+                        <tr>
+                            <td><strong>@order.Code</strong></td>
+                            <td>@order.OrderDate.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                <div><strong>@order.CustomerName</strong></div>
+                                @if (!string.IsNullOrEmpty(order.CustomerPhone))
+                                {
+                                    <div style="font-size:12px; color:var(--tf-text-muted);">@order.CustomerPhone</div>
+                                }
+                            </td>
+                            <td><strong style="color:var(--tf-color-danger);">@order.GrandTotal.ToString("N0")</strong></td>
+                            <td>
+                                @if (order.Status == SalesOrderStatus.Draft)
+                                {
+                                    <span class="tf-badge tf-badge-secondary">Nháp</span>
+                                }
+                                else if (order.Status == SalesOrderStatus.Confirmed)
+                                {
+                                    <span class="tf-badge tf-badge-primary">Đã xác nhận</span>
+                                }
+                                else if (order.Status == SalesOrderStatus.Invoiced)
+                                {
+                                    <span class="tf-badge tf-badge-success">Đã lên hóa đơn</span>
+                                }
+                                else
+                                {
+                                    <span class="tf-badge tf-badge-danger">Đã hủy</span>
+                                }
+                            </td>
+                            <td class="tf-text-right">
+                                <a href="/ban-hang/don-ban-hang/chi-tiet/@order.Id" class="tf-btn tf-btn-sm tf-btn-outline-primary">Chi tiết</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+
+@if (_itemToDeleteId != null)
+{
+    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 24px; border-radius: 8px; width: 400px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+            <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 18px; color: var(--tf-danger);">Xóa đơn bán hàng?</h3>
+            <p style="margin-bottom: 24px;">Bạn có chắc chắn muốn xóa "@(_itemToDeleteName)"?</p>
+            @if (!string.IsNullOrEmpty(_deleteError))
+            {
+                <div class="tf-alert tf-alert-danger" style="margin-bottom: 16px;">
+                    @_deleteError
+                </div>
+            }
+            <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                <button class="tf-btn tf-btn-outline-secondary" @onclick="CancelDelete">Hủy</button>
+                <button class="tf-btn tf-btn-danger" @onclick="ExecuteDelete">Xóa</button>
+            </div>
+        </div>
+    </div>
+}
+@code {
+    private int? _itemToDeleteId;
+    private string _itemToDeleteName = "";
+    private string? _deleteError;
+
+    private List<SalesOrderDto> _orders = new();
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            _isLoading = true;
+            _orders = await SalesService.GetOrdersAsync();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ConfirmDelete(int id, string name)
+    {
+        _itemToDeleteId = id;
+        _itemToDeleteName = name;
+        _deleteError = null;
+    }
+
+    private void CancelDelete() { _itemToDeleteId = null; _deleteError = null; }
+    private async Task ExecuteDelete() { if (_itemToDeleteId == null) return; var authState = await AuthStateProvider.GetAuthenticationStateAsync(); if (!(await AuthService.AuthorizeAsync(authState.User, "Permission:SalesOrders:Delete")).Succeeded) { _deleteError = "Bạn không có quyền."; return; } try { int id = _itemToDeleteId.Value; await SalesService.DeleteOrderAsync(id); CancelDelete(); await OnInitializedAsync(); } catch (Exception ex) { _deleteError = "Đã xảy ra lỗi: " + ex.Message; } }
+
+}

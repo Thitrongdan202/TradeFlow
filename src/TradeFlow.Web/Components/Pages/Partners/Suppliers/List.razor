@@ -9,6 +9,9 @@
 
 @inject TradeFlowDbContext DbContext
 @inject NavigationManager Nav
+@inject IAuthorizationService AuthService
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+@inject IAuditService AuditService
 
 <PageTitle>Nhà cung cấp - TradeFlow</PageTitle>
 
@@ -97,6 +100,9 @@
                                 <AuthorizeView Policy="Permission:Suppliers:Edit">
                                     <a href="/doi-tac/nha-cung-cap/sua/@item.Id" class="tf-btn tf-btn-ghost tf-btn-sm">Sửa</a>
                                 </AuthorizeView>
+                                <AuthorizeView Policy="Permission:Suppliers:Delete">
+                                    <button class="tf-btn tf-btn-ghost tf-btn-sm" style="color:var(--tf-danger);" @onclick="() => ConfirmDelete(item.Id, item.Name ?? string.Empty)">Xóa</button>
+                                </AuthorizeView>
                             </td>
                         </tr>
                     }
@@ -107,6 +113,10 @@
 </div>
 
 @code {
+    private int? _itemToDeleteId;
+    private string _itemToDeleteName = "";
+    private string? _deleteError;
+
     private List<Supplier>? _items;
     private string _searchTerm = string.Empty;
 
@@ -141,6 +151,63 @@
                 (x.CompanyName != null && x.CompanyName.ToLower().Contains(term)) ||
                 (x.TaxCode != null && x.TaxCode.ToLower().Contains(term)) ||
                 (x.Phone != null && x.Phone.ToLower().Contains(term)));
+        }
+    }
+
+    private void ConfirmDelete(int id, string name)
+    {
+        _itemToDeleteId = id;
+        _itemToDeleteName = name;
+        _deleteError = null;
+    }
+
+    private void CancelDelete()
+    {
+        _itemToDeleteId = null;
+        _deleteError = null;
+    }
+
+    private async Task ExecuteDelete()
+    {
+        if (_itemToDeleteId == null) return;
+        
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (!(await AuthService.AuthorizeAsync(authState.User, "Permission:Suppliers:Delete")).Succeeded)
+        {
+            _deleteError = "Bạn không có quyền thực hiện thao tác này.";
+            return;
+        }
+
+        try
+        {
+            int id = _itemToDeleteId.Value;
+            var entity = await DbContext.Suppliers.FindAsync(id);
+            if (entity == null)
+            {
+                CancelDelete();
+                return;
+            }
+
+            bool isReferenced = false;
+
+            if (isReferenced)
+            {
+                entity.IsActive = false;
+            }
+            else
+            {
+                DbContext.Remove(entity);
+            }
+
+            await DbContext.SaveChangesAsync();
+            await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.SupplierDeleted, authState.User.Identity?.Name ?? "System", "Supplier", id.ToString(), "Xóa nhà cung cấp", authState.User.Identity?.Name);
+            CancelDelete();
+            
+            await OnInitializedAsync();
+        }
+        catch (Exception ex)
+        {
+            _deleteError = "Đã xảy ra lỗi: " + ex.Message;
         }
     }
 }

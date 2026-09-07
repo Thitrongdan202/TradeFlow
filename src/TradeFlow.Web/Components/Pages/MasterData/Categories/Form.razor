@@ -14,6 +14,8 @@
 @inject ISystemCodeGenerator CodeGenerator
 @inject IAuditService AuditService
 @inject NavigationManager Nav
+@inject Microsoft.AspNetCore.Authorization.IAuthorizationService AuthService
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
 @inject ICurrentUserService CurrentUser
 
 <PageTitle>@(IsEdit ? "Sửa" : "Thêm") Danh mục sản phẩm - TradeFlow</PageTitle>
@@ -88,9 +90,37 @@ else
 
                 <div class="tf-form-actions" style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
                     <a href="/danh-muc/danh-muc-san-pham" class="tf-btn tf-btn-secondary">Hủy bỏ</a>
-                    <button type="submit" class="tf-btn tf-btn-primary">@(IsEdit ? "Lưu thay đổi" : "Tạo danh mục")</button>
+                    
+                @if (IsEdit)
+                {
+                    <AuthorizeView Policy="Permission:ProductCategories:Delete" Context="authContext">
+                        <button type="button" class="tf-btn tf-btn-danger" style="margin-left: auto;" @onclick="ConfirmDelete">Xóa</button>
+                    </AuthorizeView>
+                }
+<button type="submit" class="tf-btn tf-btn-primary">@(IsEdit ? "Lưu thay đổi" : "Tạo danh mục")</button>
                 </div>
             </EditForm>
+        </div>
+    </div>
+}
+
+
+@if (_showDeleteModal)
+{
+    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 24px; border-radius: 8px; width: 400px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+            <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 18px; color: var(--tf-danger);">Xóa dữ liệu?</h3>
+            <p style="margin-bottom: 24px;">Bạn có chắc chắn muốn xóa bản ghi này?</p>
+            @if (!string.IsNullOrEmpty(_deleteError))
+            {
+                <div class="tf-alert tf-alert-danger" style="margin-bottom: 16px;">
+                    @_deleteError
+                </div>
+            }
+            <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="CancelDelete">Hủy</button>
+                <button type="button" class="tf-btn tf-btn-danger" @onclick="ExecuteDelete">Xóa</button>
+            </div>
         </div>
     </div>
 }
@@ -173,4 +203,45 @@ else
             _errorMessage = "Có lỗi xảy ra: " + ex.Message;
         }
     }
+
+    private bool _showDeleteModal = false;
+    private string? _deleteError;
+
+    private void ConfirmDelete()
+    {
+        _showDeleteModal = true;
+        _deleteError = null;
+    }
+
+    private void CancelDelete()
+    {
+        _showDeleteModal = false;
+        _deleteError = null;
+    }
+
+    private async Task ExecuteDelete()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (!(await AuthService.AuthorizeAsync(authState.User, "Permission:ProductCategories:Delete")).Succeeded)
+        {
+            _deleteError = "Bạn không có quyền thực hiện thao tác này.";
+            return;
+        }
+
+        try
+        {
+            bool isReferenced = await DbContext.Products.AnyAsync(x => x.CategoryId == _model.Id); if(isReferenced) { _deleteError = "Không thể xóa vì dữ liệu này đang được sử dụng."; return; }
+            
+DbContext.ProductCategories.Remove(_model);
+
+            await DbContext.SaveChangesAsync();
+            await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.CategoryDeleted, authState.User.Identity?.Name ?? "System", "ProductCategory", _model.Id.ToString(), "Xóa", authState.User.Identity?.Name);
+            Nav.NavigateTo(Nav.Uri.Split('/')[1] == "danh-muc" ? "/danh-muc/" + Nav.Uri.Split('/')[2] : (Nav.Uri.Split('/')[1] == "doi-tac" ? "/doi-tac/" + Nav.Uri.Split('/')[2] : "/kho-hang"));
+        }
+        catch (Exception ex)
+        {
+            _deleteError = "Đã xảy ra lỗi: " + ex.Message;
+        }
+    }
+
 }

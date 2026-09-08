@@ -42,9 +42,48 @@
 
 <div class="tf-card">
     <div class="tf-card-body" style="padding:0; overflow-x: auto;">
-        <table class="tf-table">
+        
+@if (_selectedItems.Count > 0)
+{
+    <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+        <span style="color: #1e3a8a; font-weight: 500;">Đã chọn @_selectedItems.Count bản ghi</span>
+        <AuthorizeView Policy="Permission:UnitOfMeasures:Delete">
+            <button type="button" class="tf-btn tf-btn-danger" @onclick="ConfirmBulkDelete">Xóa đã chọn</button>
+        </AuthorizeView>
+    </div>
+}
+
+@if (_showBulkDeleteModal)
+{
+    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 24px; border-radius: 8px; width: 500px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+            <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 18px; color: var(--tf-danger);">Xóa @_selectedItems.Count bản ghi đã chọn?</h3>
+            <p style="margin-bottom: 24px;">Hành động này không thể hoàn tác. Các bản ghi đang được sử dụng sẽ bị bỏ qua hoặc vô hiệu hóa thay vì xóa hoàn toàn.</p>
+            @if (_bulkDeleteErrors.Count > 0)
+            {
+                <div class="tf-alert tf-alert-danger" style="margin-bottom: 16px; max-height: 150px; overflow-y: auto;">
+                    <ul style="margin: 0; padding-left: 20px;">
+                        @foreach (var err in _bulkDeleteErrors)
+                        {
+                            <li>@err</li>
+                        }
+                    </ul>
+                </div>
+            }
+            <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="CancelBulkDelete">Hủy</button>
+                <button type="button" class="tf-btn tf-btn-danger" @onclick="ExecuteBulkDelete" disabled="@_isBulkDeleting">
+                    @(_isBulkDeleting ? "Đang xử lý..." : "Xóa tất cả")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<table class="tf-table">
             <thead>
-                <tr>
+                  <tr>
+                      <th style="width: 40px; text-align: center;"><input type="checkbox" @onchange="ToggleSelectAll" checked="@(FilteredItems.Any() && _selectedItems.Count == FilteredItems.Count())" /></th>
                     <th style="min-width: 120px;">Mã đơn vị</th>
                     <th style="min-width: 180px;">Tên đơn vị tính</th>
                     <th>Ký hiệu</th>
@@ -55,17 +94,18 @@
             <tbody>
                 @if (_items == null)
                 {
-                    <tr><td colspan="5" style="text-align:center; padding: 24px;">Đang tải dữ liệu...</td></tr>
+                    <tr><td colspan="6" style="text-align:center; padding: 24px;">Đang tải dữ liệu...</td></tr>
                 }
                 else if (!FilteredItems.Any())
                 {
-                    <tr><td colspan="5"><div class="tf-empty"><div class="tf-empty-title">Chưa có đơn vị tính phù hợp</div></div></td></tr>
+                    <tr><td colspan="6"><div class="tf-empty"><div class="tf-empty-title">Chưa có đơn vị tính phù hợp</div></div></td></tr>
                 }
                 else
                 {
                     foreach (var item in FilteredItems)
                     {
                         <tr>
+                              <td style="text-align: center;"><input type="checkbox" @onchange="@(e => ToggleSelect(item.Id, e))" checked="@(_selectedItems.Contains(item.Id))" /></td>
                             <td>
                                 <span style="font-family: monospace; font-weight: 600; color: var(--tf-primary);">@item.Code</span>
                             </td>
@@ -184,4 +224,104 @@
     private void CancelDelete() { _itemToDeleteId = null; _deleteError = null; }
     private async Task ExecuteDelete() { if (_itemToDeleteId == null) return; var authState = await AuthStateProvider.GetAuthenticationStateAsync(); if (!(await AuthService.AuthorizeAsync(authState.User, "Permission:UnitOfMeasures:Delete")).Succeeded) { _deleteError = "Bạn không có quyền."; return; } try { int id = _itemToDeleteId.Value; var entity = await DbContext.UnitOfMeasures.FindAsync(id); if (entity == null) { CancelDelete(); return; } bool isReferenced = await DbContext.Products.AnyAsync(x => x.UnitId == id); if (isReferenced) { _deleteError = "Không thể xóa vì dữ liệu này đang được sử dụng."; return; } else { DbContext.Remove(entity); } await DbContext.SaveChangesAsync(); await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.UnitDeleted, authState.User.Identity?.Name ?? "System", "Unit", id.ToString(), "Xóa đơn vị tính", authState.User.Identity?.Name); CancelDelete(); await OnInitializedAsync(); } catch (Exception ex) { _deleteError = "Đã xảy ra lỗi: " + ex.Message; } }
 
+
+    private HashSet<int> _selectedItems = new();
+    private bool _showBulkDeleteModal = false;
+    private List<string> _bulkDeleteErrors = new();
+    private bool _isBulkDeleting = false;
+
+    private void ToggleSelectAll(ChangeEventArgs e)
+    {
+        if (e.Value is bool isChecked && isChecked)
+        {
+            _selectedItems = new HashSet<int>(FilteredItems.Select(x => x.Id));
+        }
+        else
+        {
+            _selectedItems.Clear();
+        }
+    }
+
+    private void ToggleSelect(int id, ChangeEventArgs e)
+    {
+        if (e.Value is bool isChecked && isChecked)
+        {
+            _selectedItems.Add(id);
+        }
+        else
+        {
+            _selectedItems.Remove(id);
+        }
+    }
+
+    private void ConfirmBulkDelete()
+    {
+        _bulkDeleteErrors.Clear();
+        _showBulkDeleteModal = true;
+    }
+
+    private void CancelBulkDelete()
+    {
+        _showBulkDeleteModal = false;
+        _isBulkDeleting = false;
+    }
+
+    private async Task ExecuteBulkDelete()
+    {
+        if (_selectedItems.Count == 0) return;
+        _isBulkDeleting = true;
+        _bulkDeleteErrors.Clear();
+        StateHasChanged();
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (!(await AuthService.AuthorizeAsync(authState.User, "Permission:UnitOfMeasures:Delete")).Succeeded)
+        {
+            _bulkDeleteErrors.Add("Bạn không có quyền thực hiện thao tác này.");
+            _isBulkDeleting = false;
+            return;
+        }
+
+        try
+        {
+            int successCount = 0;
+            var idsToProcess = _selectedItems.ToList();
+            
+            foreach (var id in idsToProcess)
+            {
+                _itemToDeleteId = id; // reuse the id for the logic block
+                try 
+                {
+                    await ProcessSingleDelete(id);
+                    _selectedItems.Remove(id);
+                    successCount++;
+                } 
+                catch (Exception ex)
+                {
+                    _bulkDeleteErrors.Add($"Bản ghi ID {id}: {ex.Message}");
+                }
+            }
+
+            if (successCount > 0)
+            {
+                await OnInitializedAsync();
+            }
+            
+            if (_selectedItems.Count == 0)
+            {
+                CancelBulkDelete();
+            }
+        }
+        finally
+        {
+            _isBulkDeleting = false;
+            _itemToDeleteId = null;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ProcessSingleDelete(int currentId)
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        int id = _itemToDeleteId.Value; var entity = await DbContext.UnitOfMeasures.FindAsync(id); if (entity == null) {  return; } bool isReferenced = await DbContext.Products.AnyAsync(x => x.UnitId == id); if (isReferenced) { throw new Exception("Không thể xóa vì dữ liệu này đang được sử dụng."); } else { DbContext.Remove(entity); } await DbContext.SaveChangesAsync(); await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.UnitDeleted, authState.User.Identity?.Name ?? "System", "Unit", id.ToString(), "Xóa đơn vị tính", authState.User.Identity?.Name); 
+    }
 }

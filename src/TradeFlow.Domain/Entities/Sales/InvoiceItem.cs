@@ -8,8 +8,8 @@ public class InvoiceItem : AuditableEntity<int>
     public int InvoiceId { get; set; }
     public Invoice Invoice { get; set; } = null!;
     
-    public int ProductId { get; set; }
-    public Product Product { get; set; } = null!;
+    public int? ProductId { get; set; }
+    public Product? Product { get; set; }
     
     // Snapshots
     public string ProductCode { get; set; } = string.Empty;

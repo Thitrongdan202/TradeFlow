@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TradeFlow.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using TradeFlow.Infrastructure.Persistence;
 namespace TradeFlow.Infrastructure.Migrations
 {
     [DbContext(typeof(TradeFlowDbContext))]
-    partial class TradeFlowDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260909184042_AddInvoiceBankAccounts")]
+    partial class AddInvoiceBankAccounts
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -847,7 +850,7 @@ namespace TradeFlow.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<int?>("CustomerId")
+                    b.Property<int>("CustomerId")
                         .HasColumnType("integer");
 
                     b.Property<string>("CustomerName")
@@ -949,7 +952,7 @@ namespace TradeFlow.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<int?>("ProductId")
+                    b.Property<int>("ProductId")
                         .HasColumnType("integer");
 
                     b.Property<string>("ProductName")
@@ -1612,7 +1615,8 @@ namespace TradeFlow.Infrastructure.Migrations
                     b.HasOne("TradeFlow.Domain.Entities.MasterData.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("TradeFlow.Domain.Entities.Sales.SalesOrder", "SalesOrder")
                         .WithMany("Invoices")
@@ -1635,7 +1639,8 @@ namespace TradeFlow.Infrastructure.Migrations
                     b.HasOne("TradeFlow.Domain.Entities.MasterData.Product", "Product")
                         .WithMany()
                         .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Invoice");
 

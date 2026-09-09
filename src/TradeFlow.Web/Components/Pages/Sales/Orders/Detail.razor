@@ -193,14 +193,21 @@ else
         }
     }
 
-    private async Task ConfirmOrder()
+        private async Task ConfirmOrder()
     {
         _isProcessing = true;
         _errorMessage = null;
         try
         {
             await SalesService.ConfirmOrderAsync(Id);
-            await LoadDataAsync();
+            try {
+                var inv = await InvoiceService.CreateInvoiceFromOrderAsync(Id, (InvoiceType)_selectedInvoiceType);
+                Nav.NavigateTo($"/hoa-don/chi-tiet/{inv.Id}");
+                return;
+            } catch (Exception ex) {
+                _errorMessage = $"Đơn hàng đã được xác nhận nhưng không thể tự động tạo hóa đơn: " + ex.Message;
+                await LoadDataAsync();
+            }
         }
         catch (Exception ex)
         {

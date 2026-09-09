@@ -1,4 +1,6 @@
-@page "/hoa-don/sua/{Id:int}"
+const fs = require('fs');
+let file = 'src/TradeFlow.Web/Components/Pages/Sales/Invoices/Edit.razor';
+let content = `@page "/hoa-don/sua/{Id:int}"
 @using Microsoft.AspNetCore.Authorization
 @using TradeFlow.Application.Common.Interfaces
 @using TradeFlow.Application.Common.Models.Sales
@@ -217,3 +219,5 @@ else
         }
     }
 }
+`;
+fs.writeFileSync(file, content, 'utf8');

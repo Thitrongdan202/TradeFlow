@@ -10,13 +10,14 @@ public class InvoiceDto
     public DateTime InvoiceDate { get; set; } = DateTime.UtcNow;
     
     public int? SalesOrderId { get; set; }
-    public int CustomerId { get; set; }
+    public int? CustomerId { get; set; }
     
     public string CompanyName { get; set; } = string.Empty;
     public string? CompanyTaxCode { get; set; }
     public string? CompanyAddress { get; set; }
     public string? CompanyPhone { get; set; }
     public string? CompanyEmail { get; set; }
+    public string? CompanyBankAccount { get; set; }
     public string? CompanyLogoUrl { get; set; }
     
     public string CustomerName { get; set; } = string.Empty;
@@ -24,6 +25,7 @@ public class InvoiceDto
     public string? CustomerTaxCode { get; set; }
     public string? CustomerAddress { get; set; }
     public string? CustomerEmail { get; set; }
+    public string? CustomerBankAccount { get; set; }
     public string? PaymentMethod { get; set; } = "TM/CK";
     
     public string? Notes { get; set; }
@@ -42,7 +44,7 @@ public class InvoiceItemDto
 {
     public int Id { get; set; }
     public int InvoiceId { get; set; }
-    public int ProductId { get; set; }
+    public int? ProductId { get; set; }
     public string ProductCode { get; set; } = string.Empty;
     public string ProductName { get; set; } = string.Empty;
     public string UnitName { get; set; } = string.Empty;

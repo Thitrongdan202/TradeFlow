@@ -12,8 +12,8 @@ public class Invoice : AuditableEntity<int>
     public int? SalesOrderId { get; set; }
     public SalesOrder? SalesOrder { get; set; }
     
-    public int CustomerId { get; set; }
-    public Customer Customer { get; set; } = null!;
+    public int? CustomerId { get; set; }
+    public Customer? Customer { get; set; }
     
     // Snapshots: Company (Seller)
     public string CompanyName { get; set; } = string.Empty;
@@ -21,6 +21,7 @@ public class Invoice : AuditableEntity<int>
     public string? CompanyAddress { get; set; }
     public string? CompanyPhone { get; set; }
     public string? CompanyEmail { get; set; }
+    public string? CompanyBankAccount { get; set; }
     public string? CompanyLogoUrl { get; set; }
     
     // Snapshots: Customer (Buyer)
@@ -29,6 +30,7 @@ public class Invoice : AuditableEntity<int>
     public string? CustomerTaxCode { get; set; }
     public string? CustomerAddress { get; set; }
     public string? CustomerEmail { get; set; }
+    public string? CustomerBankAccount { get; set; }
     public string? PaymentMethod { get; set; } = "TM/CK";
     
     public string? Notes { get; set; }

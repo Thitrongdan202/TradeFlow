@@ -32,6 +32,7 @@ public class CompanySettings : AuditableEntity<int>
 
     /// <summary>Email</summary>
     public string? Email { get; set; }
+    public string? BankAccount { get; set; }
 
     /// <summary>Website</summary>
     public string? Website { get; set; }

@@ -38,4 +38,7 @@ public class CompanySettings : AuditableEntity<int>
 
     /// <summary>Logo (đường dẫn hoặc tên file, không lưu binary)</summary>
     public string? LogoPath { get; set; }
+
+    /// <summary>Chữ ký hoặc con dấu (đường dẫn)</summary>
+    public string? SignaturePath { get; set; }
 }

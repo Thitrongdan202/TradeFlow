@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TradeFlow.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using TradeFlow.Infrastructure.Persistence;
 namespace TradeFlow.Infrastructure.Migrations
 {
     [DbContext(typeof(TradeFlowDbContext))]
-    partial class TradeFlowDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260909073111_AddPriceSourceToSalesOrder")]
+    partial class AddPriceSourceToSalesOrder
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -869,9 +872,6 @@ namespace TradeFlow.Infrastructure.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
-                    b.Property<string>("PaymentMethod")
-                        .HasColumnType("text");
-
                     b.Property<int?>("SalesOrderId")
                         .HasColumnType("integer");
 
@@ -1184,9 +1184,6 @@ namespace TradeFlow.Infrastructure.Migrations
                     b.Property<string>("Phone")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
-
-                    b.Property<string>("SignaturePath")
-                        .HasColumnType("text");
 
                     b.Property<string>("TaxCode")
                         .HasMaxLength(50)

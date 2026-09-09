@@ -20,6 +20,13 @@ public class SalesService : ISalesService
         _auditService = auditService;
     }
 
+        private DateTime NormalizeToUtc(DateTime date)
+    {
+        if (date.Kind == DateTimeKind.Unspecified || date.Kind == DateTimeKind.Local)
+            return DateTime.SpecifyKind(date, DateTimeKind.Utc);
+        return date;
+    }
+
     public async Task<List<SalesOrderDto>> GetOrdersAsync(CancellationToken cancellationToken = default)
     {
         var orders = await _context.SalesOrders
@@ -58,8 +65,8 @@ public class SalesService : ISalesService
         var order = new SalesOrder
         {
             Code = code,
-            OrderDate = dto.OrderDate,
-            DeliveryDate = dto.DeliveryDate,
+            OrderDate = NormalizeToUtc(dto.OrderDate),
+            DeliveryDate = dto.DeliveryDate.HasValue ? NormalizeToUtc(dto.DeliveryDate.Value) : null,
             CustomerId = dto.CustomerId,
             CustomerName = customer.Name,
             CustomerTaxCode = customer.TaxCode,
@@ -81,11 +88,12 @@ public class SalesService : ISalesService
                 ProductName = product.Name,
                 UnitName = product.Unit?.Name ?? string.Empty,
                 Quantity = itemDto.Quantity,
-                UnitPrice = itemDto.UnitPrice,
+                UnitPrice = itemDto.UnitPrice ?? 0,
+                PriceSource = string.IsNullOrEmpty(itemDto.PriceSource) ? "Thủ công" : itemDto.PriceSource,
                 DiscountAmount = itemDto.DiscountAmount,
                 TaxRate = itemDto.TaxRate,
                 TaxAmount = itemDto.TaxAmount,
-                LineTotal = (itemDto.Quantity * itemDto.UnitPrice) - itemDto.DiscountAmount + itemDto.TaxAmount
+                LineTotal = (itemDto.Quantity * (itemDto.UnitPrice ?? 0)) - itemDto.DiscountAmount + itemDto.TaxAmount
             };
             order.Items.Add(item);
         }
@@ -108,8 +116,8 @@ public class SalesService : ISalesService
         var order = await _context.SalesOrders.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == dto.Id, cancellationToken);
         if (order == null || order.Status != SalesOrderStatus.Draft) return false;
 
-        order.OrderDate = dto.OrderDate;
-        order.DeliveryDate = dto.DeliveryDate;
+        order.OrderDate = NormalizeToUtc(dto.OrderDate);
+        order.DeliveryDate = dto.DeliveryDate.HasValue ? NormalizeToUtc(dto.DeliveryDate.Value) : null;
         order.Notes = dto.Notes;
 
         // Clear existing items and rebuild
@@ -128,11 +136,12 @@ public class SalesService : ISalesService
                 ProductName = product.Name,
                 UnitName = product.Unit?.Name ?? string.Empty,
                 Quantity = itemDto.Quantity,
-                UnitPrice = itemDto.UnitPrice,
+                UnitPrice = itemDto.UnitPrice ?? 0,
+                PriceSource = string.IsNullOrEmpty(itemDto.PriceSource) ? "Thủ công" : itemDto.PriceSource,
                 DiscountAmount = itemDto.DiscountAmount,
                 TaxRate = itemDto.TaxRate,
                 TaxAmount = itemDto.TaxAmount,
-                LineTotal = (itemDto.Quantity * itemDto.UnitPrice) - itemDto.DiscountAmount + itemDto.TaxAmount
+                LineTotal = (itemDto.Quantity * (itemDto.UnitPrice ?? 0)) - itemDto.DiscountAmount + itemDto.TaxAmount
             };
             order.Items.Add(item);
         }
@@ -204,9 +213,10 @@ public class SalesService : ISalesService
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
             var lowerTerm = searchTerm.ToLower();
-            query = query.Where(x => x.Name.ToLower().Contains(lowerTerm) 
-                                  || (x.TaxCode != null && x.TaxCode.ToLower().Contains(lowerTerm))
-                                  || (x.Phone != null && x.Phone.ToLower().Contains(lowerTerm)));
+            var likeTerm = $"%{searchTerm}%";
+            query = query.Where(x => EF.Functions.ILike(x.Name, likeTerm) 
+                                  || (x.TaxCode != null && EF.Functions.ILike(x.TaxCode, likeTerm))
+                                  || (x.Phone != null && EF.Functions.ILike(x.Phone, likeTerm)));
         }
         return await query.OrderBy(x => x.Name).Take(20).ToListAsync(cancellationToken);
     }
@@ -216,24 +226,69 @@ public class SalesService : ISalesService
         var query = _context.Products.Include(p => p.Unit).AsNoTracking().Where(x => x.IsActive);
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
-            var lowerTerm = searchTerm.ToLower();
-            query = query.Where(x => x.Name.ToLower().Contains(lowerTerm) 
-                                  || x.Code.ToLower().Contains(lowerTerm)
-                                  || (x.NewCode != null && x.NewCode.ToLower().Contains(lowerTerm))
-                                  || (x.LegacyCode != null && x.LegacyCode.ToLower().Contains(lowerTerm)));
+            var likeTerm = $"%{searchTerm}%";
+            query = query.Where(x => EF.Functions.ILike(x.Name, likeTerm) 
+                                  || EF.Functions.ILike(x.Code, likeTerm)
+                                  || (x.NewCode != null && EF.Functions.ILike(x.NewCode, likeTerm))
+                                  || (x.LegacyCode != null && EF.Functions.ILike(x.LegacyCode, likeTerm)));
         }
         return await query.OrderBy(x => x.Name).Take(20).ToListAsync(cancellationToken);
     }
 
+    
+    public async Task<List<TradeFlow.Domain.Entities.Pricing.PriceList>> GetApplicablePriceListsAsync(DateTime targetDate, CancellationToken cancellationToken = default)
+    {
+        var utcTarget = NormalizeToUtc(targetDate);
+        return await _context.PriceLists
+            .Where(x => x.Status == TradeFlow.Domain.Enums.PriceListStatus.Active 
+                     && x.EffectiveFrom <= utcTarget 
+                     && (x.EffectiveTo == null || x.EffectiveTo >= utcTarget))
+            .OrderByDescending(x => x.EffectiveFrom)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<(decimal? Price, string SourceName)> GetProductPriceAsync(int productId, int? priceListId, DateTime targetDate, CancellationToken cancellationToken = default)
+    {
+        var utcTarget = NormalizeToUtc(targetDate);
+        if (priceListId.HasValue)
+        {
+            var item = await _context.PriceListItems
+                .Include(x => x.PriceList)
+                .FirstOrDefaultAsync(x => x.ProductId == productId && x.PriceListId == priceListId.Value, cancellationToken);
+            if (item != null)
+            {
+                return (item.UnitPrice, item.PriceList!.Name);
+            }
+        }
+        
+        // Fallback to general active price list
+        var activeItem = await _context.PriceListItems
+            .Include(x => x.PriceList)
+            .Where(x => x.ProductId == productId 
+                     && x.PriceList!.Status == TradeFlow.Domain.Enums.PriceListStatus.Active
+                     && x.PriceList!.EffectiveFrom <= utcTarget 
+                     && (x.PriceList!.EffectiveTo == null || x.PriceList!.EffectiveTo >= utcTarget))
+            .OrderByDescending(x => x.PriceList!.EffectiveFrom)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (activeItem != null)
+        {
+            return (activeItem.UnitPrice, activeItem.PriceList!.Name);
+        }
+
+        return (null, "Thủ công");
+    }
+
     public async Task<decimal> GetActivePriceAsync(int productId, DateTime targetDate, CancellationToken cancellationToken = default)
     {
+        var utcTarget = NormalizeToUtc(targetDate);
         // Find active PriceList that covers targetDate
         var activePriceListItem = await _context.PriceListItems
             .Include(x => x.PriceList)
             .Where(x => x.ProductId == productId 
                      && x.PriceList!.Status == PriceListStatus.Active
-                     && x.PriceList!.EffectiveFrom <= targetDate 
-                     && (x.PriceList!.EffectiveTo == null || x.PriceList!.EffectiveTo >= targetDate))
+                     && x.PriceList!.EffectiveFrom <= utcTarget 
+                     && (x.PriceList!.EffectiveTo == null || x.PriceList!.EffectiveTo >= utcTarget))
             .OrderByDescending(x => x.PriceList!.EffectiveFrom) // get latest if multiple
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -274,6 +329,7 @@ public class SalesService : ISalesService
                 UnitName = i.UnitName,
                 Quantity = i.Quantity,
                 UnitPrice = i.UnitPrice,
+            PriceSource = i.PriceSource,
                 DiscountAmount = i.DiscountAmount,
                 TaxRate = i.TaxRate,
                 TaxAmount = i.TaxAmount,

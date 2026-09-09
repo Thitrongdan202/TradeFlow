@@ -116,7 +116,7 @@ else
                                 <td>@item.ProductName</td>
                                 <td>@item.UnitName</td>
                                 <td class="tf-text-right">@item.Quantity</td>
-                                <td class="tf-text-right">@item.UnitPrice.ToString("N0")</td>
+                                <td class="tf-text-right">@(item.UnitPrice ?? 0).ToString("N0")</td>
                                 <td class="tf-text-right"><strong style="color:var(--tf-color-danger);">@item.LineTotal.ToString("N0")</strong></td>
                             </tr>
                         }

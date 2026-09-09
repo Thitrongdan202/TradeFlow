@@ -19,6 +19,7 @@ public class SalesOrderItem : AuditableEntity<int>
     // Values
     public decimal Quantity { get; set; }
     public decimal UnitPrice { get; set; } // Price from active price list
+    public string PriceSource { get; set; } = string.Empty;
     public decimal DiscountAmount { get; set; }
     public decimal TaxRate { get; set; } = 0; // 0, 5, 8, 10
     public decimal TaxAmount { get; set; }

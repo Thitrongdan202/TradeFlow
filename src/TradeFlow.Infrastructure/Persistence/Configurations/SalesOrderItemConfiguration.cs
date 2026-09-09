@@ -17,6 +17,7 @@ public class SalesOrderItemConfiguration : IEntityTypeConfiguration<SalesOrderIt
 
         builder.Property(x => x.Quantity).HasPrecision(18, 4);
         builder.Property(x => x.UnitPrice).HasPrecision(18, 2);
+        builder.Property(x => x.PriceSource).HasMaxLength(200);
         builder.Property(x => x.DiscountAmount).HasPrecision(18, 2);
         builder.Property(x => x.TaxRate).HasPrecision(5, 2);
         builder.Property(x => x.TaxAmount).HasPrecision(18, 2);

@@ -24,6 +24,7 @@ public class InvoiceDto
     public string? CustomerTaxCode { get; set; }
     public string? CustomerAddress { get; set; }
     public string? CustomerEmail { get; set; }
+    public string? PaymentMethod { get; set; } = "TM/CK";
     
     public string? Notes { get; set; }
     public InvoiceStatus Status { get; set; } = InvoiceStatus.Draft;

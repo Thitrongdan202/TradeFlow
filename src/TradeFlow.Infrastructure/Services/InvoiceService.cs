@@ -133,8 +133,38 @@ public class InvoiceService : IInvoiceService
         var inv = await _context.Invoices.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == dto.Id, cancellationToken);
         if (inv == null || inv.Status != InvoiceStatus.Draft) return false;
 
+        inv.CustomerName = dto.CustomerName;
+        inv.CustomerCompanyName = dto.CustomerCompanyName;
+        inv.CustomerTaxCode = dto.CustomerTaxCode;
+        inv.CustomerAddress = dto.CustomerAddress;
+        inv.PaymentMethod = dto.PaymentMethod;
         inv.Notes = dto.Notes;
-        // In this phase, we lock the quantities to the sales order, so we only update notes/dates.
+        inv.Type = dto.Type;
+
+        _context.InvoiceItems.RemoveRange(inv.Items);
+        inv.Items.Clear();
+
+        foreach(var item in dto.Items)
+        {
+            inv.Items.Add(new InvoiceItem
+            {
+                ProductId = item.ProductId,
+                ProductCode = item.ProductCode,
+                ProductName = item.ProductName,
+                UnitName = item.UnitName,
+                Quantity = item.Quantity,
+                UnitPrice = item.UnitPrice,
+                DiscountAmount = item.DiscountAmount,
+                TaxRate = item.TaxRate,
+                TaxAmount = item.TaxAmount,
+                LineTotal = item.LineTotal
+            });
+        }
+
+        inv.SubTotal = dto.SubTotal;
+        inv.TotalDiscount = dto.TotalDiscount;
+        inv.TotalTax = dto.TotalTax;
+        inv.GrandTotal = dto.GrandTotal;
 
         await _context.SaveChangesAsync(cancellationToken);
         await _auditService.LogAsync(AuditEventType.InvoiceUpdated, "Invoice", inv.Id.ToString(), "Draft invoice updated", _currentUserService.UserId);
@@ -168,169 +198,238 @@ public class InvoiceService : IInvoiceService
             container.Page(page =>
             {
                 page.Size(QuestPDF.Helpers.PageSizes.A4);
-                page.Margin(2, QuestPDF.Infrastructure.Unit.Centimetre);
+                page.Margin(1.5f, QuestPDF.Infrastructure.Unit.Centimetre);
                 page.PageColor(QuestPDF.Helpers.Colors.White);
-                page.DefaultTextStyle(x => x.FontSize(11));
+                page.DefaultTextStyle(x => x.FontFamily(QuestPDF.Helpers.Fonts.Arial).FontSize(11));
 
                 page.Header().Element(compose => 
                 {
                     compose.Row(row =>
                     {
+                        // Left: Company Info
                         row.RelativeItem().Column(column =>
                         {
-                            column.Item().Text(inv.CompanyName).FontSize(18).SemiBold().FontColor(QuestPDF.Helpers.Colors.Blue.Darken2);
+                            column.Item().Text(inv.CompanyName).FontSize(14).SemiBold().FontColor(QuestPDF.Helpers.Colors.Blue.Darken2);
                             if (!string.IsNullOrEmpty(inv.CompanyTaxCode))
-                                column.Item().Text($"MST: {inv.CompanyTaxCode}");
+                                column.Item().Text($"Mã số thuế: {inv.CompanyTaxCode}");
                             if (!string.IsNullOrEmpty(inv.CompanyAddress))
-                                column.Item().Text(inv.CompanyAddress);
+                                column.Item().Text($"Địa chỉ: {inv.CompanyAddress}");
                             if (!string.IsNullOrEmpty(inv.CompanyPhone))
-                                column.Item().Text($"SĐT: {inv.CompanyPhone}");
+                                column.Item().Text($"Điện thoại: {inv.CompanyPhone}");
+                            if (!string.IsNullOrEmpty(inv.CompanyEmail))
+                                column.Item().Text($"Email: {inv.CompanyEmail}");
                         });
-                        row.ConstantItem(200).AlignRight().Column(column =>
+                        
+                        // Right: Title & Invoice No
+                        row.ConstantItem(220).AlignRight().Column(column =>
                         {
                             var title = inv.Type == TradeFlow.Domain.Enums.InvoiceType.VatInvoice ? "HÓA ĐƠN GIÁ TRỊ GIA TĂNG" : "HÓA ĐƠN BÁN HÀNG";
-                            column.Item().Text(title).FontSize(24).SemiBold().FontColor(QuestPDF.Helpers.Colors.Grey.Darken3);
-                            column.Item().Text($"Số: {inv.InvoiceNumber}").SemiBold();
-                            column.Item().Text($"Ngày: {inv.InvoiceDate:dd/MM/yyyy}");
+                            column.Item().Text(title).FontSize(16).SemiBold().FontColor(QuestPDF.Helpers.Colors.Black);
+                            column.Item().Text($"Ký hiệu: .........").FontSize(10);
+                            column.Item().Text($"Số: {inv.InvoiceNumber}").FontSize(10).SemiBold();
+                            column.Item().Text($"Ngày {inv.InvoiceDate:dd} tháng {inv.InvoiceDate:MM} năm {inv.InvoiceDate:yyyy}").FontSize(10).Italic();
                         });
                     });
                 });
 
                 page.Content().PaddingVertical(1, QuestPDF.Infrastructure.Unit.Centimetre).Column(column =>
                 {
-                    column.Item().PaddingBottom(1, QuestPDF.Infrastructure.Unit.Centimetre).Column(c =>
-                    {
-                        c.Item().Text("THÔNG TIN KHÁCH HÀNG:").SemiBold().FontColor(QuestPDF.Helpers.Colors.Grey.Darken2);
-                        c.Item().Text($"Đơn vị mua: {inv.CustomerName}");
+                    column.Item().PaddingBottom(10).Column(c => {
+                        c.Item().Text(t => {
+                            t.Span("Họ tên người mua hàng: ");
+                            t.Span(inv.CustomerName).SemiBold();
+                        });
+                        if (!string.IsNullOrEmpty(inv.CustomerCompanyName))
+                            c.Item().Text($"Tên đơn vị: {inv.CustomerCompanyName}");
                         if (!string.IsNullOrEmpty(inv.CustomerTaxCode))
-                            c.Item().Text($"MST: {inv.CustomerTaxCode}");
-                        if (!string.IsNullOrEmpty(inv.CustomerAddress))
-                            c.Item().Text($"Địa chỉ: {inv.CustomerAddress}");
+                            c.Item().Text($"Mã số thuế: {inv.CustomerTaxCode}");
+                        c.Item().Text($"Địa chỉ: {inv.CustomerAddress}");
+                        c.Item().Text($"Hình thức thanh toán: {inv.PaymentMethod}");
                     });
 
                     column.Item().Table(table =>
                     {
                         table.ColumnsDefinition(columns =>
                         {
-                            columns.ConstantColumn(40);
-                            columns.RelativeColumn();
-                            columns.ConstantColumn(60);
-                            columns.ConstantColumn(60);
-                            columns.ConstantColumn(80);
-                            columns.ConstantColumn(100);
+                            columns.ConstantColumn(30); // STT
+                            columns.RelativeColumn(3); // Tên
+                            columns.RelativeColumn(1); // ĐVT
+                            columns.RelativeColumn(1); // Số lượng
+                            columns.RelativeColumn(2); // Đơn giá
+                            columns.RelativeColumn(2); // Thành tiền
+                            if (inv.Type == TradeFlow.Domain.Enums.InvoiceType.VatInvoice)
+                            {
+                                columns.RelativeColumn(1); // Thuế suất
+                                columns.RelativeColumn(2); // Tiền thuế
+                            }
                         });
 
+                        // Header
                         table.Header(header =>
                         {
-                            header.Cell().BorderBottom(1).BorderColor(QuestPDF.Helpers.Colors.Grey.Lighten2).PaddingBottom(5).Text("STT").SemiBold();
-                            header.Cell().BorderBottom(1).BorderColor(QuestPDF.Helpers.Colors.Grey.Lighten2).PaddingBottom(5).Text("Tên hàng hóa, dịch vụ").SemiBold();
-                            header.Cell().BorderBottom(1).BorderColor(QuestPDF.Helpers.Colors.Grey.Lighten2).PaddingBottom(5).AlignRight().Text("ĐVT").SemiBold();
-                            header.Cell().BorderBottom(1).BorderColor(QuestPDF.Helpers.Colors.Grey.Lighten2).PaddingBottom(5).AlignRight().Text("Số lượng").SemiBold();
-                            header.Cell().BorderBottom(1).BorderColor(QuestPDF.Helpers.Colors.Grey.Lighten2).PaddingBottom(5).AlignRight().Text("Đơn giá").SemiBold();
-                            header.Cell().BorderBottom(1).BorderColor(QuestPDF.Helpers.Colors.Grey.Lighten2).PaddingBottom(5).AlignRight().Text("Thành tiền").SemiBold();
+                            header.Cell().Border(1).Padding(2).AlignCenter().Text("STT").SemiBold();
+                            header.Cell().Border(1).Padding(2).AlignCenter().Text("Tên hàng hóa, dịch vụ").SemiBold();
+                            header.Cell().Border(1).Padding(2).AlignCenter().Text("ĐVT").SemiBold();
+                            header.Cell().Border(1).Padding(2).AlignCenter().Text("SL").SemiBold();
+                            header.Cell().Border(1).Padding(2).AlignCenter().Text("Đơn giá").SemiBold();
+                            header.Cell().Border(1).Padding(2).AlignCenter().Text("Thành tiền").SemiBold();
+                            
+                            if (inv.Type == TradeFlow.Domain.Enums.InvoiceType.VatInvoice)
+                            {
+                                header.Cell().Border(1).Padding(2).AlignCenter().Text("Thuế suất").SemiBold();
+                                header.Cell().Border(1).Padding(2).AlignCenter().Text("Tiền thuế").SemiBold();
+                            }
                         });
 
+                        // Rows
                         int stt = 1;
                         foreach (var item in inv.Items)
                         {
-                            table.Cell().BorderBottom(1).BorderColor(QuestPDF.Helpers.Colors.Grey.Lighten4).PaddingVertical(5).Text(stt++.ToString());
-                            table.Cell().BorderBottom(1).BorderColor(QuestPDF.Helpers.Colors.Grey.Lighten4).PaddingVertical(5).Text(item.ProductName);
-                            table.Cell().BorderBottom(1).BorderColor(QuestPDF.Helpers.Colors.Grey.Lighten4).PaddingVertical(5).AlignRight().Text(item.UnitName);
-                            table.Cell().BorderBottom(1).BorderColor(QuestPDF.Helpers.Colors.Grey.Lighten4).PaddingVertical(5).AlignRight().Text(item.Quantity.ToString("N0"));
-                            table.Cell().BorderBottom(1).BorderColor(QuestPDF.Helpers.Colors.Grey.Lighten4).PaddingVertical(5).AlignRight().Text(item.UnitPrice.ToString("N0"));
-                            table.Cell().BorderBottom(1).BorderColor(QuestPDF.Helpers.Colors.Grey.Lighten4).PaddingVertical(5).AlignRight().Text(item.LineTotal.ToString("N0")).SemiBold();
+                            table.Cell().Border(1).Padding(2).AlignCenter().Text(stt.ToString());
+                            table.Cell().Border(1).Padding(2).Text(item.ProductName);
+                            table.Cell().Border(1).Padding(2).AlignCenter().Text(item.UnitName);
+                            table.Cell().Border(1).Padding(2).AlignRight().Text(item.Quantity.ToString("G29"));
+                            table.Cell().Border(1).Padding(2).AlignRight().Text(item.UnitPrice.ToString("N0"));
+                            var totalBeforeTax = item.Quantity * item.UnitPrice - item.DiscountAmount;
+                            table.Cell().Border(1).Padding(2).AlignRight().Text(totalBeforeTax.ToString("N0"));
+
+                            if (inv.Type == TradeFlow.Domain.Enums.InvoiceType.VatInvoice)
+                            {
+                                table.Cell().Border(1).Padding(2).AlignRight().Text($"{item.TaxRate}%");
+                                table.Cell().Border(1).Padding(2).AlignRight().Text(item.TaxAmount.ToString("N0"));
+                            }
+                            stt++;
                         }
                     });
 
-                    column.Item().PaddingTop(1, QuestPDF.Infrastructure.Unit.Centimetre).Row(row =>
+                    // Summary
+                    column.Item().PaddingTop(10).AlignRight().Table(table =>
                     {
-                        row.RelativeItem();
-                        row.ConstantItem(250).Column(c =>
+                        table.ColumnsDefinition(columns =>
                         {
-                            c.Item().Row(r => { r.RelativeItem().Text("Tổng tiền hàng:"); r.RelativeItem().AlignRight().Text(inv.SubTotal.ToString("N0")); });
-                            c.Item().Row(r => { r.RelativeItem().Text("Chiết khấu:"); r.RelativeItem().AlignRight().Text(inv.TotalDiscount.ToString("N0")); });
-                            c.Item().PaddingTop(5).BorderTop(1).BorderColor(QuestPDF.Helpers.Colors.Grey.Lighten2).PaddingTop(5).Row(r => { r.RelativeItem().Text("Tổng thanh toán:").SemiBold(); r.RelativeItem().AlignRight().Text(inv.GrandTotal.ToString("N0")).SemiBold().FontColor(QuestPDF.Helpers.Colors.Red.Medium); });
+                            columns.RelativeColumn(1);
+                            columns.RelativeColumn(1);
+                        });
+
+                        if (inv.Type == TradeFlow.Domain.Enums.InvoiceType.VatInvoice)
+                        {
+                            table.Cell().Padding(2).AlignRight().Text("Tổng tiền chưa thuế: ");
+                            table.Cell().Padding(2).AlignRight().Text(inv.SubTotal.ToString("N0"));
                             
-                            // "Số tiền viết bằng chữ"
-                            c.Item().PaddingTop(10).Text($"Số tiền viết bằng chữ: {TradeFlow.Application.Common.Helpers.NumberToTextHelper.ConvertToWords((long)inv.GrandTotal)} đồng").Italic().FontSize(10).FontColor(QuestPDF.Helpers.Colors.Grey.Darken2);
+                            table.Cell().Padding(2).AlignRight().Text("Tiền thuế GTGT: ");
+                            table.Cell().Padding(2).AlignRight().Text(inv.TotalTax.ToString("N0"));
+                        }
+
+                        table.Cell().Padding(2).AlignRight().Text("Tổng cộng tiền thanh toán: ").SemiBold();
+                        table.Cell().Padding(2).AlignRight().Text(inv.GrandTotal.ToString("N0")).SemiBold();
+                    });
+
+                    column.Item().PaddingTop(5).Text($"Số tiền viết bằng chữ: {TradeFlow.Application.Common.Helpers.NumberToTextHelper.ConvertToWords((long)inv.GrandTotal)} đồng chẵn.").Italic();
+
+                    // Signatures
+                    column.Item().PaddingTop(30).Row(row =>
+                    {
+                        row.RelativeItem().AlignCenter().Column(c =>
+                        {
+                            c.Item().Text("Người mua hàng").SemiBold();
+                            c.Item().Text("(Chữ ký số (nếu có))").FontSize(9).Italic();
+                        });
+
+                        row.RelativeItem().AlignCenter().Column(c =>
+                        {
+                            c.Item().Text("Người bán hàng").SemiBold();
+                            c.Item().Text("(Chữ ký điện tử, chữ ký số)").FontSize(9).Italic();
+                            
+                            c.Item().PaddingTop(20).Container().Border(1).BorderColor(QuestPDF.Helpers.Colors.Green.Lighten1).Background(QuestPDF.Helpers.Colors.Green.Lighten5).Padding(10).Column(sig => 
+                            {
+                                sig.Item().Text("Xác nhận của công ty").SemiBold().FontColor(QuestPDF.Helpers.Colors.Green.Darken2);
+                                sig.Item().Text($"Ký bởi: {inv.CompanyName}").FontColor(QuestPDF.Helpers.Colors.Red.Darken2);
+                                sig.Item().Text($"Ký ngày: {DateTime.Now:dd/MM/yyyy}").FontColor(QuestPDF.Helpers.Colors.Red.Darken2);
+                            });
                         });
                     });
                 });
 
-                page.Footer().AlignCenter().Text(x =>
-                {
-                    x.Span("Trang ");
-                    x.CurrentPageNumber();
-                    x.Span(" / ");
-                    x.TotalPages();
-                });
+                page.Footer().AlignCenter().Text("(Cần kiểm tra, đối chiếu khi lập, giao, nhận hóa đơn)").FontSize(10).Italic();
             });
         });
 
         return document.GeneratePdf();
     }
 
-    private static InvoiceDto MapToDto(Invoice inv)
-    {
-        return new InvoiceDto
-        {
-            Id = inv.Id,
-            InvoiceNumber = inv.InvoiceNumber,
-            InvoiceDate = inv.InvoiceDate,
-            SalesOrderId = inv.SalesOrderId,
-            CustomerId = inv.CustomerId,
-            CompanyName = inv.CompanyName,
-            CompanyTaxCode = inv.CompanyTaxCode,
-            CompanyAddress = inv.CompanyAddress,
-            CompanyPhone = inv.CompanyPhone,
-            CompanyEmail = inv.CompanyEmail,
-            CompanyLogoUrl = inv.CompanyLogoUrl,
-            CustomerName = inv.CustomerName,
-            CustomerCompanyName = inv.CustomerCompanyName,
-            CustomerTaxCode = inv.CustomerTaxCode,
-            CustomerAddress = inv.CustomerAddress,
-            CustomerEmail = inv.CustomerEmail,
-            Notes = inv.Notes,
-            Status = inv.Status,
-            SubTotal = inv.SubTotal,
-            TotalDiscount = inv.TotalDiscount,
-            TotalTax = inv.TotalTax,
-            GrandTotal = inv.GrandTotal,
-            Items = inv.Items.Select(i => new InvoiceItemDto
-            {
-                Id = i.Id,
-                InvoiceId = i.InvoiceId,
-                ProductId = i.ProductId,
-                ProductCode = i.ProductCode,
-                ProductName = i.ProductName,
-                UnitName = i.UnitName,
-                Quantity = i.Quantity,
-                UnitPrice = i.UnitPrice,
-                DiscountAmount = i.DiscountAmount,
-                TaxRate = i.TaxRate,
-                TaxAmount = i.TaxAmount,
-                LineTotal = i.LineTotal
-            }).ToList()
-        };
-    }
-
     public async Task<bool> DeleteInvoiceAsync(int id, CancellationToken cancellationToken = default)
     {
         var inv = await _context.Invoices.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (inv == null) return false;
+        if (inv == null || inv.Status != InvoiceStatus.Draft) return false;
 
-        if (inv.Status != InvoiceStatus.Draft && inv.Status != InvoiceStatus.Pending)
+        _context.Invoices.Remove(inv);
+        
+        if (inv.SalesOrderId.HasValue)
         {
-            inv.Status = InvoiceStatus.Cancelled;
-            await _context.SaveChangesAsync(cancellationToken);
-            await _auditService.LogAsync(AuditEventType.InvoiceCancelled, _currentUserService.UserName ?? "System", "Invoice", id.ToString(), "Hủy hóa đơn vì đã phát hành", cancellationToken: cancellationToken);
-            return true;
+            var so = await _context.SalesOrders.FindAsync(new object[] { inv.SalesOrderId.Value }, cancellationToken);
+            if (so != null && so.Status == SalesOrderStatus.Invoiced)
+            {
+                so.Status = SalesOrderStatus.Confirmed;
+            }
         }
 
-        _context.InvoiceItems.RemoveRange(inv.Items);
-        _context.Invoices.Remove(inv);
         await _context.SaveChangesAsync(cancellationToken);
-        await _auditService.LogAsync(AuditEventType.InvoiceDeleted, _currentUserService.UserName ?? "System", "Invoice", id.ToString(), "Xóa vật lý hóa đơn nháp", cancellationToken: cancellationToken);
+        await _auditService.LogAsync(AuditEventType.InvoiceDeleted, "Invoice", inv.Id.ToString(), "Draft invoice deleted", _currentUserService.UserId);
+
         return true;
     }
+
+
+    private InvoiceDto MapToDto(Invoice invoice)
+    {
+        var dto = new InvoiceDto
+        {
+            Id = invoice.Id,
+            InvoiceNumber = invoice.InvoiceNumber,
+            InvoiceDate = invoice.InvoiceDate,
+            SalesOrderId = invoice.SalesOrderId,
+            CustomerId = invoice.CustomerId,
+            CompanyName = invoice.CompanyName,
+            CompanyTaxCode = invoice.CompanyTaxCode,
+            CompanyAddress = invoice.CompanyAddress,
+            CompanyPhone = invoice.CompanyPhone,
+            CompanyEmail = invoice.CompanyEmail,
+            CompanyLogoUrl = invoice.CompanyLogoUrl,
+            CustomerName = invoice.CustomerName,
+            CustomerCompanyName = invoice.CustomerCompanyName,
+            CustomerTaxCode = invoice.CustomerTaxCode,
+            CustomerAddress = invoice.CustomerAddress,
+            CustomerEmail = invoice.CustomerEmail,
+            PaymentMethod = invoice.PaymentMethod,
+            Notes = invoice.Notes,
+            Status = invoice.Status,
+            Type = invoice.Type,
+            SubTotal = invoice.SubTotal,
+            TotalDiscount = invoice.TotalDiscount,
+            TotalTax = invoice.TotalTax,
+            GrandTotal = invoice.GrandTotal
+        };
+
+        foreach (var item in invoice.Items)
+        {
+            dto.Items.Add(new InvoiceItemDto
+            {
+                Id = item.Id,
+                InvoiceId = item.InvoiceId,
+                ProductId = item.ProductId,
+                ProductCode = item.ProductCode,
+                ProductName = item.ProductName,
+                UnitName = item.UnitName,
+                Quantity = item.Quantity,
+                UnitPrice = item.UnitPrice,
+                DiscountAmount = item.DiscountAmount,
+                TaxRate = item.TaxRate,
+                TaxAmount = item.TaxAmount,
+                LineTotal = item.LineTotal
+            });
+        }
+
+        return dto;
+    }
+
 }

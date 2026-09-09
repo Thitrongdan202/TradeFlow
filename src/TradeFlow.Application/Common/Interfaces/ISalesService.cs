@@ -14,5 +14,7 @@ public interface ISalesService
     
     Task<List<TradeFlow.Domain.Entities.MasterData.Customer>> SearchCustomersAsync(string searchTerm, CancellationToken cancellationToken = default);
     Task<List<TradeFlow.Domain.Entities.MasterData.Product>> SearchProductsAsync(string searchTerm, CancellationToken cancellationToken = default);
+    Task<List<TradeFlow.Domain.Entities.Pricing.PriceList>> GetApplicablePriceListsAsync(DateTime targetDate, CancellationToken cancellationToken = default);
+    Task<(decimal? Price, string SourceName)> GetProductPriceAsync(int productId, int? priceListId, DateTime targetDate, CancellationToken cancellationToken = default);
     Task<decimal> GetActivePriceAsync(int productId, DateTime targetDate, CancellationToken cancellationToken = default);
 }

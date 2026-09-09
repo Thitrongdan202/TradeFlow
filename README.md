@@ -108,3 +108,10 @@ Khi chạy ở môi trường Development, `DatabaseSeeder.cs` sẽ tự động
 - **Nguyên tắc**: Xóa vật lý các bản ghi chưa sử dụng. Nếu dữ liệu đang bị ràng buộc (ví dụ Sản phẩm trong Đơn hàng), hệ thống sẽ vô hiệu hóa (soft-delete) hoặc chặn lệnh xóa kèm theo thông báo lỗi rõ ràng.
 - **Bảng giá, Đơn bán hàng, Hóa đơn**: Áp dụng quy tắc tương tự, không xóa các chứng từ đã xác nhận/phát hành.
 - **Bảo mật**: Sử dụng RBAC server-side xác thực quyền người dùng. Mọi thao tác xóa thành công đều được lưu vết qua AuditService.
+
+
+### Cập nhật cấu trúc Giá bán (Pricing Flow)
+- **Giá sản phẩm là tùy chọn**: Một Sản phẩm (Product) có thể không cần thiết lập giá cố định. Khi thêm vào đơn hàng nếu chưa có giá, hệ thống sẽ báo "Chưa có giá".
+- **Lấy giá từ Bảng giá (PriceList)**: Người dùng có thể chủ động chọn nguồn giá là một Bảng giá cụ thể (ví dụ: Q3/2026), hệ thống sẽ tự động điền đơn giá.
+- **Nhập giá thủ công**: Hỗ trợ nhập giá thủ công (chỉnh sửa trực tiếp đơn giá trên đơn bán hàng). Giá này chỉ áp dụng riêng cho dòng đơn hàng đó, không ảnh hưởng đến dữ liệu Master.
+- **Hóa đơn giữ giá cuối**: Hóa đơn (Invoice) luôn luôn sử dụng chính xác đơn giá cuối cùng đã được lưu trên Đơn bán hàng (bao gồm cả giá thủ công), không tra cứu lại bảng giá.

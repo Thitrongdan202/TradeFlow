@@ -1,0 +1,197 @@
+@page "/hoa-don/sua/{Id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Sales
+@using TradeFlow.Domain.Enums
+@inject IInvoiceService InvoiceService
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permission:Invoices:Edit")]
+
+<PageTitle>Sửa hóa đơn | TradeFlow</PageTitle>
+
+<div class="tf-page-header">
+    <div class="tf-page-header-content">
+        <h1 class="tf-page-title">Sửa hóa đơn</h1>
+        <p class="tf-page-subtitle">Cập nhật thông tin hóa đơn bản nháp.</p>
+    </div>
+</div>
+
+@if (_isLoading)
+{
+    <div class="tf-loading">Đang tải dữ liệu...</div>
+}
+else if (_invoice == null)
+{
+    <div class="tf-alert tf-alert-danger">Không tìm thấy hóa đơn hoặc không thể sửa.</div>
+}
+else
+{
+    <div class="tf-card" style="margin-bottom:20px;">
+        <h2 class="tf-card-title">Thông tin người mua</h2>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+            <div class="tf-form-group">
+                <label class="tf-form-label">Tên người mua</label>
+                <input class="tf-form-control" @bind="_invoice.CustomerName" />
+            </div>
+            <div class="tf-form-group">
+                <label class="tf-form-label">Tên đơn vị</label>
+                <input class="tf-form-control" @bind="_invoice.CustomerCompanyName" />
+            </div>
+            <div class="tf-form-group">
+                <label class="tf-form-label">Mã số thuế</label>
+                <input class="tf-form-control" @bind="_invoice.CustomerTaxCode" />
+            </div>
+            <div class="tf-form-group">
+                <label class="tf-form-label">Địa chỉ</label>
+                <input class="tf-form-control" @bind="_invoice.CustomerAddress" />
+            </div>
+            <div class="tf-form-group">
+                <label class="tf-form-label">Hình thức thanh toán</label>
+                <input class="tf-form-control" @bind="_invoice.PaymentMethod" />
+            </div>
+            <div class="tf-form-group">
+                <label class="tf-form-label">Loại hóa đơn</label>
+                <select class="tf-form-control" @bind="_invoice.Type" @bind:after="CalculateTotals">
+                    <option value="@InvoiceType.SalesInvoice">Hóa đơn bán hàng</option>
+                    <option value="@InvoiceType.VatInvoice">Hóa đơn giá trị gia tăng</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="tf-card" style="margin-bottom:20px;">
+        <h2 class="tf-card-title">Chi tiết hàng hóa</h2>
+        <div class="tf-table-responsive">
+            <table class="tf-table">
+                <thead>
+                    <tr>
+                        <th>Tên hàng</th>
+                        <th>ĐVT</th>
+                        <th style="width:100px;">Số lượng</th>
+                        <th style="width:150px;">Đơn giá</th>
+                        <th style="width:120px;">Chiết khấu</th>
+                        @if (_invoice.Type == InvoiceType.VatInvoice)
+                        {
+                            <th style="width:80px;">Thuế (%)</th>
+                        }
+                        <th style="text-align:right;">Thành tiền</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in _invoice.Items)
+                    {
+                        <tr>
+                            <td>@item.ProductName</td>
+                            <td>@item.UnitName</td>
+                            <td><input type="number" class="tf-form-control" @bind="item.Quantity" @bind:after="CalculateTotals" min="0" step="any" /></td>
+                            <td><input type="number" class="tf-form-control" @bind="item.UnitPrice" @bind:after="CalculateTotals" min="0" step="any" /></td>
+                            <td><input type="number" class="tf-form-control" @bind="item.DiscountAmount" @bind:after="CalculateTotals" min="0" step="any" /></td>
+                            @if (_invoice.Type == InvoiceType.VatInvoice)
+                            {
+                                <td>
+                                    <select class="tf-form-control" @bind="item.TaxRate" @bind:after="CalculateTotals">
+                                        <option value="0">0%</option>
+                                        <option value="5">5%</option>
+                                        <option value="8">8%</option>
+                                        <option value="10">10%</option>
+                                    </select>
+                                </td>
+                            }
+                            <td class="tf-text-right"><strong>@item.LineTotal.ToString("N0")</strong></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div style="margin-top:24px; display:flex; justify-content:flex-end;">
+            <div style="width:300px; background:#f8fafc; padding:20px; border-radius:8px; border:1px solid #e2e8f0;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <span style="color:var(--tf-text-muted);">Tổng tiền hàng:</span>
+                    <strong>@_invoice.SubTotal.ToString("N0")</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <span style="color:var(--tf-text-muted);">Chiết khấu:</span>
+                    <strong>@_invoice.TotalDiscount.ToString("N0")</strong>
+                </div>
+                @if (_invoice.Type == InvoiceType.VatInvoice)
+                {
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                        <span style="color:var(--tf-text-muted);">Tiền thuế GTGT:</span>
+                        <strong>@_invoice.TotalTax.ToString("N0")</strong>
+                    </div>
+                }
+                <div style="display:flex; justify-content:space-between; margin-top:16px; padding-top:16px; border-top:1px dashed #cbd5e1; font-size:18px;">
+                    <span>Tổng cộng:</span>
+                    <strong style="color:var(--tf-color-danger);">@_invoice.GrandTotal.ToString("N0")</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tf-form-actions" style="margin-bottom: 40px; display:flex; gap:12px;">
+        <button type="button" class="tf-btn tf-btn-secondary" @onclick='() => Nav.NavigateTo($"/hoa-don/chi-tiet/{Id}")'>Hủy</button>
+        <button type="button" class="tf-btn tf-btn-primary" @onclick="SaveInvoice" disabled="@_isSaving">
+            @if (_isSaving) { <span>Đang lưu...</span> } else { <span>Lưu thay đổi</span> }
+        </button>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private InvoiceDto? _invoice;
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _invoice = await InvoiceService.GetInvoiceByIdAsync(Id);
+        if (_invoice != null && _invoice.Status != InvoiceStatus.Draft)
+        {
+            _invoice = null; // Cannot edit finalized invoice
+        }
+        _isLoading = false;
+    }
+
+    private void CalculateTotals()
+    {
+        if (_invoice == null) return;
+        
+        foreach (var item in _invoice.Items)
+        {
+            var preTax = (item.Quantity * item.UnitPrice) - item.DiscountAmount;
+            if (_invoice.Type == InvoiceType.VatInvoice)
+            {
+                item.TaxAmount = preTax * (item.TaxRate / 100m);
+            }
+            else
+            {
+                item.TaxRate = 0;
+                item.TaxAmount = 0;
+            }
+            item.LineTotal = preTax + item.TaxAmount;
+        }
+
+        _invoice.SubTotal = _invoice.Items.Sum(x => x.Quantity * x.UnitPrice);
+        _invoice.TotalDiscount = _invoice.Items.Sum(x => x.DiscountAmount);
+        _invoice.TotalTax = _invoice.Items.Sum(x => x.TaxAmount);
+        _invoice.GrandTotal = _invoice.SubTotal - _invoice.TotalDiscount + _invoice.TotalTax;
+    }
+
+    private async Task SaveInvoice()
+    {
+        if (_invoice == null) return;
+        _isSaving = true;
+        try
+        {
+            await InvoiceService.UpdateInvoiceAsync(_invoice);
+            Nav.NavigateTo($"/hoa-don/chi-tiet/{Id}");
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+}

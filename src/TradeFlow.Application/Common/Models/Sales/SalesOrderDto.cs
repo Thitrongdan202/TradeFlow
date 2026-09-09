@@ -43,7 +43,8 @@ public class SalesOrderItemDto
     
     [Range(0.01, double.MaxValue, ErrorMessage = "Số lượng phải lớn hơn 0.")]
     public decimal Quantity { get; set; } = 1;
-    public decimal UnitPrice { get; set; }
+    public decimal? UnitPrice { get; set; }
+    public string PriceSource { get; set; } = string.Empty;
     public decimal DiscountAmount { get; set; }
     public decimal TaxRate { get; set; }
     public decimal TaxAmount { get; set; }

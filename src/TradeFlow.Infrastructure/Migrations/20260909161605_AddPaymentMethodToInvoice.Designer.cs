@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TradeFlow.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using TradeFlow.Infrastructure.Persistence;
 namespace TradeFlow.Infrastructure.Migrations
 {
     [DbContext(typeof(TradeFlowDbContext))]
-    partial class TradeFlowDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260909161605_AddPaymentMethodToInvoice")]
+    partial class AddPaymentMethodToInvoice
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1184,9 +1187,6 @@ namespace TradeFlow.Infrastructure.Migrations
                     b.Property<string>("Phone")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
-
-                    b.Property<string>("SignaturePath")
-                        .HasColumnType("text");
 
                     b.Property<string>("TaxCode")
                         .HasMaxLength(50)

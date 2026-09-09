@@ -85,7 +85,21 @@
         <h3 style="margin: 0 0 16px 0; font-size: 16px;">SẢN PHẨM</h3>
         
         <div class="tf-form-group" style="margin-bottom:20px;">
-            <input type="text" class="tf-form-control" placeholder="🔍 Tìm sản phẩm (Tên, Mã)..." @bind="_productSearch" @bind:event="oninput" @onkeyup="SearchProducts" />
+              <label style="display:block; margin-bottom:8px; font-weight:600;">Bảng giá:</label>
+              <select class="tf-form-control" @bind="_selectedPriceListId" @bind:after="OnPriceListChanged">
+                  <option value="">-- Chọn bảng giá --</option>
+                  @foreach(var pl in _availablePriceLists)
+                  {
+                      <option value="@pl.Id">@pl.Name</option>
+                  }
+              </select>
+              @if (!_availablePriceLists.Any()) {
+                  <small style="color:var(--tf-text-muted);">Chưa có bảng giá phù hợp</small>
+              }
+          </div>
+          
+          <div class="tf-form-group" style="margin-bottom:20px;">
+              <input type="text" class="tf-form-control" placeholder="🔍 Tìm sản phẩm (Tên, Mã)..." @bind="_productSearch" @bind:event="oninput" @onkeyup="SearchProducts" />
             @if (_isProductSearched)
             {
                 <div style="position:relative; z-index:90;">
@@ -119,6 +133,7 @@
                         <th>Sản phẩm</th>
                         <th>ĐVT</th>
                         <th style="width:100px;">SL</th>
+                        <th style="width:120px;">Nguồn giá</th>
                         <th style="width:150px;">Đơn giá</th>
                         <th style="width:100px;">Chiết khấu</th>
                         <th style="width:150px;">Thành tiền</th>
@@ -136,7 +151,28 @@
                                 <input type="number" class="tf-form-control" style="padding:4px;" @bind="item.Quantity" @bind:after="CalculateTotals" min="0.01" step="any" />
                             </td>
                             <td>
-                                <input type="number" class="tf-form-control" style="padding:4px;" @bind="item.UnitPrice" @bind:after="CalculateTotals" min="0" step="any" />
+                                @if (item.PriceSource == "Thủ công" || item.UnitPrice == null) {
+                                    <span class="tf-badge tf-badge-warning">Nhập thủ công</span>
+                                } else {
+                                    <span class="tf-badge tf-badge-info">@item.PriceSource</span>
+                                }
+                            </td>
+                            <td>
+                                @if (item.UnitPrice == null) {
+                                    <div style="color:red; font-size:12px; margin-bottom:4px;">Chưa có giá</div>
+                                }
+                                <AuthorizeView Policy="Permission:SalesOrders:OverridePrice" Context="authContext">
+                                    <Authorized>
+                                        <input type="number" class="tf-form-control" style="padding:4px;" @bind="item.UnitPrice" @bind:after="() => OnManualPriceChanged(item)" min="0" step="any" />
+                                    </Authorized>
+                                    <NotAuthorized>
+                                        @if (item.PriceSource == "Thủ công" || string.IsNullOrEmpty(item.PriceSource)) {
+                                            <input type="number" class="tf-form-control" style="padding:4px;" @bind="item.UnitPrice" @bind:after="() => OnManualPriceChanged(item)" min="0" step="any" />
+                                        } else {
+                                            <input type="number" class="tf-form-control" style="padding:4px; background:#f1f5f9; cursor:not-allowed;" value="@item.UnitPrice" readonly />
+                                        }
+                                    </NotAuthorized>
+                                </AuthorizeView>
                             </td>
                             <td>
                                 <input type="number" class="tf-form-control" style="padding:4px;" @bind="item.DiscountAmount" @bind:after="CalculateTotals" min="0" step="any" />
@@ -184,7 +220,7 @@
 </div>
 
 @code {
-    private SalesOrderDto _orderRequest = new() { OrderDate = DateTime.Now };
+    private SalesOrderDto _orderRequest = new() { OrderDate = DateTime.UtcNow };
     private Customer? _selectedCustomer;
     private string _customerSearch = "";
     private string _productSearch = "";
@@ -192,16 +228,59 @@
     private List<Product> _productSearchResults = new();
     private bool _isCustomerSearched = false;
     private bool _isProductSearched = false;
+    private int? _selectedPriceListId;
+    private List<TradeFlow.Domain.Entities.Pricing.PriceList> _availablePriceLists = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _availablePriceLists = await SalesService.GetApplicablePriceListsAsync(_orderRequest.OrderDate);
+    }
+
+    private async Task OnPriceListChanged()
+    {
+        foreach (var item in _orderRequest.Items)
+        {
+            var res = await SalesService.GetProductPriceAsync(item.ProductId, _selectedPriceListId, _orderRequest.OrderDate);
+            item.UnitPrice = res.Price;
+            item.PriceSource = res.SourceName;
+        }
+        CalculateTotals();
+    }
+    
+    private void OnManualPriceChanged(SalesOrderItemDto item)
+    {
+        item.PriceSource = "Thủ công";
+        CalculateTotals();
+    }
     
     private string? _errorMessage;
     private bool _isSaving = false;
 
+    private CancellationTokenSource? _customerSearchCts;
     private async Task SearchCustomers(KeyboardEventArgs e)
     {
+        _customerSearchCts?.Cancel();
+        _customerSearchCts = new CancellationTokenSource();
+        var token = _customerSearchCts.Token;
+
         _isCustomerSearched = true;
         if (_customerSearch.Length >= 2)
         {
-            _customerSearchResults = await SalesService.SearchCustomersAsync(_customerSearch);
+            try
+            {
+                await Task.Delay(300, token);
+                if (!token.IsCancellationRequested)
+                {
+                    _customerSearchResults = await SalesService.SearchCustomersAsync(_customerSearch, token);
+                    StateHasChanged();
+                }
+            }
+            catch (TaskCanceledException) { }
+            catch (Exception ex)
+            {
+                _errorMessage = "Lỗi khi tìm khách hàng: " + ex.Message;
+                StateHasChanged();
+            }
         }
         else
         {
@@ -230,12 +309,31 @@
         _isCustomerSearched = false;
     }
 
+    private CancellationTokenSource? _productSearchCts;
     private async Task SearchProducts(KeyboardEventArgs e)
     {
+        _productSearchCts?.Cancel();
+        _productSearchCts = new CancellationTokenSource();
+        var token = _productSearchCts.Token;
+
         _isProductSearched = true;
         if (_productSearch.Length >= 2)
         {
-            _productSearchResults = await SalesService.SearchProductsAsync(_productSearch);
+            try
+            {
+                await Task.Delay(300, token);
+                if (!token.IsCancellationRequested)
+                {
+                    _productSearchResults = await SalesService.SearchProductsAsync(_productSearch, token);
+                    StateHasChanged();
+                }
+            }
+            catch (TaskCanceledException) { }
+            catch (Exception ex)
+            {
+                _errorMessage = "Lỗi khi tìm sản phẩm: " + ex.Message;
+                StateHasChanged();
+            }
         }
         else
         {
@@ -258,8 +356,7 @@
         }
         else
         {
-            // Fetch price from Phase 4 Price List
-            var price = await SalesService.GetActivePriceAsync(p.Id, _orderRequest.OrderDate);
+            var res = await SalesService.GetProductPriceAsync(p.Id, _selectedPriceListId, _orderRequest.OrderDate);
             
             _orderRequest.Items.Add(new SalesOrderItemDto
             {
@@ -268,7 +365,8 @@
                 ProductName = p.Name,
                 UnitName = p.Unit?.Name ?? string.Empty,
                 Quantity = 1,
-                UnitPrice = price,
+                UnitPrice = res.Price,
+                PriceSource = res.SourceName,
                 DiscountAmount = 0,
                 TaxRate = 0,
                 TaxAmount = 0,
@@ -288,10 +386,10 @@
     {
         foreach (var item in _orderRequest.Items)
         {
-            item.LineTotal = (item.Quantity * item.UnitPrice) - item.DiscountAmount + item.TaxAmount;
+            item.LineTotal = (item.Quantity * (item.UnitPrice ?? 0)) - item.DiscountAmount + item.TaxAmount;
         }
         
-        _orderRequest.SubTotal = _orderRequest.Items.Sum(x => x.Quantity * x.UnitPrice);
+        _orderRequest.SubTotal = _orderRequest.Items.Sum(x => x.Quantity * (x.UnitPrice ?? 0));
         _orderRequest.TotalDiscount = _orderRequest.Items.Sum(x => x.DiscountAmount);
         _orderRequest.TotalTax = _orderRequest.Items.Sum(x => x.TaxAmount);
         _orderRequest.GrandTotal = _orderRequest.SubTotal - _orderRequest.TotalDiscount + _orderRequest.TotalTax;

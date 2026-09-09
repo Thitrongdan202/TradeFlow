@@ -71,6 +71,10 @@ else
                                 }
                             </td>
                             <td class="tf-text-right">
+                                @if (inv.Status == InvoiceStatus.Draft)
+                                {
+                                    <a href="/hoa-don/sua/@inv.Id" class="tf-btn tf-btn-sm tf-btn-outline-secondary" style="margin-right:4px;">Sửa</a>
+                                }
                                 <a href="/hoa-don/chi-tiet/@inv.Id" class="tf-btn tf-btn-sm tf-btn-outline-primary">Chi tiết</a>
                             </td>
                         </tr>

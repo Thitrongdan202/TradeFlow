@@ -22,5 +22,8 @@ public enum PermissionAction
     Import = 6,
 
     /// <summary>Xuất dữ liệu (export)</summary>
-    Export = 7
+    Export = 7,
+
+    /// <summary>Ghi đè giá</summary>
+    OverridePrice = 8
 }

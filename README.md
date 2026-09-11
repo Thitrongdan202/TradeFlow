@@ -1,4 +1,4 @@
-﻿# TradeFlow
+# TradeFlow
 
 Hệ thống quản lý thương mại toàn diện (ERP/CRM) xây dựng trên nền tảng .NET 10, ASP.NET Core, Blazor và PostgreSQL.
 
@@ -23,6 +23,7 @@ Hệ thống quản lý thương mại toàn diện (ERP/CRM) xây dựng trên 
 
 Phase 4 tập trung vào nghiệp vụ Bảng giá và xử lý file Excel dung lượng lớn.
 
+*   **Thao tác xóa bảng giá an toàn**: Tách biệt rõ ràng 2 hành động: "Hủy bảng giá" (chuyển trạng thái Đã hủy, giữ nguyên lịch sử) và "Xóa vĩnh viễn". Việc xóa vĩnh viễn được bảo vệ bởi **Reference Integrity**: nếu bảng giá đang được sử dụng bởi các Đơn bán hàng (Sales Order) hoặc Hóa đơn đã chốt, hệ thống sẽ chặn xóa vật lý để đảm bảo an toàn dữ liệu.
 *   **Quản lý Bảng giá (Price List)**: Hỗ trợ tạo mới, chỉnh sửa, và xem danh sách bảng giá / báo giá với đầy đủ siêu dữ liệu (Số báo giá, Ngày hiệu lực, Tháng/Quý/Năm áp dụng).
 *   **Lịch sử giá**: Đảm bảo các hồ sơ giá trong quá khứ là bất biến (immutable). Hỗ trợ tra cứu lịch sử thay đổi giá của một sản phẩm qua nhiều kỳ.
 *   **So sánh bảng giá**: Tính năng so sánh giá kỳ trước và kỳ sau, làm nổi bật trạng thái Tăng giá, Giảm giá, hoặc Không đổi.

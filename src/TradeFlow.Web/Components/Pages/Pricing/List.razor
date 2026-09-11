@@ -261,13 +261,18 @@
                                                 Duyệt
                                             </button>
                                         </AuthorizeView>
-                                <AuthorizeView Policy="Permission:PriceLists:Delete">
-                                    <button class="tf-btn tf-btn-ghost tf-btn-sm" style="color:var(--tf-danger);" @onclick="() => ConfirmDelete(item)">Xóa</button>
-                                </AuthorizeView>
+                                    }
+                                    @if (item.Status != PriceListStatus.Cancelled)
+                                    {
+                                        <AuthorizeView Policy="Permission:PriceLists:Edit">
+                                            <button type="button" class="tf-btn tf-btn-secondary" style="padding: 4px 8px; font-size: 12px; color: #ea580c;" @onclick="() => ConfirmCancel(item)">
+                                                Hủy
+                                            </button>
+                                        </AuthorizeView>
                                     }
                                     <AuthorizeView Policy="Permission:PriceLists:Delete">
-                                        <button type="button" class="tf-btn tf-btn-secondary" style="padding: 4px 8px; font-size: 12px; color: #dc2626;" @onclick="() => ConfirmDelete(item)">
-                                            Xóa
+                                        <button type="button" class="tf-btn tf-btn-secondary" style="padding: 4px 8px; font-size: 12px; color: #dc2626;" @onclick="() => ConfirmPermanentDelete(item)">
+                                            Xóa vĩnh viễn
                                         </button>
                                     </AuthorizeView>
                                 </div>
@@ -280,19 +285,39 @@
     </div>
 </div>
 
-@* Delete Confirmation Modal *@
-@if (_showDeleteModal && _selectedPriceList != null)
+@if (_showCancelModal && _selectedPriceList != null)
 {
     <div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; display:flex; align-items:center; justify-content:center;">
         <div class="tf-card" style="width: 450px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);">
-            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px; color: #b91c1c;">Xácầnhận xóa bảng giá</h3>
+            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px; color: #ea580c;">Xác nhận hủy bảng giá</h3>
             <p style="color: var(--tf-text-main); margin-bottom: 16px;">
-                Bạn có chắc chắn muốn xóa bảng giá <strong>@_selectedPriceList.Code - @_selectedPriceList.Name</strong>?
-                Tất cả @_selectedPriceList.TotalItems dòng sản phẩm trong bảng giá này sẽ bị xóa khỏi hệ thống.
+                Bạn có chắc chắn muốn hủy bảng giá <strong>@_selectedPriceList.Code - @_selectedPriceList.Name</strong>?
             </p>
             <div style="display:flex; justify-content: flex-end; gap: 8px;">
-                <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showDeleteModal = false">Hủy bỏ</button>
-                <button type="button" class="tf-btn tf-btn-primary" style="background:#dc2626;" @onclick="ExecuteDelete">Xácầnhận xóa</button>
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showCancelModal = false">Đóng</button>
+                <button type="button" class="tf-btn tf-btn-primary" style="background:#ea580c;" @onclick="ExecuteCancel">Xác nhận hủy</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showPermanentDeleteModal && _selectedPriceList != null)
+{
+    <div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; display:flex; align-items:center; justify-content:center;">
+        <div class="tf-card" style="width: 450px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);">
+            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px; color: #dc2626;">Xóa vĩnh viễn bảng giá?</h3>
+            <p style="color: var(--tf-text-main); margin-bottom: 16px;">
+                Toàn bộ dữ liệu của bảng giá này sẽ bị xóa khỏi hệ thống và không thể khôi phục.
+            </p>
+            @if (!string.IsNullOrEmpty(_deleteError))
+            {
+                <div class="tf-alert tf-alert-danger" style="margin-bottom: 16px;">
+                    @_deleteError
+                </div>
+            }
+            <div style="display:flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showPermanentDeleteModal = false">Hủy bỏ</button>
+                <button type="button" class="tf-btn tf-btn-primary" style="background:#dc2626;" @onclick="ExecutePermanentDelete">Xác nhận xóa</button>
             </div>
         </div>
     </div>
@@ -309,7 +334,9 @@
     private string _filterStatus = "";
     private string? _toastMessage;
 
-    private bool _showDeleteModal = false;
+    private bool _showCancelModal = false;
+    private bool _showPermanentDeleteModal = false;
+    private string? _deleteError;
     private PriceListDto? _selectedPriceList;
 
     protected override async Task OnInitializedAsync()
@@ -392,23 +419,52 @@
         }
     }
 
-    private void ConfirmDelete(PriceListDto item)
+    private void ConfirmCancel(PriceListDto item)
     {
         _selectedPriceList = item;
-        _showDeleteModal = true;
+        _showCancelModal = true;
     }
 
-    private async Task ExecuteDelete()
+    private async Task ExecuteCancel()
     {
         if (_selectedPriceList != null)
         {
-            var ok = await PriceListService.DeletePriceListAsync(_selectedPriceList.Id);
+            var ok = await PriceListService.CancelPriceListAsync(_selectedPriceList.Id);
             if (ok)
             {
-                _toastMessage = $"Đã xóa bảng giá {_selectedPriceList.Code} thành công.";
-                _showDeleteModal = false;
+                _toastMessage = $"Đã hủy bảng giá {_selectedPriceList.Code} thành công.";
+                _showCancelModal = false;
                 _selectedPriceList = null;
                 await LoadData();
+            }
+        }
+    }
+
+    private void ConfirmPermanentDelete(PriceListDto item)
+    {
+        _selectedPriceList = item;
+        _showPermanentDeleteModal = true;
+        _deleteError = null;
+    }
+
+    private async Task ExecutePermanentDelete()
+    {
+        if (_selectedPriceList != null)
+        {
+            try
+            {
+                var ok = await PriceListService.DeletePriceListAsync(_selectedPriceList.Id);
+                if (ok)
+                {
+                    _toastMessage = $"Đã xóa vĩnh viễn bảng giá {_selectedPriceList.Code} thành công.";
+                    _showPermanentDeleteModal = false;
+                    _selectedPriceList = null;
+                    await LoadData();
+                }
+            }
+            catch (Exception ex)
+            {
+                _deleteError = ex.Message;
             }
         }
     }

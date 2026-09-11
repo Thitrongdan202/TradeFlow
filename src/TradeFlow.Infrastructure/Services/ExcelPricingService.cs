@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 ﻿using System.Globalization;
 using System.IO.Compression;
 using System.Text.RegularExpressions;
@@ -20,17 +21,20 @@ public class ExcelPricingService : IExcelPricingService
     private readonly IFileStorageService _fileStorage;
     private readonly ISystemCodeGenerator _codeGenerator;
     private readonly IAuditService _auditService;
+    private readonly ILogger<ExcelPricingService> _logger;
 
     public ExcelPricingService(
         TradeFlowDbContext context,
         IFileStorageService fileStorage,
         ISystemCodeGenerator codeGenerator,
-        IAuditService auditService)
+        IAuditService auditService,
+        ILogger<ExcelPricingService> logger)
     {
         _context = context;
         _fileStorage = fileStorage;
         _codeGenerator = codeGenerator;
         _auditService = auditService;
+        _logger = logger;
     }
 
     public async Task<ExcelAnalysisResultDto> AnalyzeAndDryRunAsync(Stream fileStream, string fileName, Action<string>? onProgress = null, CancellationToken cancellationToken = default)
@@ -254,33 +258,62 @@ public class ExcelPricingService : IExcelPricingService
             if (!productId.HasValue && request.AutoCreateProducts && !string.IsNullOrWhiteSpace(item.NewCode))
             {
                 var prodCode = await _codeGenerator.GenerateCodeAsync(SystemCodeConstants.Product, cancellationToken);
+
+                var rawName = !string.IsNullOrWhiteSpace(item.ProductInfo) ? item.ProductInfo.Split('\n')[0].Trim() : item.NewCode.Trim();
+                var safeName = rawName.Length > 300 ? rawName.Substring(0, 300) : rawName;
+                var safeNewCode = item.NewCode.Trim().Length > 50 ? item.NewCode.Trim().Substring(0, 50) : item.NewCode.Trim();
+                var safeLegacyCode = item.LegacyCode?.Trim();
+                if (safeLegacyCode != null && safeLegacyCode.Length > 50) safeLegacyCode = safeLegacyCode.Substring(0, 50);
+                var safeDescription = item.ProductInfo?.Trim();
+                if (safeDescription != null && safeDescription.Length > 2000) safeDescription = safeDescription.Substring(0, 2000);
+
                 var newProd = new Product
                 {
                     Code = prodCode,
-                    NewCode = item.NewCode.Trim(),
-                    LegacyCode = item.LegacyCode?.Trim(),
-                    Name = !string.IsNullOrWhiteSpace(item.ProductInfo) ? item.ProductInfo.Split('\n')[0].Trim() : item.NewCode.Trim(),
-                    Description = item.ProductInfo?.Trim(),
+                    NewCode = safeNewCode,
+                    LegacyCode = safeLegacyCode,
+                    Name = safeName,
+                    Description = safeDescription,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                     CreatedBy = currentUserName
                 };
                 _context.Products.Add(newProd);
-                await _context.SaveChangesAsync(cancellationToken);
+                try
+                {
+                    await _context.SaveChangesAsync(cancellationToken);
+                }
+                catch (DbUpdateException ex)
+                {
+                    _logger.LogError(ex, "Product save error at row {Row}. Inner: {Inner}", item.SortOrder, ex.InnerException?.Message);
+                    throw new Exception($"L\u1ed7i l\u01b0u s\u1ea3n ph\u1ea9m t\u1ef1 \u0111\u1ed9ng d\u00f2ng {item.SortOrder}: {ex.InnerException?.Message ?? ex.Message}", ex);
+                }
                 productId = newProd.Id;
                 item.MatchedProductId = newProd.Id;
                 item.MatchStatus = PriceMatchStatus.Matched;
             }
+
+            var safePlGroup = item.Group?.Trim();
+            if (safePlGroup != null && safePlGroup.Length > 200) safePlGroup = safePlGroup.Substring(0, 200);
+
+            var safePlNewCode = string.IsNullOrWhiteSpace(item.NewCode) ? $"ITEM-{item.SortOrder:D4}" : item.NewCode.Trim();
+            if (safePlNewCode.Length > 100) safePlNewCode = safePlNewCode.Substring(0, 100);
+
+            var safePlLegacyCode = item.LegacyCode?.Trim();
+            if (safePlLegacyCode != null && safePlLegacyCode.Length > 100) safePlLegacyCode = safePlLegacyCode.Substring(0, 100);
+
+            var safePlInfo = item.ProductInfo?.Trim();
+            if (safePlInfo != null && safePlInfo.Length > 2000) safePlInfo = safePlInfo.Substring(0, 2000);
 
             var pItem = new PriceListItem
             {
                 PriceListId = priceList.Id,
                 ProductId = productId,
                 SortOrder = item.SortOrder,
-                Group = item.Group?.Trim(),
-                NewCode = string.IsNullOrWhiteSpace(item.NewCode) ? $"ITEM-{item.SortOrder:D4}" : item.NewCode.Trim(),
-                LegacyCode = item.LegacyCode?.Trim(),
-                ProductInfo = item.ProductInfo?.Trim(),
+                Group = safePlGroup,
+                NewCode = safePlNewCode,
+                LegacyCode = safePlLegacyCode,
+                ProductInfo = safePlInfo,
                 ImageStorageRef = item.ImageStorageRef,
                 UnitPrice = item.UnitPrice,
                 CurrencyCode = string.IsNullOrWhiteSpace(item.CurrencyCode) ? "VND" : item.CurrencyCode.Trim(),
@@ -312,7 +345,15 @@ public class ExcelPricingService : IExcelPricingService
             }
         }
 
-        await _context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database persistence error during price list commit. Inner exception: {Inner}", ex.InnerException?.Message);
+            throw new Exception($"L\u1ed7i l\u01b0u b\u1ea3ng gi\u00e1: {ex.InnerException?.Message ?? ex.Message}", ex);
+        }
         await _auditService.LogAsync(AuditEventType.PriceListImported, currentUserName, "PriceList", priceList.Code);
 
         return new PriceListDto
@@ -546,6 +587,8 @@ public class ExcelPricingService : IExcelPricingService
     private async Task<Dictionary<int, string>> ExtractImagesByRowAsync(Stream stream, HashSet<int>? targetRows = null)
     {
         var rowImageMap = new Dictionary<int, string>();
+        var rowImageSizes = new Dictionary<int, long>(); // tracks byte size to keep largest image per row
+        _logger.LogInformation("Starting image extraction for {FileSize} bytes. Target rows: {Count}", stream.Length, targetRows?.Count ?? 0);
         try
         {
             using var zip = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: true);
@@ -597,6 +640,7 @@ public class ExcelPricingService : IExcelPricingService
 
                     // Resolve target path (e.g. "../media/image1.png" -> "xl/media/image1.png")
                     var mediaPath = targetPath.Replace("../", "xl/").Replace('\\', '/');
+                    _logger.LogInformation("Found image {MediaPath} anchored at row {ExcelRow}", mediaPath, excelRow);
                     var imgEntry = zip.GetEntry(mediaPath);
                     if (imgEntry == null) continue;
 
@@ -615,14 +659,24 @@ public class ExcelPricingService : IExcelPricingService
                     };
 
                     if (targetRows != null && !targetRows.Contains(excelRow)) continue;
+
+                    // If multiple images are anchored on the same row, keep the largest (most likely the product image)
+                    var imageSize = ms.Length;
+                    if (rowImageSizes.TryGetValue(excelRow, out var existingSize) && existingSize >= imageSize)
+                    {
+                        _logger.LogInformation("Skipping smaller duplicate image for row {Row} ({NewSize} < {OldSize})", excelRow, imageSize, existingSize);
+                        continue;
+                    }
+
                     var storageRef = await _fileStorage.SaveFileAsync(ms, $"row_{excelRow}{ext}", contentType, "pricing");
                     rowImageMap[excelRow] = storageRef;
+                    rowImageSizes[excelRow] = imageSize;
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // If image extraction encounters unusual drawing formats, return whatever mapped so far
+            _logger.LogError(ex, "Error during image extraction. Returning {Count} images mapped so far.", rowImageMap.Count);
         }
 
         return rowImageMap;

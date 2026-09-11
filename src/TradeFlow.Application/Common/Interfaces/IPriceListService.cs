@@ -10,6 +10,7 @@ public interface IPriceListService
     Task<PriceListDto> CreatePriceListAsync(PriceListDto dto, CancellationToken cancellationToken = default);
     Task<bool> UpdatePriceListAsync(PriceListDto dto, CancellationToken cancellationToken = default);
     Task<bool> DeletePriceListAsync(int id, CancellationToken cancellationToken = default);
+    Task<bool> CancelPriceListAsync(int id, CancellationToken cancellationToken = default);
     Task<bool> ApprovePriceListAsync(int id, CancellationToken cancellationToken = default);
     Task<PriceComparisonResultDto> ComparePriceListsAsync(int basePriceListId, int targetPriceListId, CancellationToken cancellationToken = default);
     Task<List<PriceListItemDto>> GetProductPriceHistoryAsync(string productCodeOrNewCode, CancellationToken cancellationToken = default);

@@ -256,6 +256,28 @@ public class PriceListService : IPriceListService
         return true;
     }
 
+    public async Task<bool> CancelPriceListAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var entity = await _context.PriceLists.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+        if (entity == null)
+        {
+            return false;
+        }
+
+        entity.Status = PriceListStatus.Cancelled;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        await _auditService.LogAsync(
+            AuditEventType.PriceListDeleted,
+            _currentUserService.UserName ?? "System",
+            nameof(PriceList),
+            id.ToString(),
+            $"Hủy bảng giá {entity.Code} - {entity.Name}",
+            cancellationToken: cancellationToken);
+
+        return true;
+    }
+
     public async Task<bool> DeletePriceListAsync(int id, CancellationToken cancellationToken = default)
     {
         var entity = await _context.PriceLists
@@ -267,18 +289,13 @@ public class PriceListService : IPriceListService
             return false;
         }
 
-        if (entity.Status != PriceListStatus.Draft)
+        bool isReferenced = await _context.SalesOrders.AnyAsync(o => 
+            o.Status != TradeFlow.Domain.Enums.SalesOrderStatus.Draft && 
+            o.Items.Any(i => i.PriceSource == entity.Name), cancellationToken);
+
+        if (isReferenced)
         {
-            entity.Status = PriceListStatus.Cancelled;
-            await _context.SaveChangesAsync(cancellationToken);
-            await _auditService.LogAsync(
-                AuditEventType.PriceListDeleted,
-                _currentUserService.UserName ?? "System",
-                nameof(PriceList),
-                id.ToString(),
-                $"Ngừng áp dụng bảng giá {entity.Code} - {entity.Name}",
-                cancellationToken: cancellationToken);
-            return true;
+            throw new InvalidOperationException("Không thể xóa vĩnh viễn vì bảng giá đang được dữ liệu nghiệp vụ sử dụng.");
         }
 
         _context.PriceListItems.RemoveRange(entity.Items);
@@ -290,7 +307,7 @@ public class PriceListService : IPriceListService
             _currentUserService.UserName ?? "System",
             nameof(PriceList),
             id.ToString(),
-            $"Xóa bảng giá {entity.Code} - {entity.Name} ({entity.TotalItems} mặt hàng)",
+            $"Xóa vĩnh viễn bảng giá {entity.Code} - {entity.Name} ({entity.TotalItems} mặt hàng)",
             cancellationToken: cancellationToken);
 
         return true;

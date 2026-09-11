@@ -105,6 +105,30 @@ app.MapGet("/api/pricing/{id:int}/download-original", async (int id, IFileStorag
     return Results.File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", list.OriginalFileName ?? $"BangGia_{list.Code}_Goc.xlsx");
 }).RequireAuthorization("Permission:PriceLists:View");
 
+
+app.MapGet("/test-import", async (TradeFlow.Application.Common.Interfaces.IExcelPricingService excelService) => 
+{ 
+    try 
+    { 
+        var path = System.IO.Directory.GetFiles(@"wwwroot/uploads/pricing_originals", "*.xlsx")[0]; 
+        using var stream = System.IO.File.OpenRead(path); 
+        var result = await excelService.AnalyzeAndDryRunAsync(stream, "test.xlsx"); 
+        var commitReq = new TradeFlow.Application.Common.Models.Pricing.ExcelImportCommitRequest 
+        { 
+            OriginalFileName = result.FileName, 
+            TempFileReference = result.TempFileReference, 
+            AutoCreateProducts = true, 
+            Items = result.Items 
+        }; 
+        var priceList = await excelService.CommitImportAsync(commitReq, "admin"); 
+        return Microsoft.AspNetCore.Http.Results.Ok(priceList); 
+    } 
+    catch (Exception ex) 
+    { 
+        return Microsoft.AspNetCore.Http.Results.Ok(ex.ToString()); 
+    } 
+});
+
 app.Run();
 
 // Make Program class accessible for integration tests

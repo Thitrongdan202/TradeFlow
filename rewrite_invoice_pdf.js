@@ -1,271 +1,33 @@
-using QuestPDF.Fluent;
-using QuestPDF.Helpers;
-using QuestPDF.Infrastructure;
-using Microsoft.EntityFrameworkCore;
-using TradeFlow.Application.Common.Interfaces;
-using TradeFlow.Application.Common.Models.Sales;
-using TradeFlow.Domain.Entities.Sales;
-using TradeFlow.Domain.Enums;
-using TradeFlow.Infrastructure.Persistence;
+// rewrite_invoice_pdf.js
+// Rewrites only the GeneratePdfAsync method in InvoiceService.cs
+const fs = require('fs');
 
-namespace TradeFlow.Infrastructure.Services;
+const filePath = 'src/TradeFlow.Infrastructure/Services/InvoiceService.cs';
+let src = fs.readFileSync(filePath, 'utf8');
 
-public class InvoiceService : IInvoiceService
-{
-    private readonly TradeFlowDbContext _context;
-    private readonly ICurrentUserService _currentUserService;
-    private readonly IAuditService _auditService;
+const START_MARKER = '    public async Task<byte[]> GeneratePdfAsync(int invoiceId, CancellationToken cancellationToken = default)';
+const END_MARKER = '\n    public async Task<bool> DeleteInvoiceAsync';
 
-    public InvoiceService(TradeFlowDbContext context, ICurrentUserService currentUserService, IAuditService auditService)
-    {
-        _context = context;
-        _currentUserService = currentUserService;
-        _auditService = auditService;
-    }
+const startIdx = src.indexOf(START_MARKER);
+const endIdx = src.indexOf(END_MARKER);
 
-    public async Task<List<InvoiceDto>> GetInvoicesAsync(CancellationToken cancellationToken = default)
-    {
-        var invoices = await _context.Invoices
-            .AsNoTracking()
-            .OrderByDescending(x => x.InvoiceDate)
-            .ToListAsync(cancellationToken);
+if (startIdx === -1 || endIdx === -1) {
+    console.error('Could not find method boundaries');
+    process.exit(1);
+}
 
-        return invoices.Select(MapToDto).ToList();
-    }
-
-    public async Task<InvoiceDto?> GetInvoiceByIdAsync(int id, CancellationToken cancellationToken = default)
-    {
-        var inv = await _context.Invoices
-            .Include(x => x.Items)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-
-        if (inv == null) return null;
-        return MapToDto(inv);
-    }
-
-
-    public async Task<InvoiceDto> CreateManualInvoiceAsync(InvoiceDto dto, CancellationToken cancellationToken = default)
-    {
-        var company = await _context.CompanySettings.FirstOrDefaultAsync(cancellationToken);
-
-        var sequence = await _context.SystemSequences.FirstOrDefaultAsync(x => x.SequenceKey == "Invoice", cancellationToken);
-        if (sequence == null)
-        {
-            sequence = new Domain.Entities.Settings.SystemSequence { SequenceKey = "Invoice", Prefix = "INV-", CurrentNumber = 1 };
-            _context.SystemSequences.Add(sequence);
-        }
-        string invNumber = $"{sequence.Prefix}{DateTime.Now.Year}-{sequence.CurrentNumber:D4}";
-        sequence.CurrentNumber++;
-
-        var invoice = new Invoice
-        {
-            InvoiceNumber = invNumber,
-            InvoiceDate = dto.InvoiceDate == default ? DateTime.UtcNow : dto.InvoiceDate,
-            CustomerId = dto.CustomerId,
-
-            CompanyName = company?.CompanyName ?? "TradeFlow Company",
-            CompanyTaxCode = company?.TaxCode,
-            CompanyAddress = company?.Address,
-            CompanyPhone = company?.Phone,
-            CompanyEmail = company?.Email,
-            CompanyLogoUrl = company?.LogoPath,
-            CompanyBankAccount = company?.BankAccount,
-
-            CustomerName = dto.CustomerName,
-            CustomerCompanyName = dto.CustomerCompanyName,
-            CustomerTaxCode = dto.CustomerTaxCode,
-            CustomerAddress = dto.CustomerAddress,
-            CustomerEmail = dto.CustomerEmail,
-            PaymentMethod = dto.PaymentMethod ?? "TM/CK",
-            CustomerBankAccount = dto.CustomerBankAccount,
-
-            Notes = dto.Notes,
-            Status = InvoiceStatus.Draft,
-            Type = dto.Type,
-
-            SubTotal = dto.SubTotal,
-            TotalDiscount = dto.TotalDiscount,
-            TotalTax = dto.TotalTax,
-            GrandTotal = dto.GrandTotal
-        };
-
-        foreach (var item in dto.Items)
-        {
-            invoice.Items.Add(new InvoiceItem
-            {
-                ProductId = item.ProductId,
-                ProductCode = item.ProductCode,
-                ProductName = item.ProductName,
-                UnitName = item.UnitName,
-                Quantity = item.Quantity,
-                UnitPrice = item.UnitPrice,
-                DiscountAmount = item.DiscountAmount,
-                TaxRate = item.TaxRate,
-                TaxAmount = item.TaxAmount,
-                LineTotal = item.LineTotal
-            });
-        }
-
-        _context.Invoices.Add(invoice);
-        await _context.SaveChangesAsync(cancellationToken);
-        await _auditService.LogAsync(AuditEventType.InvoiceCreated, "Invoice", invoice.Id.ToString(), "Manual invoice created", _currentUserService.UserId);
-
-        return MapToDto(invoice);
-    }
-
-    public async Task<InvoiceDto> CreateInvoiceFromOrderAsync(int salesOrderId, InvoiceType type = InvoiceType.SalesInvoice, CancellationToken cancellationToken = default)
-    {
-        var order = await _context.SalesOrders
-            .Include(x => x.Items)
-            .FirstOrDefaultAsync(x => x.Id == salesOrderId, cancellationToken);
-
-        if (order == null || order.Status != SalesOrderStatus.Confirmed)
-        {
-            throw new Exception("Sales Order must be Confirmed to create an Invoice.");
-        }
-
-        var customer = await _context.Customers.FindAsync(new object[] { order.CustomerId }, cancellationToken);
-        var company = await _context.CompanySettings.FirstOrDefaultAsync(cancellationToken);
-
-        var sequence = await _context.SystemSequences.FirstOrDefaultAsync(x => x.SequenceKey == "Invoice", cancellationToken);
-        if (sequence == null)
-        {
-            sequence = new Domain.Entities.Settings.SystemSequence { SequenceKey = "Invoice", Prefix = "INV-", CurrentNumber = 1 };
-            _context.SystemSequences.Add(sequence);
-        }
-        string invNumber = $"{sequence.Prefix}{DateTime.Now.Year}-{sequence.CurrentNumber:D4}";
-        sequence.CurrentNumber++;
-
-        var invoice = new Invoice
-        {
-            InvoiceNumber = invNumber,
-            InvoiceDate = order.OrderDate,
-            SalesOrderId = order.Id,
-            CustomerId = order.CustomerId,
-
-            CompanyName = company?.CompanyName ?? "TradeFlow Company",
-            CompanyTaxCode = company?.TaxCode,
-            CompanyAddress = company?.Address,
-            CompanyPhone = company?.Phone,
-            CompanyEmail = company?.Email,
-            CompanyLogoUrl = company?.LogoPath,
-
-            CustomerName = customer?.Name ?? order.CustomerName,
-            CustomerCompanyName = customer?.CompanyName,
-            CustomerTaxCode = customer?.TaxCode ?? order.CustomerTaxCode,
-            CustomerAddress = customer?.Address ?? order.CustomerAddress,
-            CustomerEmail = customer?.Email,
-
-            Notes = order.Notes,
-            Status = InvoiceStatus.Draft, Type = type,
-
-            SubTotal = order.SubTotal,
-            TotalDiscount = order.TotalDiscount,
-            TotalTax = order.TotalTax,
-            GrandTotal = order.GrandTotal
-        };
-
-        foreach (var oi in order.Items)
-        {
-            invoice.Items.Add(new InvoiceItem
-            {
-                ProductId = oi.ProductId,
-                ProductCode = oi.ProductCode,
-                ProductName = oi.ProductName,
-                UnitName = oi.UnitName,
-                Quantity = oi.Quantity,
-                UnitPrice = oi.UnitPrice,
-                DiscountAmount = oi.DiscountAmount,
-                TaxRate = oi.TaxRate,
-                TaxAmount = oi.TaxAmount,
-                LineTotal = oi.LineTotal
-            });
-        }
-
-        order.Status = SalesOrderStatus.Invoiced;
-
-        _context.Invoices.Add(invoice);
-        await _context.SaveChangesAsync(cancellationToken);
-
-        await _auditService.LogAsync(AuditEventType.InvoiceCreated, "Invoice", invoice.Id.ToString(), $"Invoice created from SO {order.Code}", _currentUserService.UserId);
-
-        return MapToDto(invoice);
-    }
-
-    public async Task<InvoiceDto> CreateInvoiceAsync(InvoiceDto dto, CancellationToken cancellationToken = default)
-    {
-        throw new NotImplementedException("Direct invoice creation without Sales Order is not yet supported in Phase 5.");
-    }
-
-    public async Task<bool> UpdateInvoiceAsync(InvoiceDto dto, CancellationToken cancellationToken = default)
-    {
-        var inv = await _context.Invoices.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == dto.Id, cancellationToken);
-        if (inv == null || inv.Status != InvoiceStatus.Draft) return false;
-
-        inv.CustomerName = dto.CustomerName;
-        inv.CustomerCompanyName = dto.CustomerCompanyName;
-        inv.CustomerTaxCode = dto.CustomerTaxCode;
-        inv.CustomerAddress = dto.CustomerAddress;
-        inv.PaymentMethod = dto.PaymentMethod;
-        inv.Notes = dto.Notes;
-        inv.Type = dto.Type;
-
-        _context.InvoiceItems.RemoveRange(inv.Items);
-        inv.Items.Clear();
-
-        foreach(var item in dto.Items)
-        {
-            inv.Items.Add(new InvoiceItem
-            {
-                ProductId = item.ProductId,
-                ProductCode = item.ProductCode,
-                ProductName = item.ProductName,
-                UnitName = item.UnitName,
-                Quantity = item.Quantity,
-                UnitPrice = item.UnitPrice,
-                DiscountAmount = item.DiscountAmount,
-                TaxRate = item.TaxRate,
-                TaxAmount = item.TaxAmount,
-                LineTotal = item.LineTotal
-            });
-        }
-
-        inv.SubTotal = dto.SubTotal;
-        inv.TotalDiscount = dto.TotalDiscount;
-        inv.TotalTax = dto.TotalTax;
-        inv.GrandTotal = dto.GrandTotal;
-
-        await _context.SaveChangesAsync(cancellationToken);
-        await _auditService.LogAsync(AuditEventType.InvoiceUpdated, "Invoice", inv.Id.ToString(), "Draft invoice updated", _currentUserService.UserId);
-
-        return true;
-    }
-
-    public async Task<bool> IssueInvoiceAsync(int id, CancellationToken cancellationToken = default)
-    {
-        var inv = await _context.Invoices.FindAsync(new object[] { id }, cancellationToken);
-        if (inv == null || inv.Status != InvoiceStatus.Draft) return false;
-
-        inv.Status = InvoiceStatus.Issued;
-        await _context.SaveChangesAsync(cancellationToken);
-
-        await _auditService.LogAsync(AuditEventType.InvoiceIssued, "Invoice", inv.Id.ToString(), "Invoice issued", _currentUserService.UserId);
-        return true;
-    }
-
-    public async Task<byte[]> GeneratePdfAsync(int invoiceId, CancellationToken cancellationToken = default)
+const newMethod = `    public async Task<byte[]> GeneratePdfAsync(int invoiceId, CancellationToken cancellationToken = default)
     {
         var inv = await _context.Invoices.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == invoiceId, cancellationToken);
         if (inv == null) throw new Exception("Invoice not found");
-
+        
         await _auditService.LogAsync(AuditEventType.InvoiceExportedPdf, "Invoice", inv.Id.ToString(), "PDF exported", _currentUserService.UserId);
-
+        
         QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
-
+        
         bool isVat = inv.Type == TradeFlow.Domain.Enums.InvoiceType.VatInvoice;
         var invoiceDate = inv.InvoiceDate;
-
+        
         // Colors matching reference (blue VAT invoice style)
         string borderBlue    = "#1a3766";
         string headerBg      = "#b8d1e8";
@@ -302,7 +64,7 @@ public class InvoiceService : IInvoiceService
                 });
             });
         }
-
+        
         var document = QuestPDF.Fluent.Document.Create(container =>
         {
             container.Page(page =>
@@ -324,7 +86,7 @@ public class InvoiceService : IInvoiceService
                         {
                             // Left spacer
                             titleRow.ConstantItem(20);
-
+                            
                             // Center: title
                             titleRow.RelativeItem().AlignCenter().Column(tc =>
                             {
@@ -335,7 +97,7 @@ public class InvoiceService : IInvoiceService
                                 tc.Item().AlignCenter().Text(subtitleText)
                                     .FontSize(10).Italic().FontColor(borderBlue);
                             });
-
+                            
                             // Right: form number block
                             titleRow.ConstantItem(130).AlignRight().PaddingRight(6).Column(fc =>
                             {
@@ -360,7 +122,7 @@ public class InvoiceService : IInvoiceService
                                 });
                             });
                         });
-
+                        
                         // Date row
                         hdr.Item().PaddingBottom(6).AlignCenter().Text(t =>
                         {
@@ -590,80 +352,8 @@ public class InvoiceService : IInvoiceService
 
         return document.GeneratePdf();
     }
+`;
 
-    public async Task<bool> DeleteInvoiceAsync(int id, CancellationToken cancellationToken = default)
-    {
-        var inv = await _context.Invoices.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (inv == null || inv.Status != InvoiceStatus.Draft) return false;
-
-        _context.Invoices.Remove(inv);
-
-        if (inv.SalesOrderId.HasValue)
-        {
-            var so = await _context.SalesOrders.FindAsync(new object[] { inv.SalesOrderId.Value }, cancellationToken);
-            if (so != null && so.Status == SalesOrderStatus.Invoiced)
-            {
-                so.Status = SalesOrderStatus.Confirmed;
-            }
-        }
-
-        await _context.SaveChangesAsync(cancellationToken);
-        await _auditService.LogAsync(AuditEventType.InvoiceDeleted, "Invoice", inv.Id.ToString(), "Draft invoice deleted", _currentUserService.UserId);
-
-        return true;
-    }
-
-
-    private InvoiceDto MapToDto(Invoice invoice)
-    {
-        var dto = new InvoiceDto
-        {
-            Id = invoice.Id,
-            InvoiceNumber = invoice.InvoiceNumber,
-            InvoiceDate = invoice.InvoiceDate,
-            SalesOrderId = invoice.SalesOrderId,
-            CustomerId = invoice.CustomerId,
-            CompanyName = invoice.CompanyName,
-            CompanyTaxCode = invoice.CompanyTaxCode,
-            CompanyAddress = invoice.CompanyAddress,
-            CompanyPhone = invoice.CompanyPhone,
-            CompanyEmail = invoice.CompanyEmail,
-            CompanyLogoUrl = invoice.CompanyLogoUrl,
-            CustomerName = invoice.CustomerName,
-            CustomerCompanyName = invoice.CustomerCompanyName,
-            CustomerTaxCode = invoice.CustomerTaxCode,
-            CustomerAddress = invoice.CustomerAddress,
-            CustomerEmail = invoice.CustomerEmail,
-            PaymentMethod = invoice.PaymentMethod,
-            Notes = invoice.Notes,
-            Status = invoice.Status,
-            Type = invoice.Type,
-            SubTotal = invoice.SubTotal,
-            TotalDiscount = invoice.TotalDiscount,
-            TotalTax = invoice.TotalTax,
-            GrandTotal = invoice.GrandTotal
-        };
-
-        foreach (var item in invoice.Items)
-        {
-            dto.Items.Add(new InvoiceItemDto
-            {
-                Id = item.Id,
-                InvoiceId = item.InvoiceId,
-                ProductId = item.ProductId,
-                ProductCode = item.ProductCode,
-                ProductName = item.ProductName,
-                UnitName = item.UnitName,
-                Quantity = item.Quantity,
-                UnitPrice = item.UnitPrice,
-                DiscountAmount = item.DiscountAmount,
-                TaxRate = item.TaxRate,
-                TaxAmount = item.TaxAmount,
-                LineTotal = item.LineTotal
-            });
-        }
-
-        return dto;
-    }
-
-}
+const replacement = src.substring(0, startIdx) + newMethod + src.substring(endIdx);
+fs.writeFileSync(filePath, replacement, 'utf8');
+console.log('Done. File written:', filePath);

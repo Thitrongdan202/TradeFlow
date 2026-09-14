@@ -2,6 +2,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using TradeFlow.Application.Common.Interfaces
 @using TradeFlow.Application.Common.Models.Sales
+@using TradeFlow.Application.Common.Helpers
 @using TradeFlow.Domain.Enums
 @inject IInvoiceService InvoiceService
 @inject Microsoft.AspNetCore.Authorization.IAuthorizationService AuthService
@@ -31,7 +32,7 @@
         }
         @if (_invoice != null)
         {
-            <button class="tf-btn tf-btn-outline-primary" @onclick="ExportPdf" disabled="@_isProcessing">Tải PDF</button>
+            <button class="tf-btn tf-btn-outline-primary" @onclick="ExportPdf" disabled="@_isProcessing">⬇ Tải PDF</button>
         }
     </div>
 </div>
@@ -48,29 +49,218 @@ else
 {
     @if (!string.IsNullOrEmpty(_errorMessage))
     {
-        <div class="tf-alert tf-alert-danger tf-mb-4">
-            @_errorMessage
-        </div>
+        <div class="tf-alert tf-alert-danger tf-mb-4">@_errorMessage</div>
     }
 
-    <div class="tf-card" style="padding:0; overflow:hidden; border:none; box-shadow:none;">
-        <iframe src="data:application/pdf;base64,@_pdfBase64" style="width: 100%; height: 800px; border: 1px solid #e2e8f0; border-radius: 8px;"></iframe>
+    @* Tab switcher *@
+    <div style="display:flex; gap:8px; margin-bottom:16px;">
+        <button class="tf-btn @(_activeTab == "preview" ? "tf-btn-primary" : "tf-btn-secondary")"
+                @onclick='() => _activeTab = "preview"'>Xem trước</button>
+        <button class="tf-btn @(_activeTab == "pdf" ? "tf-btn-primary" : "tf-btn-secondary")"
+                @onclick='() => _activeTab = "pdf"'>PDF</button>
     </div>
+
+    @if (_activeTab == "pdf")
+    {
+        <div class="tf-card" style="padding:0; overflow:hidden; border:none; box-shadow:none;">
+            <iframe src="data:application/pdf;base64,@_pdfBase64"
+                    style="width:100%; height:880px; border:1px solid #e2e8f0; border-radius:8px;"></iframe>
+        </div>
+    }
+    else
+    {
+        @* ─── WEB PREVIEW — same structure as QuestPDF template ─── *@
+
+        <div style="max-width:820px; font-family:Arial,sans-serif; font-size:9pt; color:@BorderBlue; background:#fff; border:2px solid @BorderBlue; margin-bottom:24px;">
+
+            @* ── HEADER ── *@
+            <div style="background:@HeaderBg; padding:8px 12px 6px;">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px;">
+                    <div style="width:20px; flex-shrink:0;"></div>
+
+                    <div style="flex:1; text-align:center;">
+                        <div style="font-size:16pt; font-weight:bold; color:@BorderBlue;">
+                            @(IsVat ? "HÓA ĐƠN GIÁ TRỊ GIA TĂNG" : "HÓA ĐƠN BÁN HÀNG")
+                        </div>
+                        <div style="font-size:10pt; font-style:italic; color:@BorderBlue;">
+                            @(IsVat ? "(VAT INVOICE)" : "(SALES INVOICE)")
+                        </div>
+                    </div>
+
+                    <div style="width:160px; flex-shrink:0; font-size:8pt; color:@BorderBlue; line-height:1.8;">
+                        <div><span style="font-style:italic;">Mẫu số (Form No.)</span>: ............</div>
+                        <div><span style="font-style:italic;">Ký hiệu (Serial No.)</span>: ............</div>
+                        <div><span style="font-style:italic;">Số (Invoice No.)</span>: <strong>@_invoice.InvoiceNumber</strong></div>
+                    </div>
+                </div>
+
+                <div style="text-align:center; font-size:9pt; padding-top:4px; padding-bottom:4px; color:@BorderBlue;">
+                    <span style="font-style:italic;">Ngày (day) </span><strong>@_invoice.InvoiceDate.ToString("dd")</strong>
+                    <span style="font-style:italic;"> tháng (month) </span><strong>@_invoice.InvoiceDate.ToString("MM")</strong>
+                    <span style="font-style:italic;"> năm (year) </span><strong>@_invoice.InvoiceDate.ToString("yyyy")</strong>
+                </div>
+            </div>
+
+            @* ── SELLER BLOCK ── *@
+            <div style="border-top:0.5px solid @BorderBlue;">
+                @InfoRowHtml("Đơn vị bán hàng (Seller)", _invoice.CompanyName)
+                @InfoRowHtml("MST (Tax Code)", _invoice.CompanyTaxCode)
+                @InfoRowHtml("Địa chỉ (Address)", _invoice.CompanyAddress)
+                @InfoRowDualHtml("Điện thoại (Tel.)", _invoice.CompanyPhone, "Email", _invoice.CompanyEmail)
+                @InfoRowDualHtml("STK (Account No.)", _invoice.CompanyBankAccount, "Ngân hàng (Bank)", null)
+            </div>
+
+            @* ── BUYER BLOCK ── *@
+            <div style="border-top:0.5px solid @BorderBlue;">
+                @InfoRowHtml("Người mua hàng (Buyer)", _invoice.CustomerName)
+                @InfoRowHtml("Đơn vị (Co. name)", _invoice.CustomerCompanyName)
+                @InfoRowHtml("MST (Tax Code)", _invoice.CustomerTaxCode)
+                @InfoRowHtml("Địa chỉ (Address)", _invoice.CustomerAddress)
+                @InfoRowHtml("HTTT (Pay. method)", _invoice.PaymentMethod ?? "TM/CK")
+                @InfoRowDualHtml("STK (Account No.)", _invoice.CustomerBankAccount, "Ngân hàng (Bank)", null)
+            </div>
+
+            @* ── PRODUCT TABLE ── *@
+            <div style="border-top:1px solid @BorderBlue; overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; font-size:8.5pt;">
+                    <thead>
+                        <tr style="background:@TableHeadBg; color:#fff;">
+                            <th style="border:0.5px solid #fff; padding:5px 3px; text-align:center; width:36px;">STT<br /><em style="font-size:7pt;">(No.)</em></th>
+                            <th style="border:0.5px solid #fff; padding:5px 3px; text-align:center;">Tên hàng hoá, dịch vụ<br /><em style="font-size:7pt;">(Description)</em></th>
+                            <th style="border:0.5px solid #fff; padding:5px 3px; text-align:center; width:48px;">ĐVT<br /><em style="font-size:7pt;">(Unit)</em></th>
+                            <th style="border:0.5px solid #fff; padding:5px 3px; text-align:center; width:56px;">Số lượng<br /><em style="font-size:7pt;">(Quantity)</em></th>
+                            <th style="border:0.5px solid #fff; padding:5px 3px; text-align:center; width:80px;">Đơn giá<br /><em style="font-size:7pt;">(Unit Price)</em></th>
+                            <th style="border:0.5px solid #fff; padding:5px 3px; text-align:center; width:80px;">Thành tiền<br /><em style="font-size:7pt;">(Amount)</em></th>
+                            @if (IsVat)
+                            {
+                                <th style="border:0.5px solid #fff; padding:5px 3px; text-align:center; width:56px;">Thuế suất<br /><em style="font-size:7pt;">(Tax Rate)</em></th>
+                                <th style="border:0.5px solid #fff; padding:5px 3px; text-align:center; width:76px;">Tiền thuế<br /><em style="font-size:7pt;">(Tax Amount)</em></th>
+                            }
+                        </tr>
+                        @* Column numbers row *@
+                        <tr style="background:@RowAltBg; font-style:italic; font-size:7.5pt; color:@BorderBlue;">
+                            <td style="border:0.3px solid #a0b8d0; padding:2px; text-align:center;">1</td>
+                            <td style="border:0.3px solid #a0b8d0; padding:2px; text-align:center;">2</td>
+                            <td style="border:0.3px solid #a0b8d0; padding:2px; text-align:center;">3</td>
+                            <td style="border:0.3px solid #a0b8d0; padding:2px; text-align:center;">4</td>
+                            <td style="border:0.3px solid #a0b8d0; padding:2px; text-align:center;">5</td>
+                            <td style="border:0.3px solid #a0b8d0; padding:2px; text-align:center;">6 = 4 x 5</td>
+                            @if (IsVat)
+                            {
+                                <td style="border:0.3px solid #a0b8d0; padding:2px; text-align:center;">7</td>
+                                <td style="border:0.3px solid #a0b8d0; padding:2px; text-align:center;">8 = 6 x 7</td>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            int rowIdx = 1;
+                            foreach (var item in _invoice.Items)
+                            {
+                                var lineAmt = item.Quantity * item.UnitPrice - item.DiscountAmount;
+                                <tr>
+                                    <td style="border:0.3px solid #a0b8d0; padding:4px 3px; text-align:center; color:#000;">@rowIdx</td>
+                                    <td style="border:0.3px solid #a0b8d0; padding:4px 3px; color:#000;">@item.ProductName</td>
+                                    <td style="border:0.3px solid #a0b8d0; padding:4px 3px; text-align:center; color:#000;">@item.UnitName</td>
+                                    <td style="border:0.3px solid #a0b8d0; padding:4px 3px; text-align:right; color:#000;">@item.Quantity.ToString("G29")</td>
+                                    <td style="border:0.3px solid #a0b8d0; padding:4px 3px; text-align:right; color:#000;">@item.UnitPrice.ToString("N0")</td>
+                                    <td style="border:0.3px solid #a0b8d0; padding:4px 3px; text-align:right; color:#000;">@lineAmt.ToString("N0")</td>
+                                    @if (IsVat)
+                                    {
+                                        <td style="border:0.3px solid #a0b8d0; padding:4px 3px; text-align:center; color:#000;">@item.TaxRate%</td>
+                                        <td style="border:0.3px solid #a0b8d0; padding:4px 3px; text-align:right; color:#000;">@item.TaxAmount.ToString("N0")</td>
+                                    }
+                                </tr>
+                                rowIdx++;
+                            }
+                            @* Empty rows to match reference height *@
+                            int emptyCount = Math.Max(0, 8 - _invoice.Items.Count);
+                            int colCount = IsVat ? 8 : 6;
+                            for (int e = 0; e < emptyCount; e++)
+                            {
+                                <tr>
+                                    @for (int ci = 0; ci < colCount; ci++)
+                                    {
+                                        <td style="border:0.3px solid #a0b8d0; padding:0; height:20px;"></td>
+                                    }
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @* ── TOTALS ── *@
+            <div style="border-top:1px solid @BorderBlue; background:@TotRowBg;">
+                @if (IsVat)
+                {
+                    @TotalRowHtml("Cộng tiền hàng", "(Sub total)", _invoice.SubTotal.ToString("N0"))
+                    @TotalRowHtml("Cộng tiền thuế GTGT", "(VAT amount)", _invoice.TotalTax.ToString("N0"))
+                }
+                @TotalRowHtml("Tổng cộng tiền thanh toán", "(Total payment)", _invoice.GrandTotal.ToString("N0"))
+            </div>
+
+            @* ── AMOUNT IN WORDS ── *@
+            <div style="border-top:0.5px solid @BorderBlue; padding:4px 6px; display:flex; gap:4px;">
+                <span style="white-space:nowrap; color:@BorderBlue;">
+                    Số tiền viết bằng chữ <em style="font-size:8pt;">(Amount In words)</em>:
+                </span>
+                <span style="font-style:italic; color:#000;">
+                    @NumberToTextHelper.ConvertToWords((long)_invoice.GrandTotal) đồng chẵn.
+                </span>
+            </div>
+
+            @* ── SIGNATURE AREA ── *@
+            <div style="border-top:1px solid @BorderBlue; display:flex;">
+                @* Buyer (left) *@
+                <div style="flex:1; border-right:0.5px solid @BorderBlue; padding:10px 8px; text-align:center;">
+                    <div style="font-weight:bold; color:@BorderBlue;">
+                        Người mua hàng <em style="font-weight:normal; font-size:8pt;">(Buyer)</em>
+                    </div>
+                    <div style="font-size:8pt; font-style:italic; color:#4b5563;">(Ký, ghi rõ họ tên)</div>
+                    <div style="font-size:7.5pt; font-style:italic; color:#4b5563;">(Sign, full name)</div>
+                    <div style="height:70px;"></div>
+                </div>
+
+                @* Seller (right) — electronic signature confirmation *@
+                <div style="flex:1; padding:10px 8px; text-align:center;">
+                    <div style="font-weight:bold; color:@BorderBlue;">
+                        Người bán hàng <em style="font-weight:normal; font-size:8pt;">(Seller)</em>
+                    </div>
+                    <div style="font-size:8pt; font-style:italic; color:#4b5563;">(Ký, ghi rõ họ tên, đóng dấu nếu có)</div>
+                    <div style="font-size:7.5pt; font-style:italic; color:#4b5563;">(Sign, full name, stamp if any)</div>
+
+                    @* Electronic signature display — TradeFlow/company confirmation ONLY.
+                       NOT a legally-qualified digital signature. *@
+                    <div style="margin:10px auto 0; display:inline-block; border:1px solid #8bc34a; background:#f1f8e9; border-radius:5px; padding:10px 18px; min-width:200px; text-align:center;">
+                        <div style="font-weight:bold; color:#2e7d32; font-size:9pt;">Đã được ký điện tử bởi</div>
+                        <div style="font-style:italic; color:#2e7d32; font-size:8pt;">(Signed digitally by)</div>
+                        <div style="font-size:28pt; color:#66bb6a; line-height:1.2;">✓</div>
+                        <div style="font-weight:bold; color:#1b5e20; font-size:9pt; letter-spacing:0.5px;">@_invoice.CompanyName.ToUpper()</div>
+                        <div style="font-size:8pt; color:#2e7d32; margin-top:6px;">Ký ngày: @_invoice.InvoiceDate.ToString("dd/MM/yyyy")</div>
+                    </div>
+                </div>
+            </div>
+
+            @* ── FOOTER NOTE ── *@
+            <div style="border-top:0.5px solid @BorderBlue; background:@HeaderBg; text-align:center; padding:4px; font-size:8pt; font-style:italic; color:@BorderBlue;">
+                (Cần kiểm tra, đối chiếu khi lập, giao, nhận hóa đơn)
+            </div>
+        </div>
+    }
 }
 
 @if (_showDeleteModal)
 {
-    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 24px; border-radius: 8px; width: 400px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
-            <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 18px; color: var(--tf-danger);">Xóa hóa đơn?</h3>
-            <p style="margin-bottom: 24px;">Bạn có chắc chắn muốn xóa bản ghi này?</p>
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
+        <div style="background:white; padding:24px; border-radius:8px; width:400px; max-width:90%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+            <h3 style="margin-top:0; margin-bottom:16px; font-size:18px; color:var(--tf-danger);">Xóa hóa đơn?</h3>
+            <p style="margin-bottom:24px;">Bạn có chắc chắn muốn xóa bản ghi này?</p>
             @if (!string.IsNullOrEmpty(_deleteError))
             {
-                <div class="tf-alert tf-alert-danger" style="margin-bottom: 16px;">
-                    @_deleteError
-                </div>
+                <div class="tf-alert tf-alert-danger" style="margin-bottom:16px;">@_deleteError</div>
             }
-            <div style="display: flex; justify-content: flex-end; gap: 12px;">
+            <div style="display:flex; justify-content:flex-end; gap:12px;">
                 <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="CancelDelete">Hủy</button>
                 <button type="button" class="tf-btn tf-btn-danger" @onclick="ExecuteDelete">Xóa</button>
             </div>
@@ -79,19 +269,25 @@ else
 }
 
 @code {
-    [Parameter]
-    public int Id { get; set; }
+    [Parameter] public int Id { get; set; }
+
+    // Color constants — same values as QuestPDF template
+    private const string BorderBlue   = "#1a3766";
+    private const string HeaderBg     = "#b8d1e8";
+    private const string TableHeadBg  = "#4472c4";
+    private const string RowAltBg     = "#dce6f1";
+    private const string TotRowBg     = "#dce6f1";
+
+    private bool IsVat => _invoice?.Type == InvoiceType.VatInvoice;
 
     private InvoiceDto? _invoice;
     private string? _pdfBase64;
     private bool _isLoading = true;
     private bool _isProcessing = false;
     private string? _errorMessage;
+    private string _activeTab = "preview";
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadDataAsync();
-    }
+    protected override async Task OnInitializedAsync() => await LoadDataAsync();
 
     private async Task LoadDataAsync()
     {
@@ -105,11 +301,76 @@ else
                 _pdfBase64 = Convert.ToBase64String(bytes);
             }
         }
-        finally
-        {
-            _isLoading = false;
-        }
+        finally { _isLoading = false; }
     }
+
+    // Render helpers — identical structure to PDF template
+    private RenderFragment InfoRowHtml(string label, string? value) => __builder =>
+    {
+        __builder.OpenElement(0, "div");
+        __builder.AddAttribute(1, "style", "border-bottom:0.3px solid #a0b8d0; padding:3px 6px; display:flex; gap:4px;");
+        __builder.OpenElement(2, "span");
+        __builder.AddAttribute(3, "style", "white-space:nowrap; color:#1a3766; font-size:8.5pt;");
+        __builder.AddContent(4, label + ": ");
+        __builder.CloseElement();
+        __builder.OpenElement(5, "span");
+        __builder.AddAttribute(6, "style", "color:#000; font-size:8.5pt;");
+        __builder.AddContent(7, value ?? "");
+        __builder.CloseElement();
+        __builder.CloseElement();
+    };
+
+    private RenderFragment InfoRowDualHtml(string label1, string? val1, string label2, string? val2) => __builder =>
+    {
+        __builder.OpenElement(0, "div");
+        __builder.AddAttribute(1, "style", "border-bottom:0.3px solid #a0b8d0; padding:3px 6px; display:flex; gap:4px;");
+
+        __builder.OpenElement(2, "div");
+        __builder.AddAttribute(3, "style", "flex:1; display:flex; gap:4px;");
+        __builder.OpenElement(4, "span");
+        __builder.AddAttribute(5, "style", "white-space:nowrap; color:#1a3766; font-size:8.5pt;");
+        __builder.AddContent(6, label1 + ": ");
+        __builder.CloseElement();
+        __builder.OpenElement(7, "span");
+        __builder.AddAttribute(8, "style", "color:#000; font-size:8.5pt;");
+        __builder.AddContent(9, val1 ?? "");
+        __builder.CloseElement();
+        __builder.CloseElement();
+
+        __builder.OpenElement(10, "div");
+        __builder.AddAttribute(11, "style", "flex:1; display:flex; gap:4px;");
+        __builder.OpenElement(12, "span");
+        __builder.AddAttribute(13, "style", "white-space:nowrap; color:#1a3766; font-size:8.5pt;");
+        __builder.AddContent(14, label2 + ": ");
+        __builder.CloseElement();
+        __builder.OpenElement(15, "span");
+        __builder.AddAttribute(16, "style", "color:#000; font-size:8.5pt;");
+        __builder.AddContent(17, val2 ?? "");
+        __builder.CloseElement();
+        __builder.CloseElement();
+
+        __builder.CloseElement();
+    };
+
+    private RenderFragment TotalRowHtml(string viLabel, string enLabel, string value) => __builder =>
+    {
+        __builder.OpenElement(0, "div");
+        __builder.AddAttribute(1, "style", "border-bottom:0.3px solid #a0b8d0; display:flex; justify-content:flex-end;");
+        __builder.OpenElement(2, "div");
+        __builder.AddAttribute(3, "style", "padding:3px 6px; text-align:right; color:#1a3766; font-size:9pt;");
+        __builder.AddContent(4, viLabel + " ");
+        __builder.OpenElement(5, "em");
+        __builder.AddAttribute(6, "style", "font-size:8pt;");
+        __builder.AddContent(7, enLabel);
+        __builder.CloseElement();
+        __builder.AddContent(8, ":");
+        __builder.CloseElement();
+        __builder.OpenElement(9, "div");
+        __builder.AddAttribute(10, "style", "border-left:0.3px solid #a0b8d0; padding:3px 6px; min-width:100px; text-align:right; color:#000; font-size:9pt;");
+        __builder.AddContent(11, value);
+        __builder.CloseElement();
+        __builder.CloseElement();
+    };
 
     private async Task ExportPdf()
     {
@@ -119,37 +380,22 @@ else
         {
             await JS.InvokeVoidAsync("eval", $@"
                 var link = document.createElement('a');
-                link.download = 'Invoice_{_invoice.InvoiceNumber}.pdf';
+                link.download = 'HoaDon_{_invoice.InvoiceNumber}.pdf';
                 link.href = 'data:application/pdf;base64,{_pdfBase64}';
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
             ");
         }
-        catch (Exception ex)
-        {
-            _errorMessage = ex.Message;
-        }
-        finally
-        {
-            _isProcessing = false;
-        }
+        catch (Exception ex) { _errorMessage = ex.Message; }
+        finally { _isProcessing = false; }
     }
 
     private bool _showDeleteModal = false;
     private string? _deleteError;
 
-    private void ConfirmDelete()
-    {
-        _showDeleteModal = true;
-        _deleteError = null;
-    }
-
-    private void CancelDelete()
-    {
-        _showDeleteModal = false;
-        _deleteError = null;
-    }
+    private void ConfirmDelete() { _showDeleteModal = true; _deleteError = null; }
+    private void CancelDelete() { _showDeleteModal = false; _deleteError = null; }
 
     private async Task ExecuteDelete()
     {
@@ -159,15 +405,11 @@ else
             _deleteError = "Bạn không có quyền thực hiện thao tác này.";
             return;
         }
-
         try
         {
             var ok = await InvoiceService.DeleteInvoiceAsync(Id);
-            if(ok) { Nav.NavigateTo("/hoa-don"); } else { _deleteError = "Không thể xóa."; }
+            if (ok) Nav.NavigateTo("/hoa-don"); else _deleteError = "Không thể xóa.";
         }
-        catch (Exception ex)
-        {
-            _deleteError = "Đã xảy ra lỗi: " + ex.Message;
-        }
+        catch (Exception ex) { _deleteError = "Đã xảy ra lỗi: " + ex.Message; }
     }
 }

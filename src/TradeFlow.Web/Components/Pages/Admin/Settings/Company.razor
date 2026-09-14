@@ -91,6 +91,21 @@ else
                     </div>
                 </div>
             </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="tf-mb-4">
+                <div class="tf-field">
+                    <label class="tf-label">Số tài khoản ngân hàng</label>
+                    <div class="tf-input-wrapper">
+                        <input type="text" class="tf-input" @bind="_settings.BankAccount" />
+                    </div>
+                </div>
+                <div class="tf-field">
+                    <label class="tf-label">Ngân hàng</label>
+                    <div class="tf-input-wrapper">
+                        <input type="text" class="tf-input" @bind="_settings.BankName" placeholder="VD: Vietcombank - Chi nhánh HCM" />
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 }

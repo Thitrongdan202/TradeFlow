@@ -21,7 +21,7 @@
     </div>
     <div class="tf-page-header-actions">
         <a href="/hoa-don" class="tf-btn tf-btn-outline-secondary">Quay lại</a>
-        @if (_invoice?.Status == InvoiceStatus.Draft)
+        @if (_invoice?.Status == InvoiceStatus.Draft && _selectedDocType == "gtgt")
         {
             <AuthorizeView Policy="Permission:Invoices:Edit">
                 <a href="/hoa-don/sua/@Id" class="tf-btn tf-btn-secondary">Sửa hóa đơn</a>
@@ -30,14 +30,25 @@
                 <button class="tf-btn tf-btn-danger" @onclick="ConfirmDelete">Xóa</button>
             </AuthorizeView>
         }
-        @if (_invoice != null)
+        @if (_selectedDocType == "gtgt")
         {
-            @if (_invoice.SignatureStatus != DigitalSignatureStatus.Signed)
+            @if (_invoice != null)
             {
-                <button class="tf-btn tf-btn-success" @onclick="SignInvoice" disabled="@_isProcessing">✍ Ký điện tử</button>
+                @if (_invoice.SignatureStatus != DigitalSignatureStatus.Signed)
+                {
+                    <button class="tf-btn tf-btn-success" @onclick="SignInvoice" disabled="@_isProcessing">✍ Ký điện tử</button>
+                }
+                <button class="tf-btn tf-btn-outline-primary" @onclick="ExportPdf" disabled="@_isProcessing">⬇ Tải PDF</button>
+                <button class="tf-btn tf-btn-outline-secondary" @onclick="ExportXml" disabled="@_isProcessing">📄 Tải XML</button>
             }
-            <button class="tf-btn tf-btn-outline-primary" @onclick="ExportPdf" disabled="@_isProcessing">⬇ Tải PDF</button>
-            <button class="tf-btn tf-btn-outline-secondary" @onclick="ExportXml" disabled="@_isProcessing">📄 Tải XML</button>
+        }
+        else
+        {
+            @if (_orderDoc != null)
+            {
+                <span class="tf-badge tf-badge-secondary" style="margin-right:4px;">Chứng từ nội bộ</span>
+                <button class="tf-btn tf-btn-outline-primary" @onclick="ExportOrderPdf" disabled="@_isProcessing">⬇ Tải PDF Đơn đặt hàng</button>
+            }
         }
     </div>
 </div>
@@ -61,24 +72,51 @@ else
         <div class="tf-alert tf-alert-success tf-mb-4">@_successMessage</div>
     }
 
+    @* Document Type Switcher *@
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; background:#f8fafc; padding:10px 14px; border-radius:8px; border:1px solid #e2e8f0;">
+        <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:13px; font-weight:600; color:#334155;">Loại mẫu chứng từ:</span>
+            <button type="button" class="tf-btn @(_selectedDocType == "gtgt" ? "tf-btn-primary" : "tf-btn-outline-secondary")"
+                    style="padding:5px 14px; font-size:13px;"
+                    @onclick='() => SwitchDocType("gtgt")'>
+                🧾 Hóa đơn điện tử GTGT
+            </button>
+            <button type="button" class="tf-btn @(_selectedDocType == "order" ? "tf-btn-primary" : "tf-btn-outline-secondary")"
+                    style="padding:5px 14px; font-size:13px;"
+                    @onclick='() => SwitchDocType("order")'>
+                📝 Đơn đặt hàng (Sales Order)
+            </button>
+        </div>
+        <div>
+            <button type="button" class="tf-btn tf-btn-sm tf-btn-secondary" @onclick="PrintDocument">
+                🖨 In chứng từ
+            </button>
+        </div>
+    </div>
+
     @* Tab switcher *@
     <div style="display:flex; gap:8px; margin-bottom:16px;">
         <button class="tf-btn @(_activeTab == "preview" ? "tf-btn-primary" : "tf-btn-secondary")"
-                @onclick='() => _activeTab = "preview"'>Xem trước (Mẫu hóa đơn)</button>
+                @onclick='() => _activeTab = "preview"'>
+            Xem trước (@(_selectedDocType == "gtgt" ? "Mẫu hóa đơn" : "Mẫu Đơn đặt hàng"))
+        </button>
         <button class="tf-btn @(_activeTab == "pdf" ? "tf-btn-primary" : "tf-btn-secondary")"
                 @onclick='() => _activeTab = "pdf"'>Bản in PDF</button>
-        <button class="tf-btn @(_activeTab == "xml" ? "tf-btn-primary" : "tf-btn-secondary")"
-                @onclick='() => _activeTab = "xml"'>Dữ liệu XML</button>
+        @if (_selectedDocType == "gtgt")
+        {
+            <button class="tf-btn @(_activeTab == "xml" ? "tf-btn-primary" : "tf-btn-secondary")"
+                    @onclick='() => _activeTab = "xml"'>Dữ liệu XML</button>
+        }
     </div>
 
     @if (_activeTab == "pdf")
     {
         <div class="tf-card" style="padding:0; overflow:hidden; border:none; box-shadow:none;">
-            <iframe src="data:application/pdf;base64,@_pdfBase64"
+            <iframe src="data:application/pdf;base64,@(_selectedDocType == "gtgt" ? _pdfBase64 : _orderPdfBase64)"
                     style="width:100%; height:880px; border:1px solid #e2e8f0; border-radius:8px;"></iframe>
         </div>
     }
-    else if (_activeTab == "xml")
+    else if (_activeTab == "xml" && _selectedDocType == "gtgt")
     {
         <div class="tf-card" style="padding:16px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -90,9 +128,11 @@ else
     }
     else
     {
-        @* ─── WEB PREVIEW — strictly matching reference empty invoice template (media_1789552936429.pdf) ─── *@
-        <div style="max-width:820px; margin:0 auto 24px; font-family:Arial,sans-serif; font-size:8.5pt; color:@BorderBlue; background:#fff; border:2px solid @BorderBlue; padding:3px;">
-            <div style="border:1px solid @BorderBlue;">
+        @if (_selectedDocType == "gtgt")
+        {
+            @* ─── WEB PREVIEW — strictly matching reference empty invoice template (media_1789552936429.pdf) ─── *@
+            <div id="print-document-area" style="max-width:820px; margin:0 auto 24px; font-family:Arial,sans-serif; font-size:8.5pt; color:@BorderBlue; background:#fff; border:2px solid @BorderBlue; padding:3px;">
+                <div style="border:1px solid @BorderBlue;">
 
                 @* ── 1. HEADER ── *@
                 <div style="padding:10px 14px 8px;">
@@ -303,8 +343,156 @@ else
 
             </div>
         </div>
+        }
+        else if (_orderDoc != null)
+        {
+            @* ─── WEB PREVIEW — strictly matching LACASA reference order document ─── *@
+            <div id="print-document-area" class="don-dat-hang-sheet" style="max-width:820px; margin:0 auto 24px; font-family:'Times New Roman', Times, serif; font-size:13.5px; color:#000; background:#fff; padding:28px 32px; border:1px solid #d1d5db; box-shadow:0 1px 3px rgba(0,0,0,0.1); line-height:1.4;">
+                <!-- 1. HEADER -->
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+                    <div style="flex:1;">
+                        <div style="font-size:17px; font-weight:bold; text-transform:uppercase; margin-bottom:3px;">@_orderDoc.CompanyName</div>
+                        <div style="font-size:14px; font-weight:bold; font-style:italic; margin-bottom:2px;">Email: @_orderDoc.Email</div>
+                        <div style="font-size:14px; font-weight:bold; font-style:italic;">Tel/Zalo: @_orderDoc.Hotline</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:20px; font-weight:bold; text-transform:uppercase; margin-bottom:4px;">ĐƠN ĐẶT HÀNG</div>
+                        <div style="font-size:14px; margin-bottom:2px;">Số ĐĐH: @_orderDoc.OrderCode</div>
+                        <div style="font-size:14px;">Ngày @_orderDoc.OrderDate.ToString("dd") tháng @_orderDoc.OrderDate.ToString("MM") năm @_orderDoc.OrderDate.ToString("yyyy")</div>
+                    </div>
+                </div>
+
+                <!-- 2. CUSTOMER & SALUTATION -->
+                <div style="margin-bottom:14px;">
+                    <div style="margin-bottom:3px;">
+                        Kính gửi: <span>@_orderDoc.CustomerName</span> - SĐT: <span>@_orderDoc.CustomerPhone</span>
+                    </div>
+                    <div style="margin-bottom:5px;">
+                        Địa chỉ: <span>@_orderDoc.CustomerAddress</span>
+                    </div>
+                    <div style="font-style:italic; font-weight:bold;">
+                        Lời đầu tiên, @_orderDoc.CompanyName kính gửi đến Quý khách lời chào trân trọng và lời chúc thành công. Chúng tôi xin gửi đến Quý khách báo giá cho sản phẩm với chi tiết như sau:
+                    </div>
+                </div>
+
+                <!-- 3. PRODUCT TABLE -->
+                <table style="width:100%; border-collapse:collapse; margin-bottom:0; font-size:13px;">
+                    <thead>
+                        <tr style="border-top:1px solid #000; border-bottom:1px solid #000;">
+                            <th style="border:1px solid #000; padding:4px 3px; text-align:center; width:35px; font-weight:bold;">NO</th>
+                            <th style="border:1px solid #000; padding:4px 3px; text-align:center; width:100px; font-weight:bold;">Sản Phẩm</th>
+                            <th style="border:1px solid #000; padding:4px 3px; text-align:center; width:90px; font-weight:bold;">Tên hàng</th>
+                            <th style="border:1px solid #000; padding:4px 3px; text-align:center; font-weight:bold;">Mô Tả Sản Phẩm</th>
+                            <th style="border:1px solid #000; padding:4px 3px; text-align:center; width:55px; font-weight:bold;">Số lượng</th>
+                            <th style="border:1px solid #000; padding:4px 3px; text-align:center; width:80px; font-weight:bold;">Đơn giá</th>
+                            <th style="border:1px solid #000; padding:4px 3px; text-align:center; width:85px; font-weight:bold;">Đơn giá giảm</th>
+                            <th style="border:1px solid #000; padding:4px 3px; text-align:center; width:95px; font-weight:bold;">Thành tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var itm in _orderDoc.Items)
+                        {
+                            <tr>
+                                <td style="border:1px solid #000; padding:4px 3px; text-align:center;">@itm.No</td>
+                                <td style="border:1px solid #000; padding:4px 3px; text-align:center;">@itm.CategoryName</td>
+                                <td style="border:1px solid #000; padding:4px 3px; text-align:center;">@itm.ProductCode</td>
+                                <td style="border:1px solid #000; padding:4px 3px; text-align:left;">@itm.Description</td>
+                                <td style="border:1px solid #000; padding:4px 3px; text-align:center;">@itm.Quantity.ToString("N0")</td>
+                                <td style="border:1px solid #000; padding:4px 3px; text-align:right;">@itm.UnitPrice.ToString("N0")</td>
+                                <td style="border:1px solid #000; padding:4px 3px; text-align:right;">@itm.DiscountedPrice.ToString("N0")</td>
+                                <td style="border:1px solid #000; padding:4px 3px; text-align:right;">@itm.LineTotal.ToString("N0")</td>
+                            </tr>
+                        }
+                        <!-- TOTALS ROW 1 -->
+                        <tr>
+                            <td colspan="4" style="border:1px solid #000; padding:4px 6px; text-align:right; font-weight:bold;">Tổng giá trị đơn hàng:</td>
+                            <td style="border:1px solid #000; padding:4px 3px; text-align:center; font-weight:bold;">@_orderDoc.TotalQuantity.ToString("N0")</td>
+                            <td style="border:1px solid #000; padding:4px 3px;"></td>
+                            <td style="border:1px solid #000; padding:4px 3px;"></td>
+                            <td style="border:1px solid #000; padding:4px 6px; text-align:right; font-weight:bold;">@_orderDoc.TotalAmount.ToString("N0")</td>
+                        </tr>
+                        <!-- TOTALS ROW 2 -->
+                        <tr>
+                            <td colspan="4" style="border:1px solid #000; padding:4px 6px; text-align:right;">Tổng cộng giá trị đơn hàng:</td>
+                            <td style="border:1px solid #000; padding:4px 3px;"></td>
+                            <td style="border:1px solid #000; padding:4px 3px;"></td>
+                            <td style="border:1px solid #000; padding:4px 3px;"></td>
+                            <td style="border:1px solid #000; padding:4px 6px; text-align:right; font-weight:bold;">@_orderDoc.GrandTotal.ToString("N0")</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- 4. NOTES, BANK & QR CODE BOX -->
+                <div style="border:1px solid #000; border-top:none; display:flex; margin-bottom:8px;">
+                    <div style="flex:1; display:flex; flex-direction:column;">
+                        <div style="border-bottom:1px solid #000; padding:3px 6px;">
+                            <span style="font-weight:bold; font-style:italic;">Ghi chú KH:</span>
+                            <span>@_orderDoc.CustomerNotes</span>
+                        </div>
+                        <div style="border-bottom:1px solid #000; padding:3px 6px; font-weight:bold;">
+                            @_orderDoc.VatNote
+                        </div>
+                        <div style="border-bottom:1px solid #000; padding:3px 6px; font-weight:bold;">
+                            TÀI KHOẢN NGÂN HÀNG:
+                        </div>
+                        <div style="border-bottom:1px solid #000; padding:3px 6px;">
+                            TÊN TÀI KHOẢN: @(_orderDoc.BankAccountHolder ?? "").ToUpper()
+                        </div>
+                        <div style="border-bottom:1px solid #000; padding:3px 6px;">
+                            SỐ TÀI KHOẢN: @_orderDoc.BankAccount
+                        </div>
+                        <div style="padding:3px 6px;">
+                            @(_orderDoc.BankName ?? "").ToUpper()
+                        </div>
+                    </div>
+                    <div style="width:145px; border-left:1px solid #000; display:flex; align-items:center; justify-content:center; padding:6px;">
+                        @if (!string.IsNullOrEmpty(_orderDoc.QrCodePath))
+                        {
+                            <img src="@_orderDoc.QrCodePath" alt="QR Code" style="max-width:130px; max-height:130px; object-fit:contain;" />
+                        }
+                        else
+                        {
+                            <div style="width:115px; height:115px; border:1px dashed #999; display:flex; align-items:center; justify-content:center; font-size:11px; color:#888;">QR Code</div>
+                        }
+                    </div>
+                </div>
+
+                <!-- 5. FOOTER NOTES -->
+                <div style="font-size:12px; font-style:italic; line-height:1.4;">
+                    @if (!string.IsNullOrWhiteSpace(_orderDoc.FooterNote1))
+                    {
+                        <div>@_orderDoc.FooterNote1</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_orderDoc.FooterNote2))
+                    {
+                        <div>@_orderDoc.FooterNote2</div>
+                    }
+                </div>
+            </div>
+        }
     }
 }
+
+<style>
+    @@media print {
+        body * {
+            visibility: hidden;
+        }
+        #print-document-area, #print-document-area * {
+            visibility: visible;
+        }
+        #print-document-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            border: none;
+            box-shadow: none;
+        }
+    }
+</style>
 
 @if (_showDeleteModal)
 {
@@ -336,13 +524,16 @@ else
     private static readonly System.Globalization.CultureInfo ViCulture = System.Globalization.CultureInfo.GetCultureInfo("vi-VN");
 
     private InvoiceDto? _invoice;
+    private OrderDocumentDto? _orderDoc;
     private string? _pdfBase64;
+    private string? _orderPdfBase64;
     private string? _xmlContent;
     private bool _isLoading = true;
     private bool _isProcessing = false;
     private string? _errorMessage;
     private string? _successMessage;
     private string _activeTab = "preview";
+    private string _selectedDocType = "gtgt"; // "gtgt" or "order"
 
     protected override async Task OnInitializedAsync() => await LoadDataAsync();
 
@@ -357,9 +548,49 @@ else
                 var bytes = await InvoiceService.GeneratePdfAsync(Id);
                 _pdfBase64 = Convert.ToBase64String(bytes);
                 _xmlContent = await InvoiceService.GenerateXmlAsync(Id);
+
+                _orderDoc = await InvoiceService.GetOrderDocumentByInvoiceIdAsync(Id);
+                if (_orderDoc != null)
+                {
+                    var orderPdfBytes = await InvoiceService.GenerateOrderDocumentPdfAsync(_orderDoc);
+                    _orderPdfBase64 = Convert.ToBase64String(orderPdfBytes);
+                }
             }
         }
         finally { _isLoading = false; }
+    }
+
+    private void SwitchDocType(string type)
+    {
+        _selectedDocType = type;
+        if (_selectedDocType == "order" && _activeTab == "xml")
+        {
+            _activeTab = "preview";
+        }
+    }
+
+    private async Task PrintDocument()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+
+    private async Task ExportOrderPdf()
+    {
+        if (string.IsNullOrEmpty(_orderPdfBase64) || _orderDoc == null) return;
+        _isProcessing = true;
+        try
+        {
+            await JS.InvokeVoidAsync("eval", $@"
+                var link = document.createElement('a');
+                link.download = 'DonDatHang_{_orderDoc.OrderCode}.pdf';
+                link.href = 'data:application/pdf;base64,{_orderPdfBase64}';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            ");
+        }
+        catch (Exception ex) { _errorMessage = ex.Message; }
+        finally { _isProcessing = false; }
     }
 
     private RenderFragment InfoRowHtml(string label, string? value, bool boldValue = false) => __builder =>

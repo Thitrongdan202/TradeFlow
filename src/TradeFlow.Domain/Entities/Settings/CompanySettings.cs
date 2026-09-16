@@ -37,6 +37,9 @@ public class CompanySettings : AuditableEntity<int>
     /// <summary>Ngân hàng</summary>
     public string? BankName { get; set; }
 
+    /// <summary>Tên chủ tài khoản (Chủ tài khoản ngân hàng nhận tiền)</summary>
+    public string? BankAccountHolder { get; set; }
+
     /// <summary>Website</summary>
     public string? Website { get; set; }
 
@@ -45,4 +48,22 @@ public class CompanySettings : AuditableEntity<int>
 
     /// <summary>Chữ ký hoặc con dấu (đường dẫn)</summary>
     public string? SignaturePath { get; set; }
+
+    /// <summary>Đường dẫn hình ảnh mã QR thanh toán</summary>
+    public string? OrderQrCodePath { get; set; }
+
+    /// <summary>Ghi chú đơn hàng mặc định (Ghi chú KH)</summary>
+    public string? DefaultOrderNote { get; set; }
+
+    /// <summary>Ghi chú thuế VAT mặc định (VD: Đơn giá trên chưa bao gồm thuế GTGT (8%).)</summary>
+    public string? DefaultVatNote { get; set; }
+
+    /// <summary>Hotline / Zalo liên hệ hiển thị trên đơn đặt hàng</summary>
+    public string? OrderHotline { get; set; }
+
+    /// <summary>Ghi chú chân trang 1 (Kiểm tra hàng hóa)</summary>
+    public string? OrderFooterNote1 { get; set; }
+
+    /// <summary>Ghi chú chân trang 2 (Chính sách đổi trả)</summary>
+    public string? OrderFooterNote2 { get; set; }
 }

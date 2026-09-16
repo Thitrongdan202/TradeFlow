@@ -47,6 +47,7 @@ else
             <p class="tf-page-subtitle">Ngày tạo: @_order.OrderDate.ToString("dd/MM/yyyy")</p>
         </div>
         <div class="tf-page-header-actions">
+            <a href="/hoa-don/don-dat-hang/@Id" class="tf-btn tf-btn-outline-primary" style="margin-right:8px;">📄 Xem / In Đơn đặt hàng</a>
             @if (_order.Status == SalesOrderStatus.Draft)
             {
                 <AuthorizeView Policy="Permission:SalesOrders:Approve">

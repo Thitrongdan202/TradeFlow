@@ -339,4 +339,136 @@ public class InvoiceTemplateTests
         Assert.True(File.Exists(Path.Combine(outDir, "synthetic_invoice.pdf")));
         Assert.True(File.Exists(Path.Combine(outDir, "synthetic_invoice.xml")));
     }
+
+    [Fact]
+    public async Task GenerateOrderDocument_FromSalesOrder_MatchesLacasaTemplate()
+    {
+        using var context = CreateInMemoryDbContext();
+        var company = await context.CompanySettings.FirstAsync();
+        company.CompanyName = "TỔNG KHO THIẾT BỊ VỆ SINH LACASA";
+        company.Email = "tongkhothietbivesinh@gmail.com";
+        company.OrderHotline = "0369.074.789 - Hotline";
+        company.BankAccountHolder = "TRẦN VĂN TUẤN";
+        company.BankAccount = "4987.9177";
+        company.BankName = "NGÂN HÀNG Á CHÂU (ACB)";
+        company.DefaultVatNote = "Đơn giá trên chưa bao gồm thuế GTGT (8%).";
+        await context.SaveChangesAsync();
+
+        var category1 = new ProductCategory { Name = "LAVABO ĐỂ BÀN" };
+        var category2 = new ProductCategory { Name = "BỒN CẦU 1 KHỐI" };
+        context.ProductCategories.AddRange(category1, category2);
+        await context.SaveChangesAsync();
+
+        var prod1 = new Product
+        {
+            Code = "LVB205-LS",
+            Name = "Lavabo Cơm Hươu",
+            Specifications = "Lavabo Cơm Hươu- Viền Đen, Vuông, Dài Bàn, 490x370x130",
+            CategoryId = category1.Id,
+            Category = category1
+        };
+        var prod2 = new Product
+        {
+            Code = "TL2138 (K8012)",
+            Name = "Bồn Cầu Trắng",
+            Specifications = "Bồn Cầu Trắng, Xả Mưa, 680x370x700",
+            CategoryId = category2.Id,
+            Category = category2
+        };
+        context.Products.AddRange(prod1, prod2);
+        await context.SaveChangesAsync();
+
+        var customer = new Customer
+        {
+            Name = "C11 Thiên Định-Chị Ngân-Cần Thơ",
+            Phone = "0901482169",
+            Address = "136E2/14 Lê Phước Thọ ( Vòng Xoay Võ Văn Kiệt) - Phường Long Hòa - Quận Bình Thủy, Cần Thơ"
+        };
+        context.Customers.Add(customer);
+        await context.SaveChangesAsync();
+
+        var order = new SalesOrder
+        {
+            Code = "DH000578",
+            OrderDate = new DateTime(2026, 9, 16),
+            CustomerId = customer.Id,
+            CustomerName = customer.Name,
+            CustomerPhone = customer.Phone,
+            CustomerAddress = customer.Address,
+            Notes = "Giao hàng giờ hành chính",
+            Items = new List<SalesOrderItem>
+            {
+                new SalesOrderItem
+                {
+                    ProductId = prod1.Id,
+                    Product = prod1,
+                    ProductCode = prod1.Code,
+                    ProductName = prod1.Name,
+                    Quantity = 2,
+                    UnitPrice = 425000,
+                    DiscountAmount = 0,
+                    LineTotal = 850000
+                },
+                new SalesOrderItem
+                {
+                    ProductId = prod2.Id,
+                    Product = prod2,
+                    ProductCode = prod2.Code,
+                    ProductName = prod2.Name,
+                    Quantity = 2,
+                    UnitPrice = 1190000,
+                    DiscountAmount = 0,
+                    LineTotal = 2380000
+                }
+            }
+        };
+        context.SalesOrders.Add(order);
+        await context.SaveChangesAsync();
+
+        var mockUser = new Mock<ICurrentUserService>();
+        var mockAudit = new Mock<IAuditService>();
+        var sigService = new DigitalSignatureService(context);
+        var invoiceService = new InvoiceService(context, mockUser.Object, mockAudit.Object, sigService);
+
+        var doc = await invoiceService.GetOrderDocumentByOrderIdAsync(order.Id);
+        Assert.NotNull(doc);
+        Assert.Equal("DH000578", doc.OrderCode);
+        Assert.Equal("TỔNG KHO THIẾT BỊ VỆ SINH LACASA", doc.CompanyName);
+        Assert.Equal("tongkhothietbivesinh@gmail.com", doc.Email);
+        Assert.Equal("0369.074.789 - Hotline", doc.Hotline);
+        Assert.Equal("C11 Thiên Định-Chị Ngân-Cần Thơ", doc.CustomerName);
+        Assert.Equal("0901482169", doc.CustomerPhone);
+        Assert.Equal("TRẦN VĂN TUẤN", doc.BankAccountHolder);
+        Assert.Equal("4987.9177", doc.BankAccount);
+        Assert.Equal("NGÂN HÀNG Á CHÂU (ACB)", doc.BankName);
+
+        // Verify items
+        Assert.Equal(2, doc.Items.Count);
+        Assert.Equal(1, doc.Items[0].No);
+        Assert.Equal("LAVABO ĐỂ BÀN", doc.Items[0].CategoryName);
+        Assert.Equal("LVB205-LS", doc.Items[0].ProductCode);
+        Assert.Equal(2, doc.Items[0].Quantity);
+        Assert.Equal(425000, doc.Items[0].UnitPrice);
+        Assert.Equal(850000, doc.Items[0].LineTotal);
+
+        Assert.Equal(2, doc.Items[1].No);
+        Assert.Equal("BỒN CẦU 1 KHỐI", doc.Items[1].CategoryName);
+        Assert.Equal("TL2138 (K8012)", doc.Items[1].ProductCode);
+        Assert.Equal(2, doc.Items[1].Quantity);
+        Assert.Equal(1190000, doc.Items[1].UnitPrice);
+        Assert.Equal(2380000, doc.Items[1].LineTotal);
+
+        // Verify totals
+        Assert.Equal(4, doc.TotalQuantity);
+        Assert.Equal(3230000, doc.TotalAmount);
+        Assert.Equal(3230000, doc.GrandTotal);
+
+        // Generate PDF
+        byte[] pdfBytes = await invoiceService.GenerateOrderDocumentPdfAsync(doc);
+        Assert.NotNull(pdfBytes);
+        Assert.True(pdfBytes.Length > 1000);
+
+        string targetPdf = @"C:\Users\thitr\.gemini\antigravity\brain\fb94d497-815d-460b-bd53-9de32ef4d901\synthetic_order_document.pdf";
+        await File.WriteAllBytesAsync(targetPdf, pdfBytes);
+    }
 }

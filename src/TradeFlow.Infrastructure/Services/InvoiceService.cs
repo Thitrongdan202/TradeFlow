@@ -25,17 +25,20 @@ public class InvoiceService : IInvoiceService
     private readonly ICurrentUserService _currentUserService;
     private readonly IAuditService _auditService;
     private readonly IDigitalSignatureService _digitalSignatureService;
+    private readonly Microsoft.AspNetCore.Hosting.IWebHostEnvironment? _webHostEnvironment;
 
     public InvoiceService(
         TradeFlowDbContext context,
         ICurrentUserService currentUserService,
         IAuditService auditService,
-        IDigitalSignatureService digitalSignatureService)
+        IDigitalSignatureService digitalSignatureService,
+        Microsoft.AspNetCore.Hosting.IWebHostEnvironment? webHostEnvironment = null)
     {
         _context = context;
         _currentUserService = currentUserService;
         _auditService = auditService;
         _digitalSignatureService = digitalSignatureService;
+        _webHostEnvironment = webHostEnvironment;
     }
 
     public async Task<List<InvoiceDto>> GetInvoicesAsync(CancellationToken cancellationToken = default)
@@ -1072,5 +1075,156 @@ public class InvoiceService : IInvoiceService
             .ToList();
 
         return dto;
+    }
+
+    public async Task<OrderDocumentDto?> GetOrderDocumentByInvoiceIdAsync(int invoiceId, CancellationToken cancellationToken = default)
+    {
+        var inv = await _context.Invoices
+            .Include(x => x.Items)
+            .Include(x => x.SalesOrder)
+                .ThenInclude(so => so!.Items)
+                    .ThenInclude(soi => soi.Product)
+                        .ThenInclude(p => p.Category)
+            .Include(x => x.Customer)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == invoiceId, cancellationToken);
+
+        if (inv == null) return null;
+
+        var company = await _context.CompanySettings.FirstOrDefaultAsync(cancellationToken);
+
+        var doc = new OrderDocumentDto
+        {
+            OrderId = inv.SalesOrderId ?? inv.Id,
+            OrderCode = inv.SalesOrder?.Code ?? inv.InvoiceNumber,
+            OrderDate = inv.InvoiceDate,
+            CustomerName = inv.CustomerName,
+            CustomerPhone = inv.Customer?.Phone ?? inv.SalesOrder?.CustomerPhone ?? "",
+            CustomerAddress = inv.CustomerAddress ?? inv.Customer?.Address ?? inv.SalesOrder?.CustomerAddress,
+            CompanyName = !string.IsNullOrWhiteSpace(company?.CompanyName) ? company.CompanyName : "TỔNG KHO THIẾT BỊ VỆ SINH LACASA",
+            Email = !string.IsNullOrWhiteSpace(company?.Email) ? company.Email : "tongkhothietbivesinh@gmail.com",
+            Hotline = !string.IsNullOrWhiteSpace(company?.OrderHotline) ? company.OrderHotline : (company?.Phone ?? "0369.074.789 - Hotline"),
+            CustomerNotes = !string.IsNullOrWhiteSpace(inv.Notes) ? inv.Notes : company?.DefaultOrderNote,
+            VatNote = !string.IsNullOrWhiteSpace(company?.DefaultVatNote) ? company.DefaultVatNote : "Đơn giá trên chưa bao gồm thuế GTGT (8%).",
+            BankAccountHolder = company?.BankAccountHolder ?? "TRẦN VĂN TUẤN",
+            BankAccount = company?.BankAccount ?? "4987.9177",
+            BankName = company?.BankName ?? "NGÂN HÀNG Á CHÂU (ACB)",
+            QrCodePath = company?.OrderQrCodePath ?? "/images/lacasa_qr.png",
+            FooterNote1 = company?.OrderFooterNote1 ?? "Quý khách kiểm tra hàng hóa đúng số lượng trên hóa đơn và kiểm hàng trước khi rời khỏi kho Lacasa, kẻ vỡ Lacasa không chịu trách nhiệm.",
+            FooterNote2 = company?.OrderFooterNote2 ?? "Hàng hóa mua không nhận trả hàng ngoại trừ hàng bị lỗi do nhà sản xuất, đổi trả trong vòng 10 ngày kể từ ngày xuất kho."
+        };
+
+        int stt = 1;
+        foreach (var itm in inv.Items.OrderBy(x => x.SortOrder))
+        {
+            var soItem = inv.SalesOrder?.Items.FirstOrDefault(x => x.ProductId == itm.ProductId || x.ProductCode == itm.ProductCode);
+            string categoryName = soItem?.Product?.Category?.Name ?? "";
+            if (string.IsNullOrWhiteSpace(categoryName))
+            {
+                categoryName = itm.ProductName;
+            }
+
+            string description = soItem?.Product?.Specifications ?? soItem?.Product?.Description ?? itm.ProductName;
+            decimal discountedPrice = itm.Quantity > 0 && itm.DiscountAmount > 0 
+                ? (itm.UnitPrice - (itm.DiscountAmount / itm.Quantity)) 
+                : itm.UnitPrice;
+            decimal lineTotal = itm.Quantity * discountedPrice;
+
+            doc.Items.Add(new OrderDocumentItemDto
+            {
+                No = stt++,
+                CategoryName = categoryName.ToUpper(),
+                ProductCode = itm.ProductCode,
+                Description = description,
+                Quantity = itm.Quantity,
+                UnitPrice = itm.UnitPrice,
+                DiscountedPrice = discountedPrice,
+                LineTotal = lineTotal
+            });
+        }
+
+        doc.TotalQuantity = doc.Items.Sum(x => x.Quantity);
+        doc.TotalAmount = doc.Items.Sum(x => x.LineTotal);
+        doc.GrandTotal = doc.TotalAmount;
+
+        return doc;
+    }
+
+    public async Task<OrderDocumentDto?> GetOrderDocumentByOrderIdAsync(int salesOrderId, CancellationToken cancellationToken = default)
+    {
+        var order = await _context.SalesOrders
+            .Include(x => x.Items)
+                .ThenInclude(oi => oi.Product)
+                    .ThenInclude(p => p.Category)
+            .Include(x => x.Customer)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == salesOrderId, cancellationToken);
+
+        if (order == null) return null;
+
+        var company = await _context.CompanySettings.FirstOrDefaultAsync(cancellationToken);
+
+        var doc = new OrderDocumentDto
+        {
+            OrderId = order.Id,
+            OrderCode = order.Code,
+            OrderDate = order.OrderDate,
+            CustomerName = order.CustomerName,
+            CustomerPhone = order.CustomerPhone ?? order.Customer?.Phone,
+            CustomerAddress = order.CustomerAddress ?? order.Customer?.Address,
+            CompanyName = !string.IsNullOrWhiteSpace(company?.CompanyName) ? company.CompanyName : "TỔNG KHO THIẾT BỊ VỆ SINH LACASA",
+            Email = !string.IsNullOrWhiteSpace(company?.Email) ? company.Email : "tongkhothietbivesinh@gmail.com",
+            Hotline = !string.IsNullOrWhiteSpace(company?.OrderHotline) ? company.OrderHotline : (company?.Phone ?? "0369.074.789 - Hotline"),
+            CustomerNotes = !string.IsNullOrWhiteSpace(order.Notes) ? order.Notes : company?.DefaultOrderNote,
+            VatNote = !string.IsNullOrWhiteSpace(company?.DefaultVatNote) ? company.DefaultVatNote : "Đơn giá trên chưa bao gồm thuế GTGT (8%).",
+            BankAccountHolder = company?.BankAccountHolder ?? "TRẦN VĂN TUẤN",
+            BankAccount = company?.BankAccount ?? "4987.9177",
+            BankName = company?.BankName ?? "NGÂN HÀNG Á CHÂU (ACB)",
+            QrCodePath = company?.OrderQrCodePath ?? "/images/lacasa_qr.png",
+            FooterNote1 = company?.OrderFooterNote1 ?? "Quý khách kiểm tra hàng hóa đúng số lượng trên hóa đơn và kiểm hàng trước khi rời khỏi kho Lacasa, kẻ vỡ Lacasa không chịu trách nhiệm.",
+            FooterNote2 = company?.OrderFooterNote2 ?? "Hàng hóa mua không nhận trả hàng ngoại trừ hàng bị lỗi do nhà sản xuất, đổi trả trong vòng 10 ngày kể từ ngày xuất kho."
+        };
+
+        int stt = 1;
+        foreach (var oi in order.Items)
+        {
+            string categoryName = oi.Product?.Category?.Name ?? "";
+            if (string.IsNullOrWhiteSpace(categoryName))
+            {
+                categoryName = oi.ProductName;
+            }
+
+            string description = oi.Product?.Specifications ?? oi.Product?.Description ?? oi.ProductName;
+            decimal discountedPrice = oi.Quantity > 0 && oi.DiscountAmount > 0 
+                ? (oi.UnitPrice - (oi.DiscountAmount / oi.Quantity)) 
+                : oi.UnitPrice;
+            decimal lineTotal = oi.Quantity * discountedPrice;
+
+            doc.Items.Add(new OrderDocumentItemDto
+            {
+                No = stt++,
+                CategoryName = categoryName.ToUpper(),
+                ProductCode = oi.ProductCode,
+                Description = description,
+                Quantity = oi.Quantity,
+                UnitPrice = oi.UnitPrice,
+                DiscountedPrice = discountedPrice,
+                LineTotal = lineTotal
+            });
+        }
+
+        doc.TotalQuantity = doc.Items.Sum(x => x.Quantity);
+        doc.TotalAmount = doc.Items.Sum(x => x.LineTotal);
+        doc.GrandTotal = doc.TotalAmount;
+
+        return doc;
+    }
+
+    public Task<byte[]> GenerateOrderDocumentPdfAsync(OrderDocumentDto model, CancellationToken cancellationToken = default)
+    {
+        QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+        var pdfDoc = new Pdf.OrderDocumentPdf(model, _webHostEnvironment?.WebRootPath);
+        byte[] bytes = pdfDoc.GeneratePdf();
+        return Task.FromResult(bytes);
     }
 }

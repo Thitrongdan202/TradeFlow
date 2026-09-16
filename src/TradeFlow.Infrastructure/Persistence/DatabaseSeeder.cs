@@ -246,18 +246,76 @@ public class DatabaseSeeder
 
     private async Task SeedCompanySettingsAsync()
     {
-        if (!await _context.CompanySettings.AnyAsync())
+        var company = await _context.CompanySettings.FirstOrDefaultAsync();
+        if (company == null)
         {
             _logger.LogInformation("Seeding default company settings.");
-            _context.CompanySettings.Add(new CompanySettings("Công ty TNHH TradeFlow")
+            _context.CompanySettings.Add(new CompanySettings("TỔNG KHO THIẾT BỊ VỆ SINH LACASA")
             {
                 TaxCode = "0123456789",
                 Address = "Hà Nội, Việt Nam",
-                Phone = "024 1234 5678",
-                Email = "contact@tradeflow.local",
-                Website = "https://tradeflow.local"
+                Phone = "0369.074.789",
+                Email = "tongkhothietbivesinh@gmail.com",
+                Website = "https://tradeflow.local",
+                BankAccountHolder = "TRẦN VĂN TUẤN",
+                BankAccount = "4987.9177",
+                BankName = "NGÂN HÀNG Á CHÂU (ACB)",
+                OrderQrCodePath = "/images/lacasa_qr.png",
+                DefaultVatNote = "Đơn giá trên chưa bao gồm thuế GTGT (8%).",
+                OrderHotline = "0369.074.789 - Hotline",
+                OrderFooterNote1 = "Quý khách kiểm tra hàng hóa đúng số lượng trên hóa đơn và kiểm hàng trước khi rời khỏi kho Lacasa, kẻ vỡ Lacasa không chịu trách nhiệm.",
+                OrderFooterNote2 = "Hàng hóa mua không nhận trả hàng ngoại trừ hàng bị lỗi do nhà sản xuất, đổi trả trong vòng 10 ngày kể từ ngày xuất kho."
             });
             await _context.SaveChangesAsync();
+        }
+        else
+        {
+            bool modified = false;
+            if (string.IsNullOrEmpty(company.BankAccountHolder))
+            {
+                company.BankAccountHolder = "TRẦN VĂN TUẤN";
+                modified = true;
+            }
+            if (string.IsNullOrEmpty(company.BankAccount))
+            {
+                company.BankAccount = "4987.9177";
+                modified = true;
+            }
+            if (string.IsNullOrEmpty(company.BankName))
+            {
+                company.BankName = "NGÂN HÀNG Á CHÂU (ACB)";
+                modified = true;
+            }
+            if (string.IsNullOrEmpty(company.OrderQrCodePath))
+            {
+                company.OrderQrCodePath = "/images/lacasa_qr.png";
+                modified = true;
+            }
+            if (string.IsNullOrEmpty(company.DefaultVatNote))
+            {
+                company.DefaultVatNote = "Đơn giá trên chưa bao gồm thuế GTGT (8%).";
+                modified = true;
+            }
+            if (string.IsNullOrEmpty(company.OrderHotline))
+            {
+                company.OrderHotline = "0369.074.789 - Hotline";
+                modified = true;
+            }
+            if (string.IsNullOrEmpty(company.OrderFooterNote1))
+            {
+                company.OrderFooterNote1 = "Quý khách kiểm tra hàng hóa đúng số lượng trên hóa đơn và kiểm hàng trước khi rời khỏi kho Lacasa, kẻ vỡ Lacasa không chịu trách nhiệm.";
+                modified = true;
+            }
+            if (string.IsNullOrEmpty(company.OrderFooterNote2))
+            {
+                company.OrderFooterNote2 = "Hàng hóa mua không nhận trả hàng ngoại trừ hàng bị lỗi do nhà sản xuất, đổi trả trong vòng 10 ngày kể từ ngày xuất kho.";
+                modified = true;
+            }
+
+            if (modified)
+            {
+                await _context.SaveChangesAsync();
+            }
         }
     }
 

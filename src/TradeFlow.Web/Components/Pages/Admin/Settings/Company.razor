@@ -94,16 +94,93 @@ else
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="tf-mb-4">
                 <div class="tf-field">
-                    <label class="tf-label">Số tài khoản ngân hàng</label>
+                    <label class="tf-label">Tên chủ tài khoản (Chủ TK nhận tiền)</label>
                     <div class="tf-input-wrapper">
-                        <input type="text" class="tf-input" @bind="_settings.BankAccount" />
+                        <input type="text" class="tf-input" @bind="_settings.BankAccountHolder" placeholder="VD: TRẦN VĂN TUẤN" />
                     </div>
                 </div>
                 <div class="tf-field">
+                    <label class="tf-label">Số tài khoản ngân hàng</label>
+                    <div class="tf-input-wrapper">
+                        <input type="text" class="tf-input" @bind="_settings.BankAccount" placeholder="VD: 4987.9177" />
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="tf-mb-4">
+                <div class="tf-field">
                     <label class="tf-label">Ngân hàng</label>
                     <div class="tf-input-wrapper">
-                        <input type="text" class="tf-input" @bind="_settings.BankName" placeholder="VD: Vietcombank - Chi nhánh HCM" />
+                        <input type="text" class="tf-input" @bind="_settings.BankName" placeholder="VD: NGÂN HÀNG Á CHÂU (ACB)" />
                     </div>
+                </div>
+                <div class="tf-field">
+                    <label class="tf-label">Hotline / Zalo đơn hàng</label>
+                    <div class="tf-input-wrapper">
+                        <input type="text" class="tf-input" @bind="_settings.OrderHotline" placeholder="VD: 0369.074.789 - Hotline" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="tf-field tf-mb-4">
+                <label class="tf-label">Mã QR Thanh toán / Chuyển khoản (Đơn đặt hàng)</label>
+                <div style="display:flex; gap:20px; align-items:flex-start; background:#f8fafc; padding:16px; border:1px solid #e2e8f0; border-radius:8px;">
+                    <div style="width:120px; height:120px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                        @if (!string.IsNullOrEmpty(_settings.OrderQrCodePath))
+                        {
+                            <img src="@_settings.OrderQrCodePath" alt="QR Code" style="max-width:100%; max-height:100%; object-fit:contain;" />
+                        }
+                        else
+                        {
+                            <span style="color:#94a3b8; font-size:12px; text-align:center;">Chưa có mã QR</span>
+                        }
+                    </div>
+                    <div style="flex:1;">
+                        <p style="font-size:13px; color:#475569; margin:0 0 8px;">Tải lên ảnh mã QR chuyển khoản hiển thị trên mẫu chứng từ Đơn đặt hàng (PNG, JPG, tối đa 5MB):</p>
+                        <InputFile OnChange="HandleQrUpload" accept=".png,.jpg,.jpeg,.webp" class="tf-form-control" style="margin-bottom:8px;" />
+                        @if (!string.IsNullOrEmpty(_uploadError))
+                        {
+                            <div style="color:#dc2626; font-size:12px; margin-bottom:8px;">@_uploadError</div>
+                        }
+                        @if (!string.IsNullOrEmpty(_settings.OrderQrCodePath) && _settings.OrderQrCodePath != "/images/lacasa_qr.png")
+                        {
+                            <button type="button" class="tf-btn tf-btn-sm tf-btn-outline-secondary" @onclick="ResetQrToDefault">
+                                ↺ Khôi phục QR mặc định
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <hr style="margin:24px 0; border:0; border-top:1px solid #e2e8f0;" />
+            <h3 style="font-size:16px; font-weight:600; color:#1e293b; margin-bottom:16px;">Cấu hình mẫu chứng từ "Đơn đặt hàng"</h3>
+
+            <div class="tf-field tf-mb-4">
+                <label class="tf-label">Ghi chú thuế VAT mặc định</label>
+                <div class="tf-input-wrapper">
+                    <input type="text" class="tf-input" @bind="_settings.DefaultVatNote" placeholder="VD: Đơn giá trên chưa bao gồm thuế GTGT (8%)." />
+                </div>
+                <small style="color:#64748b; font-size:12px;">Hiển thị ngay dưới dòng Ghi chú KH trên mẫu Đơn đặt hàng</small>
+            </div>
+
+            <div class="tf-field tf-mb-4">
+                <label class="tf-label">Ghi chú đơn hàng mặc định (Ghi chú KH)</label>
+                <div class="tf-input-wrapper">
+                    <textarea class="tf-input" style="min-height:60px;" @bind="_settings.DefaultOrderNote" placeholder="Nội dung ghi chú khách hàng mặc định khi tạo mới..."></textarea>
+                </div>
+            </div>
+
+            <div class="tf-field tf-mb-4">
+                <label class="tf-label">Ghi chú chân trang 1 (Kiểm tra hàng hóa)</label>
+                <div class="tf-input-wrapper">
+                    <input type="text" class="tf-input" @bind="_settings.OrderFooterNote1" placeholder="VD: Quý khách kiểm tra hàng hóa đúng số lượng trên hóa đơn..." />
+                </div>
+            </div>
+
+            <div class="tf-field tf-mb-4">
+                <label class="tf-label">Ghi chú chân trang 2 (Chính sách đổi trả)</label>
+                <div class="tf-input-wrapper">
+                    <input type="text" class="tf-input" @bind="_settings.OrderFooterNote2" placeholder="VD: Hàng hóa mua không nhận trả hàng ngoại trừ..." />
                 </div>
             </div>
         </div>
@@ -111,9 +188,12 @@ else
 }
 
 @code {
+    [Inject] private Microsoft.AspNetCore.Hosting.IWebHostEnvironment WebHostEnvironment { get; set; } = null!;
+
     private CompanySettings? _settings;
     private bool _showSuccess;
     private string? _currentUser;
+    private string? _uploadError;
 
     protected override async Task OnInitializedAsync()
     {
@@ -123,9 +203,71 @@ else
         _settings = await DbContext.CompanySettings.FirstOrDefaultAsync();
         if (_settings == null)
         {
-            _settings = new CompanySettings("Công ty TNHH TradeFlow");
+            _settings = new CompanySettings("TỔNG KHO THIẾT BỊ VỆ SINH LACASA");
+            _settings.Email = "tongkhothietbivesinh@gmail.com";
+            _settings.Phone = "0369.074.789";
+            _settings.BankAccountHolder = "TRẦN VĂN TUẤN";
+            _settings.BankAccount = "4987.9177";
+            _settings.BankName = "NGÂN HÀNG Á CHÂU (ACB)";
+            _settings.OrderHotline = "0369.074.789 - Hotline";
+            _settings.OrderQrCodePath = "/images/lacasa_qr.png";
+            _settings.DefaultVatNote = "Đơn giá trên chưa bao gồm thuế GTGT (8%).";
+            _settings.OrderFooterNote1 = "Quý khách kiểm tra hàng hóa đúng số lượng trên hóa đơn và kiểm hàng trước khi rời khỏi kho Lacasa, kẻ vỡ Lacasa không chịu trách nhiệm.";
+            _settings.OrderFooterNote2 = "Hàng hóa mua không nhận trả hàng ngoại trừ hàng bị lỗi do nhà sản xuất, đổi trả trong vòng 10 ngày kể từ ngày xuất kho.";
             DbContext.CompanySettings.Add(_settings);
             await DbContext.SaveChangesAsync();
+        }
+    }
+
+    private async Task HandleQrUpload(InputFileChangeEventArgs e)
+    {
+        _uploadError = null;
+        var file = e.File;
+        if (file == null) return;
+
+        if (file.Size > 5 * 1024 * 1024)
+        {
+            _uploadError = "Kích thước tệp không được vượt quá 5MB.";
+            return;
+        }
+
+        var ext = Path.GetExtension(file.Name).ToLowerInvariant();
+        if (ext != ".png" && ext != ".jpg" && ext != ".jpeg" && ext != ".webp")
+        {
+            _uploadError = "Định dạng tệp không hợp lệ. Vui lòng chọn ảnh PNG, JPG hoặc WEBP.";
+            return;
+        }
+
+        try
+        {
+            var uploadsFolder = Path.Combine(WebHostEnvironment.WebRootPath, "uploads", "qr");
+            if (!Directory.Exists(uploadsFolder))
+            {
+                Directory.CreateDirectory(uploadsFolder);
+            }
+
+            var uniqueFileName = $"qr_{Guid.NewGuid():N}{ext}";
+            var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+            await using var stream = new FileStream(filePath, FileMode.Create);
+            await file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024).CopyToAsync(stream);
+
+            if (_settings != null)
+            {
+                _settings.OrderQrCodePath = $"/uploads/qr/{uniqueFileName}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _uploadError = $"Lỗi khi tải ảnh: {ex.Message}";
+        }
+    }
+
+    private void ResetQrToDefault()
+    {
+        if (_settings != null)
+        {
+            _settings.OrderQrCodePath = "/images/lacasa_qr.png";
         }
     }
 
@@ -138,7 +280,7 @@ else
         DbContext.CompanySettings.Update(_settings);
         await DbContext.SaveChangesAsync();
 
-        await AuditService.LogAsync(AuditEventType.CompanySettingsChanged, _currentUser, "CompanySettings", "1", "Updated company profile");
+        await AuditService.LogAsync(AuditEventType.CompanySettingsChanged, _currentUser, "CompanySettings", "1", "Updated company profile and order document configuration");
         
         _showSuccess = true;
         StateHasChanged();

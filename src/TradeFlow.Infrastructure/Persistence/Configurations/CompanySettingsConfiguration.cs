@@ -41,6 +41,27 @@ public class CompanySettingsConfiguration : IEntityTypeConfiguration<CompanySett
         builder.Property(x => x.LogoPath)
             .HasMaxLength(500);
 
+        builder.Property(x => x.BankAccountHolder)
+            .HasMaxLength(200);
+
+        builder.Property(x => x.OrderQrCodePath)
+            .HasMaxLength(500);
+
+        builder.Property(x => x.DefaultOrderNote)
+            .HasMaxLength(1000);
+
+        builder.Property(x => x.DefaultVatNote)
+            .HasMaxLength(500);
+
+        builder.Property(x => x.OrderHotline)
+            .HasMaxLength(100);
+
+        builder.Property(x => x.OrderFooterNote1)
+            .HasMaxLength(500);
+
+        builder.Property(x => x.OrderFooterNote2)
+            .HasMaxLength(500);
+
         builder.Property(x => x.CreatedBy)
             .HasMaxLength(256);
 

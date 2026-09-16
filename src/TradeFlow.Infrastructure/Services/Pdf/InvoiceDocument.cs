@@ -40,8 +40,8 @@ public class InvoiceDocument : IDocument
     void ComposeHeader(IContainer container)
     {
         bool isVat = _model.Type == InvoiceType.VatInvoice;
-        string title = isVat ? "HÓA ĐƠN GIÁ TRỊ GIA TĂNG" : "HÓA ĐƠN BÁN HÀNG";
-        string titleEng = isVat ? "(VAT INVOICE)" : "(SALES INVOICE)";
+        string title = "HÓA ĐƠN GIÁ TRỊ GIA TĂNG";
+        string titleEng = "(VAT INVOICE)";
         string formNo = isVat ? "01GTKT0/001" : "02GTTT0/001";
         
         container.Row(row =>

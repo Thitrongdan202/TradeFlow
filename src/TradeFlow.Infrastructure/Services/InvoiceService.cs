@@ -561,8 +561,8 @@ public class InvoiceService : IInvoiceService
                             // Center: Title + Subtitle
                             r.RelativeItem().AlignCenter().Column(tc =>
                             {
-                                string title = isVat ? "HÓA ĐƠN GIÁ TRỊ GIA TĂNG" : "HÓA ĐƠN BÁN HÀNG";
-                                string subtitle = isVat ? "(VAT INVOICE)" : "(SALES INVOICE)";
+                                string title = "HÓA ĐƠN GIÁ TRỊ GIA TĂNG";
+                                string subtitle = "(VAT INVOICE)";
 
                                 tc.Item().AlignCenter().Text(title)
                                     .FontSize(15).Bold().FontColor(borderBlue);

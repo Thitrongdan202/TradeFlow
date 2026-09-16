@@ -11,6 +11,9 @@ public class InvoiceItem : AuditableEntity<int>
     public int? ProductId { get; set; }
     public Product? Product { get; set; }
     
+    /// <summary>Số thứ tự (STT)</summary>
+    public int SortOrder { get; set; } = 1;
+
     // Snapshots
     public string ProductCode { get; set; } = string.Empty;
     public string ProductName { get; set; } = string.Empty;

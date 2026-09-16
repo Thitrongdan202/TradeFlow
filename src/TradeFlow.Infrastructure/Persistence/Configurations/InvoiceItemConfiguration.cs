@@ -11,6 +11,7 @@ public class InvoiceItemConfiguration : IEntityTypeConfiguration<InvoiceItem>
         builder.ToTable("InvoiceItems");
         builder.HasKey(x => x.Id);
 
+        builder.Property(x => x.SortOrder).HasDefaultValue(1);
         builder.Property(x => x.ProductCode).HasMaxLength(100).IsRequired();
         builder.Property(x => x.ProductName).HasMaxLength(500).IsRequired();
         builder.Property(x => x.UnitName).HasMaxLength(100).IsRequired();

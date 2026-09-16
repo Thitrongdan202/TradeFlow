@@ -86,6 +86,7 @@ public static class InfrastructureServiceExtensions
         // Register Phase 5 Sales services
         services.AddScoped<ISalesService, Services.SalesService>();
         services.AddScoped<IInvoiceService, Services.InvoiceService>();
+        services.AddScoped<IDigitalSignatureService, Services.DigitalSignatureService>();
 
         return services;
     }

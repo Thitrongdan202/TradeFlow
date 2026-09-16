@@ -81,9 +81,13 @@
             <label class="tf-form-label">Hình thức thanh toán</label>
             <input type="text" class="tf-form-control" @bind="_dto.PaymentMethod" />
         </div>
-        <div class="tf-form-group" style="grid-column: span 2;">
+        <div class="tf-form-group">
             <label class="tf-form-label">Số tài khoản</label>
             <input type="text" class="tf-form-control" @bind="_dto.CustomerBankAccount" />
+        </div>
+        <div class="tf-form-group">
+            <label class="tf-form-label">Ngân hàng</label>
+            <input type="text" class="tf-form-control" @bind="_dto.CustomerBankName" />
         </div>
     </div>
 </div>
@@ -175,7 +179,7 @@
 </div>
 
 @code {
-    private InvoiceDto _dto = new() { InvoiceDate = DateTime.Now, Type = InvoiceType.SalesInvoice, PaymentMethod = "TM/CK" };
+    private InvoiceDto _dto = new() { InvoiceDate = DateTime.Now, Type = InvoiceType.VatInvoice, PaymentMethod = "TM/CK" };
     private bool _isProcessing = false;
     private string? _errorMessage;
 

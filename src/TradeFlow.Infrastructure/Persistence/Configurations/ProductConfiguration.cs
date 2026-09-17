@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using TradeFlow.Domain.Entities.MasterData;
 
@@ -17,6 +17,11 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(x => x.ShortName).HasMaxLength(100);
         builder.Property(x => x.Description).HasMaxLength(2000);
         builder.Property(x => x.Specifications).HasMaxLength(4000);
+        builder.Property(x => x.TaxTreatment).HasConversion<int>().IsRequired();
+        builder.Property(x => x.IsTaxReductionEligible).HasDefaultValue(true);
+        builder.Property(x => x.TaxRate).HasPrecision(5, 2);
+        builder.Property(x => x.TaxEffectiveFrom);
+        builder.Property(x => x.TaxEffectiveTo);
         builder.HasIndex(x => x.Code).IsUnique();
         builder.HasIndex(x => x.NewCode);
         builder.HasIndex(x => x.LegacyCode);

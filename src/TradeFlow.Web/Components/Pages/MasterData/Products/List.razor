@@ -1,4 +1,4 @@
-﻿@page "/danh-muc/san-pham"
+@page "/danh-muc/san-pham"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
@@ -8,6 +8,7 @@
 @attribute [Authorize(Policy = "Permission:Products:View")]
 
 @inject TradeFlowDbContext DbContext
+@inject IPriceListService PriceListService
 @inject NavigationManager Nav
 @inject IAuthorizationService AuthService
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
@@ -106,6 +107,10 @@
                     <th style="min-width: 220px;">Tên sản phẩm</th>
                     <th>Danh mục</th>
                     <th>Đơn vị tính</th>
+                    <th style="text-align:right; min-width: 130px;">
+                        <div>Giá hiện tại</div>
+                        <div style="font-size:10px; color:var(--tf-text-muted); font-weight:normal;">Chưa VAT</div>
+                    </th>
                     <th style="text-align:center;">Trạng thái</th>
                     <th style="text-align:right;">Thao tác</th>
                 </tr>
@@ -113,11 +118,11 @@
             <tbody>
                 @if (_items == null)
                 {
-                    <tr><td colspan="9" style="text-align:center; padding: 24px;">Đang tải dữ liệu...</td></tr>
+                    <tr><td colspan="10" style="text-align:center; padding: 24px;">Đang tải dữ liệu...</td></tr>
                 }
                 else if (!FilteredItems.Any())
                 {
-                    <tr><td colspan="9"><div class="tf-empty"><div class="tf-empty-title">Chưa có sản phẩm phù hợp</div></div></td></tr>
+                    <tr><td colspan="10"><div class="tf-empty"><div class="tf-empty-title">Chưa có sản phẩm phù hợp</div></div></td></tr>
                 }
                 else
                 {
@@ -151,6 +156,16 @@
                             <td style="font-weight: 500;">@item.Name</td>
                             <td>@(item.Category?.Name ?? "-")</td>
                             <td>@(item.Unit?.Name ?? "-")</td>
+                            <td style="text-align:right;">
+                                @if (_currentPrices.TryGetValue(item.Id, out var cp) && cp.HasValue && cp.Value > 0)
+                                {
+                                    <div style="font-weight: 700; color: #047857;">@cp.Value.ToString("N0") ₫</div>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--tf-text-muted); font-size:12px;">Chưa có</span>
+                                }
+                            </td>
                             <td style="text-align:center;">
                                 @if (item.IsActive)
                                 {
@@ -204,6 +219,7 @@
     private string? _deleteError;
 
     private List<Product>? _items;
+    private Dictionary<int, decimal?> _currentPrices = new();
     private List<ProductCategory>? _categories;
     private string _searchTerm = string.Empty;
     private int? _selectedCategoryId;
@@ -221,6 +237,15 @@
             .Include(p => p.Unit)
             .OrderBy(x => x.Code)
             .ToListAsync();
+
+        if (_items.Any())
+        {
+            _currentPrices = await PriceListService.GetCurrentPricesForProductsAsync(_items.Select(x => x.Id));
+        }
+        else
+        {
+            _currentPrices.Clear();
+        }
     }
 
     private void OnSearchInput(ChangeEventArgs e)

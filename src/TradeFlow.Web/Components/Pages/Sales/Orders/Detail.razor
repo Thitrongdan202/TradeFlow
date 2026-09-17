@@ -105,7 +105,10 @@ else
                             <th>Sản phẩm</th>
                             <th>ĐVT</th>
                             <th class="tf-text-right">SL</th>
-                            <th class="tf-text-right">Đơn giá</th>
+                            <th class="tf-text-right">Đơn giá (Chưa VAT)</th>
+                            <th class="tf-text-right">Chiết khấu</th>
+                            <th class="tf-text-right">Thuế suất</th>
+                            <th class="tf-text-right">Tiền thuế</th>
                             <th class="tf-text-right">Thành tiền</th>
                         </tr>
                     </thead>
@@ -118,6 +121,11 @@ else
                                 <td>@item.UnitName</td>
                                 <td class="tf-text-right">@item.Quantity</td>
                                 <td class="tf-text-right">@(item.UnitPrice ?? 0).ToString("N0")</td>
+                                <td class="tf-text-right">@item.DiscountAmount.ToString("N0")</td>
+                                <td class="tf-text-right">
+                                    @(item.TaxRate < 0 ? "KCT" : $"{item.TaxRate}%")
+                                </td>
+                                <td class="tf-text-right">@item.TaxAmount.ToString("N0")</td>
                                 <td class="tf-text-right"><strong style="color:var(--tf-color-danger);">@item.LineTotal.ToString("N0")</strong></td>
                             </tr>
                         }
@@ -126,18 +134,22 @@ else
             </div>
             
             <div style="margin-top:24px; display:flex; justify-content:flex-end;">
-                <div style="width:300px; background:#f8fafc; padding:20px; border-radius:8px; border:1px solid #e2e8f0;">
+                <div style="width:340px; background:#f8fafc; padding:20px; border-radius:8px; border:1px solid #e2e8f0;">
                     <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                        <span style="color:var(--tf-text-muted);">Tổng tiền hàng:</span>
-                        <strong>@_order.SubTotal.ToString("N0")</strong>
+                        <span style="color:var(--tf-text-muted);">Tiền hàng (Chưa VAT):</span>
+                        <strong>@_order.SubTotal.ToString("N0") ₫</strong>
                     </div>
                     <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
                         <span style="color:var(--tf-text-muted);">Chiết khấu:</span>
-                        <strong>@_order.TotalDiscount.ToString("N0")</strong>
+                        <strong>@_order.TotalDiscount.ToString("N0") ₫</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                        <span style="color:var(--tf-text-muted);">Tiền thuế GTGT:</span>
+                        <strong style="color:var(--tf-primary);">@_order.TotalTax.ToString("N0") ₫</strong>
                     </div>
                     <div style="display:flex; justify-content:space-between; margin-top:16px; padding-top:16px; border-top:1px dashed #cbd5e1; font-size:18px;">
                         <span>Khách cần trả:</span>
-                        <strong style="color:var(--tf-color-danger);">@_order.GrandTotal.ToString("N0")</strong>
+                        <strong style="color:var(--tf-color-danger);">@_order.GrandTotal.ToString("N0") ₫</strong>
                     </div>
                 </div>
             </div>

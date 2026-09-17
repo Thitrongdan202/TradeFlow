@@ -4,6 +4,7 @@
 @using TradeFlow.Application.Common.Models.Sales
 @using TradeFlow.Domain.Entities.MasterData
 @inject ISalesService SalesService
+@inject IVatRuleEngine VatRuleEngine
 @inject NavigationManager Nav
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = "Permission:SalesOrders:Create")]
@@ -132,12 +133,14 @@
                         <th>Mã</th>
                         <th>Sản phẩm</th>
                         <th>ĐVT</th>
-                        <th style="width:100px;">SL</th>
-                        <th style="width:120px;">Nguồn giá</th>
-                        <th style="width:150px;">Đơn giá</th>
-                        <th style="width:100px;">Chiết khấu</th>
-                        <th style="width:150px;">Thành tiền</th>
-                        <th style="width:50px;"></th>
+                        <th style="width:85px;">SL</th>
+                        <th style="width:110px;">Nguồn giá</th>
+                        <th style="width:140px;">Đơn giá (Chưa VAT)</th>
+                        <th style="width:90px;">Chiết khấu</th>
+                        <th style="width:130px;">Thuế suất</th>
+                        <th style="width:110px;" class="tf-text-right">Tiền thuế</th>
+                        <th style="width:140px;" class="tf-text-right">Thành tiền</th>
+                        <th style="width:40px;"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -177,7 +180,19 @@
                             <td>
                                 <input type="number" class="tf-form-control" style="padding:4px;" @bind="item.DiscountAmount" @bind:after="CalculateTotals" min="0" step="any" />
                             </td>
-                            <td><strong style="color:var(--tf-color-danger);">@item.LineTotal.ToString("N0")</strong></td>
+                            <td>
+                                <select class="tf-form-control" style="padding:4px; font-size:13px;" @bind="item.TaxRate" @bind:after="CalculateTotals">
+                                    <option value="10">10%</option>
+                                    <option value="8">8%</option>
+                                    <option value="5">5%</option>
+                                    <option value="0">0%</option>
+                                    <option value="-1">Không chịu thuế</option>
+                                </select>
+                            </td>
+                            <td class="tf-text-right" style="font-size:13px; color:var(--tf-text-secondary);">
+                                @item.TaxAmount.ToString("N0")
+                            </td>
+                            <td class="tf-text-right"><strong style="color:var(--tf-color-danger);">@item.LineTotal.ToString("N0")</strong></td>
                             <td>
                                 <button class="tf-btn-icon" style="color:red;" @onclick="() => RemoveItem(item)">🗑</button>
                             </td>
@@ -186,7 +201,7 @@
                     @if (!_orderRequest.Items.Any())
                     {
                         <tr>
-                            <td colspan="8" class="tf-text-center" style="color:var(--tf-text-muted);">Chưa có sản phẩm nào.</td>
+                            <td colspan="11" class="tf-text-center" style="color:var(--tf-text-muted);">Chưa có sản phẩm nào.</td>
                         </tr>
                     }
                 </tbody>
@@ -194,18 +209,22 @@
         </div>
         
         <div style="margin-top:24px; display:flex; justify-content:flex-end;">
-            <div style="width:300px; background:#f8fafc; padding:20px; border-radius:8px; border:1px solid #e2e8f0;">
+            <div style="width:340px; background:#f8fafc; padding:20px; border-radius:8px; border:1px solid #e2e8f0;">
                 <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                    <span style="color:var(--tf-text-muted);">Tổng tiền hàng:</span>
-                    <strong>@_orderRequest.SubTotal.ToString("N0")</strong>
+                    <span style="color:var(--tf-text-muted);">Tiền hàng (Chưa VAT):</span>
+                    <strong>@_orderRequest.SubTotal.ToString("N0") ₫</strong>
                 </div>
                 <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
                     <span style="color:var(--tf-text-muted);">Chiết khấu:</span>
-                    <strong>@_orderRequest.TotalDiscount.ToString("N0")</strong>
+                    <strong>@_orderRequest.TotalDiscount.ToString("N0") ₫</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <span style="color:var(--tf-text-muted);">Tiền thuế GTGT:</span>
+                    <strong style="color:var(--tf-primary);">@_orderRequest.TotalTax.ToString("N0") ₫</strong>
                 </div>
                 <div style="display:flex; justify-content:space-between; margin-top:16px; padding-top:16px; border-top:1px dashed #cbd5e1; font-size:18px;">
                     <span>Khách cần trả:</span>
-                    <strong style="color:var(--tf-color-danger);">@_orderRequest.GrandTotal.ToString("N0")</strong>
+                    <strong style="color:var(--tf-color-danger);">@_orderRequest.GrandTotal.ToString("N0") ₫</strong>
                 </div>
             </div>
         </div>
@@ -357,6 +376,8 @@
         else
         {
             var res = await SalesService.GetProductPriceAsync(p.Id, _selectedPriceListId, _orderRequest.OrderDate);
+            var vatRes = VatRuleEngine.DetermineVatRate(p, _orderRequest.OrderDate);
+            decimal initialTaxRate = vatRes.IsNonTaxable ? -1 : vatRes.Rate;
             
             _orderRequest.Items.Add(new SalesOrderItemDto
             {
@@ -368,7 +389,7 @@
                 UnitPrice = res.Price,
                 PriceSource = res.SourceName,
                 DiscountAmount = 0,
-                TaxRate = 0,
+                TaxRate = initialTaxRate,
                 TaxAmount = 0,
             });
         }
@@ -386,7 +407,10 @@
     {
         foreach (var item in _orderRequest.Items)
         {
-            item.LineTotal = (item.Quantity * (item.UnitPrice ?? 0)) - item.DiscountAmount + item.TaxAmount;
+            var effectiveTaxRate = item.TaxRate > 0 ? item.TaxRate : 0m;
+            var taxableAmount = Math.Max(0, (item.Quantity * (item.UnitPrice ?? 0)) - item.DiscountAmount);
+            item.TaxAmount = Math.Round(taxableAmount * (effectiveTaxRate / 100m), 0);
+            item.LineTotal = taxableAmount + item.TaxAmount;
         }
         
         _orderRequest.SubTotal = _orderRequest.Items.Sum(x => x.Quantity * (x.UnitPrice ?? 0));

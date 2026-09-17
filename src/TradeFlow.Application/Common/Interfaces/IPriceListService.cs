@@ -13,6 +13,9 @@ public interface IPriceListService
     Task<bool> CancelPriceListAsync(int id, CancellationToken cancellationToken = default);
     Task<bool> ApprovePriceListAsync(int id, CancellationToken cancellationToken = default);
     Task<PriceComparisonResultDto> ComparePriceListsAsync(int basePriceListId, int targetPriceListId, CancellationToken cancellationToken = default);
+    Task<MultiPeriodPriceComparisonDto> CompareMultiplePriceListsAsync(List<int>? priceListIds = null, DateTime? asOfDate = null, CancellationToken cancellationToken = default);
+    Task<decimal?> GetProductCurrentPriceAsync(int productId, DateTime? asOfDate = null, CancellationToken cancellationToken = default);
+    Task<Dictionary<int, decimal?>> GetCurrentPricesForProductsAsync(IEnumerable<int> productIds, DateTime? asOfDate = null, CancellationToken cancellationToken = default);
     Task<List<PriceListItemDto>> GetProductPriceHistoryAsync(string productCodeOrNewCode, CancellationToken cancellationToken = default);
     Task<bool> DeleteOriginalFileAsync(int id, CancellationToken cancellationToken = default);
 }

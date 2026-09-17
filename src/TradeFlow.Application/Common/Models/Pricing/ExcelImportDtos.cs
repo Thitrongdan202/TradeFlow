@@ -39,6 +39,25 @@ public class ExcelParsedItemDto
     public string? MatchedProductName { get; set; }
     public PriceMatchStatus MatchStatus { get; set; }
     public List<string> ValidationMessages { get; set; } = new();
+
+    // Thông tin đối chiếu Master Data (Before / After diff)
+    public string? ExistingProductName { get; set; }
+    public string? ExistingLegacyCode { get; set; }
+    public string? ExistingProductInfo { get; set; }
+    public bool HasChanges { get; set; }
+    public List<string> ChangedFields { get; set; } = new();
+
+    /// <summary>
+    /// Lựa chọn của Quản trị viên khi có thay đổi sản phẩm:
+    /// false: [Giữ nguyên] master data (mặc định)
+    /// true: [Thay đổi sản phẩm] (cập nhật danh mục)
+    /// </summary>
+    public bool ApplyMasterDataUpdate { get; set; } = false;
+
+    // Thông tin thuế VAT dự kiến
+    public decimal? VatRate { get; set; }
+    public decimal? VatAmount => VatRate.HasValue ? Math.Round(UnitPrice * (VatRate.Value / 100m), 0) : null;
+    public decimal? PriceWithVat => VatAmount.HasValue ? UnitPrice + VatAmount.Value : null;
 }
 
 public class ExcelImportCommitRequest

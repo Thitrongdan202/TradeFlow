@@ -21,6 +21,7 @@ public class ExcelPricingService : IExcelPricingService
     private readonly IFileStorageService _fileStorage;
     private readonly ISystemCodeGenerator _codeGenerator;
     private readonly IAuditService _auditService;
+    private readonly IVatRuleEngine _vatRuleEngine;
     private readonly ILogger<ExcelPricingService> _logger;
 
     public ExcelPricingService(
@@ -28,12 +29,14 @@ public class ExcelPricingService : IExcelPricingService
         IFileStorageService fileStorage,
         ISystemCodeGenerator codeGenerator,
         IAuditService auditService,
+        IVatRuleEngine vatRuleEngine,
         ILogger<ExcelPricingService> logger)
     {
         _context = context;
         _fileStorage = fileStorage;
         _codeGenerator = codeGenerator;
         _auditService = auditService;
+        _vatRuleEngine = vatRuleEngine;
         _logger = logger;
     }
 
@@ -112,7 +115,19 @@ public class ExcelPricingService : IExcelPricingService
         // 7. Load all existing products from DB for matching
         var existingProducts = await _context.Products
             .AsNoTracking()
-            .Select(p => new { p.Id, p.Code, p.NewCode, p.LegacyCode, p.Name })
+            .Select(p => new {
+                p.Id,
+                p.Code,
+                p.NewCode,
+                p.LegacyCode,
+                p.Name,
+                p.Description,
+                p.TaxTreatment,
+                p.IsTaxReductionEligible,
+                p.TaxRate,
+                p.TaxEffectiveFrom,
+                p.TaxEffectiveTo
+            })
             .ToListAsync(cancellationToken);
 
         int currentOrder = 1;
@@ -192,19 +207,66 @@ public class ExcelPricingService : IExcelPricingService
             {
                 itemDto.MatchedProductId = matched.Id;
                 itemDto.MatchedProductName = matched.Name;
-                itemDto.MatchStatus = PriceMatchStatus.Matched;
-            }
-            else
-            {
-                if (string.IsNullOrWhiteSpace(itemDto.NewCode) && string.IsNullOrWhiteSpace(itemDto.LegacyCode))
+                itemDto.ExistingProductName = matched.Name;
+                itemDto.ExistingLegacyCode = matched.LegacyCode;
+                itemDto.ExistingProductInfo = matched.Description;
+
+                // Đối chiếu phát hiện thay đổi thông tin sản phẩm (Before/After)
+                var changedFields = new List<string>();
+
+                // Đối chiếu Mã cũ
+                if (!string.IsNullOrWhiteSpace(itemDto.LegacyCode) &&
+                    !string.Equals(itemDto.LegacyCode.Trim(), matched.LegacyCode?.Trim(), StringComparison.OrdinalIgnoreCase))
                 {
-                    itemDto.MatchStatus = PriceMatchStatus.ReviewRequired;
-                    itemDto.ValidationMessages.Add("Thiếu mã sản phẩm định danh (Mã mới / Mã cũ).");
+                    changedFields.Add($"Mã cũ (Hiện tại: {matched.LegacyCode ?? "(trống)"} → Bảng giá: {itemDto.LegacyCode})");
+                }
+
+                // Đối chiếu Tên / Mô tả sản phẩm
+                if (!string.IsNullOrWhiteSpace(itemDto.ProductInfo))
+                {
+                    var cleanIncomingName = itemDto.ProductInfo.Split('\n')[0].Trim();
+                    if (!string.Equals(cleanIncomingName, matched.Name?.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                        !matched.Name.Contains(cleanIncomingName, StringComparison.OrdinalIgnoreCase) &&
+                        !cleanIncomingName.Contains(matched.Name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        changedFields.Add($"Tên / Thông tin (Hiện tại: {matched.Name} → Bảng giá: {cleanIncomingName})");
+                    }
+                }
+
+                if (changedFields.Count > 0)
+                {
+                    itemDto.HasChanges = true;
+                    itemDto.ChangedFields = changedFields;
+                    itemDto.MatchStatus = PriceMatchStatus.ReviewRequired; // Thay đổi sản phẩm
                 }
                 else
                 {
-                    itemDto.MatchStatus = PriceMatchStatus.NewProduct;
+                    itemDto.MatchStatus = PriceMatchStatus.Matched; // Đã có sản phẩm
                 }
+
+                var vatRes = _vatRuleEngine.DetermineVatRate(
+                    matched.TaxTreatment,
+                    matched.IsTaxReductionEligible,
+                    matched.TaxRate,
+                    result.QuotationDate ?? DateTime.UtcNow,
+                    matched.TaxEffectiveFrom,
+                    matched.TaxEffectiveTo);
+                itemDto.VatRate = vatRes.Rate;
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(itemDto.NewCode) && string.IsNullOrWhiteSpace(itemDto.LegacyCode) && string.IsNullOrWhiteSpace(itemDto.ProductInfo))
+                {
+                    itemDto.MatchStatus = PriceMatchStatus.Unidentified; // Không xác định được sản phẩm
+                    itemDto.ValidationMessages.Add("Thiếu thông tin định danh sản phẩm (Mã mới / Mã cũ / Tên sản phẩm).");
+                }
+                else
+                {
+                    itemDto.MatchStatus = PriceMatchStatus.NewProduct; // Thêm sản phẩm mới
+                }
+
+                var vatRes = _vatRuleEngine.DetermineVatRate(TaxTreatment.Standard10, true, null, result.QuotationDate ?? DateTime.UtcNow);
+                itemDto.VatRate = vatRes.Rate;
             }
 
             if (itemDto.UnitPrice <= 0)
@@ -274,6 +336,8 @@ public class ExcelPricingService : IExcelPricingService
                     LegacyCode = safeLegacyCode,
                     Name = safeName,
                     Description = safeDescription,
+                    TaxTreatment = TaxTreatment.Standard10,
+                    IsTaxReductionEligible = true,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                     CreatedBy = currentUserName
@@ -286,11 +350,32 @@ public class ExcelPricingService : IExcelPricingService
                 catch (DbUpdateException ex)
                 {
                     _logger.LogError(ex, "Product save error at row {Row}. Inner: {Inner}", item.SortOrder, ex.InnerException?.Message);
-                    throw new Exception($"L\u1ed7i l\u01b0u s\u1ea3n ph\u1ea9m t\u1ef1 \u0111\u1ed9ng d\u00f2ng {item.SortOrder}: {ex.InnerException?.Message ?? ex.Message}", ex);
+                    throw new Exception($"Lỗi lưu sản phẩm tự động dòng {item.SortOrder}: {ex.InnerException?.Message ?? ex.Message}", ex);
                 }
                 productId = newProd.Id;
                 item.MatchedProductId = newProd.Id;
-                item.MatchStatus = PriceMatchStatus.Matched;
+            }
+            else if (productId.HasValue && item.MatchStatus == PriceMatchStatus.ReviewRequired && item.ApplyMasterDataUpdate)
+            {
+                // Quản trị viên chủ động chọn cập nhật thông tin Master Data [Thay đổi sản phẩm]
+                var existingProd = await _context.Products.FindAsync(new object[] { productId.Value }, cancellationToken);
+                if (existingProd != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(item.ProductInfo))
+                    {
+                        var rawName = item.ProductInfo.Split('\n')[0].Trim();
+                        existingProd.Name = rawName.Length > 300 ? rawName.Substring(0, 300) : rawName;
+                        if (item.ProductInfo.Length > 2000) existingProd.Description = item.ProductInfo.Substring(0, 2000);
+                        else existingProd.Description = item.ProductInfo;
+                    }
+                    if (!string.IsNullOrWhiteSpace(item.LegacyCode))
+                    {
+                        existingProd.LegacyCode = item.LegacyCode.Trim().Length > 50 ? item.LegacyCode.Trim().Substring(0, 50) : item.LegacyCode.Trim();
+                    }
+                    existingProd.UpdatedAt = DateTime.UtcNow;
+                    existingProd.UpdatedBy = currentUserName;
+                    await _context.SaveChangesAsync(cancellationToken);
+                }
             }
 
             var safePlGroup = item.Group?.Trim();
@@ -305,6 +390,21 @@ public class ExcelPricingService : IExcelPricingService
             var safePlInfo = item.ProductInfo?.Trim();
             if (safePlInfo != null && safePlInfo.Length > 2000) safePlInfo = safePlInfo.Substring(0, 2000);
 
+            // Xác định thuế suất VAT áp dụng cho dòng bảng giá
+            decimal? effectiveVatRate = item.VatRate;
+            if (!effectiveVatRate.HasValue && productId.HasValue)
+            {
+                var prod = await _context.Products.FindAsync(new object[] { productId.Value }, cancellationToken);
+                if (prod != null)
+                {
+                    effectiveVatRate = _vatRuleEngine.DetermineVatRate(prod, priceList.QuotationDate ?? priceList.EffectiveFrom ?? DateTime.UtcNow).Rate;
+                }
+            }
+            if (!effectiveVatRate.HasValue)
+            {
+                effectiveVatRate = 8m;
+            }
+
             var pItem = new PriceListItem
             {
                 PriceListId = priceList.Id,
@@ -317,6 +417,7 @@ public class ExcelPricingService : IExcelPricingService
                 ImageStorageRef = item.ImageStorageRef,
                 UnitPrice = item.UnitPrice,
                 CurrencyCode = string.IsNullOrWhiteSpace(item.CurrencyCode) ? "VND" : item.CurrencyCode.Trim(),
+                VatRate = effectiveVatRate,
                 MatchStatus = item.MatchStatus,
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = currentUserName

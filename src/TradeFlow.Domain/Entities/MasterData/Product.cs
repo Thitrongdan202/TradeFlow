@@ -1,4 +1,5 @@
-﻿using TradeFlow.Domain.Common;
+using TradeFlow.Domain.Common;
+using TradeFlow.Domain.Enums;
 
 namespace TradeFlow.Domain.Entities.MasterData;
 
@@ -34,6 +35,21 @@ public class Product : AuditableEntity<int>
 
     /// <summary>Thông số kỹ thuật</summary>
     public string? Specifications { get; set; }
+
+    /// <summary>Phân loại thuế suất GTGT</summary>
+    public TaxTreatment TaxTreatment { get; set; } = TaxTreatment.Standard10;
+
+    /// <summary>Được áp dụng chính sách giảm thuế 10% -> 8% (Nghị định 72/2024 đến 31/12/2026)</summary>
+    public bool IsTaxReductionEligible { get; set; } = true;
+
+    /// <summary>Thuế suất tùy chỉnh ghi đè (nếu được chỉ định riêng)</summary>
+    public decimal? TaxRate { get; set; }
+
+    /// <summary>Ngày bắt đầu hiệu lực của chính sách thuế tùy chỉnh</summary>
+    public DateTime? TaxEffectiveFrom { get; set; }
+
+    /// <summary>Ngày kết thúc hiệu lực của chính sách thuế tùy chỉnh</summary>
+    public DateTime? TaxEffectiveTo { get; set; }
 
     /// <summary>Đang hoạt động</summary>
     public bool IsActive { get; set; } = true;

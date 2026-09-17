@@ -482,6 +482,221 @@ public class PriceListService : IPriceListService
     }
 
 
+    public async Task<decimal?> GetProductCurrentPriceAsync(int productId, DateTime? asOfDate = null, CancellationToken cancellationToken = default)
+    {
+        var dict = await GetCurrentPricesForProductsAsync(new[] { productId }, asOfDate, cancellationToken);
+        return dict.TryGetValue(productId, out var price) ? price : null;
+    }
+
+    public async Task<Dictionary<int, decimal?>> GetCurrentPricesForProductsAsync(IEnumerable<int> productIds, DateTime? asOfDate = null, CancellationToken cancellationToken = default)
+    {
+        var idList = productIds.Distinct().ToList();
+        var result = new Dictionary<int, decimal?>();
+        if (!idList.Any()) return result;
+
+        var utcTarget = asOfDate.HasValue 
+            ? (asOfDate.Value.Kind == DateTimeKind.Utc ? asOfDate.Value : DateTime.SpecifyKind(asOfDate.Value, DateTimeKind.Utc))
+            : DateTime.UtcNow;
+
+        // 1. Tìm các dòng giá đang hiệu lực theo ngày
+        var activeItems = await _context.PriceListItems
+            .AsNoTracking()
+            .Include(i => i.PriceList)
+            .Where(i => i.ProductId.HasValue && idList.Contains(i.ProductId.Value)
+                     && i.PriceList!.Status == PriceListStatus.Active
+                     && (i.PriceList.EffectiveFrom == null || i.PriceList.EffectiveFrom <= utcTarget)
+                     && (i.PriceList.EffectiveTo == null || i.PriceList.EffectiveTo >= utcTarget))
+            .OrderByDescending(i => i.PriceList!.EffectiveFrom)
+            .ThenByDescending(i => i.PriceList!.Year)
+            .ThenByDescending(i => i.PriceList!.Quarter)
+            .ToListAsync(cancellationToken);
+
+        foreach (var item in activeItems)
+        {
+            if (item.ProductId.HasValue && !result.ContainsKey(item.ProductId.Value))
+            {
+                result[item.ProductId.Value] = item.UnitPrice;
+            }
+        }
+
+        // 2. Với các sản phẩm chưa tìm thấy theo khoảng ngày, lấy theo bảng giá Active mới nhất
+        var remainingIds = idList.Where(id => !result.ContainsKey(id)).ToList();
+        if (remainingIds.Any())
+        {
+            var latestActiveItems = await _context.PriceListItems
+                .AsNoTracking()
+                .Include(i => i.PriceList)
+                .Where(i => i.ProductId.HasValue && remainingIds.Contains(i.ProductId.Value)
+                         && i.PriceList!.Status == PriceListStatus.Active)
+                .OrderByDescending(i => i.PriceList!.Year)
+                .ThenByDescending(i => i.PriceList!.Quarter)
+                .ThenByDescending(i => i.PriceList!.EffectiveFrom)
+                .ToListAsync(cancellationToken);
+
+            foreach (var item in latestActiveItems)
+            {
+                if (item.ProductId.HasValue && !result.ContainsKey(item.ProductId.Value))
+                {
+                    result[item.ProductId.Value] = item.UnitPrice;
+                }
+            }
+        }
+
+        // Gán null cho các ID không có bảng giá
+        foreach (var id in idList)
+        {
+            if (!result.ContainsKey(id)) result[id] = null;
+        }
+
+        return result;
+    }
+
+    public async Task<MultiPeriodPriceComparisonDto> CompareMultiplePriceListsAsync(
+        List<int>? priceListIds = null,
+        DateTime? asOfDate = null,
+        CancellationToken cancellationToken = default)
+    {
+        List<PriceList> targetLists;
+
+        if (priceListIds != null && priceListIds.Any())
+        {
+            targetLists = await _context.PriceLists
+                .AsNoTracking()
+                .Where(p => priceListIds.Contains(p.Id))
+                .OrderBy(p => p.Year)
+                .ThenBy(p => p.Quarter)
+                .ThenBy(p => p.Month)
+                .ThenBy(p => p.EffectiveFrom)
+                .ToListAsync(cancellationToken);
+        }
+        else
+        {
+            // Tải động các bảng giá thực tế từ cơ sở dữ liệu (tối đa 6 kỳ gần nhất, loại bỏ Đã hủy)
+            var recentLists = await _context.PriceLists
+                .AsNoTracking()
+                .Where(p => p.Status != PriceListStatus.Cancelled)
+                .OrderByDescending(p => p.Year)
+                .ThenByDescending(p => p.Quarter)
+                .ThenByDescending(p => p.Month)
+                .ThenByDescending(p => p.EffectiveFrom)
+                .Take(6)
+                .ToListAsync(cancellationToken);
+
+            targetLists = recentLists
+                .OrderBy(p => p.Year)
+                .ThenBy(p => p.Quarter)
+                .ThenBy(p => p.Month)
+                .ThenBy(p => p.EffectiveFrom)
+                .ToList();
+        }
+
+        var result = new MultiPeriodPriceComparisonDto();
+        if (!targetLists.Any())
+        {
+            return result;
+        }
+
+        // Tạo các cột kỳ bảng giá
+        foreach (var pl in targetLists)
+        {
+            string label;
+            if (pl.Quarter.HasValue) label = $"Q{pl.Quarter}/{pl.Year}";
+            else if (pl.Month.HasValue) label = $"T{pl.Month:D2}/{pl.Year}";
+            else label = $"{pl.Year}";
+
+            result.Periods.Add(new PriceListPeriodColumnDto
+            {
+                PriceListId = pl.Id,
+                Code = pl.Code,
+                Name = pl.Name,
+                PeriodLabel = label,
+                Year = pl.Year,
+                Quarter = pl.Quarter,
+                Month = pl.Month,
+                EffectiveFrom = pl.EffectiveFrom,
+                Status = pl.Status
+            });
+        }
+
+        // Lấy tất cả items của các bảng giá này
+        var targetListIds = targetLists.Select(p => p.Id).ToList();
+        var allItems = await _context.PriceListItems
+            .AsNoTracking()
+            .Include(i => i.Product)
+            .Where(i => targetListIds.Contains(i.PriceListId))
+            .ToListAsync(cancellationToken);
+
+        string BuildMultiKey(PriceListItem item)
+        {
+            if (item.ProductId.HasValue && item.ProductId.Value > 0)
+                return $"ID:{item.ProductId.Value}";
+            if (!string.IsNullOrWhiteSpace(item.NewCode))
+                return $"NEW:{item.NewCode.Trim().ToUpperInvariant()}";
+            if (!string.IsNullOrWhiteSpace(item.LegacyCode))
+                return $"LEG:{item.LegacyCode.Trim().ToUpperInvariant()}";
+            return $"ITEM:{item.Id}";
+        }
+
+        var itemMap = new Dictionary<string, MultiPeriodComparisonItemDto>();
+
+        foreach (var item in allItems)
+        {
+            var key = BuildMultiKey(item);
+            if (!itemMap.TryGetValue(key, out var compItem))
+            {
+                compItem = new MultiPeriodComparisonItemDto
+                {
+                    ProductId = item.ProductId,
+                    ProductCode = item.Product?.Code ?? item.NewCode,
+                    ProductName = item.Product?.Name ?? item.ProductInfo ?? item.NewCode,
+                    NewCode = item.NewCode,
+                    LegacyCode = item.LegacyCode ?? item.Product?.LegacyCode,
+                    Group = item.Group,
+                    ImageStorageRef = item.ImageStorageRef
+                };
+                itemMap[key] = compItem;
+            }
+
+            // Gán giá chưa VAT cho kỳ tương ứng
+            compItem.PeriodPrices[item.PriceListId] = item.UnitPrice;
+        }
+
+        // Lấy Giá hiện tại hiệu lực cho các sản phẩm có ProductId
+        var productIds = itemMap.Values
+            .Where(x => x.ProductId.HasValue && x.ProductId.Value > 0)
+            .Select(x => x.ProductId!.Value)
+            .Distinct()
+            .ToList();
+
+        var currentPrices = await GetCurrentPricesForProductsAsync(productIds, asOfDate, cancellationToken);
+        foreach (var compItem in itemMap.Values)
+        {
+            if (compItem.ProductId.HasValue && currentPrices.TryGetValue(compItem.ProductId.Value, out var cp))
+            {
+                compItem.CurrentPrice = cp;
+            }
+            else
+            {
+                // Nếu chưa có trong danh mục Master Data, lấy giá kỳ áp dụng mới nhất
+                var latestPeriodWithPrice = result.Periods
+                    .AsEnumerable()
+                    .Reverse()
+                    .FirstOrDefault(p => compItem.PeriodPrices.ContainsKey(p.PriceListId));
+                if (latestPeriodWithPrice != null)
+                {
+                    compItem.CurrentPrice = compItem.PeriodPrices[latestPeriodWithPrice.PriceListId];
+                }
+            }
+        }
+
+        result.Items = itemMap.Values
+            .OrderBy(x => x.Group)
+            .ThenBy(x => x.NewCode)
+            .ToList();
+
+        return result;
+    }
+
     public async Task<bool> DeleteOriginalFileAsync(int id, CancellationToken cancellationToken = default)
     {
         var entity = await _context.PriceLists.FindAsync(new object[] { id }, cancellationToken);

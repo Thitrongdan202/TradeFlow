@@ -209,7 +209,14 @@ else
                         <th style="min-width: 130px; color: #fff;">MÃ HÀNG MỚI</th>
                         <th style="min-width: 110px; color: #fff;">MÃ HÀNG CŨ</th>
                         <th style="min-width: 260px; color: #fff;">THÔNG TIN SẢN PHẨM</th>
-                        <th style="min-width: 130px; text-align: right; color: #fff;">GIÁ ĐẠI LÝ (VNĐ)</th>
+                        <th style="min-width: 140px; text-align: right; color: #fff;">
+                            <div>GIÁ ĐẠI LÝ</div>
+                            <div style="font-size: 10px; font-weight: normal; color: #fed7aa;">Chưa VAT</div>
+                        </th>
+                        <th style="min-width: 120px; text-align: right; color: #fff;">
+                            <div>THUẾ DỰ KIẾN</div>
+                            <div style="font-size: 10px; font-weight: normal; color: #fed7aa;">VAT</div>
+                        </th>
                         <th style="min-width: 110px; color: #fff;">GHI CHÚ</th>
                         <th style="min-width: 130px; text-align: center; color: #fff;">ĐỐI SOÁT</th>
                     </tr>
@@ -218,7 +225,7 @@ else
                     @if (!FilteredItems.Any())
                     {
                         <tr>
-                            <td colspan="9" style="text-align:center; padding: 24px;">Không có mặt hàng nào khớp bộ lọc.</td>
+                            <td colspan="10" style="text-align:center; padding: 24px;">Không có mặt hàng nào khớp bộ lọc.</td>
                         </tr>
                     }
                     else
@@ -268,9 +275,25 @@ else
                                     </div>
                                 </td>
                                 <td style="text-align: right;">
-                                    <span style="font-weight: 700; font-size: 14px; color: #047857;">
+                                    <div style="font-weight: 700; font-size: 14px; color: #047857;">
                                         @item.UnitPrice.ToString("N0") ₫
-                                    </span>
+                                    </div>
+                                    <div style="font-size: 10px; color: #6b7280; font-weight: 600;">
+                                        Chưa VAT
+                                    </div>
+                                </td>
+                                <td style="text-align: right;">
+                                    <div style="font-weight: 600; color: #1e293b;">
+                                        @(item.VatRate.HasValue ? $"{item.VatRate.Value:0.##}%" : "8%")
+                                    </div>
+                                    @if (item.VatRate.HasValue)
+                                    {
+                                        var vatAmt = Math.Round(item.UnitPrice * (item.VatRate.Value / 100m), 0);
+                                        var postVat = item.UnitPrice + vatAmt;
+                                        <div style="font-size: 10px; color: #059669;">
+                                            Sau VAT: @postVat.ToString("N0") ₫
+                                        </div>
+                                    }
                                 </td>
                                 <td>
                                     <span style="color: #6b7280; font-size: 12px;">@(item.Note ?? "-")</span>

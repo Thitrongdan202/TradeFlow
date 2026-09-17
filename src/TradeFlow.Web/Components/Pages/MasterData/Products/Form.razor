@@ -1,4 +1,4 @@
-﻿@page "/danh-muc/san-pham/them-moi"
+@page "/danh-muc/san-pham/them-moi"
 @page "/danh-muc/san-pham/sua/{Id:int}"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
@@ -17,6 +17,7 @@
 @inject Microsoft.AspNetCore.Authorization.IAuthorizationService AuthService
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
 @inject ICurrentUserService CurrentUser
+@inject IPriceListService PriceListService
 
 <PageTitle>@(IsEdit ? "Sửa" : "Thêm") Sản phẩm - TradeFlow</PageTitle>
 
@@ -111,6 +112,49 @@ else
                     <InputTextArea @bind-Value="_model.Specifications" class="tf-input" rows="2" placeholder="Kích thước, trọng lượng, chất liệu, tiêu chuẩn..." />
                 </div>
 
+                <div style="background:var(--tf-surface-variant, #f8fafc);border:1px solid var(--tf-border, #e2e8f0);border-radius:8px;padding:16px;margin-bottom:16px;">
+                    <h4 style="margin:0 0 12px 0;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;">
+                        <span>🏛️ Chính sách thuế GTGT (VAT) & Đơn giá</span>
+                    </h4>
+                    
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px;">
+                        <div class="tf-form-group">
+                            <label class="tf-label">Phân loại thuế GTGT</label>
+                            <InputSelect @bind-Value="_model.TaxTreatment" class="tf-select">
+                                <option value="@TaxTreatment.Standard10">10% - Thuế suất chuẩn (giảm 8% nếu đủ ĐK)</option>
+                                <option value="@TaxTreatment.Rate8">8% - Thuế suất 8% cố định</option>
+                                <option value="@TaxTreatment.Rate5">5% - Thuế suất 5%</option>
+                                <option value="@TaxTreatment.ZeroRate">0% - Thuế suất 0% (Xuất khẩu...)</option>
+                                <option value="@TaxTreatment.NonTaxable">Không chịu thuế / Miễn thuế</option>
+                            </InputSelect>
+                        </div>
+                        <div class="tf-form-group" style="display:flex;align-items:center;padding-top:24px;">
+                            <label class="tf-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0;">
+                                <InputCheckbox @bind-Value="_model.IsTaxReductionEligible" />
+                                <span>Đủ điều kiện giảm thuế GTGT (10% ➔ 8% theo NQ Quốc hội đến 31/12/2026)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    @if (IsEdit)
+                    {
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:white;border-radius:6px;border:1px solid #e2e8f0;">
+                            <div>
+                                <span style="font-size:13px;color:var(--tf-text-secondary);margin-right:8px;">Giá hiện tại (Chưa VAT):</span>
+                                @if (_currentPrice.HasValue)
+                                {
+                                    <strong style="color:var(--tf-primary);font-size:15px;">@_currentPrice.Value.ToString("N0") ₫</strong>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--tf-text-muted);font-style:italic;">Chưa có bảng giá hiệu lực</span>
+                                }
+                            </div>
+                            <a href="/bang-gia/danh-sach" style="font-size:12px;color:var(--tf-primary);text-decoration:none;">Quản lý bảng giá &rarr;</a>
+                        </div>
+                    }
+                </div>
+
                 <div style="background:var(--tf-gray-50);border:1px solid var(--tf-border);border-radius:6px;padding:12px;margin-bottom:16px;font-size:13px;color:var(--tf-text-secondary);display:flex;align-items:center;gap:8px;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
@@ -163,6 +207,7 @@ else
     private List<UnitOfMeasure>? _units;
     private string _displaySystemCode = string.Empty;
     private string? _errorMessage;
+    private decimal? _currentPrice;
 
     protected override async Task OnInitializedAsync()
     {
@@ -183,6 +228,7 @@ else
                 return;
             }
             _displaySystemCode = _model.Code;
+            _currentPrice = await PriceListService.GetProductCurrentPriceAsync(_model.Id, DateTime.UtcNow);
         }
         else
         {

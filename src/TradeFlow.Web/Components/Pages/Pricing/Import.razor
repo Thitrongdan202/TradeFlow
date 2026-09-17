@@ -91,22 +91,30 @@ else
         </div>
 
         @* Detection Stats Grid *@
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; background: #f8fafc; padding: 16px; border-radius: 6px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; background: #f8fafc; padding: 16px; border-radius: 6px;">
             <div>
                 <div style="font-size: 11px; color: var(--tf-text-muted); font-weight: 600;">MẶT HÀNG TÌM THẤY</div>
                 <div style="font-size: 20px; font-weight: 700; color: #1e293b;">@_analysisResult.Items.Count</div>
             </div>
             <div>
-                <div style="font-size: 11px; color: var(--tf-text-muted); font-weight: 600;">ẢNH TRÍCH XUẤT NHÚNG</div>
-                <div style="font-size: 20px; font-weight: 700; color: #ea580c;">@_analysisResult.ImagesFound</div>
-            </div>
-            <div>
-                <div style="font-size: 11px; color: var(--tf-text-muted); font-weight: 600;">ĐÃ KHỚP DANH MỤC</div>
+                <div style="font-size: 11px; color: var(--tf-text-muted); font-weight: 600;">ĐÃ CÓ SẢN PHẨM</div>
                 <div style="font-size: 20px; font-weight: 700; color: #059669;">@_analysisResult.Items.Count(i => i.MatchStatus == PriceMatchStatus.Matched)</div>
             </div>
             <div>
-                <div style="font-size: 11px; color: var(--tf-text-muted); font-weight: 600;">SẢN PHẨM MỚI</div>
+                <div style="font-size: 11px; color: var(--tf-text-muted); font-weight: 600;">THAY ĐỔI SẢN PHẨM</div>
+                <div style="font-size: 20px; font-weight: 700; color: #d97706;">@_analysisResult.Items.Count(i => i.MatchStatus == PriceMatchStatus.ReviewRequired)</div>
+            </div>
+            <div>
+                <div style="font-size: 11px; color: var(--tf-text-muted); font-weight: 600;">THÊM SẢN PHẨM MỚI</div>
                 <div style="font-size: 20px; font-weight: 700; color: #2563eb;">@_analysisResult.Items.Count(i => i.MatchStatus == PriceMatchStatus.NewProduct)</div>
+            </div>
+            <div>
+                <div style="font-size: 11px; color: var(--tf-text-muted); font-weight: 600;">KHÔNG XÁC ĐỊNH</div>
+                <div style="font-size: 20px; font-weight: 700; color: #dc2626;">@_analysisResult.Items.Count(i => i.MatchStatus == PriceMatchStatus.Unidentified)</div>
+            </div>
+            <div>
+                <div style="font-size: 11px; color: var(--tf-text-muted); font-weight: 600;">ẢNH NHÚNG TRÍCH XUẤT</div>
+                <div style="font-size: 20px; font-weight: 700; color: #ea580c;">@_analysisResult.ImagesFound</div>
             </div>
         </div>
 
@@ -128,13 +136,13 @@ else
                 <input type="number" class="tf-input" @bind="_importRequest.Year" min="2020" max="2035" />
             </div>
             <div>
-                <label style="display:block; font-size: 12px; font-weight: 600; margin-bottom: 4px;">Quýý áp dụng</label>
+                <label style="display:block; font-size: 12px; font-weight: 600; margin-bottom: 4px;">Quý áp dụng</label>
                 <select class="tf-input" @bind="_importRequest.Quarter">
                     <option value="">-- Chọn quý --</option>
-                    <option value="1">Quýý 1</option>
-                    <option value="2">Quýý 2</option>
-                    <option value="3">Quýý 3</option>
-                    <option value="4">Quýý 4</option>
+                    <option value="1">Quý 1</option>
+                    <option value="2">Quý 2</option>
+                    <option value="3">Quý 3</option>
+                    <option value="4">Quý 4</option>
                 </select>
             </div>
         </div>
@@ -198,7 +206,10 @@ else
     @* Step 3: Items Preview Table *@
     <div class="tf-card">
         <div class="tf-card-header" style="padding: 16px; display:flex; justify-content:space-between; align-items:center;">
-            <h3 style="font-size: 16px; font-weight: 700;">Xem trước danh sách mặt hàng (@_analysisResult.Items.Count dòng)</h3>
+            <div>
+                <h3 style="font-size: 16px; font-weight: 700; margin: 0;">Xem trước danh sách mặt hàng (@_analysisResult.Items.Count dòng)</h3>
+                <span style="font-size: 12px; color: var(--tf-text-muted);">Mọi mức giá hiển thị và lưu trữ trên cơ sở: <strong>Giá chưa VAT</strong></span>
+            </div>
             <div style="font-size: 12px; color: var(--tf-text-muted);">
                 Trích xuất hình ảnh: @_analysisResult.ImagesFound ảnh
             </div>
@@ -207,14 +218,15 @@ else
             <table class="tf-table" style="font-size: 13px;">
                 <thead>
                     <tr style="background: #ea580c; color: #fff;">
-                        <th style="width: 50px; text-align: center; color:#fff;">STT</th>
-                        <th style="min-width: 140px; color:#fff;">NHÓM</th>
-                        <th style="width: 70px; text-align: center; color:#fff;">ẢNH</th>
-                        <th style="min-width: 130px; color:#fff;">MÃ MỚI</th>
-                        <th style="min-width: 110px; color:#fff;">MÃ CŨ</th>
-                        <th style="min-width: 260px; color:#fff;">THÔNG TIN SẢN PHẨM</th>
-                        <th style="min-width: 120px; text-align: right; color:#fff;">GIÁ ĐẠI LÝ</th>
-                        <th style="min-width: 130px; text-align: center; color:#fff;">ĐỐI SOÁT</th>
+                        <th style="width: 45px; text-align: center; color:#fff;">STT</th>
+                        <th style="min-width: 120px; color:#fff;">NHÓM</th>
+                        <th style="width: 60px; text-align: center; color:#fff;">ẢNH</th>
+                        <th style="min-width: 110px; color:#fff;">MÃ MỚI</th>
+                        <th style="min-width: 90px; color:#fff;">MÃ CŨ</th>
+                        <th style="min-width: 220px; color:#fff;">THÔNG TIN SẢN PHẨM</th>
+                        <th style="min-width: 130px; text-align: right; color:#fff;">GIÁ CHƯA VAT</th>
+                        <th style="min-width: 130px; text-align: right; color:#fff;">THUẾ DỰ KIẾN</th>
+                        <th style="min-width: 200px; text-align: center; color:#fff;">ĐỐI SOÁT & XỬ LÝ</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -240,20 +252,62 @@ else
                             </td>
                             <td>@(item.LegacyCode ?? "-")</td>
                             <td>@item.ProductInfo</td>
-                            <td style="text-align: right; font-weight: 700; color: #047857;">
-                                @item.UnitPrice.ToString("N0") ₫
+                            <td style="text-align: right;">
+                                <div style="font-weight: 700; color: #047857;">@item.UnitPrice.ToString("N0") ₫</div>
+                                <div style="font-size: 10px; color: #6b7280;">Chưa VAT</div>
+                            </td>
+                            <td style="text-align: right;">
+                                <div style="font-weight: 600; color: #1e293b;">@(item.VatRate.HasValue ? $"{item.VatRate.Value:0.##}%" : "8%")</div>
+                                <div style="font-size: 11px; color: #059669;">Sau VAT: @(item.PriceWithVat.HasValue ? $"{item.PriceWithVat.Value:N0} ₫" : "-")</div>
                             </td>
                             <td style="text-align: center;">
                                 @switch (item.MatchStatus)
                                 {
                                     case PriceMatchStatus.Matched:
-                                        <span class="tf-badge tf-badge-success" style="font-size: 11px;">Khớp: @item.MatchedProductName</span>
+                                        <span class="tf-badge tf-badge-success" style="font-size: 11px; font-weight: 600;">Đã có sản phẩm</span>
+                                        <div style="font-size: 11px; color: #059669; margin-top: 2px;">@item.MatchedProductName</div>
                                         break;
-                                    case PriceMatchStatus.ReviewRequired:
-                                        <span class="tf-badge tf-badge-warning" style="font-size: 11px;">Cần xem xét</span>
-                                        break;
+
                                     case PriceMatchStatus.NewProduct:
-                                        <span class="tf-badge tf-badge-info" style="font-size: 11px;">Sản phẩm mới</span>
+                                        <span class="tf-badge tf-badge-info" style="font-size: 11px; font-weight: 600;">Thêm sản phẩm mới</span>
+                                        break;
+
+                                    case PriceMatchStatus.Unidentified:
+                                        <span class="tf-badge tf-badge-danger" style="font-size: 11px; font-weight: 600;">Không xác định được sản phẩm</span>
+                                        @if (item.ValidationMessages.Any())
+                                        {
+                                            <div style="font-size: 10px; color: #dc2626; margin-top: 2px;">@item.ValidationMessages.First()</div>
+                                        }
+                                        break;
+
+                                    case PriceMatchStatus.ReviewRequired:
+                                        <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 6px 8px; text-align: left;">
+                                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 4px;">
+                                                <span class="tf-badge tf-badge-warning" style="font-size: 11px; font-weight: 700;">Thay đổi sản phẩm</span>
+                                            </div>
+                                            <div style="font-size: 11px; color: #4b5563; line-height: 1.4;">
+                                                @if (!string.IsNullOrWhiteSpace(item.ExistingLegacyCode) || !string.IsNullOrWhiteSpace(item.LegacyCode))
+                                                {
+                                                    <div><strong>Mã cũ:</strong> @(item.ExistingLegacyCode ?? "-")</div>
+                                                }
+                                                <div><strong>Tên hiện tại:</strong> @item.ExistingProductName</div>
+                                                <div><strong>Thông tin từ bảng giá:</strong> <span style="color: #b45309;">@item.ProductInfo</span></div>
+                                            </div>
+                                            <div style="margin-top: 6px; display:flex; gap: 6px; align-items:center;">
+                                                <button type="button" 
+                                                        class="tf-btn @(!item.ApplyMasterDataUpdate ? "tf-btn-primary" : "tf-btn-secondary")" 
+                                                        style="padding: 2px 8px; font-size: 11px; height: auto;" 
+                                                        @onclick="() => item.ApplyMasterDataUpdate = false">
+                                                    [Giữ nguyên]
+                                                </button>
+                                                <button type="button" 
+                                                        class="tf-btn @(item.ApplyMasterDataUpdate ? "tf-btn-warning" : "tf-btn-secondary")" 
+                                                        style="padding: 2px 8px; font-size: 11px; height: auto;" 
+                                                        @onclick="() => item.ApplyMasterDataUpdate = true">
+                                                    [Thay đổi sản phẩm]
+                                                </button>
+                                            </div>
+                                        </div>
                                         break;
                                 }
                             </td>

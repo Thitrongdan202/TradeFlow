@@ -83,7 +83,8 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IPriceListService, Services.PriceListService>();
         services.AddScoped<IExcelPricingService, Services.ExcelPricingService>();
 
-        // Register Phase 5 Sales services
+        // Register Phase 5 Sales & VAT services
+        services.AddScoped<IVatRuleEngine, Services.VatRuleEngine>();
         services.AddScoped<ISalesService, Services.SalesService>();
         services.AddScoped<IInvoiceService, Services.InvoiceService>();
         services.AddScoped<IDigitalSignatureService, Services.DigitalSignatureService>();

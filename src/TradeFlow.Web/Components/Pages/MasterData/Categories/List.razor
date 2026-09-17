@@ -1,4 +1,4 @@
-﻿@page "/danh-muc/danh-muc-san-pham"
+@page "/danh-muc/danh-muc-san-pham"
 @page "/danh-muc/nhom-san-pham"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
@@ -32,6 +32,14 @@
         </AuthorizeView>
     </div>
 </div>
+
+@if (!string.IsNullOrEmpty(_toastMessage))
+{
+    <div class="tf-alert tf-alert-info tf-mb-4" style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; display:flex; justify-content:space-between; align-items:center; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px;">
+        <span>@_toastMessage</span>
+        <button type="button" style="background:none; border:none; color:#1e40af; cursor:pointer; font-weight:bold;" @onclick="() => _toastMessage = null">✕</button>
+    </div>
+}
 
 <div class="tf-card tf-mb-4" style="padding: 12px 16px;">
     <input type="text"
@@ -121,7 +129,7 @@
                                 }
                                 else
                                 {
-                                    <span class="tf-badge tf-badge-neutral">Tạm dừng</span>
+                                    <span class="tf-badge tf-badge-neutral">Đã ngừng sử dụng</span>
                                 }
                             </td>
                             <td style="text-align:right;">
@@ -165,6 +173,7 @@
     private int? _itemToDeleteId;
     private string _itemToDeleteName = "";
     private string? _deleteError;
+    private string? _toastMessage;
 
     private List<ProductCategory>? _items;
     private string _searchTerm = string.Empty;
@@ -239,17 +248,23 @@
 
             if (isReferenced)
             {
-                _deleteError = "Không thể xóa vì dữ liệu này đang được sử dụng."; return;
+                entity.IsActive = false;
+                entity.UpdatedAt = DateTime.UtcNow;
+                entity.UpdatedBy = authState.User.Identity?.Name;
+                DbContext.ProductCategories.Update(entity);
+                await DbContext.SaveChangesAsync();
+                await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.CategoryUpdated, authState.User.Identity?.Name ?? "System", "Category", id.ToString(), "Ngừng sử dụng danh mục do có sản phẩm liên kết", authState.User.Identity?.Name);
+                _toastMessage = "Danh mục đã có sản phẩm liên kết nên không thể xóa vật lý. Danh mục đã được chuyển sang trạng thái ngừng sử dụng.";
             }
             else
             {
-                DbContext.Remove(entity);
+                DbContext.ProductCategories.Remove(entity);
+                await DbContext.SaveChangesAsync();
+                await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.CategoryDeleted, authState.User.Identity?.Name ?? "System", "Category", id.ToString(), "Xóa danh mục", authState.User.Identity?.Name);
+                _toastMessage = "Đã xóa danh mục thành công.";
             }
 
-            await DbContext.SaveChangesAsync();
-            await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.CategoryDeleted, authState.User.Identity?.Name ?? "System", "Category", id.ToString(), "Xóa danh mục", authState.User.Identity?.Name);
             CancelDelete();
-            
             await OnInitializedAsync();
         }
         catch (Exception ex)
@@ -355,27 +370,27 @@
     private async Task ProcessSingleDelete(int currentId)
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        int id = _itemToDeleteId.Value;
-            var entity = await DbContext.ProductCategories.FindAsync(id);
-            if (entity == null)
-            {
-                
-                return;
-            }
+        int id = currentId;
+        var entity = await DbContext.ProductCategories.FindAsync(id);
+        if (entity == null) return;
 
-            bool isReferenced = await DbContext.Products.AnyAsync(x => x.CategoryId == id);
+        bool isReferenced = await DbContext.Products.AnyAsync(x => x.CategoryId == id);
 
-            if (isReferenced)
-            {
-                throw new Exception("Không thể xóa vì dữ liệu này đang được sử dụng.");
-            }
-            else
-            {
-                DbContext.Remove(entity);
-            }
-
+        if (isReferenced)
+        {
+            entity.IsActive = false;
+            entity.UpdatedAt = DateTime.UtcNow;
+            entity.UpdatedBy = authState.User.Identity?.Name;
+            DbContext.ProductCategories.Update(entity);
+            await DbContext.SaveChangesAsync();
+            await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.CategoryUpdated, authState.User.Identity?.Name ?? "System", "Category", id.ToString(), "Ngừng sử dụng danh mục do có sản phẩm liên kết", authState.User.Identity?.Name);
+            _toastMessage = "Danh mục đã có sản phẩm liên kết nên không thể xóa vật lý. Danh mục đã được chuyển sang trạng thái ngừng sử dụng.";
+        }
+        else
+        {
+            DbContext.ProductCategories.Remove(entity);
             await DbContext.SaveChangesAsync();
             await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.CategoryDeleted, authState.User.Identity?.Name ?? "System", "Category", id.ToString(), "Xóa danh mục", authState.User.Identity?.Name);
-            
+        }
     }
 }

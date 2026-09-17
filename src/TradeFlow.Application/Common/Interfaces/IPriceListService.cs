@@ -18,4 +18,6 @@ public interface IPriceListService
     Task<Dictionary<int, decimal?>> GetCurrentPricesForProductsAsync(IEnumerable<int> productIds, DateTime? asOfDate = null, CancellationToken cancellationToken = default);
     Task<List<PriceListItemDto>> GetProductPriceHistoryAsync(string productCodeOrNewCode, CancellationToken cancellationToken = default);
     Task<bool> DeleteOriginalFileAsync(int id, CancellationToken cancellationToken = default);
+    Task<bool> UpdateItemPriceAsync(int itemId, decimal newUnitPrice, decimal? vatRate = null, string? note = null, CancellationToken cancellationToken = default);
+    Task<int?> CreateProductFromPriceListItemAsync(int itemId, CancellationToken cancellationToken = default);
 }

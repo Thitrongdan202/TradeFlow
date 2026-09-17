@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using TradeFlow.Application.Common.Constants;
 using TradeFlow.Application.Common.Interfaces;
 using TradeFlow.Application.Common.Models.Pricing;
+using TradeFlow.Domain.Entities.MasterData;
 using TradeFlow.Domain.Entities.Pricing;
 using TradeFlow.Domain.Enums;
 using TradeFlow.Infrastructure.Persistence;
@@ -498,11 +499,12 @@ public class PriceListService : IPriceListService
             ? (asOfDate.Value.Kind == DateTimeKind.Utc ? asOfDate.Value : DateTime.SpecifyKind(asOfDate.Value, DateTimeKind.Utc))
             : DateTime.UtcNow;
 
-        // 1. Tìm các dòng giá đang hiệu lực theo ngày
+        // 1. Tìm các dòng giá đang hiệu lực theo ngày áp dụng và UnitPrice > 0
         var activeItems = await _context.PriceListItems
             .AsNoTracking()
             .Include(i => i.PriceList)
             .Where(i => i.ProductId.HasValue && idList.Contains(i.ProductId.Value)
+                     && i.UnitPrice > 0
                      && i.PriceList!.Status == PriceListStatus.Active
                      && (i.PriceList.EffectiveFrom == null || i.PriceList.EffectiveFrom <= utcTarget)
                      && (i.PriceList.EffectiveTo == null || i.PriceList.EffectiveTo >= utcTarget))
@@ -519,7 +521,7 @@ public class PriceListService : IPriceListService
             }
         }
 
-        // 2. Với các sản phẩm chưa tìm thấy theo khoảng ngày, lấy theo bảng giá Active mới nhất
+        // 2. Với các sản phẩm chưa tìm thấy theo khoảng ngày, lấy theo bảng giá Active mới nhất có giá > 0
         var remainingIds = idList.Where(id => !result.ContainsKey(id)).ToList();
         if (remainingIds.Any())
         {
@@ -527,6 +529,7 @@ public class PriceListService : IPriceListService
                 .AsNoTracking()
                 .Include(i => i.PriceList)
                 .Where(i => i.ProductId.HasValue && remainingIds.Contains(i.ProductId.Value)
+                         && i.UnitPrice > 0
                          && i.PriceList!.Status == PriceListStatus.Active)
                 .OrderByDescending(i => i.PriceList!.Year)
                 .ThenByDescending(i => i.PriceList!.Quarter)
@@ -538,6 +541,62 @@ public class PriceListService : IPriceListService
                 if (item.ProductId.HasValue && !result.ContainsKey(item.ProductId.Value))
                 {
                     result[item.ProductId.Value] = item.UnitPrice;
+                }
+            }
+        }
+
+        // 3. Với các sản phẩm chưa được gán ProductId trên PriceListItem (e.g. import cũ hoặc đồng bộ chưa kịp ghi ID), đối chiếu theo mã
+        remainingIds = idList.Where(id => !result.ContainsKey(id)).ToList();
+        if (remainingIds.Any())
+        {
+            var unlinkedProds = await _context.Products
+                .AsNoTracking()
+                .Where(p => remainingIds.Contains(p.Id))
+                .ToListAsync(cancellationToken);
+
+            var activeCandidates = await _context.PriceListItems
+                .Include(i => i.PriceList)
+                .Where(i => i.PriceList!.Status == PriceListStatus.Active && i.UnitPrice > 0)
+                .OrderByDescending(i => i.PriceList!.Year)
+                .ThenByDescending(i => i.PriceList!.Quarter)
+                .ThenByDescending(i => i.PriceList!.EffectiveFrom)
+                .ToListAsync(cancellationToken);
+
+            bool needsHealingSave = false;
+
+            foreach (var p in unlinkedProds)
+            {
+                var pNew = (p.NewCode ?? "").Trim();
+                var pLeg = (p.LegacyCode ?? "").Trim();
+                var pCode = p.Code.Trim();
+
+                var matchedItem = activeCandidates.FirstOrDefault(i =>
+                    (!string.IsNullOrEmpty(pNew) && (i.NewCode.Equals(pNew, StringComparison.OrdinalIgnoreCase) || pNew.StartsWith(i.NewCode, StringComparison.OrdinalIgnoreCase) || i.NewCode.StartsWith(pNew, StringComparison.OrdinalIgnoreCase))) ||
+                    (!string.IsNullOrEmpty(pLeg) && (!string.IsNullOrEmpty(i.LegacyCode) && i.LegacyCode.Equals(pLeg, StringComparison.OrdinalIgnoreCase) || i.NewCode.Equals(pLeg, StringComparison.OrdinalIgnoreCase))) ||
+                    (!string.IsNullOrEmpty(pCode) && i.NewCode.Equals(pCode, StringComparison.OrdinalIgnoreCase)));
+
+                if (matchedItem != null)
+                {
+                    result[p.Id] = matchedItem.UnitPrice;
+
+                    // Tự động gắn kết ProductId nếu đang bị khuyết
+                    if (!matchedItem.ProductId.HasValue)
+                    {
+                        matchedItem.ProductId = p.Id;
+                        needsHealingSave = true;
+                    }
+                }
+            }
+
+            if (needsHealingSave)
+            {
+                try
+                {
+                    await _context.SaveChangesAsync(cancellationToken);
+                }
+                catch
+                {
+                    // Ignore background healing errors
                 }
             }
         }
@@ -719,5 +778,107 @@ public class PriceListService : IPriceListService
             cancellationToken: cancellationToken);
 
         return true;
+    }
+
+    public async Task<bool> UpdateItemPriceAsync(int itemId, decimal newUnitPrice, decimal? vatRate = null, string? note = null, CancellationToken cancellationToken = default)
+    {
+        var item = await _context.PriceListItems
+            .Include(i => i.PriceList)
+            .FirstOrDefaultAsync(i => i.Id == itemId, cancellationToken);
+
+        if (item == null) return false;
+
+        var oldPrice = item.UnitPrice;
+        item.UnitPrice = newUnitPrice;
+        if (vatRate.HasValue) item.VatRate = vatRate.Value;
+        if (!string.IsNullOrWhiteSpace(note)) item.Note = note.Trim();
+        item.UpdatedAt = DateTime.UtcNow;
+        item.UpdatedBy = _currentUserService.UserName ?? "System";
+
+        if (item.PriceList != null)
+        {
+            item.PriceList.UpdatedAt = DateTime.UtcNow;
+            item.PriceList.UpdatedBy = _currentUserService.UserName ?? "System";
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        await _auditService.LogAsync(
+            AuditEventType.PriceChanged,
+            _currentUserService.UserName ?? "System",
+            nameof(PriceListItem),
+            item.Id.ToString(),
+            $"Điều chỉnh giá mặt hàng {item.NewCode} từ {oldPrice:N0} ₫ thành {newUnitPrice:N0} ₫ (Bảng giá #{item.PriceListId})",
+            cancellationToken: cancellationToken);
+
+        return true;
+    }
+
+    public async Task<int?> CreateProductFromPriceListItemAsync(int itemId, CancellationToken cancellationToken = default)
+    {
+        var item = await _context.PriceListItems.FirstOrDefaultAsync(i => i.Id == itemId, cancellationToken);
+        if (item == null) return null;
+
+        if (item.ProductId.HasValue) return item.ProductId.Value;
+
+        var trimmedNewCode = item.NewCode.Trim();
+        var trimmedLegacyCode = item.LegacyCode?.Trim();
+
+        var existingInDb = await _context.Products.FirstOrDefaultAsync(p =>
+            (!string.IsNullOrEmpty(p.NewCode) && p.NewCode == trimmedNewCode) ||
+            (!string.IsNullOrEmpty(p.LegacyCode) && !string.IsNullOrEmpty(trimmedLegacyCode) && p.LegacyCode == trimmedLegacyCode) ||
+            (!string.IsNullOrEmpty(p.Code) && p.Code == trimmedNewCode),
+            cancellationToken);
+
+        if (existingInDb != null)
+        {
+            item.ProductId = existingInDb.Id;
+            item.MatchStatus = PriceMatchStatus.Matched;
+            await _context.SaveChangesAsync(cancellationToken);
+            return existingInDb.Id;
+        }
+
+        var prodCode = await _codeGenerator.GenerateCodeAsync(SystemCodeConstants.Product, cancellationToken);
+        while (await _context.Products.AnyAsync(p => p.Code == prodCode, cancellationToken))
+        {
+            prodCode = await _codeGenerator.GenerateCodeAsync(SystemCodeConstants.Product, cancellationToken);
+        }
+
+        var safeName = !string.IsNullOrWhiteSpace(item.ProductInfo)
+            ? item.ProductInfo.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries)[0].Trim()
+            : trimmedNewCode;
+        if (safeName.Length > 300) safeName = safeName.Substring(0, 300);
+
+        var newProd = new Product
+        {
+            Code = prodCode,
+            NewCode = trimmedNewCode.Length > 50 ? trimmedNewCode.Substring(0, 50) : trimmedNewCode,
+            LegacyCode = trimmedLegacyCode != null && trimmedLegacyCode.Length > 50 ? trimmedLegacyCode.Substring(0, 50) : trimmedLegacyCode,
+            Name = string.IsNullOrWhiteSpace(safeName) ? trimmedNewCode : safeName,
+            Description = item.ProductInfo != null && item.ProductInfo.Length > 2000 ? item.ProductInfo.Substring(0, 2000) : item.ProductInfo,
+            Specifications = item.ProductInfo != null && item.ProductInfo.Length > 4000 ? item.ProductInfo.Substring(0, 4000) : item.ProductInfo,
+            TaxTreatment = TaxTreatment.Standard10,
+            IsTaxReductionEligible = true,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = _currentUserService.UserName ?? "System"
+        };
+
+        _context.Products.Add(newProd);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        item.ProductId = newProd.Id;
+        item.MatchStatus = PriceMatchStatus.Matched;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        await _auditService.LogAsync(
+            AuditEventType.ProductCreated,
+            _currentUserService.UserName ?? "System",
+            nameof(Product),
+            newProd.Code,
+            $"Tạo sản phẩm {newProd.Code} - {newProd.Name} từ Bảng giá #{item.PriceListId}",
+            cancellationToken: cancellationToken);
+
+        return newProd.Id;
     }
 }

@@ -33,6 +33,14 @@
     </div>
 </div>
 
+@if (!string.IsNullOrEmpty(_toastMessage))
+{
+    <div class="tf-alert tf-alert-info tf-mb-4" style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; display:flex; justify-content:space-between; align-items:center; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px;">
+        <span>@_toastMessage</span>
+        <button type="button" style="background:none; border:none; color:#1e40af; cursor:pointer; font-weight:bold;" @onclick="() => _toastMessage = null">✕</button>
+    </div>
+}
+
 <div class="tf-card tf-mb-4" style="padding: 12px 16px;">
     <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
         <div style="flex: 1; min-width: 260px; position: relative;">
@@ -54,29 +62,37 @@
                 }
             </select>
         </div>
+        <div style="width: 170px;">
+            <select class="tf-select" @onchange="OnStatusFilterChanged">
+                <option value="">-- Tất cả trạng thái --</option>
+                <option value="true">Đang hoạt động</option>
+                <option value="false">Tạm dừng</option>
+            </select>
+        </div>
     </div>
 </div>
 
 <div class="tf-card">
-    <div class="tf-card-body" style="padding:0; overflow-x: auto;">
-        
-@if (_selectedItems.Count > 0)
-{
-    <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-        <span style="color: #1e3a8a; font-weight: 500;">Đã chọn @_selectedItems.Count bản ghi</span>
-        <AuthorizeView Policy="Permission:Products:Delete">
-            <button type="button" class="tf-btn tf-btn-danger" @onclick="ConfirmBulkDelete">Xóa đã chọn</button>
-        </AuthorizeView>
-    </div>
-}
+    <div class="tf-card-body" style="padding: 0;">
+        @if (_selectedItems.Count > 0)
+        {
+            <div style="background: var(--tf-gray-50); padding: 10px 16px; border-bottom: 1px solid var(--tf-border); display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 13px; font-weight: 500;">Đã chọn <strong>@_selectedItems.Count</strong> sản phẩm</span>
+                <AuthorizeView Policy="Permission:Products:Delete">
+                    <button type="button" class="tf-btn tf-btn-sm tf-btn-danger" @onclick="ConfirmBulkDelete">
+                        Xóa các mục đã chọn
+                    </button>
+                </AuthorizeView>
+            </div>
+        }
 
 @if (_showBulkDeleteModal)
 {
     <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 24px; border-radius: 8px; width: 500px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
-            <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 18px; color: var(--tf-danger);">Xóa @_selectedItems.Count bản ghi đã chọn?</h3>
-            <p style="margin-bottom: 24px;">Hành động này không thể hoàn tác. Các bản ghi đang được sử dụng sẽ bị bỏ qua hoặc vô hiệu hóa thay vì xóa hoàn toàn.</p>
-            @if (_bulkDeleteErrors.Count > 0)
+        <div style="background: white; padding: 24px; border-radius: 8px; width: 440px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+            <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 18px; color: var(--tf-danger);">Xóa sản phẩm đã chọn?</h3>
+            <p style="margin-bottom: 16px;">Bạn có chắc chắn muốn xóa <strong>@_selectedItems.Count</strong> sản phẩm đã chọn?</p>
+            @if (_bulkDeleteErrors.Any())
             {
                 <div class="tf-alert tf-alert-danger" style="margin-bottom: 16px; max-height: 150px; overflow-y: auto;">
                     <ul style="margin: 0; padding-left: 20px;">
@@ -108,8 +124,8 @@
                     <th>Danh mục</th>
                     <th>Đơn vị tính</th>
                     <th style="text-align:right; min-width: 130px;">
-                        <div>Giá hiện tại</div>
-                        <div style="font-size:10px; color:var(--tf-text-muted); font-weight:normal;">Chưa VAT</div>
+                        <div>Giá trước VAT</div>
+                        <div style="font-size:10px; color:var(--tf-text-muted); font-weight:normal;">Giá hiện tại</div>
                     </th>
                     <th style="text-align:center;">Trạng thái</th>
                     <th style="text-align:right;">Thao tác</th>
@@ -153,17 +169,32 @@
                                     <span style="color:var(--tf-text-muted);">-</span>
                                 }
                             </td>
-                            <td style="font-weight: 500;">@item.Name</td>
+                            <td style="font-weight: 500;">
+                                <div>@item.Name</div>
+                                @if (!string.IsNullOrWhiteSpace(item.Specifications))
+                                {
+                                    <div style="font-size: 11px; color: var(--tf-text-muted); margin-top: 2px; line-height: 1.3; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="@item.Specifications">
+                                        • @item.Specifications.Replace("\r\n", " • ").Replace("\n", " • ")
+                                    </div>
+                                }
+                                else if (!string.IsNullOrWhiteSpace(item.Description))
+                                {
+                                    <div style="font-size: 11px; color: var(--tf-text-muted); margin-top: 2px; line-height: 1.3; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="@item.Description">
+                                        • @item.Description.Replace("\r\n", " • ").Replace("\n", " • ")
+                                    </div>
+                                }
+                            </td>
                             <td>@(item.Category?.Name ?? "-")</td>
                             <td>@(item.Unit?.Name ?? "-")</td>
                             <td style="text-align:right;">
                                 @if (_currentPrices.TryGetValue(item.Id, out var cp) && cp.HasValue && cp.Value > 0)
                                 {
                                     <div style="font-weight: 700; color: #047857;">@cp.Value.ToString("N0") ₫</div>
+                                    <div style="font-size:10px; color:var(--tf-text-muted);">Giá trước VAT</div>
                                 }
                                 else
                                 {
-                                    <span style="color:var(--tf-text-muted); font-size:12px;">Chưa có</span>
+                                    <span style="color:var(--tf-text-muted); font-size:12px;">Chưa có giá</span>
                                 }
                             </td>
                             <td style="text-align:center;">
@@ -173,7 +204,7 @@
                                 }
                                 else
                                 {
-                                    <span class="tf-badge tf-badge-neutral">Tạm dừng</span>
+                                    <span class="tf-badge tf-badge-neutral">Đã ngừng sử dụng</span>
                                 }
                             </td>
                             <td style="text-align:right;">
@@ -217,12 +248,14 @@
     private int? _itemToDeleteId;
     private string _itemToDeleteName = "";
     private string? _deleteError;
+    private string? _toastMessage;
 
     private List<Product>? _items;
     private Dictionary<int, decimal?> _currentPrices = new();
     private List<ProductCategory>? _categories;
     private string _searchTerm = string.Empty;
     private int? _selectedCategoryId;
+    private bool? _statusFilter;
 
     protected override async Task OnInitializedAsync()
     {
@@ -265,6 +298,19 @@
         }
     }
 
+    private void OnStatusFilterChanged(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        if (bool.TryParse(val, out var status))
+        {
+            _statusFilter = status;
+        }
+        else
+        {
+            _statusFilter = null;
+        }
+    }
+
     private IEnumerable<Product> FilteredItems
     {
         get
@@ -276,6 +322,11 @@
             if (_selectedCategoryId.HasValue)
             {
                 q = q.Where(x => x.CategoryId == _selectedCategoryId.Value);
+            }
+
+            if (_statusFilter.HasValue)
+            {
+                q = q.Where(x => x.IsActive == _statusFilter.Value);
             }
 
             if (!string.IsNullOrWhiteSpace(_searchTerm))
@@ -327,21 +378,34 @@
                 return;
             }
 
-            bool isReferenced = await DbContext.PriceListItems.AnyAsync(x => x.ProductId == id) || await DbContext.SalesOrderItems.AnyAsync(x => x.ProductId == id) || await DbContext.InvoiceItems.AnyAsync(x => x.ProductId == id);
+            bool isUsedInBusiness = await DbContext.SalesOrderItems.AnyAsync(x => x.ProductId == id) 
+                                 || await DbContext.InvoiceItems.AnyAsync(x => x.ProductId == id);
 
-            if (isReferenced)
+            if (isUsedInBusiness)
             {
                 entity.IsActive = false;
+                entity.UpdatedAt = DateTime.UtcNow;
+                entity.UpdatedBy = authState.User.Identity?.Name;
+                DbContext.Products.Update(entity);
+                await DbContext.SaveChangesAsync();
+                await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.ProductUpdated, authState.User.Identity?.Name ?? "System", "Product", id.ToString(), "Ngừng sử dụng sản phẩm do đã phát sinh chứng từ nghiệp vụ", authState.User.Identity?.Name);
+                _toastMessage = "Sản phẩm đã được sử dụng trong dữ liệu nghiệp vụ nên không thể xóa vật lý. Sản phẩm đã được ngừng sử dụng.";
             }
             else
             {
-                DbContext.Remove(entity);
+                var priceListItems = await DbContext.PriceListItems.Where(x => x.ProductId == id).ToListAsync();
+                foreach (var pli in priceListItems)
+                {
+                    pli.ProductId = null;
+                }
+
+                DbContext.Products.Remove(entity);
+                await DbContext.SaveChangesAsync();
+                await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.ProductDeleted, authState.User.Identity?.Name ?? "System", "Product", id.ToString(), "Xóa vật lý sản phẩm", authState.User.Identity?.Name);
+                _toastMessage = "Đã xóa sản phẩm thành công.";
             }
 
-            await DbContext.SaveChangesAsync();
-            await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.ProductDeleted, authState.User.Identity?.Name ?? "System", "Product", id.ToString(), "Xóa hoặc ngừng hoạt động sản phẩm", authState.User.Identity?.Name);
             CancelDelete();
-            
             await OnInitializedAsync();
         }
         catch (Exception ex)
@@ -447,27 +511,34 @@
     private async Task ProcessSingleDelete(int currentId)
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        int id = _itemToDeleteId.Value;
-            var entity = await DbContext.Products.FindAsync(id);
-            if (entity == null)
-            {
-                
-                return;
-            }
+        int id = currentId;
+        var entity = await DbContext.Products.FindAsync(id);
+        if (entity == null) return;
 
-            bool isReferenced = await DbContext.PriceListItems.AnyAsync(x => x.ProductId == id) || await DbContext.SalesOrderItems.AnyAsync(x => x.ProductId == id) || await DbContext.InvoiceItems.AnyAsync(x => x.ProductId == id);
+        bool isUsedInBusiness = await DbContext.SalesOrderItems.AnyAsync(x => x.ProductId == id) 
+                             || await DbContext.InvoiceItems.AnyAsync(x => x.ProductId == id);
 
-            if (isReferenced)
-            {
-                entity.IsActive = false;
-            }
-            else
-            {
-                DbContext.Remove(entity);
-            }
-
+        if (isUsedInBusiness)
+        {
+            entity.IsActive = false;
+            entity.UpdatedAt = DateTime.UtcNow;
+            entity.UpdatedBy = authState.User.Identity?.Name;
+            DbContext.Products.Update(entity);
             await DbContext.SaveChangesAsync();
-            await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.ProductDeleted, authState.User.Identity?.Name ?? "System", "Product", id.ToString(), "Xóa hoặc ngừng hoạt động sản phẩm", authState.User.Identity?.Name);
-            
+            await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.ProductUpdated, authState.User.Identity?.Name ?? "System", "Product", id.ToString(), "Ngừng sử dụng sản phẩm do đã phát sinh chứng từ nghiệp vụ", authState.User.Identity?.Name);
+            _toastMessage = "Sản phẩm đã được sử dụng trong dữ liệu nghiệp vụ nên không thể xóa vật lý. Sản phẩm đã được ngừng sử dụng.";
+        }
+        else
+        {
+            var priceListItems = await DbContext.PriceListItems.Where(x => x.ProductId == id).ToListAsync();
+            foreach (var pli in priceListItems)
+            {
+                pli.ProductId = null;
+            }
+
+            DbContext.Products.Remove(entity);
+            await DbContext.SaveChangesAsync();
+            await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.ProductDeleted, authState.User.Identity?.Name ?? "System", "Product", id.ToString(), "Xóa vật lý sản phẩm", authState.User.Identity?.Name);
+        }
     }
 }

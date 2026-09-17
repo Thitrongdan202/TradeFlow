@@ -18,6 +18,7 @@
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
 @inject ICurrentUserService CurrentUser
 @inject IPriceListService PriceListService
+@inject IFileStorageService FileStorage
 
 <PageTitle>@(IsEdit ? "Sửa" : "Thêm") Sản phẩm - TradeFlow</PageTitle>
 
@@ -108,8 +109,8 @@ else
                 </div>
 
                 <div class="tf-form-group">
-                    <label class="tf-label">Thông số kỹ thuật</label>
-                    <InputTextArea @bind-Value="_model.Specifications" class="tf-input" rows="2" placeholder="Kích thước, trọng lượng, chất liệu, tiêu chuẩn..." />
+                    <label class="tf-label">Thông tin sản phẩm / Quy cách kỹ thuật</label>
+                    <InputTextArea @bind-Value="_model.Specifications" class="tf-input" rows="3" placeholder="Kích thước, trọng lượng, chất liệu, tiêu chuẩn kỹ thuật..." />
                 </div>
 
                 <div style="background:var(--tf-surface-variant, #f8fafc);border:1px solid var(--tf-border, #e2e8f0);border-radius:8px;padding:16px;margin-bottom:16px;">
@@ -141,18 +142,77 @@ else
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:white;border-radius:6px;border:1px solid #e2e8f0;">
                             <div>
                                 <span style="font-size:13px;color:var(--tf-text-secondary);margin-right:8px;">Giá hiện tại (Chưa VAT):</span>
-                                @if (_currentPrice.HasValue)
+                                @if (_currentPrice.HasValue && _currentPrice.Value > 0)
                                 {
-                                    <strong style="color:var(--tf-primary);font-size:15px;">@_currentPrice.Value.ToString("N0") ₫</strong>
+                                    <strong style="color:#047857;font-size:15px;">@_currentPrice.Value.ToString("N0") ₫</strong>
+                                    <span style="font-size:11px;color:var(--tf-text-muted);margin-left:4px;">(Chưa VAT)</span>
                                 }
                                 else
                                 {
-                                    <span style="color:var(--tf-text-muted);font-style:italic;">Chưa có bảng giá hiệu lực</span>
+                                    <span style="color:var(--tf-text-muted);font-weight:500;">Chưa có giá</span>
                                 }
                             </div>
-                            <a href="/bang-gia/danh-sach" style="font-size:12px;color:var(--tf-primary);text-decoration:none;">Quản lý bảng giá &rarr;</a>
+                            <a href="/bang-gia" style="font-size:12px;color:var(--tf-primary);text-decoration:none;">Quản lý bảng giá &rarr;</a>
                         </div>
                     }
+                </div>
+
+                <div style="background:var(--tf-surface-variant, #f8fafc);border:1px solid var(--tf-border, #e2e8f0);border-radius:8px;padding:16px;margin-bottom:16px;">
+                    <h4 style="margin:0 0 12px 0;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;">
+                        <span>🖼️ Hình ảnh sản phẩm</span>
+                    </h4>
+
+                    @if (_model.Images != null && _model.Images.Any(img => img.IsActive))
+                    {
+                        <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
+                            @foreach (var img in _model.Images.Where(i => i.IsActive).OrderByDescending(i => i.IsPrimary).ThenBy(i => i.SortOrder))
+                            {
+                                <div style="position:relative; width:120px; border:1px solid #e2e8f0; border-radius:8px; padding:6px; background:#fff; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                                    @if (img.IsPrimary)
+                                    {
+                                        <span style="position:absolute; top:4px; left:4px; background:#047857; color:white; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:600;">Chính</span>
+                                    }
+                                    <img src="@FileStorage.GetPublicUrl(img.StorageReference)" alt="@img.FileName" style="width:100%; height:80px; object-fit:contain; border-radius:4px;" />
+                                    <div style="font-size:11px; color:var(--tf-text-secondary); margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="@img.FileName">
+                                        @img.FileName
+                                    </div>
+                                    <div style="margin-top:6px; display:flex; justify-content:center; gap:6px;">
+                                        @if (!img.IsPrimary)
+                                        {
+                                            <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" style="font-size:11px; padding:2px 6px;" title="Đặt làm ảnh chính" @onclick="() => SetPrimaryImage(img)">
+                                                ⭐
+                                            </button>
+                                        }
+                                        <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" style="color:var(--tf-danger); font-size:11px; padding:2px 6px;" title="Xóa ảnh" @onclick="() => RemoveImage(img)">
+                                            🗑️
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div style="font-size:13px; color:var(--tf-text-muted); margin-bottom:12px;">
+                            Chưa có hình ảnh nào cho sản phẩm này.
+                        </div>
+                    }
+
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <label class="tf-btn tf-btn-secondary tf-btn-sm" style="cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            <span>Tải ảnh lên...</span>
+                            <InputFile OnChange="HandleImageUpload" accept="image/*" style="display:none;" />
+                        </label>
+                        @if (_isUploadingImage)
+                        {
+                            <span style="font-size:12px; color:var(--tf-primary);">Đang tải ảnh lên...</span>
+                        }
+                        @if (!string.IsNullOrEmpty(_imageUploadError))
+                        {
+                            <span style="font-size:12px; color:var(--tf-danger);">@_imageUploadError</span>
+                        }
+                    </div>
                 </div>
 
                 <div style="background:var(--tf-gray-50);border:1px solid var(--tf-border);border-radius:6px;padding:12px;margin-bottom:16px;font-size:13px;color:var(--tf-text-secondary);display:flex;align-items:center;gap:8px;">
@@ -221,7 +281,9 @@ else
                 Nav.NavigateTo("/Account/AccessDenied");
                 return;
             }
-            _model = await DbContext.Products.FindAsync(Id);
+            _model = await DbContext.Products
+                .Include(p => p.Images)
+                .FirstOrDefaultAsync(p => p.Id == Id);
             if (_model == null)
             {
                 Nav.NavigateTo("/danh-muc/san-pham");
@@ -239,6 +301,89 @@ else
             }
             _model = new Product { IsActive = true };
             _displaySystemCode = await CodeGenerator.PeekNextCodeAsync(SystemCodeConstants.Product) + " (Tự sinh)";
+        }
+    }
+
+    private bool _isUploadingImage = false;
+    private string? _imageUploadError;
+
+    private async Task HandleImageUpload(InputFileChangeEventArgs e)
+    {
+        _imageUploadError = null;
+        try
+        {
+            var file = e.File;
+            if (file == null) return;
+
+            if (file.Size > 10 * 1024 * 1024)
+            {
+                _imageUploadError = "Dung lượng ảnh không được vượt quá 10MB.";
+                return;
+            }
+
+            _isUploadingImage = true;
+            using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            var storageRef = await FileStorage.SaveFileAsync(stream, file.Name, file.ContentType ?? "image/jpeg", "products");
+
+            var newImage = new ProductImage
+            {
+                ProductId = _model?.Id ?? 0,
+                FileName = file.Name,
+                StorageReference = storageRef,
+                ContentType = file.ContentType,
+                FileSizeBytes = file.Size,
+                IsPrimary = !(_model?.Images?.Any(i => i.IsActive && i.IsPrimary) ?? false),
+                SortOrder = (_model?.Images?.Count ?? 0) + 1,
+                IsActive = true
+            };
+
+            if (_model != null)
+            {
+                _model.Images ??= new List<ProductImage>();
+                _model.Images.Add(newImage);
+
+                if (IsEdit)
+                {
+                    DbContext.ProductImages.Add(newImage);
+                    await DbContext.SaveChangesAsync();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _imageUploadError = "Lỗi khi tải ảnh: " + ex.Message;
+        }
+        finally
+        {
+            _isUploadingImage = false;
+        }
+    }
+
+    private async Task SetPrimaryImage(ProductImage selectedImg)
+    {
+        if (_model?.Images == null) return;
+        foreach (var img in _model.Images)
+        {
+            img.IsPrimary = (img == selectedImg);
+        }
+        if (IsEdit)
+        {
+            await DbContext.SaveChangesAsync();
+        }
+    }
+
+    private async Task RemoveImage(ProductImage img)
+    {
+        if (_model?.Images == null) return;
+        img.IsActive = false;
+        if (IsEdit)
+        {
+            DbContext.ProductImages.Remove(img);
+            await DbContext.SaveChangesAsync();
+        }
+        else
+        {
+            _model.Images.Remove(img);
         }
     }
 
@@ -317,14 +462,36 @@ else
 
         try
         {
-            bool isReferenced = await DbContext.SalesOrderItems.AnyAsync(x => x.ProductId == _model.Id) || await DbContext.InvoiceItems.AnyAsync(x => x.ProductId == _model.Id); if(isReferenced) { _model.IsActive = false; DbContext.Products.Update(_model); } else {
-            
-                DbContext.Products.Remove(_model);
-            }
+            if (_model == null) return;
+            int id = _model.Id;
 
-            await DbContext.SaveChangesAsync();
-            await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.ProductDeleted, authState.User.Identity?.Name ?? "System", "Product", _model.Id.ToString(), "Xóa", authState.User.Identity?.Name);
-            Nav.NavigateTo(Nav.Uri.Split('/')[1] == "danh-muc" ? "/danh-muc/" + Nav.Uri.Split('/')[2] : (Nav.Uri.Split('/')[1] == "doi-tac" ? "/doi-tac/" + Nav.Uri.Split('/')[2] : "/kho-hang"));
+            bool isUsedInBusiness = await DbContext.SalesOrderItems.AnyAsync(x => x.ProductId == id) 
+                                 || await DbContext.InvoiceItems.AnyAsync(x => x.ProductId == id);
+
+            if (isUsedInBusiness)
+            {
+                _model.IsActive = false;
+                _model.UpdatedAt = DateTime.UtcNow;
+                _model.UpdatedBy = authState.User.Identity?.Name;
+                DbContext.Products.Update(_model);
+                await DbContext.SaveChangesAsync();
+                await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.ProductUpdated, authState.User.Identity?.Name ?? "System", "Product", id.ToString(), "Ngừng sử dụng sản phẩm do đã phát sinh chứng từ nghiệp vụ", authState.User.Identity?.Name);
+                _deleteError = "Sản phẩm đã được sử dụng trong dữ liệu nghiệp vụ nên không thể xóa vật lý. Sản phẩm đã được ngừng sử dụng.";
+                return;
+            }
+            else
+            {
+                var priceListItems = await DbContext.PriceListItems.Where(x => x.ProductId == id).ToListAsync();
+                foreach (var pli in priceListItems)
+                {
+                    pli.ProductId = null;
+                }
+
+                DbContext.Products.Remove(_model);
+                await DbContext.SaveChangesAsync();
+                await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.ProductDeleted, authState.User.Identity?.Name ?? "System", "Product", id.ToString(), "Xóa vật lý sản phẩm", authState.User.Identity?.Name);
+                Nav.NavigateTo("/danh-muc/san-pham");
+            }
         }
         catch (Exception ex)
         {

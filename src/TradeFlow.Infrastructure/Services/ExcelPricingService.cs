@@ -113,7 +113,7 @@ public class ExcelPricingService : IExcelPricingService
 
         onProgress?.Invoke("6/6 Đang đối chiếu danh mục...");
         // 7. Load all existing products from DB for matching
-        var existingProducts = await _context.Products
+        var dbProducts = await _context.Products
             .AsNoTracking()
             .Select(p => new {
                 p.Id,
@@ -122,6 +122,7 @@ public class ExcelPricingService : IExcelPricingService
                 p.LegacyCode,
                 p.Name,
                 p.Description,
+                p.Specifications,
                 p.TaxTreatment,
                 p.IsTaxReductionEligible,
                 p.TaxRate,
@@ -129,6 +130,25 @@ public class ExcelPricingService : IExcelPricingService
                 p.TaxEffectiveTo
             })
             .ToListAsync(cancellationToken);
+
+        var existingProducts = dbProducts.Select(p => new ProductMatchCandidate(
+            p.Id,
+            p.Code,
+            p.NewCode,
+            p.LegacyCode,
+            p.Name,
+            p.Description,
+            p.Specifications,
+            p.TaxTreatment,
+            p.IsTaxReductionEligible,
+            p.TaxRate,
+            p.TaxEffectiveFrom,
+            p.TaxEffectiveTo,
+            TokenizeCode(p.NewCode),
+            TokenizeCode(p.LegacyCode),
+            NormalizeAlphanumeric(p.NewCode),
+            NormalizeAlphanumeric(p.LegacyCode)
+        )).ToList();
 
         int currentOrder = 1;
         string currentGroup = "";
@@ -165,17 +185,25 @@ public class ExcelPricingService : IExcelPricingService
                 }
             }
 
+            // Bỏ qua các dòng tiêu đề lặp lại hoặc dòng phân cách nhóm danh mục
+            if (IsSectionHeaderOrCategory(newCodeText, legacyCodeText, infoText, unitPrice))
+            {
+                if (!string.IsNullOrWhiteSpace(newCodeText) && !newCodeText.Contains("MÃ HÀNG", StringComparison.OrdinalIgnoreCase))
+                {
+                    currentGroup = newCodeText.Trim();
+                }
+                else if (!string.IsNullOrWhiteSpace(infoText) && !infoText.Contains("THÔNG TIN", StringComparison.OrdinalIgnoreCase))
+                {
+                    currentGroup = infoText.Trim();
+                }
+                continue;
+            }
+
             // STT parsing
             int sortNo = currentOrder;
             if (colNo > 0 && row.Cell(colNo).TryGetValue<int>(out var parsedNo))
             {
                 sortNo = parsedNo;
-            }
-
-            // Skip row if no code, no info, and zero price
-            if (string.IsNullOrWhiteSpace(newCodeText) && string.IsNullOrWhiteSpace(infoText) && unitPrice <= 0)
-            {
-                continue;
             }
 
             var itemDto = new ExcelParsedItemDto
@@ -197,22 +225,98 @@ public class ExcelPricingService : IExcelPricingService
                 itemDto.ImageStorageRef = imgRef;
             }
 
-            // Match against DB products
-            var matched = existingProducts.FirstOrDefault(p =>
-                (!string.IsNullOrEmpty(p.NewCode) && (p.NewCode.Equals(newCodeText, StringComparison.OrdinalIgnoreCase) || newCodeText.StartsWith(p.NewCode, StringComparison.OrdinalIgnoreCase))) ||
-                (!string.IsNullOrEmpty(p.LegacyCode) && !string.IsNullOrEmpty(legacyCodeText) && p.LegacyCode.Equals(legacyCodeText, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrEmpty(p.Code) && p.Code.Equals(newCodeText, StringComparison.OrdinalIgnoreCase)));
+            // Smart Match against DB products using scoring
+            var excelNewTokens = TokenizeCode(newCodeText);
+            var excelLegTokens = TokenizeCode(legacyCodeText);
+            var cleanExcelNew = NormalizeAlphanumeric(newCodeText);
+            var cleanExcelLeg = NormalizeAlphanumeric(legacyCodeText);
+            var cleanIncomingName = ExtractCleanProductName(infoText, newCodeText);
 
-            if (matched != null)
+            ProductMatchCandidate? matched = null;
+            int bestScore = 0;
+
+            foreach (var p in existingProducts)
+            {
+                int score = 0;
+
+                // 1. Exact match on NewCode or System Code
+                if (!string.IsNullOrEmpty(p.NewCode) && p.NewCode.Equals(newCodeText, StringComparison.OrdinalIgnoreCase))
+                {
+                    score = 100;
+                }
+                else if (!string.IsNullOrEmpty(p.Code) && p.Code.Equals(newCodeText, StringComparison.OrdinalIgnoreCase))
+                {
+                    score = 100;
+                }
+                // 2. Exact match on LegacyCode
+                else if (!string.IsNullOrWhiteSpace(legacyCodeText) && !string.IsNullOrEmpty(p.LegacyCode) && p.LegacyCode.Equals(legacyCodeText, StringComparison.OrdinalIgnoreCase))
+                {
+                    score = 95;
+                }
+                // 3. Cross-exact match (Excel NewCode == DB LegacyCode)
+                else if (!string.IsNullOrEmpty(p.LegacyCode) && p.LegacyCode.Equals(newCodeText, StringComparison.OrdinalIgnoreCase))
+                {
+                    score = 90;
+                }
+                // 4. Cross-exact match (Excel LegacyCode == DB NewCode)
+                else if (!string.IsNullOrWhiteSpace(legacyCodeText) && !string.IsNullOrEmpty(p.NewCode) && p.NewCode.Equals(legacyCodeText, StringComparison.OrdinalIgnoreCase))
+                {
+                    score = 88;
+                }
+                // 5. Primary token exact match (e.g. TL2138 vs TL2138 (K8012))
+                else if (excelNewTokens.Any() && p.NewCodeTokens.Any() && excelNewTokens[0] == p.NewCodeTokens[0])
+                {
+                    score = 85;
+                }
+                // 6. Any token match in NewCodeTokens or LegacyCodeTokens
+                else if (excelNewTokens.Any(t => p.NewCodeTokens.Contains(t) || p.LegacyCodeTokens.Contains(t)))
+                {
+                    score = 80;
+                }
+                else if (excelLegTokens.Any(t => p.NewCodeTokens.Contains(t) || p.LegacyCodeTokens.Contains(t)))
+                {
+                    score = 75;
+                }
+                // 7. Clean alphanumeric code match (e.g. "TL-L7" vs "TLL7")
+                else if (cleanExcelNew.Length >= 4 && (cleanExcelNew == p.CleanNewCode || cleanExcelNew == p.CleanLegacyCode))
+                {
+                    score = 70;
+                }
+                // 8. Unique product name match fallback
+                else if (!string.IsNullOrWhiteSpace(cleanIncomingName) && p.Name.Equals(cleanIncomingName, StringComparison.OrdinalIgnoreCase))
+                {
+                    score = 60;
+                }
+
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    matched = p;
+                    if (bestScore == 100) break; // Điểm tối đa
+                }
+            }
+
+            if (matched != null && bestScore >= 60)
             {
                 itemDto.MatchedProductId = matched.Id;
                 itemDto.MatchedProductName = matched.Name;
+                itemDto.ExistingNewCode = matched.NewCode;
                 itemDto.ExistingProductName = matched.Name;
                 itemDto.ExistingLegacyCode = matched.LegacyCode;
-                itemDto.ExistingProductInfo = matched.Description;
+                itemDto.ExistingProductInfo = !string.IsNullOrWhiteSpace(matched.Specifications) 
+                    ? matched.Specifications 
+                    : matched.Description;
 
                 // Đối chiếu phát hiện thay đổi thông tin sản phẩm (Before/After)
                 var changedFields = new List<string>();
+
+                // Đối chiếu Mã mới
+                if (!string.IsNullOrWhiteSpace(itemDto.NewCode) &&
+                    !string.IsNullOrWhiteSpace(matched.NewCode) &&
+                    !string.Equals(itemDto.NewCode.Trim(), matched.NewCode.Trim(), StringComparison.OrdinalIgnoreCase))
+                {
+                    changedFields.Add($"Mã mới (Hiện tại: {matched.NewCode} → Bảng giá: {itemDto.NewCode})");
+                }
 
                 // Đối chiếu Mã cũ
                 if (!string.IsNullOrWhiteSpace(itemDto.LegacyCode) &&
@@ -221,16 +325,22 @@ public class ExcelPricingService : IExcelPricingService
                     changedFields.Add($"Mã cũ (Hiện tại: {matched.LegacyCode ?? "(trống)"} → Bảng giá: {itemDto.LegacyCode})");
                 }
 
-                // Đối chiếu Tên / Mô tả sản phẩm
-                if (!string.IsNullOrWhiteSpace(itemDto.ProductInfo))
+                // Đối chiếu Tên sản phẩm
+                if (!string.IsNullOrWhiteSpace(cleanIncomingName) &&
+                    !string.Equals(cleanIncomingName, matched.Name?.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                    !matched.Name.Contains(cleanIncomingName, StringComparison.OrdinalIgnoreCase) &&
+                    !cleanIncomingName.Contains(matched.Name, StringComparison.OrdinalIgnoreCase))
                 {
-                    var cleanIncomingName = itemDto.ProductInfo.Split('\n')[0].Trim();
-                    if (!string.Equals(cleanIncomingName, matched.Name?.Trim(), StringComparison.OrdinalIgnoreCase) &&
-                        !matched.Name.Contains(cleanIncomingName, StringComparison.OrdinalIgnoreCase) &&
-                        !cleanIncomingName.Contains(matched.Name, StringComparison.OrdinalIgnoreCase))
-                    {
-                        changedFields.Add($"Tên / Thông tin (Hiện tại: {matched.Name} → Bảng giá: {cleanIncomingName})");
-                    }
+                    changedFields.Add($"Tên sản phẩm (Hiện tại: {matched.Name} → Bảng giá: {cleanIncomingName})");
+                }
+
+                // Đối chiếu Thông tin sản phẩm / Quy cách
+                var existingSpec = (matched.Specifications ?? matched.Description ?? "").Trim();
+                if (!string.IsNullOrWhiteSpace(itemDto.ProductInfo) &&
+                    !string.IsNullOrWhiteSpace(existingSpec) &&
+                    !string.Equals(itemDto.ProductInfo.Trim(), existingSpec, StringComparison.OrdinalIgnoreCase))
+                {
+                    changedFields.Add("Thông tin sản phẩm / quy cách kỹ thuật có nội dung cập nhật mới");
                 }
 
                 if (changedFields.Count > 0)
@@ -284,190 +394,240 @@ public class ExcelPricingService : IExcelPricingService
 
     public async Task<PriceListDto> CommitImportAsync(ExcelImportCommitRequest request, string currentUserName, Action<string>? onProgress = null, CancellationToken cancellationToken = default)
     {
-        var priceListCode = await _codeGenerator.GenerateCodeAsync(SystemCodeConstants.PriceList, cancellationToken);
-
-        var priceList = new PriceList
+        var isInMemory = _context.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory";
+        using var transaction = isInMemory ? null : await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
         {
-            Code = priceListCode,
-            Name = string.IsNullOrWhiteSpace(request.Name) ? "BẢNG GIÁ ĐẠI LÝ" : request.Name.Trim(),
-            QuotationNumber = request.QuotationNumber?.Trim(),
-            QuotationDate = request.QuotationDate,
-            EffectiveFrom = request.EffectiveFrom,
-            EffectiveTo = request.EffectiveTo,
-            Month = request.Month,
-            Quarter = request.Quarter,
-            Year = request.Year > 0 ? request.Year : DateTime.UtcNow.Year,
-            ProgramTitle = request.ProgramTitle?.Trim(),
-            PriceCondition = request.PriceCondition?.Trim(),
-            VatNote = request.VatNote?.Trim(),
-            Status = request.InitialStatus,
-            OriginalFileName = request.OriginalFileName,
-            OriginalFileStorageRef = request.TempFileReference,
-            TotalItems = request.Items.Count,
-            CreatedAt = DateTime.UtcNow,
-            CreatedBy = currentUserName
-        };
-
-        _context.PriceLists.Add(priceList);
-        await _context.SaveChangesAsync(cancellationToken);
-
-        // Add Items
-        foreach (var item in request.Items)
-        {
-            int? productId = item.MatchedProductId;
-
-            // Auto create product if missing and requested
-            if (!productId.HasValue && request.AutoCreateProducts && !string.IsNullOrWhiteSpace(item.NewCode))
+            var priceListCode = await _codeGenerator.GenerateCodeAsync(SystemCodeConstants.PriceList, cancellationToken);
+            while (await _context.PriceLists.AnyAsync(p => p.Code == priceListCode, cancellationToken))
             {
-                var prodCode = await _codeGenerator.GenerateCodeAsync(SystemCodeConstants.Product, cancellationToken);
-
-                var rawName = !string.IsNullOrWhiteSpace(item.ProductInfo) ? item.ProductInfo.Split('\n')[0].Trim() : item.NewCode.Trim();
-                var safeName = rawName.Length > 300 ? rawName.Substring(0, 300) : rawName;
-                var safeNewCode = item.NewCode.Trim().Length > 50 ? item.NewCode.Trim().Substring(0, 50) : item.NewCode.Trim();
-                var safeLegacyCode = item.LegacyCode?.Trim();
-                if (safeLegacyCode != null && safeLegacyCode.Length > 50) safeLegacyCode = safeLegacyCode.Substring(0, 50);
-                var safeDescription = item.ProductInfo?.Trim();
-                if (safeDescription != null && safeDescription.Length > 2000) safeDescription = safeDescription.Substring(0, 2000);
-
-                var newProd = new Product
-                {
-                    Code = prodCode,
-                    NewCode = safeNewCode,
-                    LegacyCode = safeLegacyCode,
-                    Name = safeName,
-                    Description = safeDescription,
-                    TaxTreatment = TaxTreatment.Standard10,
-                    IsTaxReductionEligible = true,
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow,
-                    CreatedBy = currentUserName
-                };
-                _context.Products.Add(newProd);
-                try
-                {
-                    await _context.SaveChangesAsync(cancellationToken);
-                }
-                catch (DbUpdateException ex)
-                {
-                    _logger.LogError(ex, "Product save error at row {Row}. Inner: {Inner}", item.SortOrder, ex.InnerException?.Message);
-                    throw new Exception($"Lỗi lưu sản phẩm tự động dòng {item.SortOrder}: {ex.InnerException?.Message ?? ex.Message}", ex);
-                }
-                productId = newProd.Id;
-                item.MatchedProductId = newProd.Id;
-            }
-            else if (productId.HasValue && item.MatchStatus == PriceMatchStatus.ReviewRequired && item.ApplyMasterDataUpdate)
-            {
-                // Quản trị viên chủ động chọn cập nhật thông tin Master Data [Thay đổi sản phẩm]
-                var existingProd = await _context.Products.FindAsync(new object[] { productId.Value }, cancellationToken);
-                if (existingProd != null)
-                {
-                    if (!string.IsNullOrWhiteSpace(item.ProductInfo))
-                    {
-                        var rawName = item.ProductInfo.Split('\n')[0].Trim();
-                        existingProd.Name = rawName.Length > 300 ? rawName.Substring(0, 300) : rawName;
-                        if (item.ProductInfo.Length > 2000) existingProd.Description = item.ProductInfo.Substring(0, 2000);
-                        else existingProd.Description = item.ProductInfo;
-                    }
-                    if (!string.IsNullOrWhiteSpace(item.LegacyCode))
-                    {
-                        existingProd.LegacyCode = item.LegacyCode.Trim().Length > 50 ? item.LegacyCode.Trim().Substring(0, 50) : item.LegacyCode.Trim();
-                    }
-                    existingProd.UpdatedAt = DateTime.UtcNow;
-                    existingProd.UpdatedBy = currentUserName;
-                    await _context.SaveChangesAsync(cancellationToken);
-                }
+                priceListCode = await _codeGenerator.GenerateCodeAsync(SystemCodeConstants.PriceList, cancellationToken);
             }
 
-            var safePlGroup = item.Group?.Trim();
-            if (safePlGroup != null && safePlGroup.Length > 200) safePlGroup = safePlGroup.Substring(0, 200);
-
-            var safePlNewCode = string.IsNullOrWhiteSpace(item.NewCode) ? $"ITEM-{item.SortOrder:D4}" : item.NewCode.Trim();
-            if (safePlNewCode.Length > 100) safePlNewCode = safePlNewCode.Substring(0, 100);
-
-            var safePlLegacyCode = item.LegacyCode?.Trim();
-            if (safePlLegacyCode != null && safePlLegacyCode.Length > 100) safePlLegacyCode = safePlLegacyCode.Substring(0, 100);
-
-            var safePlInfo = item.ProductInfo?.Trim();
-            if (safePlInfo != null && safePlInfo.Length > 2000) safePlInfo = safePlInfo.Substring(0, 2000);
-
-            // Xác định thuế suất VAT áp dụng cho dòng bảng giá
-            decimal? effectiveVatRate = item.VatRate;
-            if (!effectiveVatRate.HasValue && productId.HasValue)
+            var priceList = new PriceList
             {
-                var prod = await _context.Products.FindAsync(new object[] { productId.Value }, cancellationToken);
-                if (prod != null)
-                {
-                    effectiveVatRate = _vatRuleEngine.DetermineVatRate(prod, priceList.QuotationDate ?? priceList.EffectiveFrom ?? DateTime.UtcNow).Rate;
-                }
-            }
-            if (!effectiveVatRate.HasValue)
-            {
-                effectiveVatRate = 8m;
-            }
-
-            var pItem = new PriceListItem
-            {
-                PriceListId = priceList.Id,
-                ProductId = productId,
-                SortOrder = item.SortOrder,
-                Group = safePlGroup,
-                NewCode = safePlNewCode,
-                LegacyCode = safePlLegacyCode,
-                ProductInfo = safePlInfo,
-                ImageStorageRef = item.ImageStorageRef,
-                UnitPrice = item.UnitPrice,
-                CurrencyCode = string.IsNullOrWhiteSpace(item.CurrencyCode) ? "VND" : item.CurrencyCode.Trim(),
-                VatRate = effectiveVatRate,
-                MatchStatus = item.MatchStatus,
+                Code = priceListCode,
+                Name = string.IsNullOrWhiteSpace(request.Name) ? "BẢNG GIÁ ĐẠI LÝ" : request.Name.Trim(),
+                QuotationNumber = request.QuotationNumber?.Trim(),
+                QuotationDate = request.QuotationDate,
+                EffectiveFrom = request.EffectiveFrom,
+                EffectiveTo = request.EffectiveTo,
+                Month = request.Month,
+                Quarter = request.Quarter,
+                Year = request.Year > 0 ? request.Year : DateTime.UtcNow.Year,
+                ProgramTitle = request.ProgramTitle?.Trim(),
+                PriceCondition = request.PriceCondition?.Trim(),
+                VatNote = request.VatNote?.Trim(),
+                Status = request.InitialStatus,
+                OriginalFileName = request.OriginalFileName,
+                OriginalFileStorageRef = request.TempFileReference,
+                TotalItems = request.Items.Count,
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = currentUserName
             };
 
-            _context.PriceListItems.Add(pItem);
+            _context.PriceLists.Add(priceList);
+            await _context.SaveChangesAsync(cancellationToken);
 
-            // If matched product has no images yet and we extracted an image, add it as primary ProductImage
-            if (item.MatchedProductId.HasValue && !string.IsNullOrEmpty(item.ImageStorageRef))
+            int savedItemsCount = 0;
+
+            // Add Items
+            foreach (var item in request.Items)
             {
-                var hasImg = await _context.ProductImages.AnyAsync(pi => pi.ProductId == item.MatchedProductId.Value, cancellationToken);
-                if (!hasImg)
+                if (IsSectionHeaderOrCategory(item.NewCode, item.LegacyCode, item.ProductInfo, item.UnitPrice))
                 {
-                    _context.ProductImages.Add(new ProductImage
+                    continue;
+                }
+
+                int? productId = item.MatchedProductId;
+
+                // Auto create product if missing and requested
+                if (!productId.HasValue && request.AutoCreateProducts && !string.IsNullOrWhiteSpace(item.NewCode))
+                {
+                    var trimmedNewCode = item.NewCode.Trim();
+                    var trimmedLegacyCode = item.LegacyCode?.Trim();
+
+                    // Safety check: Avoid duplicate creation if product already exists in DB
+                    var existingInDb = await _context.Products.FirstOrDefaultAsync(p =>
+                        (!string.IsNullOrEmpty(p.NewCode) && p.NewCode == trimmedNewCode) ||
+                        (!string.IsNullOrEmpty(p.LegacyCode) && !string.IsNullOrEmpty(trimmedLegacyCode) && p.LegacyCode == trimmedLegacyCode) ||
+                        (!string.IsNullOrEmpty(p.Code) && p.Code == trimmedNewCode),
+                        cancellationToken);
+
+                    if (existingInDb != null)
                     {
-                        ProductId = item.MatchedProductId.Value,
-                        FileName = Path.GetFileName(item.ImageStorageRef),
-                        StorageReference = item.ImageStorageRef,
-                        ContentType = "image/png",
-                        IsPrimary = true,
-                        SortOrder = 1,
-                        CreatedAt = DateTime.UtcNow,
-                        CreatedBy = currentUserName
-                    });
+                        productId = existingInDb.Id;
+                        item.MatchedProductId = existingInDb.Id;
+                    }
+                    else
+                    {
+                        var prodCode = await _codeGenerator.GenerateCodeAsync(SystemCodeConstants.Product, cancellationToken);
+                        while (await _context.Products.AnyAsync(p => p.Code == prodCode, cancellationToken))
+                        {
+                            prodCode = await _codeGenerator.GenerateCodeAsync(SystemCodeConstants.Product, cancellationToken);
+                        }
+
+                        var cleanName = ExtractCleanProductName(item.ProductInfo, trimmedNewCode);
+                        var safeName = cleanName.Length > 300 ? cleanName.Substring(0, 300) : cleanName;
+                        var safeNewCode = trimmedNewCode.Length > 50 ? trimmedNewCode.Substring(0, 50) : trimmedNewCode;
+                        var safeLegacyCode = trimmedLegacyCode != null && trimmedLegacyCode.Length > 50 ? trimmedLegacyCode.Substring(0, 50) : trimmedLegacyCode;
+                        var safeDescription = item.ProductInfo?.Trim();
+                        if (safeDescription != null && safeDescription.Length > 2000) safeDescription = safeDescription.Substring(0, 2000);
+                        var safeSpecifications = item.ProductInfo?.Trim();
+                        if (safeSpecifications != null && safeSpecifications.Length > 4000) safeSpecifications = safeSpecifications.Substring(0, 4000);
+
+                        var newProd = new Product
+                        {
+                            Code = prodCode,
+                            NewCode = safeNewCode,
+                            LegacyCode = safeLegacyCode,
+                            Name = string.IsNullOrWhiteSpace(safeName) ? safeNewCode : safeName,
+                            Description = safeDescription,
+                            Specifications = safeSpecifications,
+                            TaxTreatment = TaxTreatment.Standard10,
+                            IsTaxReductionEligible = true,
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow,
+                            CreatedBy = currentUserName
+                        };
+                        _context.Products.Add(newProd);
+                        await _context.SaveChangesAsync(cancellationToken);
+                        productId = newProd.Id;
+                        item.MatchedProductId = newProd.Id;
+                    }
+                }
+                else if (productId.HasValue && item.MatchStatus == PriceMatchStatus.ReviewRequired && item.ApplyMasterDataUpdate)
+                {
+                    // Quản trị viên chủ động chọn cập nhật thông tin Master Data [Cập nhật theo file Excel]
+                    var existingProd = await _context.Products.FindAsync(new object[] { productId.Value }, cancellationToken);
+                    if (existingProd != null)
+                    {
+                        if (!string.IsNullOrWhiteSpace(item.ProductInfo))
+                        {
+                            var cleanName = ExtractCleanProductName(item.ProductInfo, item.NewCode);
+                            if (!string.IsNullOrWhiteSpace(cleanName))
+                            {
+                                existingProd.Name = cleanName.Length > 300 ? cleanName.Substring(0, 300) : cleanName;
+                            }
+                            existingProd.Specifications = item.ProductInfo.Length > 4000 ? item.ProductInfo.Substring(0, 4000) : item.ProductInfo;
+                            if (item.ProductInfo.Length > 2000) existingProd.Description = item.ProductInfo.Substring(0, 2000);
+                            else existingProd.Description = item.ProductInfo;
+                        }
+                        if (!string.IsNullOrWhiteSpace(item.NewCode) && !IsSectionHeaderOrCategory(item.NewCode, item.LegacyCode, item.ProductInfo, item.UnitPrice))
+                        {
+                            existingProd.NewCode = item.NewCode.Trim().Length > 50 ? item.NewCode.Trim().Substring(0, 50) : item.NewCode.Trim();
+                        }
+                        if (!string.IsNullOrWhiteSpace(item.LegacyCode))
+                        {
+                            existingProd.LegacyCode = item.LegacyCode.Trim().Length > 50 ? item.LegacyCode.Trim().Substring(0, 50) : item.LegacyCode.Trim();
+                        }
+                        existingProd.UpdatedAt = DateTime.UtcNow;
+                        existingProd.UpdatedBy = currentUserName;
+                        await _context.SaveChangesAsync(cancellationToken);
+                    }
+                }
+
+                var safePlGroup = item.Group?.Trim();
+                if (safePlGroup != null && safePlGroup.Length > 200) safePlGroup = safePlGroup.Substring(0, 200);
+
+                var safePlNewCode = string.IsNullOrWhiteSpace(item.NewCode) ? $"ITEM-{item.SortOrder:D4}" : item.NewCode.Trim();
+                if (safePlNewCode.Length > 100) safePlNewCode = safePlNewCode.Substring(0, 100);
+
+                var safePlLegacyCode = item.LegacyCode?.Trim();
+                if (safePlLegacyCode != null && safePlLegacyCode.Length > 100) safePlLegacyCode = safePlLegacyCode.Substring(0, 100);
+
+                var safePlInfo = item.ProductInfo?.Trim();
+                if (safePlInfo != null && safePlInfo.Length > 2000) safePlInfo = safePlInfo.Substring(0, 2000);
+
+                // Xác định thuế suất VAT áp dụng cho dòng bảng giá
+                decimal? effectiveVatRate = item.VatRate;
+                if (!effectiveVatRate.HasValue && productId.HasValue)
+                {
+                    var prod = await _context.Products.FindAsync(new object[] { productId.Value }, cancellationToken);
+                    if (prod != null)
+                    {
+                        effectiveVatRate = _vatRuleEngine.DetermineVatRate(prod, priceList.QuotationDate ?? priceList.EffectiveFrom ?? DateTime.UtcNow).Rate;
+                    }
+                }
+                if (!effectiveVatRate.HasValue)
+                {
+                    effectiveVatRate = 8m;
+                }
+
+                var pItem = new PriceListItem
+                {
+                    PriceListId = priceList.Id,
+                    ProductId = productId,
+                    SortOrder = item.SortOrder,
+                    Group = safePlGroup,
+                    NewCode = safePlNewCode,
+                    LegacyCode = safePlLegacyCode,
+                    ProductInfo = safePlInfo,
+                    ImageStorageRef = item.ImageStorageRef,
+                    UnitPrice = item.UnitPrice,
+                    CurrencyCode = string.IsNullOrWhiteSpace(item.CurrencyCode) ? "VND" : item.CurrencyCode.Trim(),
+                    VatRate = effectiveVatRate,
+                    MatchStatus = item.MatchStatus,
+                    CreatedAt = DateTime.UtcNow,
+                    CreatedBy = currentUserName
+                };
+
+                _context.PriceListItems.Add(pItem);
+                savedItemsCount++;
+
+                // Bảo toàn hình ảnh: Chỉ thêm ảnh nếu sản phẩm chưa từng có hình ảnh nào trước đó
+                if (productId.HasValue && !string.IsNullOrEmpty(item.ImageStorageRef))
+                {
+                    var hasImg = await _context.ProductImages.AnyAsync(pi => pi.ProductId == productId.Value, cancellationToken);
+                    if (!hasImg)
+                    {
+                        _context.ProductImages.Add(new ProductImage
+                        {
+                            ProductId = productId.Value,
+                            FileName = Path.GetFileName(item.ImageStorageRef),
+                            StorageReference = item.ImageStorageRef,
+                            ContentType = "image/png",
+                            IsPrimary = true,
+                            SortOrder = 1,
+                            CreatedAt = DateTime.UtcNow,
+                            CreatedBy = currentUserName
+                        });
+                    }
                 }
             }
-        }
 
-        try
-        {
+            priceList.TotalItems = savedItemsCount;
             await _context.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateException ex)
-        {
-            _logger.LogError(ex, "Database persistence error during price list commit. Inner exception: {Inner}", ex.InnerException?.Message);
-            throw new Exception($"L\u1ed7i l\u01b0u b\u1ea3ng gi\u00e1: {ex.InnerException?.Message ?? ex.Message}", ex);
-        }
-        await _auditService.LogAsync(AuditEventType.PriceListImported, currentUserName, "PriceList", priceList.Code);
 
-        return new PriceListDto
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
+
+            await _auditService.LogAsync(AuditEventType.PriceListImported, currentUserName, "PriceList", priceList.Code);
+
+            return new PriceListDto
+            {
+                Id = priceList.Id,
+                Code = priceList.Code,
+                Name = priceList.Name,
+                QuotationNumber = priceList.QuotationNumber,
+                EffectiveFrom = priceList.EffectiveFrom,
+                EffectiveTo = priceList.EffectiveTo,
+                TotalItems = priceList.TotalItems,
+                Status = priceList.Status
+            };
+        }
+        catch (Exception ex)
         {
-            Id = priceList.Id,
-            Code = priceList.Code,
-            Name = priceList.Name,
-            QuotationNumber = priceList.QuotationNumber,
-            EffectiveFrom = priceList.EffectiveFrom,
-            EffectiveTo = priceList.EffectiveTo,
-            TotalItems = priceList.TotalItems,
-            Status = priceList.Status
-        };
+            if (transaction != null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+            }
+            var rootMsg = GetDeepestErrorMessage(ex);
+            _logger.LogError(ex, "Lỗi lưu bảng giá khi commit import: {Root}", rootMsg);
+            throw new Exception($"Lỗi lưu bảng giá: {rootMsg}", ex);
+        }
     }
 
     public async Task<byte[]> ExportPriceListAsync(int priceListId, Action<string>? onProgress = null, CancellationToken cancellationToken = default)
@@ -781,6 +941,141 @@ public class ExcelPricingService : IExcelPricingService
         }
 
         return rowImageMap;
+    }
+
+    #endregion
+
+    #region Product Matching & Normalization Helpers
+
+    private record ProductMatchCandidate(
+        int Id,
+        string Code,
+        string? NewCode,
+        string? LegacyCode,
+        string Name,
+        string? Description,
+        string? Specifications,
+        TaxTreatment TaxTreatment,
+        bool IsTaxReductionEligible,
+        decimal? TaxRate,
+        DateTime? TaxEffectiveFrom,
+        DateTime? TaxEffectiveTo,
+        List<string> NewCodeTokens,
+        List<string> LegacyCodeTokens,
+        string CleanNewCode,
+        string CleanLegacyCode
+    );
+
+    private static string GetDeepestErrorMessage(Exception ex)
+    {
+        var current = ex;
+        while (current.InnerException != null)
+        {
+            current = current.InnerException;
+        }
+        return current.Message;
+    }
+
+    private static bool IsSectionHeaderOrCategory(string? newCodeText, string? legacyCodeText, string? infoText, decimal unitPrice)
+    {
+        var trimmedNew = (newCodeText ?? "").Trim();
+        var trimmedLeg = (legacyCodeText ?? "").Trim();
+        var trimmedInfo = (infoText ?? "").Trim();
+
+        if (string.IsNullOrWhiteSpace(trimmedNew) && string.IsNullOrWhiteSpace(trimmedLeg) && string.IsNullOrWhiteSpace(trimmedInfo))
+        {
+            return true;
+        }
+
+        // Bỏ qua dòng tiêu đề lặp lại trong file Excel
+        if (trimmedNew.Equals("MÃ HÀNG MỚI", StringComparison.OrdinalIgnoreCase) ||
+            trimmedNew.Equals("MÃ HÀNG", StringComparison.OrdinalIgnoreCase) ||
+            trimmedNew.Equals("MÃ MỚI", StringComparison.OrdinalIgnoreCase) ||
+            trimmedNew.Equals("MA HANG MOI", StringComparison.OrdinalIgnoreCase) ||
+            trimmedNew.Equals("MÃ HÀNG CŨ", StringComparison.OrdinalIgnoreCase) ||
+            trimmedNew.Equals("NO", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        // Bỏ qua dòng tiêu đề nhóm la mã (I. BỒN CẦU, II. LAVABO, III. PHỤ KIỆN) khi không có mã cũ và không có đơn giá
+        if (unitPrice <= 0 && string.IsNullOrWhiteSpace(trimmedLeg))
+        {
+            if (trimmedNew.Equals("BỒN CẦU", StringComparison.OrdinalIgnoreCase) ||
+                trimmedNew.Equals("LAVABO", StringComparison.OrdinalIgnoreCase) ||
+                trimmedNew.Equals("PHỤ KIỆN", StringComparison.OrdinalIgnoreCase) ||
+                trimmedNew.Equals("SEN VÒI", StringComparison.OrdinalIgnoreCase) ||
+                trimmedInfo.Equals("Hệ Số", StringComparison.OrdinalIgnoreCase) ||
+                Regex.IsMatch(trimmedNew, @"^(I|II|III|IV|V|VI|VII|VIII|IX|X)[\.\s]", RegexOptions.IgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string ExtractCleanProductName(string? productInfo, string? fallbackCode = null)
+    {
+        if (string.IsNullOrWhiteSpace(productInfo))
+        {
+            return fallbackCode?.Trim() ?? string.Empty;
+        }
+
+        var lines = productInfo.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var line in lines)
+        {
+            var cleaned = line.Trim();
+            // Bỏ các tiền tố gạch đầu dòng bullet như "- ", "* ", "• ", "+ "
+            cleaned = Regex.Replace(cleaned, @"^[-*•+–—]\s*", "").Trim();
+            if (!string.IsNullOrWhiteSpace(cleaned))
+            {
+                return cleaned.Length > 300 ? cleaned.Substring(0, 300) : cleaned;
+            }
+        }
+
+        return fallbackCode?.Trim() ?? string.Empty;
+    }
+
+    private static List<string> TokenizeCode(string? code)
+    {
+        var tokens = new List<string>();
+        if (string.IsNullOrWhiteSpace(code)) return tokens;
+
+        var raw = code.Trim();
+
+        // 1. Trích xuất nội dung trong ngoặc đơn vd: "TL2138 (K8012)" -> "K8012"
+        var parenMatch = Regex.Match(raw, @"\(([^)]+)\)");
+        if (parenMatch.Success)
+        {
+            var inside = parenMatch.Groups[1].Value.Trim();
+            if (!string.IsNullOrEmpty(inside)) tokens.Add(inside.ToUpperInvariant());
+        }
+
+        // 2. Phần mã chính trước dấu '('
+        var basePart = raw.Split('(')[0].Trim();
+        var parts = basePart.Split(new[] { '/', ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var p in parts)
+        {
+            var t = p.Trim();
+            if (!string.IsNullOrEmpty(t))
+            {
+                tokens.Add(t.ToUpperInvariant());
+            }
+        }
+
+        if (!tokens.Any() && !string.IsNullOrEmpty(raw))
+        {
+            tokens.Add(raw.ToUpperInvariant());
+        }
+
+        return tokens.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private static string NormalizeAlphanumeric(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+        return Regex.Replace(input, @"[^a-zA-Z0-9]", "").ToUpperInvariant();
     }
 
     #endregion

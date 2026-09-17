@@ -41,6 +41,7 @@ public class ExcelParsedItemDto
     public List<string> ValidationMessages { get; set; } = new();
 
     // Thông tin đối chiếu Master Data (Before / After diff)
+    public string? ExistingNewCode { get; set; }
     public string? ExistingProductName { get; set; }
     public string? ExistingLegacyCode { get; set; }
     public string? ExistingProductInfo { get; set; }

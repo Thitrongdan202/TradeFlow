@@ -12,12 +12,12 @@
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
 @inject IAuditService AuditService
 
-<PageTitle>Quýản lý bảng giá - TradeFlow</PageTitle>
+<PageTitle>Quản lý bảng giá - TradeFlow</PageTitle>
 
 <div class="tf-page-header">
     <div class="tf-page-header-left">
         <h1 class="tf-page-title">Bảng giá & Báo giá</h1>
-        <p class="tf-page-subtitle">Quýản lý các đợt ban hành bảng giá, chương trình khuyến mãi và báo giá đại lý theo kỳ</p>
+        <p class="tf-page-subtitle">Quản lý các đợt ban hành bảng giá, chương trình khuyến mãi và báo giá đại lý theo kỳ</p>
     </div>
     <div class="tf-page-actions" style="display:flex; gap:8px;">
         <AuthorizeView Policy="Permission:PriceLists:Create">
@@ -97,7 +97,7 @@
         </div>
         <div>
             <select class="tf-input" value="@_filterYear" @onchange="OnYearChanged">
-                <option value="0">-- Tất cả cácầnăm --</option>
+                <option value="0">-- Tất cả các năm --</option>
                 <option value="2027">Năm 2027</option>
                 <option value="2026">Năm 2026</option>
                 <option value="2025">Năm 2025</option>
@@ -107,10 +107,10 @@
         <div>
             <select class="tf-input" value="@_filterQuarter" @onchange="OnQuarterChanged">
                 <option value="0">-- Tất cả các quý --</option>
-                <option value="1">Quýý 1</option>
-                <option value="2">Quýý 2</option>
-                <option value="3">Quýý 3</option>
-                <option value="4">Quýý 4</option>
+                <option value="1">Quý 1</option>
+                <option value="2">Quý 2</option>
+                <option value="3">Quý 3</option>
+                <option value="4">Quý 4</option>
             </select>
         </div>
         <div>

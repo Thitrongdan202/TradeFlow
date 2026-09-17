@@ -1,4 +1,4 @@
-﻿@page "/danh-muc/danh-muc-san-pham/them-moi"
+@page "/danh-muc/danh-muc-san-pham/them-moi"
 @page "/danh-muc/danh-muc-san-pham/sua/{Id:int}"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
@@ -230,13 +230,26 @@ else
 
         try
         {
-            bool isReferenced = await DbContext.Products.AnyAsync(x => x.CategoryId == _model.Id); if(isReferenced) { _deleteError = "Không thể xóa vì dữ liệu này đang được sử dụng."; return; }
-            
-DbContext.ProductCategories.Remove(_model);
-
-            await DbContext.SaveChangesAsync();
-            await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.CategoryDeleted, authState.User.Identity?.Name ?? "System", "ProductCategory", _model.Id.ToString(), "Xóa", authState.User.Identity?.Name);
-            Nav.NavigateTo(Nav.Uri.Split('/')[1] == "danh-muc" ? "/danh-muc/" + Nav.Uri.Split('/')[2] : (Nav.Uri.Split('/')[1] == "doi-tac" ? "/doi-tac/" + Nav.Uri.Split('/')[2] : "/kho-hang"));
+            if (_model == null) return;
+            bool isReferenced = await DbContext.Products.AnyAsync(x => x.CategoryId == _model.Id); 
+            if (isReferenced) 
+            { 
+                _model.IsActive = false;
+                _model.UpdatedAt = DateTime.UtcNow;
+                _model.UpdatedBy = authState.User.Identity?.Name;
+                DbContext.ProductCategories.Update(_model);
+                await DbContext.SaveChangesAsync();
+                await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.CategoryUpdated, authState.User.Identity?.Name ?? "System", "ProductCategory", _model.Id.ToString(), "Ngừng sử dụng danh mục do đã có sản phẩm liên kết", authState.User.Identity?.Name);
+                _deleteError = "Danh mục đã có sản phẩm liên kết nên không thể xóa vật lý. Danh mục đã được chuyển sang trạng thái ngừng sử dụng.";
+                return;
+            }
+            else
+            {
+                DbContext.ProductCategories.Remove(_model);
+                await DbContext.SaveChangesAsync();
+                await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.CategoryDeleted, authState.User.Identity?.Name ?? "System", "ProductCategory", _model.Id.ToString(), "Xóa", authState.User.Identity?.Name);
+                Nav.NavigateTo("/danh-muc/danh-muc-san-pham");
+            }
         }
         catch (Exception ex)
         {

@@ -1,4 +1,4 @@
-﻿using TradeFlow.Domain.Enums;
+using TradeFlow.Domain.Enums;
 
 namespace TradeFlow.Application.Common.Models.Pricing;
 
@@ -24,6 +24,10 @@ public class PriceListDto
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
     public string? CreatedBy { get; set; }
+    public int NewProductsCount { get; set; }
+    public int ExistingProductsCount { get; set; }
+    public int ChangedProductsCount { get; set; }
+    public int ImagesCount { get; set; }
     public List<PriceListItemDto> Items { get; set; } = new();
 }
 

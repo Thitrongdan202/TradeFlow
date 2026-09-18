@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using TradeFlow.Application.Common.Constants;
 using TradeFlow.Application.Common.Interfaces;
 using TradeFlow.Application.Common.Models.Pricing;
@@ -158,10 +159,11 @@ public class ExcelPricingService : IExcelPricingService
             var row = worksheet.Row(r);
             if (row.IsEmpty()) continue;
 
-            string newCodeText = colNewCode > 0 ? row.Cell(colNewCode).GetString().Trim() : "";
-            string legacyCodeText = colLegacyCode > 0 ? row.Cell(colLegacyCode).GetString().Trim() : "";
-            string infoText = colInfo > 0 ? row.Cell(colInfo).GetString().Trim() : "";
-            string groupText = colGroup > 0 ? row.Cell(colGroup).GetString().Trim() : "";
+            string newCodeText, legacyCodeText, infoText, groupText;
+            try { newCodeText = colNewCode > 0 ? row.Cell(colNewCode).GetString().Trim() : ""; } catch { newCodeText = ""; }
+            try { legacyCodeText = colLegacyCode > 0 ? row.Cell(colLegacyCode).GetString().Trim() : ""; } catch { legacyCodeText = ""; }
+            try { infoText = colInfo > 0 ? row.Cell(colInfo).GetString().Trim() : ""; } catch { infoText = ""; }
+            try { groupText = colGroup > 0 ? row.Cell(colGroup).GetString().Trim() : ""; } catch { groupText = ""; }
 
             if (!string.IsNullOrEmpty(groupText))
             {
@@ -172,16 +174,23 @@ public class ExcelPricingService : IExcelPricingService
             decimal unitPrice = 0;
             if (colPrice > 0)
             {
-                var priceCell = row.Cell(colPrice);
-                if (priceCell.TryGetValue<decimal>(out var pVal))
+                try
                 {
-                    unitPrice = pVal;
+                    var priceCell = row.Cell(colPrice);
+                    if (priceCell.TryGetValue<decimal>(out var pVal))
+                    {
+                        unitPrice = pVal;
+                    }
+                    else
+                    {
+                        var rawPriceStr = priceCell.GetString().Trim();
+                        rawPriceStr = Regex.Replace(rawPriceStr, @"[^\d\.]", "");
+                        decimal.TryParse(rawPriceStr, NumberStyles.Any, CultureInfo.InvariantCulture, out unitPrice);
+                    }
                 }
-                else
+                catch
                 {
-                    var rawPriceStr = priceCell.GetString().Trim();
-                    rawPriceStr = Regex.Replace(rawPriceStr, @"[^\d\.]", "");
-                    decimal.TryParse(rawPriceStr, NumberStyles.Any, CultureInfo.InvariantCulture, out unitPrice);
+                    unitPrice = 0;
                 }
             }
 
@@ -394,240 +403,268 @@ public class ExcelPricingService : IExcelPricingService
 
     public async Task<PriceListDto> CommitImportAsync(ExcelImportCommitRequest request, string currentUserName, Action<string>? onProgress = null, CancellationToken cancellationToken = default)
     {
-        var isInMemory = _context.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory";
-        using var transaction = isInMemory ? null : await _context.Database.BeginTransactionAsync(cancellationToken);
-        try
+        PriceListDto? result = null;
+
+        // Use CreateExecutionStrategy to support NpgsqlRetryingExecutionStrategy.
+        // This wraps user-initiated transactions correctly — works for both PostgreSQL and InMemory (tests).
+        var executionStrategy = _context.Database.CreateExecutionStrategy();
+        await executionStrategy.ExecuteAsync(async () =>
         {
-            var priceListCode = await _codeGenerator.GenerateCodeAsync(SystemCodeConstants.PriceList, cancellationToken);
-            while (await _context.PriceLists.AnyAsync(p => p.Code == priceListCode, cancellationToken))
+            // InMemory provider does not support transactions; skip BeginTransaction for it
+            var isInMemory = _context.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory";
+            IDbContextTransaction? transaction = isInMemory ? null : await _context.Database.BeginTransactionAsync(cancellationToken);
+            try
             {
-                priceListCode = await _codeGenerator.GenerateCodeAsync(SystemCodeConstants.PriceList, cancellationToken);
-            }
-
-            var priceList = new PriceList
-            {
-                Code = priceListCode,
-                Name = string.IsNullOrWhiteSpace(request.Name) ? "BẢNG GIÁ ĐẠI LÝ" : request.Name.Trim(),
-                QuotationNumber = request.QuotationNumber?.Trim(),
-                QuotationDate = request.QuotationDate,
-                EffectiveFrom = request.EffectiveFrom,
-                EffectiveTo = request.EffectiveTo,
-                Month = request.Month,
-                Quarter = request.Quarter,
-                Year = request.Year > 0 ? request.Year : DateTime.UtcNow.Year,
-                ProgramTitle = request.ProgramTitle?.Trim(),
-                PriceCondition = request.PriceCondition?.Trim(),
-                VatNote = request.VatNote?.Trim(),
-                Status = request.InitialStatus,
-                OriginalFileName = request.OriginalFileName,
-                OriginalFileStorageRef = request.TempFileReference,
-                TotalItems = request.Items.Count,
-                CreatedAt = DateTime.UtcNow,
-                CreatedBy = currentUserName
-            };
-
-            _context.PriceLists.Add(priceList);
-            await _context.SaveChangesAsync(cancellationToken);
-
-            int savedItemsCount = 0;
-
-            // Add Items
-            foreach (var item in request.Items)
-            {
-                if (IsSectionHeaderOrCategory(item.NewCode, item.LegacyCode, item.ProductInfo, item.UnitPrice))
+                var priceListCode = await _codeGenerator.GenerateCodeAsync(SystemCodeConstants.PriceList, cancellationToken);
+                while (await _context.PriceLists.AnyAsync(p => p.Code == priceListCode, cancellationToken))
                 {
-                    continue;
+                    priceListCode = await _codeGenerator.GenerateCodeAsync(SystemCodeConstants.PriceList, cancellationToken);
                 }
 
-                int? productId = item.MatchedProductId;
-
-                // Auto create product if missing and requested
-                if (!productId.HasValue && request.AutoCreateProducts && !string.IsNullOrWhiteSpace(item.NewCode))
+                var priceList = new PriceList
                 {
-                    var trimmedNewCode = item.NewCode.Trim();
-                    var trimmedLegacyCode = item.LegacyCode?.Trim();
-
-                    // Safety check: Avoid duplicate creation if product already exists in DB
-                    var existingInDb = await _context.Products.FirstOrDefaultAsync(p =>
-                        (!string.IsNullOrEmpty(p.NewCode) && p.NewCode == trimmedNewCode) ||
-                        (!string.IsNullOrEmpty(p.LegacyCode) && !string.IsNullOrEmpty(trimmedLegacyCode) && p.LegacyCode == trimmedLegacyCode) ||
-                        (!string.IsNullOrEmpty(p.Code) && p.Code == trimmedNewCode),
-                        cancellationToken);
-
-                    if (existingInDb != null)
-                    {
-                        productId = existingInDb.Id;
-                        item.MatchedProductId = existingInDb.Id;
-                    }
-                    else
-                    {
-                        var prodCode = await _codeGenerator.GenerateCodeAsync(SystemCodeConstants.Product, cancellationToken);
-                        while (await _context.Products.AnyAsync(p => p.Code == prodCode, cancellationToken))
-                        {
-                            prodCode = await _codeGenerator.GenerateCodeAsync(SystemCodeConstants.Product, cancellationToken);
-                        }
-
-                        var cleanName = ExtractCleanProductName(item.ProductInfo, trimmedNewCode);
-                        var safeName = cleanName.Length > 300 ? cleanName.Substring(0, 300) : cleanName;
-                        var safeNewCode = trimmedNewCode.Length > 50 ? trimmedNewCode.Substring(0, 50) : trimmedNewCode;
-                        var safeLegacyCode = trimmedLegacyCode != null && trimmedLegacyCode.Length > 50 ? trimmedLegacyCode.Substring(0, 50) : trimmedLegacyCode;
-                        var safeDescription = item.ProductInfo?.Trim();
-                        if (safeDescription != null && safeDescription.Length > 2000) safeDescription = safeDescription.Substring(0, 2000);
-                        var safeSpecifications = item.ProductInfo?.Trim();
-                        if (safeSpecifications != null && safeSpecifications.Length > 4000) safeSpecifications = safeSpecifications.Substring(0, 4000);
-
-                        var newProd = new Product
-                        {
-                            Code = prodCode,
-                            NewCode = safeNewCode,
-                            LegacyCode = safeLegacyCode,
-                            Name = string.IsNullOrWhiteSpace(safeName) ? safeNewCode : safeName,
-                            Description = safeDescription,
-                            Specifications = safeSpecifications,
-                            TaxTreatment = TaxTreatment.Standard10,
-                            IsTaxReductionEligible = true,
-                            IsActive = true,
-                            CreatedAt = DateTime.UtcNow,
-                            CreatedBy = currentUserName
-                        };
-                        _context.Products.Add(newProd);
-                        await _context.SaveChangesAsync(cancellationToken);
-                        productId = newProd.Id;
-                        item.MatchedProductId = newProd.Id;
-                    }
-                }
-                else if (productId.HasValue && item.MatchStatus == PriceMatchStatus.ReviewRequired && item.ApplyMasterDataUpdate)
-                {
-                    // Quản trị viên chủ động chọn cập nhật thông tin Master Data [Cập nhật theo file Excel]
-                    var existingProd = await _context.Products.FindAsync(new object[] { productId.Value }, cancellationToken);
-                    if (existingProd != null)
-                    {
-                        if (!string.IsNullOrWhiteSpace(item.ProductInfo))
-                        {
-                            var cleanName = ExtractCleanProductName(item.ProductInfo, item.NewCode);
-                            if (!string.IsNullOrWhiteSpace(cleanName))
-                            {
-                                existingProd.Name = cleanName.Length > 300 ? cleanName.Substring(0, 300) : cleanName;
-                            }
-                            existingProd.Specifications = item.ProductInfo.Length > 4000 ? item.ProductInfo.Substring(0, 4000) : item.ProductInfo;
-                            if (item.ProductInfo.Length > 2000) existingProd.Description = item.ProductInfo.Substring(0, 2000);
-                            else existingProd.Description = item.ProductInfo;
-                        }
-                        if (!string.IsNullOrWhiteSpace(item.NewCode) && !IsSectionHeaderOrCategory(item.NewCode, item.LegacyCode, item.ProductInfo, item.UnitPrice))
-                        {
-                            existingProd.NewCode = item.NewCode.Trim().Length > 50 ? item.NewCode.Trim().Substring(0, 50) : item.NewCode.Trim();
-                        }
-                        if (!string.IsNullOrWhiteSpace(item.LegacyCode))
-                        {
-                            existingProd.LegacyCode = item.LegacyCode.Trim().Length > 50 ? item.LegacyCode.Trim().Substring(0, 50) : item.LegacyCode.Trim();
-                        }
-                        existingProd.UpdatedAt = DateTime.UtcNow;
-                        existingProd.UpdatedBy = currentUserName;
-                        await _context.SaveChangesAsync(cancellationToken);
-                    }
-                }
-
-                var safePlGroup = item.Group?.Trim();
-                if (safePlGroup != null && safePlGroup.Length > 200) safePlGroup = safePlGroup.Substring(0, 200);
-
-                var safePlNewCode = string.IsNullOrWhiteSpace(item.NewCode) ? $"ITEM-{item.SortOrder:D4}" : item.NewCode.Trim();
-                if (safePlNewCode.Length > 100) safePlNewCode = safePlNewCode.Substring(0, 100);
-
-                var safePlLegacyCode = item.LegacyCode?.Trim();
-                if (safePlLegacyCode != null && safePlLegacyCode.Length > 100) safePlLegacyCode = safePlLegacyCode.Substring(0, 100);
-
-                var safePlInfo = item.ProductInfo?.Trim();
-                if (safePlInfo != null && safePlInfo.Length > 2000) safePlInfo = safePlInfo.Substring(0, 2000);
-
-                // Xác định thuế suất VAT áp dụng cho dòng bảng giá
-                decimal? effectiveVatRate = item.VatRate;
-                if (!effectiveVatRate.HasValue && productId.HasValue)
-                {
-                    var prod = await _context.Products.FindAsync(new object[] { productId.Value }, cancellationToken);
-                    if (prod != null)
-                    {
-                        effectiveVatRate = _vatRuleEngine.DetermineVatRate(prod, priceList.QuotationDate ?? priceList.EffectiveFrom ?? DateTime.UtcNow).Rate;
-                    }
-                }
-                if (!effectiveVatRate.HasValue)
-                {
-                    effectiveVatRate = 8m;
-                }
-
-                var pItem = new PriceListItem
-                {
-                    PriceListId = priceList.Id,
-                    ProductId = productId,
-                    SortOrder = item.SortOrder,
-                    Group = safePlGroup,
-                    NewCode = safePlNewCode,
-                    LegacyCode = safePlLegacyCode,
-                    ProductInfo = safePlInfo,
-                    ImageStorageRef = item.ImageStorageRef,
-                    UnitPrice = item.UnitPrice,
-                    CurrencyCode = string.IsNullOrWhiteSpace(item.CurrencyCode) ? "VND" : item.CurrencyCode.Trim(),
-                    VatRate = effectiveVatRate,
-                    MatchStatus = item.MatchStatus,
+                    Code = priceListCode,
+                    Name = string.IsNullOrWhiteSpace(request.Name) ? "BẢNG GIÁ ĐẠI LÝ" : request.Name.Trim(),
+                    QuotationNumber = request.QuotationNumber?.Trim(),
+                    QuotationDate = EnsureUtc(request.QuotationDate),
+                    EffectiveFrom = EnsureUtc(request.EffectiveFrom),
+                    EffectiveTo = EnsureUtc(request.EffectiveTo),
+                    Month = request.Month,
+                    Quarter = request.Quarter,
+                    Year = request.Year > 0 ? request.Year : DateTime.UtcNow.Year,
+                    ProgramTitle = request.ProgramTitle?.Trim(),
+                    PriceCondition = request.PriceCondition?.Trim(),
+                    VatNote = request.VatNote?.Trim(),
+                    Status = request.InitialStatus,
+                    OriginalFileName = request.OriginalFileName,
+                    OriginalFileStorageRef = request.TempFileReference,
+                    TotalItems = request.Items.Count,
                     CreatedAt = DateTime.UtcNow,
                     CreatedBy = currentUserName
                 };
 
-                _context.PriceListItems.Add(pItem);
-                savedItemsCount++;
+                _context.PriceLists.Add(priceList);
+                await _context.SaveChangesAsync(cancellationToken);
 
-                // Bảo toàn hình ảnh: Chỉ thêm ảnh nếu sản phẩm chưa từng có hình ảnh nào trước đó
-                if (productId.HasValue && !string.IsNullOrEmpty(item.ImageStorageRef))
+                int savedItemsCount = 0;
+                int newProductsCount = 0;
+                int existingProductsCount = 0;
+                int changedProductsCount = 0;
+                int imagesCount = 0;
+
+                // Add Items
+                foreach (var item in request.Items)
                 {
-                    var hasImg = await _context.ProductImages.AnyAsync(pi => pi.ProductId == productId.Value, cancellationToken);
-                    if (!hasImg)
+                    if (IsSectionHeaderOrCategory(item.NewCode, item.LegacyCode, item.ProductInfo, item.UnitPrice))
                     {
-                        _context.ProductImages.Add(new ProductImage
+                        continue;
+                    }
+
+                    int? productId = item.MatchedProductId;
+
+                    // Auto create product if missing and requested
+                    if (!productId.HasValue && request.AutoCreateProducts && !string.IsNullOrWhiteSpace(item.NewCode))
+                    {
+                        var trimmedNewCode = item.NewCode.Trim();
+                        var trimmedLegacyCode = item.LegacyCode?.Trim();
+
+                        // Safety check: Avoid duplicate creation if product already exists in DB
+                        var existingInDb = await _context.Products.FirstOrDefaultAsync(p =>
+                            (!string.IsNullOrEmpty(p.NewCode) && p.NewCode == trimmedNewCode) ||
+                            (!string.IsNullOrEmpty(p.LegacyCode) && !string.IsNullOrEmpty(trimmedLegacyCode) && p.LegacyCode == trimmedLegacyCode) ||
+                            (!string.IsNullOrEmpty(p.Code) && p.Code == trimmedNewCode),
+                            cancellationToken);
+
+                        if (existingInDb != null)
                         {
-                            ProductId = productId.Value,
-                            FileName = Path.GetFileName(item.ImageStorageRef),
-                            StorageReference = item.ImageStorageRef,
-                            ContentType = "image/png",
-                            IsPrimary = true,
-                            SortOrder = 1,
-                            CreatedAt = DateTime.UtcNow,
-                            CreatedBy = currentUserName
-                        });
+                            productId = existingInDb.Id;
+                            item.MatchedProductId = existingInDb.Id;
+                        }
+                        else
+                        {
+                            var prodCode = await _codeGenerator.GenerateCodeAsync(SystemCodeConstants.Product, cancellationToken);
+                            while (await _context.Products.AnyAsync(p => p.Code == prodCode, cancellationToken))
+                            {
+                                prodCode = await _codeGenerator.GenerateCodeAsync(SystemCodeConstants.Product, cancellationToken);
+                            }
+
+                            var cleanName = ExtractCleanProductName(item.ProductInfo, trimmedNewCode);
+                            var safeName = cleanName.Length > 300 ? cleanName.Substring(0, 300) : cleanName;
+                            var safeNewCode = trimmedNewCode.Length > 50 ? trimmedNewCode.Substring(0, 50) : trimmedNewCode;
+                            var safeLegacyCode = trimmedLegacyCode != null && trimmedLegacyCode.Length > 50 ? trimmedLegacyCode.Substring(0, 50) : trimmedLegacyCode;
+                            var safeDescription = item.ProductInfo?.Trim();
+                            if (safeDescription != null && safeDescription.Length > 2000) safeDescription = safeDescription.Substring(0, 2000);
+                            var safeSpecifications = item.ProductInfo?.Trim();
+                            if (safeSpecifications != null && safeSpecifications.Length > 4000) safeSpecifications = safeSpecifications.Substring(0, 4000);
+
+                            var newProd = new Product
+                            {
+                                Code = prodCode,
+                                NewCode = safeNewCode,
+                                LegacyCode = safeLegacyCode,
+                                Name = string.IsNullOrWhiteSpace(safeName) ? safeNewCode : safeName,
+                                Description = safeDescription,
+                                Specifications = safeSpecifications,
+                                TaxTreatment = TaxTreatment.Standard10,
+                                IsTaxReductionEligible = true,
+                                IsActive = true,
+                                CreatedAt = DateTime.UtcNow,
+                                CreatedBy = currentUserName
+                            };
+                            _context.Products.Add(newProd);
+                            await _context.SaveChangesAsync(cancellationToken);
+                            productId = newProd.Id;
+                            item.MatchedProductId = newProd.Id;
+                        }
+                    }
+                    else if (productId.HasValue && item.MatchStatus == PriceMatchStatus.ReviewRequired && item.ApplyMasterDataUpdate)
+                    {
+                        // Quản trị viên chủ động chọn cập nhật thông tin Master Data [Cập nhật theo file Excel]
+                        var existingProd = await _context.Products.FindAsync(new object[] { productId.Value }, cancellationToken);
+                        if (existingProd != null)
+                        {
+                            if (!string.IsNullOrWhiteSpace(item.ProductInfo))
+                            {
+                                var cleanName = ExtractCleanProductName(item.ProductInfo, item.NewCode);
+                                if (!string.IsNullOrWhiteSpace(cleanName))
+                                {
+                                    existingProd.Name = cleanName.Length > 300 ? cleanName.Substring(0, 300) : cleanName;
+                                }
+                                existingProd.Specifications = item.ProductInfo.Length > 4000 ? item.ProductInfo.Substring(0, 4000) : item.ProductInfo;
+                                if (item.ProductInfo.Length > 2000) existingProd.Description = item.ProductInfo.Substring(0, 2000);
+                                else existingProd.Description = item.ProductInfo;
+                            }
+                            if (!string.IsNullOrWhiteSpace(item.NewCode) && !IsSectionHeaderOrCategory(item.NewCode, item.LegacyCode, item.ProductInfo, item.UnitPrice))
+                            {
+                                existingProd.NewCode = item.NewCode.Trim().Length > 50 ? item.NewCode.Trim().Substring(0, 50) : item.NewCode.Trim();
+                            }
+                            if (!string.IsNullOrWhiteSpace(item.LegacyCode))
+                            {
+                                existingProd.LegacyCode = item.LegacyCode.Trim().Length > 50 ? item.LegacyCode.Trim().Substring(0, 50) : item.LegacyCode.Trim();
+                            }
+                            existingProd.UpdatedAt = DateTime.UtcNow;
+                            existingProd.UpdatedBy = currentUserName;
+                            await _context.SaveChangesAsync(cancellationToken);
+                        }
+                    }
+
+                    var safePlGroup = item.Group?.Trim();
+                    if (safePlGroup != null && safePlGroup.Length > 200) safePlGroup = safePlGroup.Substring(0, 200);
+
+                    var safePlNewCode = string.IsNullOrWhiteSpace(item.NewCode) ? $"ITEM-{item.SortOrder:D4}" : item.NewCode.Trim();
+                    if (safePlNewCode.Length > 100) safePlNewCode = safePlNewCode.Substring(0, 100);
+
+                    var safePlLegacyCode = item.LegacyCode?.Trim();
+                    if (safePlLegacyCode != null && safePlLegacyCode.Length > 100) safePlLegacyCode = safePlLegacyCode.Substring(0, 100);
+
+                    var safePlInfo = item.ProductInfo?.Trim();
+                    if (safePlInfo != null && safePlInfo.Length > 2000) safePlInfo = safePlInfo.Substring(0, 2000);
+
+                    // Xác định thuế suất VAT áp dụng cho dòng bảng giá
+                    decimal? effectiveVatRate = item.VatRate;
+                    if (!effectiveVatRate.HasValue && productId.HasValue)
+                    {
+                        var prod = await _context.Products.FindAsync(new object[] { productId.Value }, cancellationToken);
+                        if (prod != null)
+                        {
+                            effectiveVatRate = _vatRuleEngine.DetermineVatRate(prod, priceList.QuotationDate ?? priceList.EffectiveFrom ?? DateTime.UtcNow).Rate;
+                        }
+                    }
+                    if (!effectiveVatRate.HasValue)
+                    {
+                        effectiveVatRate = 8m;
+                    }
+
+                    var pItem = new PriceListItem
+                    {
+                        PriceListId = priceList.Id,
+                        ProductId = productId,
+                        SortOrder = item.SortOrder,
+                        Group = safePlGroup,
+                        NewCode = safePlNewCode,
+                        LegacyCode = safePlLegacyCode,
+                        ProductInfo = safePlInfo,
+                        ImageStorageRef = item.ImageStorageRef,
+                        UnitPrice = item.UnitPrice,
+                        CurrencyCode = string.IsNullOrWhiteSpace(item.CurrencyCode) ? "VND" : item.CurrencyCode.Trim(),
+                        VatRate = effectiveVatRate,
+                        MatchStatus = item.MatchStatus,
+                        CreatedAt = DateTime.UtcNow,
+                        CreatedBy = currentUserName
+                    };
+
+                    _context.PriceListItems.Add(pItem);
+                    savedItemsCount++;
+
+                    if (item.MatchStatus == PriceMatchStatus.NewProduct) newProductsCount++;
+                    else if (item.MatchStatus == PriceMatchStatus.ReviewRequired) changedProductsCount++;
+                    else existingProductsCount++;
+
+                    // Bảo toàn hình ảnh: Chỉ thêm ảnh nếu sản phẩm chưa từng có hình ảnh nào trước đó
+                    if (productId.HasValue && !string.IsNullOrEmpty(item.ImageStorageRef))
+                    {
+                        imagesCount++;
+                        var hasImg = await _context.ProductImages.AnyAsync(pi => pi.ProductId == productId.Value, cancellationToken);
+                        if (!hasImg)
+                        {
+                            _context.ProductImages.Add(new ProductImage
+                            {
+                                ProductId = productId.Value,
+                                FileName = Path.GetFileName(item.ImageStorageRef),
+                                StorageReference = item.ImageStorageRef,
+                                ContentType = "image/png",
+                                IsPrimary = true,
+                                SortOrder = 1,
+                                CreatedAt = DateTime.UtcNow,
+                                CreatedBy = currentUserName
+                            });
+                        }
                     }
                 }
+
+                priceList.TotalItems = savedItemsCount;
+                await _context.SaveChangesAsync(cancellationToken);
+
+                if (transaction is not null)
+                {
+                    await transaction.CommitAsync(cancellationToken);
+                }
+
+                await _auditService.LogAsync(AuditEventType.PriceListImported, currentUserName, "PriceList", priceList.Code);
+
+                result = new PriceListDto
+                {
+                    Id = priceList.Id,
+                    Code = priceList.Code,
+                    Name = priceList.Name,
+                    QuotationNumber = priceList.QuotationNumber,
+                    EffectiveFrom = priceList.EffectiveFrom,
+                    EffectiveTo = priceList.EffectiveTo,
+                    TotalItems = priceList.TotalItems,
+                    Status = priceList.Status,
+                    NewProductsCount = newProductsCount,
+                    ExistingProductsCount = existingProductsCount,
+                    ChangedProductsCount = changedProductsCount,
+                    ImagesCount = imagesCount
+                };
             }
-
-            priceList.TotalItems = savedItemsCount;
-            await _context.SaveChangesAsync(cancellationToken);
-
-            if (transaction != null)
+            catch (Exception ex)
             {
-                await transaction.CommitAsync(cancellationToken);
+                if (transaction is not null)
+                {
+                    try { await transaction.RollbackAsync(cancellationToken); } catch { /* best-effort rollback */ }
+                }
+                var rootMsg = GetDeepestErrorMessage(ex);
+                _logger.LogError(ex, "Lỗi lưu bảng giá khi commit import: {Root}", rootMsg);
+                throw new Exception($"Lỗi lưu bảng giá: {rootMsg}", ex);
             }
-
-            await _auditService.LogAsync(AuditEventType.PriceListImported, currentUserName, "PriceList", priceList.Code);
-
-            return new PriceListDto
+            finally
             {
-                Id = priceList.Id,
-                Code = priceList.Code,
-                Name = priceList.Name,
-                QuotationNumber = priceList.QuotationNumber,
-                EffectiveFrom = priceList.EffectiveFrom,
-                EffectiveTo = priceList.EffectiveTo,
-                TotalItems = priceList.TotalItems,
-                Status = priceList.Status
-            };
-        }
-        catch (Exception ex)
-        {
-            if (transaction != null)
-            {
-                await transaction.RollbackAsync(cancellationToken);
+                if (transaction is not null) await transaction.DisposeAsync();
             }
-            var rootMsg = GetDeepestErrorMessage(ex);
-            _logger.LogError(ex, "Lỗi lưu bảng giá khi commit import: {Root}", rootMsg);
-            throw new Exception($"Lỗi lưu bảng giá: {rootMsg}", ex);
-        }
+        });
+
+        return result!;
     }
 
     public async Task<byte[]> ExportPriceListAsync(int priceListId, Action<string>? onProgress = null, CancellationToken cancellationToken = default)
@@ -778,7 +815,7 @@ public class ExcelPricingService : IExcelPricingService
                     var match = Regex.Match(text, @"Ngày (?:Báo Giá|BG)?:\s*(\d{1,2}/\d{1,2}/\d{4})", RegexOptions.IgnoreCase);
                     if (match.Success && DateTime.TryParseExact(match.Groups[1].Value, "d/M/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var quotationDt))
                     {
-                        result.QuotationDate = quotationDt;
+                        result.QuotationDate = DateTime.SpecifyKind(quotationDt, DateTimeKind.Utc);
                     }
                 }
                 else if (text.Contains("CHƯƠNG TRÌNH", StringComparison.OrdinalIgnoreCase))
@@ -790,11 +827,11 @@ public class ExcelPricingService : IExcelPricingService
                     var dateMatches = Regex.Matches(text, @"(\d{1,2}/\d{1,2}/\d{4})");
                     if (dateMatches.Count >= 1 && DateTime.TryParseExact(dateMatches[0].Value, "d/M/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var fromDt))
                     {
-                        result.EffectiveFrom = fromDt;
+                        result.EffectiveFrom = DateTime.SpecifyKind(fromDt, DateTimeKind.Utc);
                     }
                     if (dateMatches.Count >= 2 && DateTime.TryParseExact(dateMatches[1].Value, "d/M/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var toDt))
                     {
-                        result.EffectiveTo = toDt;
+                        result.EffectiveTo = DateTime.SpecifyKind(toDt, DateTimeKind.Utc);
                     }
                 }
                 else if (text.Contains("Giá bán tại kho", StringComparison.OrdinalIgnoreCase) || text.Contains("Điều kiện:", StringComparison.OrdinalIgnoreCase))
@@ -833,7 +870,11 @@ public class ExcelPricingService : IExcelPricingService
     {
         for (int c = 1; c <= 20; c++)
         {
-            var headerText = ws.Cell(headerRow, c).GetString().Trim();
+            // Normalize multi-line headers: replace \r\n, \n, \r with a single space then collapse whitespace
+            var rawHeader = ws.Cell(headerRow, c).GetString().Trim();
+            var headerText = System.Text.RegularExpressions.Regex.Replace(
+                rawHeader.Replace("\r\n", " ").Replace("\n", " ").Replace("\r", " "),
+                @"\s+", " ").Trim();
             foreach (var kw in keywords)
             {
                 if (headerText.Contains(kw, StringComparison.OrdinalIgnoreCase))
@@ -965,6 +1006,18 @@ public class ExcelPricingService : IExcelPricingService
         string CleanNewCode,
         string CleanLegacyCode
     );
+
+    private static DateTime? EnsureUtc(DateTime? dt)
+    {
+        if (!dt.HasValue) return null;
+        return dt.Value.Kind switch
+        {
+            DateTimeKind.Utc => dt.Value,
+            DateTimeKind.Local => dt.Value.ToUniversalTime(),
+            DateTimeKind.Unspecified => DateTime.SpecifyKind(dt.Value, DateTimeKind.Utc),
+            _ => DateTime.SpecifyKind(dt.Value, DateTimeKind.Utc)
+        };
+    }
 
     private static string GetDeepestErrorMessage(Exception ex)
     {

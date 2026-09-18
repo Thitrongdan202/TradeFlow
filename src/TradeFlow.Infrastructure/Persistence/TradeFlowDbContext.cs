@@ -67,4 +67,37 @@ public class TradeFlowDbContext
         modelBuilder.Entity<IdentityRoleClaim<string>>().ToTable("RoleClaims");
         modelBuilder.Entity<IdentityUserToken<string>>().ToTable("UserTokens");
     }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        NormalizeDateTimesToUtc();
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    public override int SaveChanges()
+    {
+        NormalizeDateTimesToUtc();
+        return base.SaveChanges();
+    }
+
+    private void NormalizeDateTimesToUtc()
+    {
+        foreach (var entry in ChangeTracker.Entries())
+        {
+            if (entry.State is EntityState.Added or EntityState.Modified)
+            {
+                foreach (var property in entry.Properties)
+                {
+                    if (property.Metadata.ClrType == typeof(DateTime) && property.CurrentValue is DateTime dt && dt.Kind == DateTimeKind.Unspecified)
+                    {
+                        property.CurrentValue = DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+                    }
+                    else if (property.Metadata.ClrType == typeof(DateTime?) && property.CurrentValue is DateTime optDt && optDt.Kind == DateTimeKind.Unspecified)
+                    {
+                        property.CurrentValue = DateTime.SpecifyKind(optDt, DateTimeKind.Utc);
+                    }
+                }
+            }
+        }
+    }
 }

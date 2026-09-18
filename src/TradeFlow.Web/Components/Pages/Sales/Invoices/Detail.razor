@@ -436,13 +436,13 @@ else
                             TÀI KHOẢN NGÂN HÀNG:
                         </div>
                         <div style="border-bottom:1px solid #000; padding:3px 6px;">
-                            TÊN TÀI KHOẢN: @(_orderDoc.BankAccountHolder ?? "").ToUpper()
+                            TÊN TÀI KHOẢN: @((_orderDoc.BankAccountHolder ?? "").ToUpper())
                         </div>
                         <div style="border-bottom:1px solid #000; padding:3px 6px;">
                             SỐ TÀI KHOẢN: @_orderDoc.BankAccount
                         </div>
                         <div style="padding:3px 6px;">
-                            @(_orderDoc.BankName ?? "").ToUpper()
+                            @((_orderDoc.BankName ?? "").ToUpper())
                         </div>
                     </div>
                     <div style="width:145px; border-left:1px solid #000; display:flex; align-items:center; justify-content:center; padding:6px;">

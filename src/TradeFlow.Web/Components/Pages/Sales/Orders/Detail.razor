@@ -57,11 +57,7 @@ else
             @if (_order.Status == SalesOrderStatus.Confirmed || _order.Status == SalesOrderStatus.Invoiced)
             {
                 <AuthorizeView Policy="Permission:Invoices:Create">
-                    <select class="tf-form-control" style="display:inline-block; width:auto; margin-right:8px;" @bind="_selectedInvoiceType">
-                        <option value="2">Hóa đơn GTGT</option>
-                        <option value="1">Hóa đơn bán hàng</option>
-                    </select>
-                    <button class="tf-btn tf-btn-primary" @onclick="CreateInvoice" disabled="@_isProcessing">Tạo hóa đơn</button>
+                    <button class="tf-btn tf-btn-primary" @onclick="OpenCreateInvoiceModal" disabled="@_isProcessing">🧾 Tạo hóa đơn</button>
                 </AuthorizeView>
             }
         </div>
@@ -105,11 +101,7 @@ else
                             <th>Sản phẩm</th>
                             <th>ĐVT</th>
                             <th class="tf-text-right">SL</th>
-                            <th class="tf-text-right">Giá trước VAT</th>
-                            <th class="tf-text-right">Chiết khấu</th>
-                            <th class="tf-text-right">Giá sau CK</th>
-                            <th class="tf-text-right">Thuế suất</th>
-                            <th class="tf-text-right">Tiền thuế</th>
+                            <th class="tf-text-right">Đơn giá (Chưa VAT)</th>
                             <th class="tf-text-right">Thành tiền</th>
                         </tr>
                     </thead>
@@ -122,17 +114,7 @@ else
                                 <td>@item.UnitName</td>
                                 <td class="tf-text-right">@item.Quantity</td>
                                 <td class="tf-text-right">@((item.UnitPrice ?? 0).ToString("N0")) ₫</td>
-                                <td class="tf-text-right">
-                                    @(item.DiscountRate > 0 ? $"{item.DiscountRate:0.##}% ({item.DiscountAmount:N0} ₫)" : (item.DiscountAmount > 0 ? $"{item.DiscountAmount:N0} ₫" : "0 ₫"))
-                                </td>
-                                <td class="tf-text-right" style="font-weight:600; color:#059669;">
-                                    @item.DiscountedUnitPrice.ToString("N0") ₫
-                                </td>
-                                <td class="tf-text-right">
-                                    @(item.TaxRate < 0 ? "KCT" : $"{item.TaxRate}%")
-                                </td>
-                                <td class="tf-text-right">@item.TaxAmount.ToString("N0") ₫</td>
-                                <td class="tf-text-right"><strong style="color:var(--tf-color-danger);">@item.LineTotal.ToString("N0") ₫</strong></td>
+                                <td class="tf-text-right"><strong style="color:var(--tf-color-primary);">@item.LineTotal.ToString("N0") ₫</strong></td>
                             </tr>
                         }
                     </tbody>
@@ -145,19 +127,138 @@ else
                         <span style="color:var(--tf-text-muted);">Tiền hàng (Chưa VAT):</span>
                         <strong>@_order.SubTotal.ToString("N0") ₫</strong>
                     </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                        <span style="color:var(--tf-text-muted);">Chiết khấu:</span>
-                        <strong>@_order.TotalDiscount.ToString("N0") ₫</strong>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                        <span style="color:var(--tf-text-muted);">Tiền thuế GTGT:</span>
-                        <strong style="color:var(--tf-primary);">@_order.TotalTax.ToString("N0") ₫</strong>
-                    </div>
                     <div style="display:flex; justify-content:space-between; margin-top:16px; padding-top:16px; border-top:1px dashed #cbd5e1; font-size:18px;">
-                        <span>Khách cần trả:</span>
-                        <strong style="color:var(--tf-color-danger);">@_order.GrandTotal.ToString("N0") ₫</strong>
+                        <span>Tổng giá trị đơn hàng:</span>
+                        <strong style="color:var(--tf-color-primary);">@_order.GrandTotal.ToString("N0") ₫</strong>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showInvoiceModal && _order != null)
+{
+    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; overflow-y:auto; padding:20px;">
+        <div style="background: white; padding: 24px; border-radius: 8px; width: 960px; max-width: 95%; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height:90vh; display:flex; flex-direction:column;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin: 0; font-size: 18px; font-weight:600;">🧾 Tạo hóa đơn từ đơn hàng @_order.Code</h3>
+                <button type="button" style="background:none; border:none; font-size:20px; cursor:pointer;" @onclick="() => _showInvoiceModal = false">✕</button>
+            </div>
+            
+            <div style="overflow-y:auto; padding-right:6px; flex:1;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
+                    <div class="tf-form-group">
+                        <label class="tf-form-label" style="font-weight:600;">Loại hóa đơn</label>
+                        <select class="tf-form-control" @bind="_invoiceModalType" @bind:after="OnModalInvoiceTypeChanged">
+                            <option value="2">Hóa đơn GTGT (01/GTGT)</option>
+                            <option value="1">Hóa đơn bán hàng (02/BH)</option>
+                        </select>
+                    </div>
+                    <div class="tf-form-group">
+                        <label class="tf-form-label" style="font-weight:600;">Chiết khấu chung toàn đơn (%)</label>
+                        <input type="number" class="tf-form-control" @bind="_invoiceModalGlobalDiscountRate" @bind:after="ApplyModalGlobalDiscountRate" min="0" max="100" step="any" placeholder="Nhập % chiết khấu (VD: 5)" />
+                    </div>
+                </div>
+
+                <div class="tf-table-responsive" style="margin-bottom:16px;">
+                    <table class="tf-table" style="font-size:13px;">
+                        <thead>
+                            <tr>
+                                <th>Sản phẩm</th>
+                                <th style="width:55px;" class="tf-text-right">SL</th>
+                                <th style="width:110px;" class="tf-text-right">Đơn giá (Chưa VAT)</th>
+                                <th style="width:80px;" class="tf-text-right">% CK</th>
+                                <th style="width:110px;" class="tf-text-right">Tiền CK</th>
+                                <th style="width:110px;" class="tf-text-right">Giá sau CK</th>
+                                <th style="width:120px;" class="tf-text-right">Tiền chịu thuế</th>
+                                @if (_invoiceModalType == 2)
+                                {
+                                    <th style="width:80px;" class="tf-text-right">Thuế %</th>
+                                    <th style="width:100px;" class="tf-text-right">Tiền thuế</th>
+                                }
+                                <th style="width:120px;" class="tf-text-right">Thành tiền</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in _invoiceModalItems)
+                            {
+                                <tr>
+                                    <td>
+                                        <strong>@item.ProductCode</strong> - @item.ProductName
+                                        <div style="font-size:11px; color:#6b7280;">ĐVT: @item.UnitName</div>
+                                    </td>
+                                    <td class="tf-text-right">@item.Quantity</td>
+                                    <td class="tf-text-right">@item.UnitPrice.ToString("N0") ₫</td>
+                                    <td>
+                                        <input type="number" class="tf-form-control tf-form-control-sm tf-text-right" style="padding:2px 4px; font-size:12px;" @bind="item.DiscountRate" @bind:after="() => OnItemDiscountRateChanged(item)" min="0" max="100" step="any" />
+                                    </td>
+                                    <td>
+                                        <input type="number" class="tf-form-control tf-form-control-sm tf-text-right" style="padding:2px 4px; font-size:12px;" @bind="item.DiscountAmount" @bind:after="() => OnItemDiscountAmountChanged(item)" min="0" step="any" />
+                                    </td>
+                                    <td class="tf-text-right" style="color:#059669; font-weight:600;">
+                                        @item.DiscountedUnitPrice.ToString("N0") ₫
+                                    </td>
+                                    <td class="tf-text-right">
+                                        @item.PreTaxAmount.ToString("N0") ₫
+                                    </td>
+                                    @if (_invoiceModalType == 2)
+                                    {
+                                        <td>
+                                            <select class="tf-form-control tf-form-control-sm" style="padding:2px 4px; font-size:12px;" @bind="item.TaxRate" @bind:after="RecalculateModalTotals">
+                                                <option value="0">0%</option>
+                                                <option value="5">5%</option>
+                                                <option value="8">8%</option>
+                                                <option value="10">10%</option>
+                                            </select>
+                                        </td>
+                                        <td class="tf-text-right">
+                                            @item.TaxAmount.ToString("N0") ₫
+                                        </td>
+                                    }
+                                    <td class="tf-text-right">
+                                        <strong style="color:var(--tf-color-danger);">@item.LineTotal.ToString("N0") ₫</strong>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
+                    <div style="width:360px; background:#f8fafc; padding:16px; border-radius:8px; border:1px solid #e2e8f0; font-size:13.5px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                            <span style="color:var(--tf-text-muted);">Cộng tiền hàng:</span>
+                            <strong>@_invoiceModalSubTotal.ToString("N0") ₫</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                            <span style="color:var(--tf-text-muted);">Chiết khấu:</span>
+                            <strong style="color:#dc2626;">@_invoiceModalTotalDiscount.ToString("N0") ₫</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                            <span style="color:var(--tf-text-muted);">Tiền hàng sau CK:</span>
+                            <strong>@((_invoiceModalSubTotal - _invoiceModalTotalDiscount).ToString("N0")) ₫</strong>
+                        </div>
+                        @if (_invoiceModalType == 2)
+                        {
+                            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                                <span style="color:var(--tf-text-muted);">Tiền thuế GTGT:</span>
+                                <strong style="color:var(--tf-color-primary);">@_invoiceModalTotalTax.ToString("N0") ₫</strong>
+                            </div>
+                        }
+                        <div style="display:flex; justify-content:space-between; margin-top:10px; padding-top:10px; border-top:1px dashed #cbd5e1; font-size:16px;">
+                            <span>Tổng thanh toán:</span>
+                            <strong style="color:var(--tf-color-danger);">@_invoiceModalGrandTotal.ToString("N0") ₫</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:12px; border-top:1px solid #e5e7eb; padding-top:16px;">
+                <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="() => _showInvoiceModal = false">Hủy</button>
+                <button type="button" class="tf-btn tf-btn-primary" @onclick="ExecuteCreateInvoice" disabled="@_isProcessing">
+                    @if (_isProcessing) { <span>Đang xử lý...</span> } else { <span>Xác nhận & Tạo hóa đơn</span> }
+                </button>
             </div>
         </div>
     </div>
@@ -192,7 +293,6 @@ else
     private bool _isLoading = true;
     private bool _isProcessing = false;
     private string? _errorMessage;
-    private int _selectedInvoiceType = 2;
 
     protected override async Task OnInitializedAsync()
     {
@@ -231,18 +331,119 @@ else
         }
     }
 
-    private async Task CreateInvoice()
+    private bool _showInvoiceModal = false;
+    private int _invoiceModalType = 2;
+    private decimal? _invoiceModalGlobalDiscountRate;
+    private List<InvoiceItemDto> _invoiceModalItems = new();
+    private decimal _invoiceModalSubTotal = 0;
+    private decimal _invoiceModalTotalDiscount = 0;
+    private decimal _invoiceModalTotalTax = 0;
+    private decimal _invoiceModalGrandTotal = 0;
+
+    private void OpenCreateInvoiceModal()
+    {
+        if (_order == null) return;
+        _invoiceModalType = 2;
+        _invoiceModalGlobalDiscountRate = null;
+        _invoiceModalItems = _order.Items.Select(oi => new InvoiceItemDto
+        {
+            ProductId = oi.ProductId,
+            ProductCode = oi.ProductCode,
+            ProductName = oi.ProductName,
+            UnitName = oi.UnitName,
+            Quantity = oi.Quantity,
+            UnitPrice = oi.UnitPrice ?? 0m,
+            DiscountRate = 0m,
+            DiscountAmount = 0m,
+            TaxRate = 8m,
+            TaxAmount = 0m,
+            LineTotal = 0m
+        }).ToList();
+
+        RecalculateModalTotals();
+        _showInvoiceModal = true;
+    }
+
+    private void OnModalInvoiceTypeChanged()
+    {
+        RecalculateModalTotals();
+    }
+
+    private void ApplyModalGlobalDiscountRate()
+    {
+        decimal rate = _invoiceModalGlobalDiscountRate ?? 0m;
+        foreach (var item in _invoiceModalItems)
+        {
+            item.DiscountRate = rate;
+            item.DiscountAmount = Math.Round((item.Quantity * item.UnitPrice) * (rate / 100m), 0);
+        }
+        RecalculateModalTotals();
+    }
+
+    private void OnItemDiscountRateChanged(InvoiceItemDto item)
+    {
+        item.DiscountAmount = Math.Round((item.Quantity * item.UnitPrice) * (item.DiscountRate / 100m), 0);
+        RecalculateModalTotals();
+    }
+
+    private void OnItemDiscountAmountChanged(InvoiceItemDto item)
+    {
+        decimal rawTotal = item.Quantity * item.UnitPrice;
+        item.DiscountRate = rawTotal > 0 ? Math.Round((item.DiscountAmount / rawTotal) * 100m, 2) : 0m;
+        RecalculateModalTotals();
+    }
+
+    private void RecalculateModalTotals()
+    {
+        bool isVat = _invoiceModalType == 2;
+        _invoiceModalSubTotal = 0;
+        _invoiceModalTotalDiscount = 0;
+        _invoiceModalTotalTax = 0;
+
+        foreach (var item in _invoiceModalItems)
+        {
+            var raw = item.Quantity * item.UnitPrice;
+            _invoiceModalSubTotal += raw;
+            _invoiceModalTotalDiscount += item.DiscountAmount;
+
+            var preTax = raw - item.DiscountAmount;
+            if (isVat)
+            {
+                item.TaxAmount = Math.Round(preTax * (item.TaxRate / 100m), 0);
+            }
+            else
+            {
+                item.TaxRate = 0;
+                item.TaxAmount = 0;
+            }
+            item.LineTotal = preTax + item.TaxAmount;
+            _invoiceModalTotalTax += item.TaxAmount;
+        }
+
+        _invoiceModalGrandTotal = _invoiceModalSubTotal - _invoiceModalTotalDiscount + _invoiceModalTotalTax;
+    }
+
+    private async Task ExecuteCreateInvoice()
     {
         _isProcessing = true;
         _errorMessage = null;
         try
         {
-            var inv = await InvoiceService.CreateInvoiceFromOrderAsync(Id, (InvoiceType)_selectedInvoiceType);
+            var inv = await InvoiceService.CreateInvoiceFromOrderAsync(
+                Id,
+                (InvoiceType)_invoiceModalType,
+                _invoiceModalItems,
+                _invoiceModalGlobalDiscountRate);
+
+            _showInvoiceModal = false;
             Nav.NavigateTo($"/hoa-don/chi-tiet/{inv.Id}");
         }
         catch (Exception ex)
         {
             _errorMessage = ex.Message;
+        }
+        finally
+        {
             _isProcessing = false;
         }
     }

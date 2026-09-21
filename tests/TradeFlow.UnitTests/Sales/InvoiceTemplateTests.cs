@@ -522,7 +522,7 @@ public class InvoiceTemplateTests
         context.PriceLists.Add(priceList);
         await context.SaveChangesAsync();
 
-        // 3. Create Sales Order with Qty = 2, UnitPrice = 1.190.000, DiscountRate = 5%
+        // 3. Create Sales Order with Qty = 2, UnitPrice = 1.190.000 (No discount, no VAT on Sales Order)
         var orderDto = new SalesOrderDto
         {
             CustomerId = customer.Id,
@@ -530,7 +530,7 @@ public class InvoiceTemplateTests
             CustomerPhone = customer.Phone,
             CustomerAddress = customer.Address,
             OrderDate = DateTime.UtcNow,
-            Notes = "Đơn hàng test chiết khấu 5%",
+            Notes = "Đơn hàng test đơn giá bảng giá 1.190.000",
             Items = new List<SalesOrderItemDto>
             {
                 new()
@@ -540,9 +540,7 @@ public class InvoiceTemplateTests
                     ProductName = product.Name,
                     UnitName = "Bộ",
                     Quantity = 2,
-                    UnitPrice = 1190000m,
-                    DiscountRate = 5m,
-                    TaxRate = 8m
+                    UnitPrice = 1190000m
                 }
             }
         };
@@ -552,32 +550,39 @@ public class InvoiceTemplateTests
 
         // Verify Order Calculations:
         // Giá trước VAT: 1.190.000
-        // Chiết khấu: 5% -> 119.000
-        // Giá sau CK (DiscountedUnitPrice): 1.130.500
-        // Thành tiền trước VAT: 2.261.000
-        // Tiền thuế VAT 8%: 180.880
-        // Thành tiền sau VAT (LineTotal): 2.441.880
+        // Đơn bán hàng / Đơn đặt hàng:
+        // - Unit price from PriceList: 1.190.000
+        // - No VAT (0)
+        // - No discount (0)
+        // - Subtotal = 2 * 1.190.000 = 2.380.000
+        // - GrandTotal = 2.380.000
         var orderItem = createdOrder.Items.Single();
         Assert.Equal(2, orderItem.Quantity);
         Assert.Equal(1190000m, orderItem.UnitPrice);
-        Assert.Equal(5m, orderItem.DiscountRate);
-        Assert.Equal(119000m, orderItem.DiscountAmount);
-        Assert.Equal(1130500m, orderItem.DiscountedUnitPrice);
-        Assert.Equal(2261000m, (orderItem.Quantity * (orderItem.UnitPrice ?? 0)) - orderItem.DiscountAmount);
-        Assert.Equal(180880m, orderItem.TaxAmount);
-        Assert.Equal(2441880m, orderItem.LineTotal);
+        Assert.Equal(0m, orderItem.DiscountRate);
+        Assert.Equal(0m, orderItem.DiscountAmount);
+        Assert.Equal(1190000m, orderItem.DiscountedUnitPrice);
+        Assert.Equal(2380000m, orderItem.LineTotal);
 
         Assert.Equal(2380000m, createdOrder.SubTotal);
-        Assert.Equal(119000m, createdOrder.TotalDiscount);
-        Assert.Equal(180880m, createdOrder.TotalTax);
-        Assert.Equal(2441880m, createdOrder.GrandTotal);
+        Assert.Equal(0m, createdOrder.TotalDiscount);
+        Assert.Equal(0m, createdOrder.TotalTax);
+        Assert.Equal(2380000m, createdOrder.GrandTotal);
+
+        // Verify Đơn đặt hàng document has no discount
+        var orderDoc = await invoiceService.GetOrderDocumentByOrderIdAsync(createdOrder.Id);
+        Assert.NotNull(orderDoc);
+        Assert.Equal(2380000m, orderDoc.TotalAmount);
+        Assert.Equal(2380000m, orderDoc.GrandTotal);
+        Assert.Equal(1190000m, orderDoc.Items.Single().DiscountedPrice);
+        Assert.Equal(2380000m, orderDoc.Items.Single().LineTotal);
 
         // 4. Confirm Order
         var confirmed = await salesService.ConfirmOrderAsync(createdOrder.Id);
         Assert.True(confirmed);
 
-        // 5. Create Hóa đơn GTGT (VatInvoice)
-        var vatInvoice = await invoiceService.CreateInvoiceFromOrderAsync(createdOrder.Id, InvoiceType.VatInvoice);
+        // 5. Create Hóa đơn GTGT (VatInvoice) with user-entered discount = 5%
+        var vatInvoice = await invoiceService.CreateInvoiceFromOrderAsync(createdOrder.Id, InvoiceType.VatInvoice, discountRate: 5m);
         Assert.NotNull(vatInvoice);
         Assert.Equal(InvoiceType.VatInvoice, vatInvoice.Type);
         Assert.Equal("1", vatInvoice.FormNumber);
@@ -597,8 +602,8 @@ public class InvoiceTemplateTests
         Assert.Equal(180880m, vatItem.TaxAmount);
         Assert.Equal(2441880m, vatItem.LineTotal);
 
-        // 6. Create Hóa đơn bán hàng (SalesInvoice)
-        var salesInvoice = await invoiceService.CreateInvoiceFromOrderAsync(createdOrder.Id, InvoiceType.SalesInvoice);
+        // 6. Create Hóa đơn bán hàng (SalesInvoice) with user-entered discount = 5%
+        var salesInvoice = await invoiceService.CreateInvoiceFromOrderAsync(createdOrder.Id, InvoiceType.SalesInvoice, discountRate: 5m);
         Assert.NotNull(salesInvoice);
         Assert.Equal(InvoiceType.SalesInvoice, salesInvoice.Type);
         Assert.Equal("2", salesInvoice.FormNumber);

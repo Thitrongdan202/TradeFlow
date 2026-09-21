@@ -105,13 +105,12 @@ public class OrderDocumentPdf : IDocument
             table.ColumnsDefinition(cols =>
             {
                 cols.ConstantColumn(28); // NO
-                cols.ConstantColumn(75); // Sản Phẩm
-                cols.ConstantColumn(75); // Tên hàng
+                cols.ConstantColumn(85); // Sản Phẩm
+                cols.ConstantColumn(85); // Tên hàng
                 cols.RelativeColumn();   // Mô Tả Sản Phẩm
-                cols.ConstantColumn(45); // Số lượng
-                cols.ConstantColumn(68); // Đơn giá
-                cols.ConstantColumn(70); // Đơn giá giảm
-                cols.ConstantColumn(78); // Thành tiền
+                cols.ConstantColumn(50); // Số lượng
+                cols.ConstantColumn(80); // Đơn giá
+                cols.ConstantColumn(90); // Thành tiền
             });
 
             // Table Header
@@ -123,7 +122,6 @@ public class OrderDocumentPdf : IDocument
                 header.Cell().Border(1).BorderColor(Colors.Black).PaddingVertical(3).AlignCenter().Text("Mô Tả Sản Phẩm").Bold();
                 header.Cell().Border(1).BorderColor(Colors.Black).PaddingVertical(3).AlignCenter().Text("Số lượng").Bold();
                 header.Cell().Border(1).BorderColor(Colors.Black).PaddingVertical(3).AlignCenter().Text("Đơn giá").Bold();
-                header.Cell().Border(1).BorderColor(Colors.Black).PaddingVertical(3).AlignCenter().Text("Đơn giá giảm").Bold();
                 header.Cell().Border(1).BorderColor(Colors.Black).PaddingVertical(3).AlignCenter().Text("Thành tiền").Bold();
             });
 
@@ -136,7 +134,6 @@ public class OrderDocumentPdf : IDocument
                 table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignLeft().Text(item.Description);
                 table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignCenter().Text(item.Quantity.ToString("N0"));
                 table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignRight().Text(item.UnitPrice.ToString("N0"));
-                table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignRight().Text(item.DiscountedPrice.ToString("N0"));
                 table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignRight().Text(item.LineTotal.ToString("N0"));
             }
         });
@@ -149,13 +146,12 @@ public class OrderDocumentPdf : IDocument
             table.ColumnsDefinition(cols =>
             {
                 cols.ConstantColumn(28); // NO
-                cols.ConstantColumn(75); // Sản Phẩm
-                cols.ConstantColumn(75); // Tên hàng
+                cols.ConstantColumn(85); // Sản Phẩm
+                cols.ConstantColumn(85); // Tên hàng
                 cols.RelativeColumn();   // Mô Tả Sản Phẩm
-                cols.ConstantColumn(45); // Số lượng
-                cols.ConstantColumn(68); // Đơn giá
-                cols.ConstantColumn(70); // Đơn giá giảm
-                cols.ConstantColumn(78); // Thành tiền
+                cols.ConstantColumn(50); // Số lượng
+                cols.ConstantColumn(80); // Đơn giá
+                cols.ConstantColumn(90); // Thành tiền
             });
 
             // Row 1: Tổng giá trị đơn hàng
@@ -164,14 +160,12 @@ public class OrderDocumentPdf : IDocument
             table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignCenter()
                 .Text(_model.TotalQuantity.ToString("N0")).Bold();
             table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).Text("");
-            table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).Text("");
             table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignRight()
                 .Text(_model.TotalAmount.ToString("N0")).Bold();
 
             // Row 2: Tổng cộng giá trị đơn hàng
             table.Cell().ColumnSpan(4).Border(1).BorderColor(Colors.Black).Padding(3).AlignRight()
                 .Text("Tổng cộng giá trị đơn hàng:");
-            table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).Text("");
             table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).Text("");
             table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).Text("");
             table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignRight()

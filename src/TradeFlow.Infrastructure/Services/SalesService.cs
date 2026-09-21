@@ -82,15 +82,7 @@ public class SalesService : ISalesService
             if (product == null) continue;
 
             decimal unitPrice = itemDto.UnitPrice ?? 0;
-            decimal discountAmount = itemDto.DiscountAmount;
-            if (discountAmount == 0 && itemDto.DiscountRate > 0)
-            {
-                discountAmount = Math.Round((itemDto.Quantity * unitPrice) * (itemDto.DiscountRate / 100m), 0);
-            }
-            decimal taxableAmount = Math.Max(0, (itemDto.Quantity * unitPrice) - discountAmount);
-            decimal effectiveTaxRate = itemDto.TaxRate > 0 ? itemDto.TaxRate : 0m;
-            decimal taxAmount = itemDto.TaxAmount > 0 ? itemDto.TaxAmount : Math.Round(taxableAmount * (effectiveTaxRate / 100m), 0);
-            decimal lineTotal = taxableAmount + taxAmount;
+            decimal lineTotal = itemDto.Quantity * unitPrice;
 
             var item = new SalesOrderItem
             {
@@ -100,19 +92,19 @@ public class SalesService : ISalesService
                 UnitName = product.Unit?.Name ?? string.Empty,
                 Quantity = itemDto.Quantity,
                 UnitPrice = unitPrice,
-                PriceSource = string.IsNullOrEmpty(itemDto.PriceSource) ? "Thủ công" : itemDto.PriceSource,
-                DiscountAmount = discountAmount,
-                TaxRate = itemDto.TaxRate,
-                TaxAmount = taxAmount,
+                PriceSource = string.IsNullOrEmpty(itemDto.PriceSource) ? "Bảng giá" : itemDto.PriceSource,
+                DiscountAmount = 0m,
+                TaxRate = 0m,
+                TaxAmount = 0m,
                 LineTotal = lineTotal
             };
             order.Items.Add(item);
         }
 
         order.SubTotal = order.Items.Sum(x => x.Quantity * x.UnitPrice);
-        order.TotalDiscount = order.Items.Sum(x => x.DiscountAmount);
-        order.TotalTax = order.Items.Sum(x => x.TaxAmount);
-        order.GrandTotal = order.SubTotal - order.TotalDiscount + order.TotalTax;
+        order.TotalDiscount = 0m;
+        order.TotalTax = 0m;
+        order.GrandTotal = order.SubTotal;
 
         _context.SalesOrders.Add(order);
         await _context.SaveChangesAsync(cancellationToken);
@@ -141,15 +133,7 @@ public class SalesService : ISalesService
             if (product == null) continue;
 
             decimal unitPrice = itemDto.UnitPrice ?? 0;
-            decimal discountAmount = itemDto.DiscountAmount;
-            if (discountAmount == 0 && itemDto.DiscountRate > 0)
-            {
-                discountAmount = Math.Round((itemDto.Quantity * unitPrice) * (itemDto.DiscountRate / 100m), 0);
-            }
-            decimal taxableAmount = Math.Max(0, (itemDto.Quantity * unitPrice) - discountAmount);
-            decimal effectiveTaxRate = itemDto.TaxRate > 0 ? itemDto.TaxRate : 0m;
-            decimal taxAmount = itemDto.TaxAmount > 0 ? itemDto.TaxAmount : Math.Round(taxableAmount * (effectiveTaxRate / 100m), 0);
-            decimal lineTotal = taxableAmount + taxAmount;
+            decimal lineTotal = itemDto.Quantity * unitPrice;
 
             var item = new SalesOrderItem
             {
@@ -159,19 +143,19 @@ public class SalesService : ISalesService
                 UnitName = product.Unit?.Name ?? string.Empty,
                 Quantity = itemDto.Quantity,
                 UnitPrice = unitPrice,
-                PriceSource = string.IsNullOrEmpty(itemDto.PriceSource) ? "Thủ công" : itemDto.PriceSource,
-                DiscountAmount = discountAmount,
-                TaxRate = itemDto.TaxRate,
-                TaxAmount = taxAmount,
+                PriceSource = string.IsNullOrEmpty(itemDto.PriceSource) ? "Bảng giá" : itemDto.PriceSource,
+                DiscountAmount = 0m,
+                TaxRate = 0m,
+                TaxAmount = 0m,
                 LineTotal = lineTotal
             };
             order.Items.Add(item);
         }
 
         order.SubTotal = order.Items.Sum(x => x.Quantity * x.UnitPrice);
-        order.TotalDiscount = order.Items.Sum(x => x.DiscountAmount);
-        order.TotalTax = order.Items.Sum(x => x.TaxAmount);
-        order.GrandTotal = order.SubTotal - order.TotalDiscount + order.TotalTax;
+        order.TotalDiscount = 0m;
+        order.TotalTax = 0m;
+        order.GrandTotal = order.SubTotal;
 
         await _context.SaveChangesAsync(cancellationToken);
         await _auditService.LogAsync(AuditEventType.SalesOrderUpdated, "SalesOrder", order.Id.ToString(), "Draft order updated", _currentUserService.UserId);
@@ -338,9 +322,9 @@ public class SalesService : ISalesService
             Notes = order.Notes,
             Status = order.Status,
             SubTotal = order.SubTotal,
-            TotalDiscount = order.TotalDiscount,
-            TotalTax = order.TotalTax,
-            GrandTotal = order.GrandTotal,
+            TotalDiscount = 0m,
+            TotalTax = 0m,
+            GrandTotal = order.SubTotal,
             Items = order.Items.Select(i => new SalesOrderItemDto
             {
                 Id = i.Id,
@@ -352,11 +336,11 @@ public class SalesService : ISalesService
                 Quantity = i.Quantity,
                 UnitPrice = i.UnitPrice,
                 PriceSource = i.PriceSource,
-                DiscountRate = (i.Quantity * i.UnitPrice) > 0 ? Math.Round((i.DiscountAmount / (i.Quantity * i.UnitPrice)) * 100m, 2) : 0,
-                DiscountAmount = i.DiscountAmount,
-                TaxRate = i.TaxRate,
-                TaxAmount = i.TaxAmount,
-                LineTotal = i.LineTotal
+                DiscountRate = 0m,
+                DiscountAmount = 0m,
+                TaxRate = 0m,
+                TaxAmount = 0m,
+                LineTotal = i.Quantity * i.UnitPrice
             }).ToList()
         };
     }

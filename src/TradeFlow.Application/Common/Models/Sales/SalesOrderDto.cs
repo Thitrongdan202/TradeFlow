@@ -45,8 +45,11 @@ public class SalesOrderItemDto
     public decimal Quantity { get; set; } = 1;
     public decimal? UnitPrice { get; set; }
     public string PriceSource { get; set; } = string.Empty;
+    public decimal DiscountRate { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal TaxRate { get; set; }
     public decimal TaxAmount { get; set; }
     public decimal LineTotal { get; set; }
+
+    public decimal DiscountedUnitPrice => (UnitPrice ?? 0) - (Quantity > 0 ? (DiscountAmount / Quantity) : 0);
 }

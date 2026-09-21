@@ -54,12 +54,12 @@ else
                     <button class="tf-btn tf-btn-success" @onclick="ConfirmOrder" disabled="@_isProcessing">Xác nhận đơn</button>
                 </AuthorizeView>
             }
-            @if (_order.Status == SalesOrderStatus.Confirmed)
+            @if (_order.Status == SalesOrderStatus.Confirmed || _order.Status == SalesOrderStatus.Invoiced)
             {
                 <AuthorizeView Policy="Permission:Invoices:Create">
                     <select class="tf-form-control" style="display:inline-block; width:auto; margin-right:8px;" @bind="_selectedInvoiceType">
-                        <option value="1">Hóa đơn bán hàng</option>
                         <option value="2">Hóa đơn GTGT</option>
+                        <option value="1">Hóa đơn bán hàng</option>
                     </select>
                     <button class="tf-btn tf-btn-primary" @onclick="CreateInvoice" disabled="@_isProcessing">Tạo hóa đơn</button>
                 </AuthorizeView>
@@ -105,8 +105,9 @@ else
                             <th>Sản phẩm</th>
                             <th>ĐVT</th>
                             <th class="tf-text-right">SL</th>
-                            <th class="tf-text-right">Đơn giá (Chưa VAT)</th>
+                            <th class="tf-text-right">Giá trước VAT</th>
                             <th class="tf-text-right">Chiết khấu</th>
+                            <th class="tf-text-right">Giá sau CK</th>
                             <th class="tf-text-right">Thuế suất</th>
                             <th class="tf-text-right">Tiền thuế</th>
                             <th class="tf-text-right">Thành tiền</th>
@@ -120,13 +121,18 @@ else
                                 <td>@item.ProductName</td>
                                 <td>@item.UnitName</td>
                                 <td class="tf-text-right">@item.Quantity</td>
-                                <td class="tf-text-right">@(item.UnitPrice ?? 0).ToString("N0")</td>
-                                <td class="tf-text-right">@item.DiscountAmount.ToString("N0")</td>
+                                <td class="tf-text-right">@((item.UnitPrice ?? 0).ToString("N0")) ₫</td>
+                                <td class="tf-text-right">
+                                    @(item.DiscountRate > 0 ? $"{item.DiscountRate:0.##}% ({item.DiscountAmount:N0} ₫)" : (item.DiscountAmount > 0 ? $"{item.DiscountAmount:N0} ₫" : "0 ₫"))
+                                </td>
+                                <td class="tf-text-right" style="font-weight:600; color:#059669;">
+                                    @item.DiscountedUnitPrice.ToString("N0") ₫
+                                </td>
                                 <td class="tf-text-right">
                                     @(item.TaxRate < 0 ? "KCT" : $"{item.TaxRate}%")
                                 </td>
-                                <td class="tf-text-right">@item.TaxAmount.ToString("N0")</td>
-                                <td class="tf-text-right"><strong style="color:var(--tf-color-danger);">@item.LineTotal.ToString("N0")</strong></td>
+                                <td class="tf-text-right">@item.TaxAmount.ToString("N0") ₫</td>
+                                <td class="tf-text-right"><strong style="color:var(--tf-color-danger);">@item.LineTotal.ToString("N0") ₫</strong></td>
                             </tr>
                         }
                     </tbody>
@@ -186,7 +192,7 @@ else
     private bool _isLoading = true;
     private bool _isProcessing = false;
     private string? _errorMessage;
-    private int _selectedInvoiceType = 1;
+    private int _selectedInvoiceType = 2;
 
     protected override async Task OnInitializedAsync()
     {
@@ -206,21 +212,14 @@ else
         }
     }
 
-        private async Task ConfirmOrder()
+    private async Task ConfirmOrder()
     {
         _isProcessing = true;
         _errorMessage = null;
         try
         {
             await SalesService.ConfirmOrderAsync(Id);
-            try {
-                var inv = await InvoiceService.CreateInvoiceFromOrderAsync(Id, (InvoiceType)_selectedInvoiceType);
-                Nav.NavigateTo($"/hoa-don/chi-tiet/{inv.Id}");
-                return;
-            } catch (Exception ex) {
-                _errorMessage = $"Đơn hàng đã được xác nhận nhưng không thể tự động tạo hóa đơn: " + ex.Message;
-                await LoadDataAsync();
-            }
+            await LoadDataAsync();
         }
         catch (Exception ex)
         {

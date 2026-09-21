@@ -81,6 +81,17 @@ public class SalesService : ISalesService
             var product = await _context.Products.Include(p => p.Unit).FirstOrDefaultAsync(p => p.Id == itemDto.ProductId, cancellationToken);
             if (product == null) continue;
 
+            decimal unitPrice = itemDto.UnitPrice ?? 0;
+            decimal discountAmount = itemDto.DiscountAmount;
+            if (discountAmount == 0 && itemDto.DiscountRate > 0)
+            {
+                discountAmount = Math.Round((itemDto.Quantity * unitPrice) * (itemDto.DiscountRate / 100m), 0);
+            }
+            decimal taxableAmount = Math.Max(0, (itemDto.Quantity * unitPrice) - discountAmount);
+            decimal effectiveTaxRate = itemDto.TaxRate > 0 ? itemDto.TaxRate : 0m;
+            decimal taxAmount = itemDto.TaxAmount > 0 ? itemDto.TaxAmount : Math.Round(taxableAmount * (effectiveTaxRate / 100m), 0);
+            decimal lineTotal = taxableAmount + taxAmount;
+
             var item = new SalesOrderItem
             {
                 ProductId = product.Id,
@@ -88,12 +99,12 @@ public class SalesService : ISalesService
                 ProductName = product.Name,
                 UnitName = product.Unit?.Name ?? string.Empty,
                 Quantity = itemDto.Quantity,
-                UnitPrice = itemDto.UnitPrice ?? 0,
+                UnitPrice = unitPrice,
                 PriceSource = string.IsNullOrEmpty(itemDto.PriceSource) ? "Thủ công" : itemDto.PriceSource,
-                DiscountAmount = itemDto.DiscountAmount,
+                DiscountAmount = discountAmount,
                 TaxRate = itemDto.TaxRate,
-                TaxAmount = itemDto.TaxAmount,
-                LineTotal = (itemDto.Quantity * (itemDto.UnitPrice ?? 0)) - itemDto.DiscountAmount + itemDto.TaxAmount
+                TaxAmount = taxAmount,
+                LineTotal = lineTotal
             };
             order.Items.Add(item);
         }
@@ -129,6 +140,17 @@ public class SalesService : ISalesService
             var product = await _context.Products.Include(p => p.Unit).FirstOrDefaultAsync(p => p.Id == itemDto.ProductId, cancellationToken);
             if (product == null) continue;
 
+            decimal unitPrice = itemDto.UnitPrice ?? 0;
+            decimal discountAmount = itemDto.DiscountAmount;
+            if (discountAmount == 0 && itemDto.DiscountRate > 0)
+            {
+                discountAmount = Math.Round((itemDto.Quantity * unitPrice) * (itemDto.DiscountRate / 100m), 0);
+            }
+            decimal taxableAmount = Math.Max(0, (itemDto.Quantity * unitPrice) - discountAmount);
+            decimal effectiveTaxRate = itemDto.TaxRate > 0 ? itemDto.TaxRate : 0m;
+            decimal taxAmount = itemDto.TaxAmount > 0 ? itemDto.TaxAmount : Math.Round(taxableAmount * (effectiveTaxRate / 100m), 0);
+            decimal lineTotal = taxableAmount + taxAmount;
+
             var item = new SalesOrderItem
             {
                 ProductId = product.Id,
@@ -136,12 +158,12 @@ public class SalesService : ISalesService
                 ProductName = product.Name,
                 UnitName = product.Unit?.Name ?? string.Empty,
                 Quantity = itemDto.Quantity,
-                UnitPrice = itemDto.UnitPrice ?? 0,
+                UnitPrice = unitPrice,
                 PriceSource = string.IsNullOrEmpty(itemDto.PriceSource) ? "Thủ công" : itemDto.PriceSource,
-                DiscountAmount = itemDto.DiscountAmount,
+                DiscountAmount = discountAmount,
                 TaxRate = itemDto.TaxRate,
-                TaxAmount = itemDto.TaxAmount,
-                LineTotal = (itemDto.Quantity * (itemDto.UnitPrice ?? 0)) - itemDto.DiscountAmount + itemDto.TaxAmount
+                TaxAmount = taxAmount,
+                LineTotal = lineTotal
             };
             order.Items.Add(item);
         }
@@ -329,7 +351,8 @@ public class SalesService : ISalesService
                 UnitName = i.UnitName,
                 Quantity = i.Quantity,
                 UnitPrice = i.UnitPrice,
-            PriceSource = i.PriceSource,
+                PriceSource = i.PriceSource,
+                DiscountRate = (i.Quantity * i.UnitPrice) > 0 ? Math.Round((i.DiscountAmount / (i.Quantity * i.UnitPrice)) * 100m, 2) : 0,
                 DiscountAmount = i.DiscountAmount,
                 TaxRate = i.TaxRate,
                 TaxAmount = i.TaxAmount,

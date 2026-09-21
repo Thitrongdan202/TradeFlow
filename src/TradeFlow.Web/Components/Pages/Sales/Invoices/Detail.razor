@@ -79,7 +79,7 @@ else
             <button type="button" class="tf-btn @(_selectedDocType == "gtgt" ? "tf-btn-primary" : "tf-btn-outline-secondary")"
                     style="padding:5px 14px; font-size:13px;"
                     @onclick='() => SwitchDocType("gtgt")'>
-                🧾 Hóa đơn điện tử GTGT
+                🧾 @(IsVat ? "Hóa đơn điện tử GTGT" : "Hóa đơn bán hàng")
             </button>
             <button type="button" class="tf-btn @(_selectedDocType == "order" ? "tf-btn-primary" : "tf-btn-outline-secondary")"
                     style="padding:5px 14px; font-size:13px;"
@@ -98,7 +98,7 @@ else
     <div style="display:flex; gap:8px; margin-bottom:16px;">
         <button class="tf-btn @(_activeTab == "preview" ? "tf-btn-primary" : "tf-btn-secondary")"
                 @onclick='() => _activeTab = "preview"'>
-            Xem trước (@(_selectedDocType == "gtgt" ? "Mẫu hóa đơn" : "Mẫu Đơn đặt hàng"))
+            Xem trước (@(_selectedDocType == "gtgt" ? (IsVat ? "Mẫu HĐ GTGT" : "Mẫu HĐ Bán hàng") : "Mẫu Đơn đặt hàng"))
         </button>
         <button class="tf-btn @(_activeTab == "pdf" ? "tf-btn-primary" : "tf-btn-secondary")"
                 @onclick='() => _activeTab = "pdf"'>Bản in PDF</button>
@@ -141,10 +141,10 @@ else
 
                         <div style="flex:1; text-align:center;">
                             <div style="font-size:15pt; font-weight:bold; color:@BorderBlue; letter-spacing:0.5px;">
-                                HÓA ĐƠN GIÁ TRỊ GIA TĂNG
+                                @(IsVat ? "HÓA ĐƠN GIÁ TRỊ GIA TĂNG" : "HÓA ĐƠN BÁN HÀNG")
                             </div>
                             <div style="font-size:10pt; font-weight:600; color:@BorderBlue; margin-top:2px;">
-                                (VAT INVOICE)
+                                @(IsVat ? "(VAT INVOICE)" : "(SALES INVOICE)")
                             </div>
                         </div>
 
@@ -201,6 +201,12 @@ else
                                 <th style="border:0.5px solid @BorderBlue; padding:5px 3px; text-align:center; width:75px; color:@BorderBlue;">
                                     Đơn giá<br /><em style="font-size:7pt; font-weight:normal;">(Unit Price)</em>
                                 </th>
+                                @if (HasDiscount)
+                                {
+                                    <th style="border:0.5px solid @BorderBlue; padding:5px 3px; text-align:center; width:75px; color:@BorderBlue;">
+                                        Chiết khấu<br /><em style="font-size:7pt; font-weight:normal;">(Discount)</em>
+                                    </th>
+                                }
                                 <th style="border:0.5px solid @BorderBlue; padding:5px 3px; text-align:center; width:80px; color:@BorderBlue;">
                                     Thành tiền<br /><em style="font-size:7pt; font-weight:normal;">(Amount)</em>
                                 </th>
@@ -214,18 +220,31 @@ else
                                     </th>
                                 }
                             </tr>
-                            @* Column numbers row: 1 | 2 | 3 | 4 | 5 | 6 = 4 x 5 | 7 | 8 = 6 x 7 *@
+                            @* Column numbers row *@
                             <tr style="background:@RowAltBg; font-style:italic; font-size:7.5pt; color:@BorderBlue;">
                                 <td style="border:0.5px solid @BorderBlue; padding:2px; text-align:center;">1</td>
                                 <td style="border:0.5px solid @BorderBlue; padding:2px; text-align:center;">2</td>
                                 <td style="border:0.5px solid @BorderBlue; padding:2px; text-align:center;">3</td>
                                 <td style="border:0.5px solid @BorderBlue; padding:2px; text-align:center;">4</td>
                                 <td style="border:0.5px solid @BorderBlue; padding:2px; text-align:center;">5</td>
-                                <td style="border:0.5px solid @BorderBlue; padding:2px; text-align:center;">6 = 4 x 5</td>
-                                @if (IsVat)
+                                @if (HasDiscount)
                                 {
-                                    <td style="border:0.5px solid @BorderBlue; padding:2px; text-align:center;">7</td>
-                                    <td style="border:0.5px solid @BorderBlue; padding:2px; text-align:center;">8 = 6 x 7</td>
+                                    <td style="border:0.5px solid @BorderBlue; padding:2px; text-align:center;">6</td>
+                                    <td style="border:0.5px solid @BorderBlue; padding:2px; text-align:center;">7 = 4 x 5 - 6</td>
+                                    @if (IsVat)
+                                    {
+                                        <td style="border:0.5px solid @BorderBlue; padding:2px; text-align:center;">8</td>
+                                        <td style="border:0.5px solid @BorderBlue; padding:2px; text-align:center;">9 = 7 x 8</td>
+                                    }
+                                }
+                                else
+                                {
+                                    <td style="border:0.5px solid @BorderBlue; padding:2px; text-align:center;">6 = 4 x 5</td>
+                                    @if (IsVat)
+                                    {
+                                        <td style="border:0.5px solid @BorderBlue; padding:2px; text-align:center;">7</td>
+                                        <td style="border:0.5px solid @BorderBlue; padding:2px; text-align:center;">8 = 6 x 7</td>
+                                    }
                                 }
                             </tr>
                         </thead>
@@ -241,6 +260,10 @@ else
                                         <td style="border:0.5px solid @BorderBlue; padding:4px 3px; text-align:center; color:#000;">@item.UnitName</td>
                                         <td style="border:0.5px solid @BorderBlue; padding:4px 3px; text-align:right; color:#000;">@item.Quantity.ToString("G29")</td>
                                         <td style="border:0.5px solid @BorderBlue; padding:4px 3px; text-align:right; color:#000;">@item.UnitPrice.ToString("N0", ViCulture)</td>
+                                        @if (HasDiscount)
+                                        {
+                                            <td style="border:0.5px solid @BorderBlue; padding:4px 3px; text-align:right; color:#000;">@item.DiscountAmount.ToString("N0", ViCulture)</td>
+                                        }
                                         <td style="border:0.5px solid @BorderBlue; padding:4px 3px; text-align:right; color:#000;">@lineAmt.ToString("N0", ViCulture)</td>
                                         @if (IsVat)
                                         {
@@ -253,7 +276,7 @@ else
 
                                 @* Minimum height padding up to 8 rows to preserve exact empty template proportions *@
                                 int emptyCount = Math.Max(0, 8 - _invoice.Items.Count);
-                                int colCount = IsVat ? 8 : 6;
+                                int colCount = 6 + (HasDiscount ? 1 : 0) + (IsVat ? 2 : 0);
                                 for (int e = 0; e < emptyCount; e++)
                                 {
                                     <tr>
@@ -273,7 +296,20 @@ else
                     @if (IsVat)
                     {
                         @TotalRowHtml("Cộng tiền hàng", "(Sub total)", _invoice.SubTotal.ToString("N0", ViCulture))
+                        @if (HasDiscount)
+                        {
+                            @TotalRowHtml("Tiền chiết khấu", "(Discount)", _invoice.TotalDiscount.ToString("N0", ViCulture))
+                            @TotalRowHtml("Thành tiền chưa thuế", "(Amount before tax)", (_invoice.SubTotal - _invoice.TotalDiscount).ToString("N0", ViCulture))
+                        }
                         @TotalRowHtml("Cộng tiền thuế GTGT", "(VAT amount)", _invoice.TotalTax.ToString("N0", ViCulture))
+                    }
+                    else
+                    {
+                        @if (HasDiscount)
+                        {
+                            @TotalRowHtml("Cộng tiền hàng", "(Sub total)", _invoice.SubTotal.ToString("N0", ViCulture))
+                            @TotalRowHtml("Tiền chiết khấu", "(Discount)", _invoice.TotalDiscount.ToString("N0", ViCulture))
+                        }
                     }
                     @TotalRowHtml("Tổng cộng tiền thanh toán", "(Total payment)", _invoice.GrandTotal.ToString("N0", ViCulture), true)
                 </div>
@@ -521,6 +557,7 @@ else
     private const string RowAltBg    = "#f2f7fb";
 
     private bool IsVat => _invoice?.Type == InvoiceType.VatInvoice;
+    private bool HasDiscount => (_invoice?.Items.Any(x => x.DiscountAmount > 0) ?? false) || (_invoice?.TotalDiscount > 0);
     private static readonly System.Globalization.CultureInfo ViCulture = System.Globalization.CultureInfo.GetCultureInfo("vi-VN");
 
     private InvoiceDto? _invoice;

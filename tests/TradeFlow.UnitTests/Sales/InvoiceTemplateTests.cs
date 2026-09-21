@@ -471,4 +471,151 @@ public class InvoiceTemplateTests
         string targetPdf = @"C:\Users\thitr\.gemini\antigravity\brain\fb94d497-815d-460b-bd53-9de32ef4d901\synthetic_order_document.pdf";
         await File.WriteAllBytesAsync(targetPdf, pdfBytes);
     }
+
+    [Fact]
+    public async Task Phase5_SalesOrderToInvoice_PriceAndDiscountCalculations_MatchScenario()
+    {
+        using var context = CreateInMemoryDbContext();
+        var mockUser = new Mock<ICurrentUserService>();
+        mockUser.Setup(u => u.UserId).Returns("test-user");
+        var mockAudit = new Mock<IAuditService>();
+        var salesService = new SalesService(context, mockUser.Object, mockAudit.Object);
+        var sigService = new DigitalSignatureService(context);
+        var invoiceService = new InvoiceService(context, mockUser.Object, mockAudit.Object, sigService);
+
+        // 1. Setup Customer & Product
+        var customer = new Customer
+        {
+            Code = "KH-TEST",
+            Name = "Khách Hàng Thử Nghiệm",
+            TaxCode = "0109876543",
+            Address = "123 Phố Huế, Hà Nội",
+            Phone = "0987654321"
+        };
+        context.Customers.Add(customer);
+
+        var product = new Product
+        {
+            Code = "TL2138",
+            Name = "Bồn Cầu Trắng 1 Khối",
+            IsActive = true
+        };
+        context.Products.Add(product);
+        await context.SaveChangesAsync();
+
+        // 2. Setup PriceList (Standard selling price before VAT = 1.190.000)
+        var priceList = new Domain.Entities.Pricing.PriceList
+        {
+            Code = "PL-2026",
+            Status = PriceListStatus.Active,
+            EffectiveFrom = DateTime.UtcNow.AddDays(-1),
+            Items = new List<Domain.Entities.Pricing.PriceListItem>
+            {
+                new()
+                {
+                    ProductId = product.Id,
+                    UnitPrice = 1190000m,
+                    VatRate = 8m
+                }
+            }
+        };
+        context.PriceLists.Add(priceList);
+        await context.SaveChangesAsync();
+
+        // 3. Create Sales Order with Qty = 2, UnitPrice = 1.190.000, DiscountRate = 5%
+        var orderDto = new SalesOrderDto
+        {
+            CustomerId = customer.Id,
+            CustomerName = customer.Name,
+            CustomerPhone = customer.Phone,
+            CustomerAddress = customer.Address,
+            OrderDate = DateTime.UtcNow,
+            Notes = "Đơn hàng test chiết khấu 5%",
+            Items = new List<SalesOrderItemDto>
+            {
+                new()
+                {
+                    ProductId = product.Id,
+                    ProductCode = product.Code,
+                    ProductName = product.Name,
+                    UnitName = "Bộ",
+                    Quantity = 2,
+                    UnitPrice = 1190000m,
+                    DiscountRate = 5m,
+                    TaxRate = 8m
+                }
+            }
+        };
+
+        var createdOrder = await salesService.CreateOrderAsync(orderDto);
+        Assert.NotNull(createdOrder);
+
+        // Verify Order Calculations:
+        // Giá trước VAT: 1.190.000
+        // Chiết khấu: 5% -> 119.000
+        // Giá sau CK (DiscountedUnitPrice): 1.130.500
+        // Thành tiền trước VAT: 2.261.000
+        // Tiền thuế VAT 8%: 180.880
+        // Thành tiền sau VAT (LineTotal): 2.441.880
+        var orderItem = createdOrder.Items.Single();
+        Assert.Equal(2, orderItem.Quantity);
+        Assert.Equal(1190000m, orderItem.UnitPrice);
+        Assert.Equal(5m, orderItem.DiscountRate);
+        Assert.Equal(119000m, orderItem.DiscountAmount);
+        Assert.Equal(1130500m, orderItem.DiscountedUnitPrice);
+        Assert.Equal(2261000m, (orderItem.Quantity * (orderItem.UnitPrice ?? 0)) - orderItem.DiscountAmount);
+        Assert.Equal(180880m, orderItem.TaxAmount);
+        Assert.Equal(2441880m, orderItem.LineTotal);
+
+        Assert.Equal(2380000m, createdOrder.SubTotal);
+        Assert.Equal(119000m, createdOrder.TotalDiscount);
+        Assert.Equal(180880m, createdOrder.TotalTax);
+        Assert.Equal(2441880m, createdOrder.GrandTotal);
+
+        // 4. Confirm Order
+        var confirmed = await salesService.ConfirmOrderAsync(createdOrder.Id);
+        Assert.True(confirmed);
+
+        // 5. Create Hóa đơn GTGT (VatInvoice)
+        var vatInvoice = await invoiceService.CreateInvoiceFromOrderAsync(createdOrder.Id, InvoiceType.VatInvoice);
+        Assert.NotNull(vatInvoice);
+        Assert.Equal(InvoiceType.VatInvoice, vatInvoice.Type);
+        Assert.Equal("1", vatInvoice.FormNumber);
+        Assert.Equal(2380000m, vatInvoice.SubTotal);
+        Assert.Equal(119000m, vatInvoice.TotalDiscount);
+        Assert.Equal(180880m, vatInvoice.TotalTax);
+        Assert.Equal(2441880m, vatInvoice.GrandTotal);
+
+        var vatItem = vatInvoice.Items.Single();
+        Assert.Equal(2, vatItem.Quantity);
+        Assert.Equal(1190000m, vatItem.UnitPrice);
+        Assert.Equal(119000m, vatItem.DiscountAmount);
+        Assert.Equal(5m, vatItem.DiscountRate);
+        Assert.Equal(1130500m, vatItem.DiscountedUnitPrice);
+        Assert.Equal(2261000m, vatItem.PreTaxAmount);
+        Assert.Equal(8m, vatItem.TaxRate);
+        Assert.Equal(180880m, vatItem.TaxAmount);
+        Assert.Equal(2441880m, vatItem.LineTotal);
+
+        // 6. Create Hóa đơn bán hàng (SalesInvoice)
+        var salesInvoice = await invoiceService.CreateInvoiceFromOrderAsync(createdOrder.Id, InvoiceType.SalesInvoice);
+        Assert.NotNull(salesInvoice);
+        Assert.Equal(InvoiceType.SalesInvoice, salesInvoice.Type);
+        Assert.Equal("2", salesInvoice.FormNumber);
+        Assert.Equal(2380000m, salesInvoice.SubTotal);
+        Assert.Equal(119000m, salesInvoice.TotalDiscount);
+        Assert.Equal(0m, salesInvoice.TotalTax);
+        Assert.Equal(2261000m, salesInvoice.GrandTotal);
+
+        var salesItem = salesInvoice.Items.Single();
+        Assert.Equal(2, salesItem.Quantity);
+        Assert.Equal(1190000m, salesItem.UnitPrice);
+        Assert.Equal(119000m, salesItem.DiscountAmount);
+        Assert.Equal(5m, salesItem.DiscountRate);
+        Assert.Equal(1130500m, salesItem.DiscountedUnitPrice);
+        Assert.Equal(2261000m, salesItem.PreTaxAmount);
+        Assert.Equal(0m, salesItem.TaxRate);
+        Assert.Equal(0m, salesItem.TaxAmount);
+        Assert.Equal(2261000m, salesItem.LineTotal);
+    }
 }

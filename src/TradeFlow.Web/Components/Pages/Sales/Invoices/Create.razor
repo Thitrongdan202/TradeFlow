@@ -120,6 +120,7 @@
                 <th>ĐVT</th>
                 <th style="width:100px;">Số lượng</th>
                 <th style="width:150px;">Đơn giá</th>
+                <th style="width:120px;">Chiết khấu</th>
                 @if (_dto.Type == InvoiceType.VatInvoice)
                 {
                     <th style="width:100px;">Thuế %</th>
@@ -136,6 +137,7 @@
                     <td><input type="text" class="tf-form-control tf-form-control-sm" @bind="item.UnitName" /></td>
                     <td><input type="number" class="tf-form-control tf-form-control-sm" @bind="item.Quantity" @bind:after="CalculateTotals" /></td>
                     <td><input type="number" class="tf-form-control tf-form-control-sm" @bind="item.UnitPrice" @bind:after="CalculateTotals" /></td>
+                    <td><input type="number" class="tf-form-control tf-form-control-sm" @bind="item.DiscountAmount" @bind:after="CalculateTotals" min="0" step="any" /></td>
                     @if (_dto.Type == InvoiceType.VatInvoice)
                     {
                         <td>
@@ -159,12 +161,19 @@
 <div class="tf-card" style="margin-bottom:20px;">
     <div style="display:flex; justify-content:flex-end;">
         <div style="width:300px; background:#f8fafc; padding:20px; border-radius:8px; border:1px solid #e2e8f0;">
-            @if (_dto.Type == InvoiceType.VatInvoice)
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                <span style="color:var(--tf-text-muted);">Cộng tiền hàng:</span>
+                <strong>@_dto.SubTotal.ToString("N0")</strong>
+            </div>
+            @if (_dto.TotalDiscount > 0)
             {
                 <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                    <span style="color:var(--tf-text-muted);">Cộng tiền hàng:</span>
-                    <strong>@_dto.SubTotal.ToString("N0")</strong>
+                    <span style="color:var(--tf-text-muted);">Tiền chiết khấu:</span>
+                    <strong>@_dto.TotalDiscount.ToString("N0")</strong>
                 </div>
+            }
+            @if (_dto.Type == InvoiceType.VatInvoice)
+            {
                 <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
                     <span style="color:var(--tf-text-muted);">Tiền thuế GTGT:</span>
                     <strong>@_dto.TotalTax.ToString("N0")</strong>
@@ -287,7 +296,8 @@
 
     private void CalculateTotals()
     {
-        _dto.SubTotal = 0;
+        _dto.SubTotal = _dto.Items.Sum(x => x.Quantity * x.UnitPrice);
+        _dto.TotalDiscount = _dto.Items.Sum(x => x.DiscountAmount);
         _dto.TotalTax = 0;
 
         foreach (var item in _dto.Items)
@@ -295,10 +305,9 @@
             if (_dto.Type != InvoiceType.VatInvoice) item.TaxRate = 0;
             
             var lineAmount = (item.Quantity * item.UnitPrice) - item.DiscountAmount;
-            item.TaxAmount = lineAmount * (item.TaxRate / 100m);
+            item.TaxAmount = _dto.Type == InvoiceType.VatInvoice ? Math.Round(lineAmount * (item.TaxRate / 100m), 0) : 0m;
             item.LineTotal = lineAmount + item.TaxAmount;
 
-            _dto.SubTotal += lineAmount;
             _dto.TotalTax += item.TaxAmount;
         }
 

@@ -92,6 +92,9 @@ public class InvoiceService : IInvoiceService
         string formNo = isVat ? "1" : "2";
         string series = isVat ? $"1C{yearSuffix}TFL" : $"2C{yearSuffix}TFL";
 
+        decimal invoiceTotalTax = isVat ? dto.TotalTax : 0m;
+        decimal invoiceGrandTotal = isVat ? dto.GrandTotal : (dto.SubTotal - dto.TotalDiscount);
+
         var invoice = new Invoice
         {
             InvoiceNumber = invNumber,
@@ -126,13 +129,18 @@ public class InvoiceService : IInvoiceService
 
             SubTotal = dto.SubTotal,
             TotalDiscount = dto.TotalDiscount,
-            TotalTax = dto.TotalTax,
-            GrandTotal = dto.GrandTotal
+            TotalTax = invoiceTotalTax,
+            GrandTotal = invoiceGrandTotal
         };
 
         int sortOrder = 1;
         foreach (var item in dto.Items)
         {
+            decimal itemTaxRate = isVat ? item.TaxRate : 0m;
+            decimal itemPreTax = (item.Quantity * item.UnitPrice) - item.DiscountAmount;
+            decimal itemTaxAmount = isVat ? item.TaxAmount : 0m;
+            decimal itemLineTotal = isVat ? item.LineTotal : itemPreTax;
+
             invoice.Items.Add(new InvoiceItem
             {
                 SortOrder = sortOrder++,
@@ -143,9 +151,9 @@ public class InvoiceService : IInvoiceService
                 Quantity = item.Quantity,
                 UnitPrice = item.UnitPrice,
                 DiscountAmount = item.DiscountAmount,
-                TaxRate = item.TaxRate,
-                TaxAmount = item.TaxAmount,
-                LineTotal = item.LineTotal
+                TaxRate = itemTaxRate,
+                TaxAmount = itemTaxAmount,
+                LineTotal = itemLineTotal
             });
         }
 
@@ -162,7 +170,7 @@ public class InvoiceService : IInvoiceService
             .Include(x => x.Items)
             .FirstOrDefaultAsync(x => x.Id == salesOrderId, cancellationToken);
 
-        if (order == null || order.Status != SalesOrderStatus.Confirmed)
+        if (order == null || (order.Status != SalesOrderStatus.Confirmed && order.Status != SalesOrderStatus.Invoiced))
         {
             throw new Exception("Sales Order must be Confirmed to create an Invoice.");
         }
@@ -194,6 +202,9 @@ public class InvoiceService : IInvoiceService
         bool isVat = type == InvoiceType.VatInvoice;
         string formNo = isVat ? "1" : "2";
         string series = isVat ? $"1C{yearSuffix}TFL" : $"2C{yearSuffix}TFL";
+
+        decimal invoiceTotalTax = isVat ? order.TotalTax : 0m;
+        decimal invoiceGrandTotal = isVat ? order.GrandTotal : (order.SubTotal - order.TotalDiscount);
 
         var invoice = new Invoice
         {
@@ -228,13 +239,18 @@ public class InvoiceService : IInvoiceService
 
             SubTotal = order.SubTotal,
             TotalDiscount = order.TotalDiscount,
-            TotalTax = order.TotalTax,
-            GrandTotal = order.GrandTotal
+            TotalTax = invoiceTotalTax,
+            GrandTotal = invoiceGrandTotal
         };
 
         int sortOrder = 1;
         foreach (var oi in order.Items)
         {
+            decimal itemTaxRate = isVat ? oi.TaxRate : 0m;
+            decimal itemPreTax = (oi.Quantity * oi.UnitPrice) - oi.DiscountAmount;
+            decimal itemTaxAmount = isVat ? oi.TaxAmount : 0m;
+            decimal itemLineTotal = isVat ? oi.LineTotal : itemPreTax;
+
             invoice.Items.Add(new InvoiceItem
             {
                 SortOrder = sortOrder++,
@@ -245,9 +261,9 @@ public class InvoiceService : IInvoiceService
                 Quantity = oi.Quantity,
                 UnitPrice = oi.UnitPrice,
                 DiscountAmount = oi.DiscountAmount,
-                TaxRate = oi.TaxRate,
-                TaxAmount = oi.TaxAmount,
-                LineTotal = oi.LineTotal
+                TaxRate = itemTaxRate,
+                TaxAmount = itemTaxAmount,
+                LineTotal = itemLineTotal
             });
         }
 
@@ -281,7 +297,9 @@ public class InvoiceService : IInvoiceService
         inv.PaymentMethod = dto.PaymentMethod;
         inv.Notes = dto.Notes;
         inv.Type = dto.Type;
-        inv.FormNumber = dto.Type == InvoiceType.VatInvoice ? "1" : "2";
+        bool isVat = dto.Type == InvoiceType.VatInvoice;
+        inv.FormNumber = isVat ? "1" : "2";
+        inv.InvoiceSeries = isVat ? $"1C{inv.InvoiceDate:yy}TFL" : $"2C{inv.InvoiceDate:yy}TFL";
 
         _context.InvoiceItems.RemoveRange(inv.Items);
         inv.Items.Clear();
@@ -289,6 +307,11 @@ public class InvoiceService : IInvoiceService
         int sortOrder = 1;
         foreach (var item in dto.Items)
         {
+            decimal taxRate = isVat ? item.TaxRate : 0m;
+            decimal taxAmount = isVat ? item.TaxAmount : 0m;
+            decimal linePreTax = (item.Quantity * item.UnitPrice) - item.DiscountAmount;
+            decimal lineTotal = isVat ? item.LineTotal : linePreTax;
+
             inv.Items.Add(new InvoiceItem
             {
                 SortOrder = sortOrder++,
@@ -299,16 +322,16 @@ public class InvoiceService : IInvoiceService
                 Quantity = item.Quantity,
                 UnitPrice = item.UnitPrice,
                 DiscountAmount = item.DiscountAmount,
-                TaxRate = item.TaxRate,
-                TaxAmount = item.TaxAmount,
-                LineTotal = item.LineTotal
+                TaxRate = taxRate,
+                TaxAmount = taxAmount,
+                LineTotal = lineTotal
             });
         }
 
         inv.SubTotal = dto.SubTotal;
         inv.TotalDiscount = dto.TotalDiscount;
-        inv.TotalTax = dto.TotalTax;
-        inv.GrandTotal = dto.GrandTotal;
+        inv.TotalTax = isVat ? dto.TotalTax : 0m;
+        inv.GrandTotal = isVat ? dto.GrandTotal : (dto.SubTotal - dto.TotalDiscount);
 
         await _context.SaveChangesAsync(cancellationToken);
         await _auditService.LogAsync(AuditEventType.InvoiceUpdated, "Invoice", inv.Id.ToString(), "Draft invoice updated", _currentUserService.UserId);
@@ -1044,6 +1067,10 @@ public class InvoiceService : IInvoiceService
 
         foreach (var item in invoice.Items.OrderBy(x => x.SortOrder))
         {
+            decimal discountRate = (item.Quantity * item.UnitPrice) > 0
+                ? Math.Round((item.DiscountAmount / (item.Quantity * item.UnitPrice)) * 100m, 2)
+                : 0;
+
             dto.Items.Add(new InvoiceItemDto
             {
                 Id = item.Id,
@@ -1055,6 +1082,7 @@ public class InvoiceService : IInvoiceService
                 UnitName = item.UnitName,
                 Quantity = item.Quantity,
                 UnitPrice = item.UnitPrice,
+                DiscountRate = discountRate,
                 DiscountAmount = item.DiscountAmount,
                 TaxRate = item.TaxRate,
                 TaxAmount = item.TaxAmount,

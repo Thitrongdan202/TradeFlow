@@ -189,7 +189,7 @@ else
             var preTax = (item.Quantity * item.UnitPrice) - item.DiscountAmount;
             if (_invoice.Type == InvoiceType.VatInvoice)
             {
-                item.TaxAmount = preTax * (item.TaxRate / 100m);
+                item.TaxAmount = Math.Round(preTax * (item.TaxRate / 100m), 0);
             }
             else
             {
@@ -201,7 +201,7 @@ else
 
         _invoice.SubTotal = _invoice.Items.Sum(x => x.Quantity * x.UnitPrice);
         _invoice.TotalDiscount = _invoice.Items.Sum(x => x.DiscountAmount);
-        _invoice.TotalTax = _invoice.Items.Sum(x => x.TaxAmount);
+        _invoice.TotalTax = _invoice.Type == InvoiceType.VatInvoice ? _invoice.Items.Sum(x => x.TaxAmount) : 0m;
         _invoice.GrandTotal = _invoice.SubTotal - _invoice.TotalDiscount + _invoice.TotalTax;
     }
 

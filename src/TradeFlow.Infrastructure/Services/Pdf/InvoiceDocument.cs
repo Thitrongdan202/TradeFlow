@@ -40,9 +40,11 @@ public class InvoiceDocument : IDocument
     void ComposeHeader(IContainer container)
     {
         bool isVat = _model.Type == InvoiceType.VatInvoice;
-        string title = "HÓA ĐƠN GIÁ TRỊ GIA TĂNG";
-        string titleEng = "(VAT INVOICE)";
-        string formNo = isVat ? "01GTKT0/001" : "02GTTT0/001";
+        string title = isVat ? "HÓA ĐƠN GIÁ TRỊ GIA TĂNG" : "HÓA ĐƠN BÁN HÀNG";
+        string titleEng = isVat ? "(VAT INVOICE)" : "(SALES INVOICE)";
+        string formNo = !string.IsNullOrEmpty(_model.FormNumber) ? _model.FormNumber : (isVat ? "1" : "2");
+        string serialNo = !string.IsNullOrEmpty(_model.InvoiceSeries) ? _model.InvoiceSeries : (isVat ? $"1C{DateTime.Now:yy}TFL" : $"2C{DateTime.Now:yy}TFL");
+        string invNo = !string.IsNullOrEmpty(_model.InvoiceNo) ? _model.InvoiceNo : _model.InvoiceNumber;
         
         container.Row(row =>
         {
@@ -67,8 +69,8 @@ public class InvoiceDocument : IDocument
             row.ConstantItem(150).Column(c =>
             {
                 c.Item().Row(r => { r.RelativeItem().Text("Mẫu số (Form No.):"); r.RelativeItem().Text(formNo); });
-                c.Item().Row(r => { r.RelativeItem().Text("Ký hiệu (Serial No.):"); r.RelativeItem().Text("1C26TFL"); });
-                c.Item().Row(r => { r.RelativeItem().Text("Số (Invoice No.):"); r.RelativeItem().Text(_model.InvoiceNumber).Bold(); });
+                c.Item().Row(r => { r.RelativeItem().Text("Ký hiệu (Serial No.):"); r.RelativeItem().Text(serialNo); });
+                c.Item().Row(r => { r.RelativeItem().Text("Số (Invoice No.):"); r.RelativeItem().Text(invNo).Bold(); });
             });
         });
     }
@@ -146,7 +148,7 @@ public class InvoiceDocument : IDocument
             column.Item().PaddingTop(10).Row(row =>
             {
                 row.RelativeItem();
-                row.ConstantItem(250).Table(table =>
+                row.ConstantItem(270).Table(table =>
                 {
                     table.ColumnsDefinition(c =>
                     {
@@ -154,13 +156,35 @@ public class InvoiceDocument : IDocument
                         c.RelativeColumn();
                     });
 
+                    bool hasDiscount = _model.Items.Any(x => x.DiscountAmount > 0) || _model.TotalDiscount > 0;
+
                     if (_model.Type == InvoiceType.VatInvoice)
                     {
                         table.Cell().AlignRight().PaddingRight(10).Text("Cộng tiền hàng (Sub total):");
                         table.Cell().AlignRight().Text(_model.SubTotal.ToString("N0"));
 
+                        if (hasDiscount)
+                        {
+                            table.Cell().AlignRight().PaddingRight(10).Text("Tiền chiết khấu (Discount):");
+                            table.Cell().AlignRight().Text(_model.TotalDiscount.ToString("N0"));
+
+                            table.Cell().AlignRight().PaddingRight(10).Text("Thành tiền chưa thuế:");
+                            table.Cell().AlignRight().Text((_model.SubTotal - _model.TotalDiscount).ToString("N0"));
+                        }
+
                         table.Cell().AlignRight().PaddingRight(10).Text("Cộng tiền thuế GTGT (VAT amount):");
                         table.Cell().AlignRight().Text(_model.TotalTax.ToString("N0"));
+                    }
+                    else
+                    {
+                        if (hasDiscount)
+                        {
+                            table.Cell().AlignRight().PaddingRight(10).Text("Tiền hàng (Sub total):");
+                            table.Cell().AlignRight().Text(_model.SubTotal.ToString("N0"));
+
+                            table.Cell().AlignRight().PaddingRight(10).Text("Tiền chiết khấu (Discount):");
+                            table.Cell().AlignRight().Text(_model.TotalDiscount.ToString("N0"));
+                        }
                     }
 
                     table.Cell().AlignRight().PaddingRight(10).Text("Tổng cộng tiền thanh toán (Total):").Bold();
@@ -206,6 +230,7 @@ public class InvoiceDocument : IDocument
     void ComposeTable(IContainer container)
     {
         bool isVat = _model.Type == InvoiceType.VatInvoice;
+        bool hasDiscount = _model.Items.Any(x => x.DiscountAmount > 0) || _model.TotalDiscount > 0;
 
         container.Table(table =>
         {
@@ -213,9 +238,13 @@ public class InvoiceDocument : IDocument
             {
                 columns.ConstantColumn(30); // STT
                 columns.RelativeColumn(3); // Name
-                columns.ConstantColumn(50); // Unit
-                columns.ConstantColumn(40); // Qty
+                columns.ConstantColumn(45); // Unit
+                columns.ConstantColumn(35); // Qty
                 columns.RelativeColumn(); // Unit Price
+                if (hasDiscount)
+                {
+                    columns.RelativeColumn(); // Discount
+                }
                 columns.RelativeColumn(); // Amount
 
                 if (isVat)
@@ -232,6 +261,10 @@ public class InvoiceDocument : IDocument
                 header.Cell().Border(1).BorderColor(Colors.Grey.Medium).Background(Colors.Blue.Lighten4).Padding(4).AlignCenter().Text("ĐVT").Bold();
                 header.Cell().Border(1).BorderColor(Colors.Grey.Medium).Background(Colors.Blue.Lighten4).Padding(4).AlignCenter().Text("SL").Bold();
                 header.Cell().Border(1).BorderColor(Colors.Grey.Medium).Background(Colors.Blue.Lighten4).Padding(4).AlignCenter().Text("Đơn giá").Bold();
+                if (hasDiscount)
+                {
+                    header.Cell().Border(1).BorderColor(Colors.Grey.Medium).Background(Colors.Blue.Lighten4).Padding(4).AlignCenter().Text("Chiết khấu").Bold();
+                }
                 header.Cell().Border(1).BorderColor(Colors.Grey.Medium).Background(Colors.Blue.Lighten4).Padding(4).AlignCenter().Text("Thành tiền").Bold();
                 
                 if (isVat)
@@ -250,6 +283,11 @@ public class InvoiceDocument : IDocument
                 table.Cell().Border(1).BorderColor(Colors.Grey.Lighten1).Padding(4).AlignRight().Text(item.Quantity.ToString("G29"));
                 table.Cell().Border(1).BorderColor(Colors.Grey.Lighten1).Padding(4).AlignRight().Text(item.UnitPrice.ToString("N0"));
                 
+                if (hasDiscount)
+                {
+                    table.Cell().Border(1).BorderColor(Colors.Grey.Lighten1).Padding(4).AlignRight().Text(item.DiscountAmount.ToString("N0"));
+                }
+
                 var totalBeforeTax = item.Quantity * item.UnitPrice - item.DiscountAmount;
                 table.Cell().Border(1).BorderColor(Colors.Grey.Lighten1).Padding(4).AlignRight().Text(totalBeforeTax.ToString("N0"));
 

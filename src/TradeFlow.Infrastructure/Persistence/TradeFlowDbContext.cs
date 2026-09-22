@@ -7,6 +7,7 @@ using TradeFlow.Domain.Entities.Pricing;
 using TradeFlow.Domain.Entities.Settings;
 using TradeFlow.Domain.Entities.Users;
 using TradeFlow.Domain.Entities.Sales;
+using TradeFlow.Domain.Entities.Documents;
 
 namespace TradeFlow.Infrastructure.Persistence;
 
@@ -50,6 +51,12 @@ public class TradeFlowDbContext
     public DbSet<SalesOrderItem> SalesOrderItems => Set<SalesOrderItem>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
+
+    // === Phase 6 - Báo giá & Hồ sơ chứng từ ===
+    public DbSet<Quotation> Quotations => Set<Quotation>();
+    public DbSet<QuotationItem> QuotationItems => Set<QuotationItem>();
+    public DbSet<DocumentCategory> DocumentCategories => Set<DocumentCategory>();
+    public DbSet<DocumentAttachment> DocumentAttachments => Set<DocumentAttachment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

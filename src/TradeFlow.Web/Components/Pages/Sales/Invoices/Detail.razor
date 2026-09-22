@@ -4,6 +4,7 @@
 @using TradeFlow.Application.Common.Models.Sales
 @using TradeFlow.Application.Common.Helpers
 @using TradeFlow.Domain.Enums
+@using TradeFlow.Web.Components.Common
 @inject IInvoiceService InvoiceService
 @inject Microsoft.AspNetCore.Authorization.IAuthorizationService AuthService
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
@@ -503,6 +504,10 @@ else
             </div>
         }
     }
+
+    <div style="max-width:850px; margin:0 auto 30px;">
+        <DocumentAttachmentSection EntityType="Invoice" EntityId="@Id" Title="Hồ sơ & Tài liệu Hóa đơn" />
+    </div>
 }
 
 <style>

@@ -1,4 +1,4 @@
-﻿namespace TradeFlow.Application.Common.Constants;
+namespace TradeFlow.Application.Common.Constants;
 
 public static class SystemCodeConstants
 {
@@ -9,6 +9,7 @@ public static class SystemCodeConstants
     public const string ProductCategory = "ProductCategory";
     public const string UnitOfMeasure = "UnitOfMeasure";
     public const string PriceList = "PriceList";
+    public const string Quotation = "Quotation";
 
     public static readonly IReadOnlyDictionary<string, (string Prefix, string Description)> Defaults =
         new Dictionary<string, (string Prefix, string Description)>

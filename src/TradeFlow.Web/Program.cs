@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using TradeFlow.Application.Common.Interfaces;
 using TradeFlow.Application.DependencyInjection;
@@ -104,6 +104,29 @@ app.MapGet("/api/pricing/{id:int}/download-original", async (int id, IFileStorag
     await auditService.LogAsync(AuditEventType.PriceListOriginalDownloaded, user.UserName ?? "System", "PriceList", list.Id.ToString(), $"Tải file Excel gốc: {list.OriginalFileName}");
     return Results.File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", list.OriginalFileName ?? $"BangGia_{list.Code}_Goc.xlsx");
 }).RequireAuthorization("Permission:PriceLists:View");
+
+// Quotations & Documents Endpoints
+app.MapGet("/api/quotations/{id:int}/export-pdf", async (int id, IQuotationService quotationService) =>
+{
+    var quotation = await quotationService.GetQuotationByIdAsync(id);
+    if (quotation == null) return Results.NotFound();
+    var bytes = await quotationService.GeneratePdfAsync(id);
+    return Results.File(bytes, "application/pdf", $"BaoGia_{quotation.Code}.pdf");
+}).RequireAuthorization("Permission:Quotations:View");
+
+app.MapGet("/api/documents/{id:int}/download", async (int id, IDocumentService documentService) =>
+{
+    var (stream, contentType, fileName) = await documentService.GetFileStreamAsync(id);
+    if (stream == null) return Results.NotFound();
+    return Results.File(stream, contentType, fileName);
+}).RequireAuthorization("Permission:Documents:View");
+
+app.MapGet("/api/documents/{id:int}/preview", async (int id, IDocumentService documentService) =>
+{
+    var (stream, contentType, fileName) = await documentService.GetFileStreamAsync(id);
+    if (stream == null) return Results.NotFound();
+    return Results.File(stream, contentType, enableRangeProcessing: true);
+}).RequireAuthorization("Permission:Documents:View");
 
 
 app.MapGet("/test-import", async (TradeFlow.Application.Common.Interfaces.IExcelPricingService excelService) => 

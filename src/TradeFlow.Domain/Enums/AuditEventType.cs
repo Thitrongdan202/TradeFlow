@@ -1,4 +1,4 @@
-﻿namespace TradeFlow.Domain.Enums;
+namespace TradeFlow.Domain.Enums;
 
 /// <summary>Loại sự kiện nhật ký hoạt động</summary>
 public enum AuditEventType
@@ -85,5 +85,18 @@ public enum AuditEventType
     InvoiceReplaced = 123,
     InvoiceCancelled = 124,
     InvoiceDeleted = 125,
-    InvoiceExportedPdf = 126
+    InvoiceExportedPdf = 126,
+
+    // === Báo giá (Phase 6) ===
+    QuotationCreated = 130,
+    QuotationUpdated = 131,
+    QuotationStatusChanged = 132,
+    QuotationConverted = 133,
+    QuotationDeleted = 134,
+    QuotationExportedPdf = 135,
+
+    // === Tài liệu & Chứng từ (Phase 6) ===
+    DocumentUploaded = 140,
+    DocumentDeleted = 141,
+    DocumentDownloaded = 142
 }

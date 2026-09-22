@@ -220,6 +220,13 @@
                     <svg class="tf-nav-chevron @(IsSalesOpen ? "expanded" : "")" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
                 <div class="tf-nav-sub @(IsSalesOpen ? "expanded" : "")">
+                    <AuthorizeView Policy="Permission:Quotations:View">
+                        <div class="tf-nav-sub-item">
+                            <NavLink class="tf-nav-sub-link" href="/ban-hang/bao-gia" Match="NavLinkMatch.All" ActiveClass="active">
+                                <span class="tf-nav-sub-dot"></span>Báo giá
+                            </NavLink>
+                        </div>
+                    </AuthorizeView>
                     <div class="tf-nav-sub-item">
                         <NavLink class="tf-nav-sub-link" href="/ban-hang/don-ban-hang" Match="NavLinkMatch.All" ActiveClass="active">
                             <span class="tf-nav-sub-dot"></span>Đơn bán hàng
@@ -248,6 +255,41 @@
                             <span class="tf-nav-sub-dot"></span>Danh sách hóa đơn
                         </NavLink>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        @* ---- HỒ SƠ & CHỨNG TỪ (Phase 6) ---- *@
+        <div class="tf-nav-section">
+            <div class="tf-nav-section-label">Hồ sơ & Chứng từ</div>
+
+            <div class="tf-nav-item">
+                <button type="button" class="tf-nav-link" @onclick="ToggleDocuments">
+                    <span class="tf-nav-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                    </span>
+                    <span class="tf-nav-label">Tài liệu</span>
+                    <svg class="tf-nav-chevron @(IsDocumentsOpen ? "expanded" : "")" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+                <div class="tf-nav-sub @(IsDocumentsOpen ? "expanded" : "")">
+                    <AuthorizeView Policy="Permission:Documents:View">
+                        <div class="tf-nav-sub-item">
+                            <NavLink class="tf-nav-sub-link" href="/tai-lieu" Match="NavLinkMatch.All" ActiveClass="active">
+                                <span class="tf-nav-sub-dot"></span>Tài liệu lưu trữ
+                            </NavLink>
+                        </div>
+                        <div class="tf-nav-sub-item">
+                            <NavLink class="tf-nav-sub-link" href="/tai-lieu/danh-muc" Match="NavLinkMatch.All" ActiveClass="active">
+                                <span class="tf-nav-sub-dot"></span>Danh mục chứng từ
+                            </NavLink>
+                        </div>
+                    </AuthorizeView>
                 </div>
             </div>
         </div>
@@ -281,6 +323,7 @@
     private bool IsPricingOpen { get; set; }
     private bool IsSalesOpen { get; set; }
     private bool IsInvoiceOpen { get; set; }
+    private bool IsDocumentsOpen { get; set; }
 
     private string _currentUrl = "";
 
@@ -306,6 +349,7 @@
         if (url.StartsWith("bang-gia")) IsPricingOpen = true;
         if (url.StartsWith("ban-hang")) IsSalesOpen = true;
         if (url.StartsWith("hoa-don")) IsInvoiceOpen = true;
+        if (url.StartsWith("tai-lieu")) IsDocumentsOpen = true;
     }
 
     private void ToggleCatalog() => IsCatalogOpen = !IsCatalogOpen;
@@ -314,6 +358,7 @@
     private void TogglePricing() => IsPricingOpen = !IsPricingOpen;
     private void ToggleSales() => IsSalesOpen = !IsSalesOpen;
     private void ToggleInvoice() => IsInvoiceOpen = !IsInvoiceOpen;
+    private void ToggleDocuments() => IsDocumentsOpen = !IsDocumentsOpen;
 
     public void Dispose()
     {

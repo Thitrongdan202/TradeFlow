@@ -41,6 +41,7 @@ public class SalesService : ISalesService
     {
         var order = await _context.SalesOrders
             .Include(x => x.Items)
+            .Include(x => x.Quotation)
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
@@ -325,6 +326,8 @@ public class SalesService : ISalesService
             TotalDiscount = 0m,
             TotalTax = 0m,
             GrandTotal = order.SubTotal,
+            QuotationId = order.QuotationId,
+            QuotationCode = order.Quotation?.Code,
             Items = order.Items.Select(i => new SalesOrderItemDto
             {
                 Id = i.Id,

@@ -1,4 +1,4 @@
-﻿@page "/doi-tac/khach-hang/them-moi"
+@page "/doi-tac/khach-hang/them-moi"
 @page "/doi-tac/khach-hang/sua/{Id:int}"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
@@ -8,6 +8,7 @@
 @using TradeFlow.Domain.Entities.MasterData
 @using TradeFlow.Infrastructure.Persistence
 @using TradeFlow.Domain.Enums
+@using TradeFlow.Web.Components.Common
 @attribute [Authorize]
 
 @inject TradeFlowDbContext DbContext
@@ -118,6 +119,13 @@ else
             </EditForm>
         </div>
     </div>
+
+    @if (IsEdit && Id.HasValue)
+    {
+        <div style="max-width: 800px; margin-top: 24px;">
+            <DocumentAttachmentSection EntityType="Customer" EntityId="@Id" Title="Hồ sơ & Tài liệu Khách hàng" />
+        </div>
+    }
 }
 
 

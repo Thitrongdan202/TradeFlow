@@ -3,6 +3,7 @@
 @using TradeFlow.Application.Common.Interfaces
 @using TradeFlow.Application.Common.Models.Sales
 @using TradeFlow.Domain.Enums
+@using TradeFlow.Web.Components.Common
 @inject ISalesService SalesService
 @inject IInvoiceService InvoiceService
 @inject NavigationManager Nav
@@ -84,6 +85,15 @@ else
                     <h3 style="font-size:16px; margin-bottom:12px;">THÔNG TIN KHÁC</h3>
                     <p>Ngày giao dự kiến: @(_order.DeliveryDate?.ToString("dd/MM/yyyy") ?? "-")</p>
                     <p>Ghi chú: @_order.Notes</p>
+                    @if (_order.QuotationId.HasValue)
+                    {
+                        <p style="margin-top:6px;">
+                            Báo giá nguồn:
+                            <a href="/ban-hang/bao-gia/chi-tiet/@_order.QuotationId" class="tf-badge tf-badge-info" style="text-decoration:none; font-size:12px; margin-left:4px;">
+                                📄 @(!string.IsNullOrEmpty(_order.QuotationCode) ? _order.QuotationCode : $"BG #{_order.QuotationId}")
+                            </a>
+                        </p>
+                    }
                 </div>
             </div>
         </div>
@@ -135,6 +145,8 @@ else
             </div>
         </div>
     </div>
+
+    <DocumentAttachmentSection EntityType="SalesOrder" EntityId="@Id" Title="Hồ sơ & Tài liệu Đơn hàng" />
 }
 
 @if (_showInvoiceModal && _order != null)

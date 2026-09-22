@@ -26,6 +26,9 @@ public class SalesOrderDto
     public decimal TotalTax { get; set; }
     public decimal GrandTotal { get; set; }
     
+    public int? QuotationId { get; set; }
+    public string? QuotationCode { get; set; }
+    
     public List<SalesOrderItemDto> Items { get; set; } = new();
 }
 

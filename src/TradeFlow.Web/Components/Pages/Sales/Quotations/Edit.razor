@@ -1,0 +1,523 @@
+@page "/ban-hang/bao-gia/chinh-sua/{Id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Pricing
+@using TradeFlow.Application.Common.Models.Sales
+@using TradeFlow.Domain.Entities.MasterData
+@using TradeFlow.Domain.Enums
+@inject IQuotationService QuotationService
+@inject ISalesService SalesService
+@inject IPriceListService PriceListService
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permission:Quotations:Edit")]
+
+<PageTitle>Chỉnh sửa báo giá @(_quotation?.Code) | TradeFlow</PageTitle>
+
+@if (_isLoading)
+{
+    <div class="tf-loading">Đang tải thông tin báo giá...</div>
+}
+else if (_quotation == null)
+{
+    <div class="tf-empty-state">
+        <h3>Không tìm thấy báo giá</h3>
+        <p>Báo giá không tồn tại hoặc đã bị xóa.</p>
+        <a href="/ban-hang/bao-gia" class="tf-btn tf-btn-secondary">Quay lại danh sách</a>
+    </div>
+}
+else if (_quotation.Status == QuotationStatus.Converted)
+{
+    <div class="tf-card" style="padding:24px; text-align:center;">
+        <h3 style="color:#0f766e;">Báo giá đã được chuyển đổi sang Đơn bán hàng</h3>
+        <p>Báo giá @_quotation.Code đã được chuyển thành đơn bán hàng @_quotation.SalesOrderCode. Không thể chỉnh sửa.</p>
+        <div style="margin-top:16px;">
+            <a href="/ban-hang/bao-gia/chi-tiet/@_quotation.Id" class="tf-btn tf-btn-primary">Xem chi tiết báo giá</a>
+            <a href="/ban-hang/bao-gia" class="tf-btn tf-btn-outline-secondary" style="margin-left:8px;">Danh sách</a>
+        </div>
+    </div>
+}
+else if (_quotation.Status == QuotationStatus.Cancelled)
+{
+    <div class="tf-card" style="padding:24px; text-align:center;">
+        <h3 style="color:var(--tf-danger);">Báo giá đã bị hủy</h3>
+        <p>Báo giá @_quotation.Code đã bị hủy và không thể chỉnh sửa.</p>
+        <div style="margin-top:16px;">
+            <a href="/ban-hang/bao-gia/chi-tiet/@_quotation.Id" class="tf-btn tf-btn-secondary">Quay lại chi tiết</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="tf-page-header">
+        <div class="tf-page-header-content">
+            <h1 class="tf-page-title">Chỉnh sửa báo giá: @_quotation.Code</h1>
+            <p class="tf-page-subtitle">Cập nhật mặt hàng, đơn giá, chiết khấu và điều khoản thương mại.</p>
+        </div>
+        <div class="tf-page-header-actions">
+            <a href="/ban-hang/bao-gia/chi-tiet/@Id" class="tf-btn tf-btn-outline-secondary">
+                ← Xem chi tiết
+            </a>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="tf-alert tf-alert-danger tf-mb-4">
+            @_errorMessage
+            <button type="button" style="float:right; background:none; border:none; cursor:pointer;" @onclick="() => _errorMessage = null">✕</button>
+        </div>
+    }
+
+    @* 1. Customer Info *@
+    <div class="tf-card tf-mb-4">
+        <div style="padding: 20px; border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+            <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight:600; color:#1e293b;">THÔNG TIN KHÁCH HÀNG & BÁO GIÁ</h3>
+
+            <div class="tf-form-group">
+                <label class="tf-form-label">Khách hàng <span style="color:red">*</span></label>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <input type="text" class="tf-form-control" placeholder="🔍 Thay đổi khách hàng..." @bind="_customerSearch" @bind:event="oninput" @onkeyup="SearchCustomers" style="flex:1;" />
+                    <span style="color:#16a34a; font-weight:600;">✓ @_quotation.CustomerName</span>
+                </div>
+                @if (_isCustomerSearched)
+                {
+                    <div style="position:relative; z-index:100;">
+                        <ul style="position:absolute; top:0; left:0; right:0; background:white; border:1px solid #cbd5e1; border-radius:6px; list-style:none; padding:0; margin:4px 0 0; max-height:200px; overflow-y:auto; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+                            @foreach (var c in _customerSearchResults)
+                            {
+                                <li style="padding:10px; border-bottom:1px solid #f1f5f9; cursor:pointer;" @onclick="() => SelectCustomer(c)">
+                                    <div style="font-weight:600; color:#1e293b;">@c.Name</div>
+                                    <div style="font-size:12px; color:#64748b;">Mã: @c.Code | SĐT: @c.Phone | Đ/c: @c.Address</div>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+
+            <div style="background:#f1f5f9; border-radius:6px; padding:12px 16px; margin-top:12px; font-size:13px; display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:8px;">
+                <div><strong>MST:</strong> @(_quotation.CustomerTaxCode ?? "—")</div>
+                <div><strong>Địa chỉ:</strong> @(_quotation.CustomerAddress ?? "—")</div>
+                <div><strong>SĐT:</strong> @(_quotation.CustomerPhone ?? "—")</div>
+                <div><strong>Email:</strong> @(_quotation.CustomerEmail ?? "—")</div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-top: 16px;">
+                <div class="tf-form-group">
+                    <label class="tf-form-label">Ngày báo giá <span style="color:red">*</span></label>
+                    <input type="date" class="tf-form-control" @bind="_quotation.QuotationDate" />
+                </div>
+                <div class="tf-form-group">
+                    <label class="tf-form-label">Hạn hiệu lực</label>
+                    <input type="date" class="tf-form-control" @bind="_quotation.ExpiryDate" />
+                </div>
+                <div class="tf-form-group">
+                    <label class="tf-form-label">Người lập / Phụ trách</label>
+                    <input type="text" class="tf-form-control" @bind="_quotation.SalespersonName" />
+                </div>
+                <div class="tf-form-group">
+                    <label class="tf-form-label">Người liên hệ bên mua</label>
+                    <input type="text" class="tf-form-control" @bind="_quotation.CustomerContactPerson" />
+                </div>
+            </div>
+
+            <div class="tf-form-group" style="margin-top:16px;">
+                <label class="tf-form-label">Ghi chú chung</label>
+                <textarea class="tf-form-control" rows="2" @bind="_quotation.Notes"></textarea>
+            </div>
+        </div>
+    </div>
+
+    @* 2. Products Table & Pricing Selection *@
+    <div class="tf-card tf-mb-4">
+        <div style="padding: 20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin: 0; font-size: 16px; font-weight:600; color:#1e293b;">CHI TIẾT MẶT HÀNG BÁO GIÁ</h3>
+                <span class="tf-badge tf-badge-info" style="font-size:12px;">Đơn giá trước VAT</span>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 280px 1fr; gap:16px; margin-bottom:20px;">
+                <div class="tf-form-group">
+                    <label class="tf-form-label" style="font-weight:600;">Áp dụng bảng giá:</label>
+                    <select class="tf-form-control" @bind="_selectedPriceListId">
+                        <option value="">-- Bảng giá mặc định --</option>
+                        @foreach (var pl in _availablePriceLists)
+                        {
+                            <option value="@pl.Id">@pl.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="tf-form-group">
+                    <label class="tf-form-label" style="font-weight:600;">Thêm sản phẩm:</label>
+                    <input type="text" class="tf-form-control" placeholder="🔍 Tìm kiếm sản phẩm theo Tên hoặc Mã..." @bind="_productSearch" @bind:event="oninput" @onkeyup="SearchProducts" />
+                    @if (_isProductSearched)
+                    {
+                        <div style="position:relative; z-index:90;">
+                            <ul style="position:absolute; top:0; left:0; right:0; background:white; border:1px solid #cbd5e1; border-radius:6px; list-style:none; padding:0; margin:4px 0 0; max-height:220px; overflow-y:auto; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+                                @foreach (var p in _productSearchResults)
+                                {
+                                    <li style="padding:10px; border-bottom:1px solid #f1f5f9; cursor:pointer;" @onclick="() => SelectProduct(p)">
+                                        <div style="font-weight:600; color:#1e293b;">@p.Name</div>
+                                        <div style="font-size:12px; color:#64748b;">Mã: @p.Code | ĐVT: @(p.Unit?.Name ?? "—")</div>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="tf-table-responsive">
+                <table class="tf-table" style="font-size:13px;">
+                    <thead>
+                        <tr>
+                            <th style="width:35px; text-align:center;">#</th>
+                            <th style="width:110px;">Mã SP</th>
+                            <th>Tên sản phẩm / Dịch vụ</th>
+                            <th style="width:75px; text-align:center;">ĐVT</th>
+                            <th style="width:85px; text-align:right;">Số lượng</th>
+                            <th style="width:125px; text-align:right;">Đơn giá trước VAT</th>
+                            <th style="width:105px; text-align:center;">Nguồn giá</th>
+                            <th style="width:90px; text-align:right;">CK (%)</th>
+                            <th style="width:115px; text-align:right;">Tiền CK</th>
+                            <th style="width:130px; text-align:right;">Thành tiền</th>
+                            <th style="width:40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            int rowNum = 1;
+                            foreach (var item in _quotation.Items)
+                            {
+                                <tr>
+                                    <td style="text-align:center; color:#64748b;">@rowNum</td>
+                                    <td><strong>@item.ProductCode</strong></td>
+                                    <td>
+                                        <div style="font-weight:600; color:#1e293b;">@item.ProductName</div>
+                                        <input type="text" class="tf-form-control" style="font-size:11.5px; padding:2px 6px; margin-top:4px;" placeholder="Ghi chú quy cách..." @bind="item.Notes" />
+                                    </td>
+                                    <td style="text-align:center;">@item.UnitName</td>
+                                    <td>
+                                        <input type="number" min="1" step="1" class="tf-form-control" style="text-align:right; padding:3px 6px;" @bind="item.Quantity" @bind:after="() => OnQuantityChanged(item)" />
+                                    </td>
+                                    <td>
+                                        <input type="number" min="0" step="1000" class="tf-form-control" style="text-align:right; padding:3px 6px;" @bind="item.UnitPrice" @bind:after="() => OnManualPriceChanged(item)" />
+                                    </td>
+                                    <td style="text-align:center;">
+                                        <span class="tf-badge tf-badge-secondary" style="font-size:11px;">@item.PriceSource</span>
+                                    </td>
+                                    <td>
+                                        <input type="number" min="0" max="100" step="0.5" class="tf-form-control" style="text-align:right; padding:3px 6px;" @bind="item.DiscountRate" @bind:after="() => OnDiscountRateChanged(item)" />
+                                    </td>
+                                    <td>
+                                        <input type="number" min="0" step="1000" class="tf-form-control" style="text-align:right; padding:3px 6px;" @bind="item.DiscountAmount" @bind:after="() => OnDiscountAmountChanged(item)" />
+                                    </td>
+                                    <td style="text-align:right; font-weight:700; color:#0f766e;">
+                                        @item.LineTotal.ToString("N0") đ
+                                    </td>
+                                    <td style="text-align:center;">
+                                        <button type="button" class="tf-btn tf-btn-sm tf-btn-outline-danger" style="padding:2px 6px; border-radius:4px;" @onclick="() => RemoveItem(item)">✕</button>
+                                    </td>
+                                </tr>
+                                rowNum++;
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @* Totals Summary *@
+            <div style="display:flex; justify-content:flex-end; margin-top:16px;">
+                <div style="width:340px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:16px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13.5px;">
+                        <span style="color:#64748b;">Tổng tiền hàng trước VAT:</span>
+                        <strong style="color:#1e293b;">@_quotation.SubTotal.ToString("N0") đ</strong>
+                    </div>
+                    @if (_quotation.TotalDiscount > 0)
+                    {
+                        <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13.5px; color:#d97706;">
+                            <span>Tổng chiết khấu:</span>
+                            <strong>-@_quotation.TotalDiscount.ToString("N0") đ</strong>
+                        </div>
+                    }
+                    <div style="display:flex; justify-content:space-between; padding-top:10px; border-top:2px solid #cbd5e1; font-size:16px;">
+                        <span style="font-weight:700; color:#0f766e;">TỔNG GIÁ TRỊ:</span>
+                        <strong style="color:#0f766e;">@_quotation.GrandTotal.ToString("N0") đ</strong>
+                    </div>
+                    <div style="font-size:11.5px; color:#64748b; font-style:italic; margin-top:6px; text-align:right;">
+                        (Đơn giá thương mại chưa bao gồm thuế GTGT)
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* 3. Terms & Conditions *@
+    <div class="tf-card tf-mb-4">
+        <div style="padding: 20px;">
+            <h3 style="margin: 0 0 12px 0; font-size: 16px; font-weight:600; color:#1e293b;">ĐIỀU KHOẢN THƯƠNG MẠI & THANH TOÁN</h3>
+            <textarea class="tf-form-control" rows="4" @bind="_quotation.Terms"></textarea>
+        </div>
+    </div>
+
+    @* Action Buttons *@
+    <div style="display:flex; justify-content:flex-end; gap:12px; margin-bottom:40px;">
+        <a href="/ban-hang/bao-gia/chi-tiet/@Id" class="tf-btn tf-btn-outline-secondary">Hủy bỏ</a>
+        <button type="button" class="tf-btn tf-btn-primary" @onclick="SaveUpdates" disabled="@_isSaving">
+            @if (_isSaving)
+            {
+                <span>Đang lưu cập nhật...</span>
+            }
+            else
+            {
+                <span>Lưu thay đổi</span>
+            }
+        </button>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private QuotationDto? _quotation;
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+    private string? _errorMessage;
+
+    private List<Customer> _customerSearchResults = new();
+    private string _customerSearch = "";
+    private bool _isCustomerSearched = false;
+    private CancellationTokenSource? _customerSearchCts;
+
+    private List<Product> _productSearchResults = new();
+    private string _productSearch = "";
+    private bool _isProductSearched = false;
+    private CancellationTokenSource? _productSearchCts;
+
+    private List<PriceListDto> _availablePriceLists = new();
+    private int? _selectedPriceListId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isLoading = true;
+            _quotation = await QuotationService.GetQuotationByIdAsync(Id);
+            var priceLists = await PriceListService.GetPriceListsAsync();
+            _availablePriceLists = priceLists.Where(x => x.Status == PriceListStatus.Active).ToList();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi khi tải dữ liệu báo giá: " + ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SearchCustomers(KeyboardEventArgs e)
+    {
+        _customerSearchCts?.Cancel();
+        _customerSearchCts = new CancellationTokenSource();
+        var token = _customerSearchCts.Token;
+
+        _isCustomerSearched = true;
+        if (_customerSearch.Length >= 2)
+        {
+            try
+            {
+                await Task.Delay(300, token);
+                if (!token.IsCancellationRequested)
+                {
+                    _customerSearchResults = await SalesService.SearchCustomersAsync(_customerSearch, token);
+                    StateHasChanged();
+                }
+            }
+            catch (TaskCanceledException) { }
+            catch (Exception ex)
+            {
+                _errorMessage = "Lỗi khi tìm khách hàng: " + ex.Message;
+            }
+        }
+        else
+        {
+            _customerSearchResults.Clear();
+            _isCustomerSearched = false;
+        }
+    }
+
+    private void SelectCustomer(Customer c)
+    {
+        if (_quotation == null) return;
+        _quotation.CustomerId = c.Id;
+        _quotation.CustomerName = c.Name;
+        _quotation.CustomerTaxCode = c.TaxCode;
+        _quotation.CustomerAddress = c.Address;
+        _quotation.CustomerPhone = c.Phone;
+        _quotation.CustomerContactPerson = c.ContactPerson;
+        _quotation.CustomerEmail = c.Email;
+        _customerSearch = "";
+        _customerSearchResults.Clear();
+        _isCustomerSearched = false;
+    }
+
+    private async Task SearchProducts(KeyboardEventArgs e)
+    {
+        _productSearchCts?.Cancel();
+        _productSearchCts = new CancellationTokenSource();
+        var token = _productSearchCts.Token;
+
+        _isProductSearched = true;
+        if (_productSearch.Length >= 2)
+        {
+            try
+            {
+                await Task.Delay(300, token);
+                if (!token.IsCancellationRequested)
+                {
+                    _productSearchResults = await SalesService.SearchProductsAsync(_productSearch, token);
+                    StateHasChanged();
+                }
+            }
+            catch (TaskCanceledException) { }
+            catch (Exception ex)
+            {
+                _errorMessage = "Lỗi khi tìm sản phẩm: " + ex.Message;
+            }
+        }
+        else
+        {
+            _productSearchResults.Clear();
+            _isProductSearched = false;
+        }
+    }
+
+    private async Task SelectProduct(Product p)
+    {
+        if (_quotation == null) return;
+        _productSearch = "";
+        _productSearchResults.Clear();
+        _isProductSearched = false;
+
+        var existing = _quotation.Items.FirstOrDefault(x => x.ProductId == p.Id);
+        if (existing != null)
+        {
+            existing.Quantity += 1;
+            RecalculateItem(existing);
+        }
+        else
+        {
+            var priceRes = await SalesService.GetProductPriceAsync(p.Id, _selectedPriceListId, _quotation.QuotationDate);
+            var item = new QuotationItemDto
+            {
+                QuotationId = _quotation.Id,
+                ProductId = p.Id,
+                ProductCode = p.Code,
+                ProductName = p.Name,
+                UnitName = p.Unit?.Name ?? "Cái",
+                Quantity = 1,
+                UnitPrice = priceRes.Price ?? 0,
+                PriceSource = priceRes.SourceName,
+                DiscountRate = 0,
+                DiscountAmount = 0,
+                LineTotal = priceRes.Price ?? 0
+            };
+            _quotation.Items.Add(item);
+        }
+
+        CalculateTotals();
+    }
+
+    private void RemoveItem(QuotationItemDto item)
+    {
+        if (_quotation == null) return;
+        _quotation.Items.Remove(item);
+        CalculateTotals();
+    }
+
+    private void OnQuantityChanged(QuotationItemDto item)
+    {
+        RecalculateItem(item);
+        CalculateTotals();
+    }
+
+    private void OnManualPriceChanged(QuotationItemDto item)
+    {
+        item.PriceSource = "Thủ công";
+        RecalculateItem(item);
+        CalculateTotals();
+    }
+
+    private void OnDiscountRateChanged(QuotationItemDto item)
+    {
+        var baseAmount = item.Quantity * item.UnitPrice;
+        item.DiscountAmount = Math.Round(baseAmount * (item.DiscountRate / 100m), 0);
+        RecalculateItem(item);
+        CalculateTotals();
+    }
+
+    private void OnDiscountAmountChanged(QuotationItemDto item)
+    {
+        var baseAmount = item.Quantity * item.UnitPrice;
+        if (baseAmount > 0)
+        {
+            item.DiscountRate = Math.Round((item.DiscountAmount / baseAmount) * 100m, 2);
+        }
+        RecalculateItem(item);
+        CalculateTotals();
+    }
+
+    private void RecalculateItem(QuotationItemDto item)
+    {
+        var baseAmount = item.Quantity * item.UnitPrice;
+        if (item.DiscountAmount > baseAmount)
+        {
+            item.DiscountAmount = baseAmount;
+        }
+        item.LineTotal = baseAmount - item.DiscountAmount;
+        if (item.LineTotal < 0) item.LineTotal = 0;
+    }
+
+    private void CalculateTotals()
+    {
+        if (_quotation == null) return;
+        _quotation.SubTotal = _quotation.Items.Sum(x => x.Quantity * x.UnitPrice);
+        _quotation.TotalDiscount = _quotation.Items.Sum(x => x.DiscountAmount);
+        _quotation.GrandTotal = _quotation.SubTotal - _quotation.TotalDiscount;
+    }
+
+    private async Task SaveUpdates()
+    {
+        if (_quotation == null) return;
+        _errorMessage = null;
+
+        if (_quotation.CustomerId <= 0)
+        {
+            _errorMessage = "Vui lòng chọn khách hàng nhận báo giá.";
+            return;
+        }
+
+        if (!_quotation.Items.Any())
+        {
+            _errorMessage = "Vui lòng có ít nhất một sản phẩm trong báo giá.";
+            return;
+        }
+
+        try
+        {
+            _isSaving = true;
+            await QuotationService.UpdateQuotationAsync(_quotation);
+            Nav.NavigateTo($"/ban-hang/bao-gia/chi-tiet/{_quotation.Id}");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi khi cập nhật báo giá: " + ex.Message;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+}

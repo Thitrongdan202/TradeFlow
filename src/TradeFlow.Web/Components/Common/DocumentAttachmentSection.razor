@@ -1,0 +1,407 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Documents
+@using TradeFlow.Domain.Enums
+@inject IDocumentService DocumentService
+@inject IJSRuntime JS
+
+<div class="tf-card tf-mb-4" style="margin-top: 20px;">
+    <div style="padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; background:#f8fafc;">
+        <div>
+            <h3 style="margin:0; font-size:15px; font-weight:600; color:#1e293b; display:flex; align-items:center; gap:8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                </svg>
+                @(Title ?? "Tài liệu & Hồ sơ đính kèm")
+                <span class="tf-badge tf-badge-secondary" style="font-size:12px; margin-left:6px;">@_documents.Count</span>
+            </h3>
+            <p style="margin:2px 0 0; font-size:12.5px; color:#64748b;">Hợp đồng, báo giá ký, biên bản giao nhận, chứng từ thanh toán liên quan.</p>
+        </div>
+        @if (CanUpload && EntityId.HasValue && EntityId.Value > 0)
+        {
+            <button type="button" class="tf-btn tf-btn-sm tf-btn-primary" @onclick="OpenUploadModal" style="display:flex; align-items:center; gap:6px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Tải lên tệp
+            </button>
+        }
+    </div>
+
+    <div style="padding:16px 20px;">
+        @if (!string.IsNullOrEmpty(_statusMessage))
+        {
+            <div class="tf-alert tf-alert-success tf-mb-3" style="font-size:13px; padding:8px 12px;">
+                @_statusMessage
+                <button type="button" style="float:right; background:none; border:none; cursor:pointer;" @onclick="() => _statusMessage = null">✕</button>
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="tf-alert tf-alert-danger tf-mb-3" style="font-size:13px; padding:8px 12px;">
+                @_errorMessage
+                <button type="button" style="float:right; background:none; border:none; cursor:pointer;" @onclick="() => _errorMessage = null">✕</button>
+            </div>
+        }
+
+        @if (_isLoading)
+        {
+            <div style="padding:16px; text-align:center; color:#64748b; font-size:13px;">Đang tải danh sách tài liệu...</div>
+        }
+        else if (!_documents.Any())
+        {
+            <div style="padding:20px; text-align:center; color:#94a3b8; font-size:13px; border:1px dashed #cbd5e1; border-radius:6px; background:#fbfcfe;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:6px;">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <div>Chưa có tài liệu đính kèm nào.</div>
+                @if (CanUpload && EntityId.HasValue && EntityId.Value > 0)
+                {
+                    <button type="button" class="tf-btn tf-btn-sm tf-btn-outline-primary" @onclick="OpenUploadModal" style="margin-top:8px;">
+                        + Tải lên tài liệu đầu tiên
+                    </button>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="tf-table-responsive">
+                <table class="tf-table" style="font-size:13px;">
+                    <thead>
+                        <tr>
+                            <th style="width:30px; text-align:center;">#</th>
+                            <th>Tên tài liệu</th>
+                            <th style="width:140px;">Loại chứng từ</th>
+                            <th style="width:85px; text-align:right;">Dung lượng</th>
+                            <th style="width:110px;">Người tải</th>
+                            <th style="width:110px;">Ngày tải</th>
+                            <th>Ghi chú</th>
+                            <th style="width:140px; text-align:center;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            int idx = 1;
+                            foreach (var doc in _documents)
+                            {
+                                <tr>
+                                    <td style="text-align:center; color:#64748b;">@idx</td>
+                                    <td>
+                                        <div style="display:flex; align-items:center; gap:8px;">
+                                            @GetFileIcon(doc.FileName)
+                                            <a href="/api/documents/@doc.Id/download" target="_blank" style="font-weight:600; color:#1d4ed8; text-decoration:none;" title="@doc.FileName">
+                                                @doc.FileName
+                                            </a>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(doc.CategoryName))
+                                        {
+                                            <span class="tf-badge tf-badge-info" style="font-size:11px;">@doc.CategoryName</span>
+                                        }
+                                        else
+                                        {
+                                            <span style="color:#94a3b8; font-size:12px;">Chung</span>
+                                        }
+                                    </td>
+                                    <td style="text-align:right; color:#475569;">@doc.FormattedFileSize</td>
+                                    <td style="color:#475569;">@(doc.CreatedBy ?? "—")</td>
+                                    <td style="color:#475569;">@doc.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td style="color:#64748b; font-size:12px;">@(doc.Description ?? "—")</td>
+                                    <td style="text-align:center; white-space:nowrap;">
+                                        <a href="/api/documents/@doc.Id/preview" target="_blank" class="tf-btn tf-btn-sm tf-btn-outline-primary" style="padding:2px 8px; font-size:11.5px; margin-right:4px;" title="Xem trước">
+                                            Xem
+                                        </a>
+                                        <a href="/api/documents/@doc.Id/download" class="tf-btn tf-btn-sm tf-btn-outline-secondary" style="padding:2px 8px; font-size:11.5px; margin-right:4px;" title="Tải về" download>
+                                            Tải
+                                        </a>
+                                        @if (CanDelete)
+                                        {
+                                            <button type="button" class="tf-btn tf-btn-sm tf-btn-outline-danger" style="padding:2px 8px; font-size:11.5px;" @onclick="() => ConfirmDelete(doc.Id, doc.FileName)" title="Xóa">
+                                                ✕
+                                            </button>
+                                        }
+                                    </td>
+                                </tr>
+                                idx++;
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@* Upload Modal *@
+@if (_showUploadModal)
+{
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1050; display:flex; align-items:center; justify-content:center;">
+        <div style="background:white; padding:24px; border-radius:8px; width:520px; max-width:92%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid #e2e8f0; padding-bottom:12px;">
+                <h3 style="margin:0; font-size:17px; font-weight:600; color:#1e293b;">Tải lên tài liệu đính kèm</h3>
+                <button type="button" style="background:none; border:none; font-size:18px; cursor:pointer; color:#64748b;" @onclick="CloseUploadModal">✕</button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_uploadError))
+            {
+                <div class="tf-alert tf-alert-danger tf-mb-3" style="font-size:13px;">@_uploadError</div>
+            }
+
+            <div class="tf-form-group tf-mb-3">
+                <label class="tf-form-label" style="font-weight:600;">Chọn tệp <span style="color:red">*</span></label>
+                <InputFile OnChange="HandleFileSelected" class="tf-form-control" accept=".pdf,.docx,.doc,.xlsx,.xls,.png,.jpg,.jpeg" />
+                <div style="font-size:11.5px; color:#64748b; margin-top:4px;">
+                    Định dạng hỗ trợ: PDF, Word (docx, doc), Excel (xlsx, xls), Ảnh (png, jpg, jpeg). Tối đa 20MB.
+                </div>
+                @if (_selectedFile != null)
+                {
+                    <div style="margin-top:6px; font-size:12.5px; color:#16a34a; font-weight:500;">
+                        ✓ Đã chọn: @_selectedFile.Name (@((_selectedFile.Size / 1024.0).ToString("N0")) KB)
+                    </div>
+                }
+            </div>
+
+            <div class="tf-form-group tf-mb-3">
+                <label class="tf-form-label" style="font-weight:600;">Loại chứng từ / Hồ sơ</label>
+                <select class="tf-form-control" @bind="_selectedCategoryId">
+                    <option value="">-- Không phân loại (Tài liệu chung) --</option>
+                    @foreach (var cat in _categories)
+                    {
+                        <option value="@cat.Id">@cat.Name (@cat.Code)</option>
+                    }
+                </select>
+            </div>
+
+            <div class="tf-form-group tf-mb-4">
+                <label class="tf-form-label" style="font-weight:600;">Ghi chú / Diễn giải</label>
+                <textarea class="tf-form-control" rows="2" placeholder="Nhập ghi chú hoặc mô tả tài liệu (tùy chọn)..." @bind="_description"></textarea>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid #e2e8f0; padding-top:16px;">
+                <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="CloseUploadModal" disabled="@_isUploading">Hủy</button>
+                <button type="button" class="tf-btn tf-btn-primary" @onclick="SubmitUpload" disabled="@(_isUploading || _selectedFile == null)">
+                    @if (_isUploading)
+                    {
+                        <span>Đang tải lên...</span>
+                    }
+                    else
+                    {
+                        <span>Xác nhận tải lên</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Delete Confirmation Modal *@
+@if (_showDeleteModal)
+{
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1050; display:flex; align-items:center; justify-content:center;">
+        <div style="background:white; padding:24px; border-radius:8px; width:400px; max-width:90%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+            <h3 style="margin-top:0; margin-bottom:12px; font-size:17px; color:var(--tf-danger);">Xác nhận xóa tài liệu</h3>
+            <p style="margin-bottom:16px; font-size:13.5px; color:#334155;">
+                Bạn có chắc chắn muốn xóa tệp <strong>@_deletingFileName</strong> không? Thao tác này không thể hoàn tác.
+            </p>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="() => _showDeleteModal = false">Hủy</button>
+                <button type="button" class="tf-btn tf-btn-danger" @onclick="ExecuteDelete">Xóa vĩnh viễn</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string EntityType { get; set; } = "General";
+    [Parameter] public int? EntityId { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public bool CanUpload { get; set; } = true;
+    [Parameter] public bool CanDelete { get; set; } = true;
+
+    private List<DocumentAttachmentDto> _documents = new();
+    private List<DocumentCategoryDto> _categories = new();
+    private bool _isLoading = true;
+    private string? _statusMessage;
+    private string? _errorMessage;
+
+    // Upload state
+    private bool _showUploadModal = false;
+    private bool _isUploading = false;
+    private IBrowserFile? _selectedFile;
+    private int? _selectedCategoryId;
+    private string? _description;
+    private string? _uploadError;
+
+    // Delete state
+    private bool _showDeleteModal = false;
+    private int _deletingId;
+    private string _deletingFileName = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    public async Task ReloadAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            _isLoading = true;
+            _categories = await DocumentService.GetCategoriesAsync(activeOnly: true);
+
+            if (EntityId.HasValue && EntityId.Value > 0)
+            {
+                _documents = await DocumentService.GetDocumentsByEntityAsync(EntityType, EntityId.Value);
+            }
+            else
+            {
+                _documents = new();
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Không thể tải danh sách tài liệu: " + ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenUploadModal()
+    {
+        _selectedFile = null;
+        _selectedCategoryId = null;
+        _description = null;
+        _uploadError = null;
+        _showUploadModal = true;
+    }
+
+    private void CloseUploadModal()
+    {
+        _showUploadModal = false;
+        _selectedFile = null;
+    }
+
+    private void HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        _selectedFile = e.File;
+        _uploadError = null;
+
+        if (_selectedFile != null && _selectedFile.Size > 20 * 1024 * 1024)
+        {
+            _uploadError = "Dung lượng tệp vượt quá giới hạn 20MB.";
+            _selectedFile = null;
+        }
+    }
+
+    private async Task SubmitUpload()
+    {
+        if (_selectedFile == null)
+        {
+            _uploadError = "Vui lòng chọn tệp tin tải lên.";
+            return;
+        }
+
+        try
+        {
+            _isUploading = true;
+            _uploadError = null;
+
+            using var stream = _selectedFile.OpenReadStream(maxAllowedSize: 20 * 1024 * 1024);
+            await DocumentService.UploadDocumentAsync(
+                stream,
+                _selectedFile.Name,
+                _selectedFile.ContentType,
+                _selectedFile.Size,
+                EntityType,
+                EntityId,
+                _selectedCategoryId,
+                _description);
+
+            _statusMessage = $"Đã tải lên tệp '{_selectedFile.Name}' thành công.";
+            _showUploadModal = false;
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _uploadError = "Lỗi tải lên: " + ex.Message;
+        }
+        finally
+        {
+            _isUploading = false;
+        }
+    }
+
+    private void ConfirmDelete(int id, string fileName)
+    {
+        _deletingId = id;
+        _deletingFileName = fileName;
+        _showDeleteModal = true;
+    }
+
+    private async Task ExecuteDelete()
+    {
+        try
+        {
+            var ok = await DocumentService.DeleteDocumentAsync(_deletingId);
+            if (ok)
+            {
+                _statusMessage = $"Đã xóa tài liệu '{_deletingFileName}'.";
+                _showDeleteModal = false;
+                await LoadDataAsync();
+            }
+            else
+            {
+                _errorMessage = "Không thể xóa tài liệu.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi khi xóa: " + ex.Message;
+        }
+    }
+
+    private RenderFragment GetFileIcon(string fileName) => __builder =>
+    {
+        var ext = System.IO.Path.GetExtension(fileName).ToLowerInvariant();
+        string color = ext switch
+        {
+            ".pdf" => "#ef4444",
+            ".docx" or ".doc" => "#2563eb",
+            ".xlsx" or ".xls" => "#16a34a",
+            ".png" or ".jpg" or ".jpeg" => "#8b5cf6",
+            _ => "#64748b"
+        };
+
+        __builder.OpenElement(0, "svg");
+        __builder.AddAttribute(1, "width", "16");
+        __builder.AddAttribute(2, "height", "16");
+        __builder.AddAttribute(3, "viewBox", "0 0 24 24");
+        __builder.AddAttribute(4, "fill", "none");
+        __builder.AddAttribute(5, "stroke", color);
+        __builder.AddAttribute(6, "stroke-width", "2");
+        __builder.AddAttribute(7, "stroke-linecap", "round");
+        __builder.AddAttribute(8, "stroke-linejoin", "round");
+        __builder.OpenElement(9, "path");
+        __builder.AddAttribute(10, "d", "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z");
+        __builder.CloseElement();
+        __builder.OpenElement(11, "polyline");
+        __builder.AddAttribute(12, "points", "14 2 14 8 20 8");
+        __builder.CloseElement();
+        __builder.CloseElement();
+    };
+}

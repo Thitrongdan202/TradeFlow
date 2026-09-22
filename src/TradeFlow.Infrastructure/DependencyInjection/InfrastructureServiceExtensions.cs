@@ -89,6 +89,10 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IInvoiceService, Services.InvoiceService>();
         services.AddScoped<IDigitalSignatureService, Services.DigitalSignatureService>();
 
+        // Register Phase 6 Quotations & Documents services
+        services.AddScoped<IQuotationService, Services.QuotationService>();
+        services.AddScoped<IDocumentService, Services.DocumentService>();
+
         return services;
     }
 }

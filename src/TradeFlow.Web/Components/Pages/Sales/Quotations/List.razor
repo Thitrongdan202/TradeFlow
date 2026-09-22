@@ -1,0 +1,343 @@
+@page "/ban-hang/bao-gia"
+@using Microsoft.AspNetCore.Authorization
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Sales
+@using TradeFlow.Domain.Enums
+@inject IQuotationService QuotationService
+@inject NavigationManager Nav
+@inject IAuthorizationService AuthService
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permission:Quotations:View")]
+
+<PageTitle>Danh sách báo giá | TradeFlow</PageTitle>
+
+<div class="tf-page-header">
+    <div class="tf-page-header-content">
+        <h1 class="tf-page-title">Báo giá thương mại</h1>
+        <p class="tf-page-subtitle">Quản lý các báo giá sản phẩm, dịch vụ gửi khách hàng và chuyển đổi sang đơn hàng bán.</p>
+    </div>
+    <div class="tf-page-header-actions">
+        <AuthorizeView Policy="Permission:Quotations:Create">
+            <a href="/ban-hang/bao-gia/tao-moi" class="tf-btn tf-btn-primary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Tạo báo giá mới
+            </a>
+        </AuthorizeView>
+    </div>
+</div>
+
+@* Filter Bar *@
+<div class="tf-card tf-mb-4" style="padding:16px 20px;">
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px; align-items:end;">
+        <div>
+            <label class="tf-form-label" style="font-size:12px; font-weight:600; margin-bottom:4px;">Tìm kiếm</label>
+            <input type="text" class="tf-form-control" placeholder="Mã báo giá, khách hàng, SĐT..." @bind="_filter.SearchTerm" @bind:event="oninput" @onkeyup="HandleSearch" />
+        </div>
+        <div>
+            <label class="tf-form-label" style="font-size:12px; font-weight:600; margin-bottom:4px;">Trạng thái</label>
+            <select class="tf-form-control" @bind="_selectedStatus" @bind:after="ApplyFilter">
+                <option value="">-- Tất cả trạng thái --</option>
+                <option value="Draft">Bản nháp</option>
+                <option value="Sent">Đã gửi KH</option>
+                <option value="Accepted">Đã chốt / Chấp nhận</option>
+                <option value="Converted">Đã chuyển đơn hàng</option>
+                <option value="Rejected">Khách từ chối</option>
+                <option value="Expired">Hết hiệu lực</option>
+                <option value="Cancelled">Đã hủy</option>
+            </select>
+        </div>
+        <div>
+            <label class="tf-form-label" style="font-size:12px; font-weight:600; margin-bottom:4px;">Từ ngày</label>
+            <input type="date" class="tf-form-control" @bind="_filter.FromDate" @bind:after="ApplyFilter" />
+        </div>
+        <div>
+            <label class="tf-form-label" style="font-size:12px; font-weight:600; margin-bottom:4px;">Đến ngày</label>
+            <input type="date" class="tf-form-control" @bind="_filter.ToDate" @bind:after="ApplyFilter" />
+        </div>
+        <div>
+            <button type="button" class="tf-btn tf-btn-outline-secondary" style="width:100%;" @onclick="ResetFilter">
+                Đặt lại bộ lọc
+            </button>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(_actionSuccessMessage))
+{
+    <div class="tf-alert tf-alert-success tf-mb-3">
+        @_actionSuccessMessage
+        <button type="button" style="float:right; background:none; border:none; cursor:pointer;" @onclick="() => _actionSuccessMessage = null">✕</button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(_actionErrorMessage))
+{
+    <div class="tf-alert tf-alert-danger tf-mb-3">
+        @_actionErrorMessage
+        <button type="button" style="float:right; background:none; border:none; cursor:pointer;" @onclick="() => _actionErrorMessage = null">✕</button>
+    </div>
+}
+
+@if (_isLoading)
+{
+    <div class="tf-loading">Đang tải dữ liệu báo giá...</div>
+}
+else if (!_quotations.Any())
+{
+    <div class="tf-empty-state">
+        <div class="tf-empty-icon">📄</div>
+        <h3>Không tìm thấy báo giá nào</h3>
+        <p>Bắt đầu bằng cách tạo báo giá thương mại mới cho khách hàng.</p>
+        <AuthorizeView Policy="Permission:Quotations:Create">
+            <a href="/ban-hang/bao-gia/tao-moi" class="tf-btn tf-btn-primary" style="margin-top:12px;">+ Tạo báo giá</a>
+        </AuthorizeView>
+    </div>
+}
+else
+{
+    <div class="tf-card">
+        <div class="tf-table-responsive">
+            <table class="tf-table">
+                <thead>
+                    <tr>
+                        <th style="width:130px;">Mã báo giá</th>
+                        <th style="width:100px;">Ngày tạo</th>
+                        <th>Khách hàng</th>
+                        <th style="width:130px; text-align:right;">Tiền hàng</th>
+                        <th style="width:110px; text-align:right;">Chiết khấu</th>
+                        <th style="width:140px; text-align:right;">Tổng giá trị</th>
+                        <th style="width:140px; text-align:center;">Trạng thái</th>
+                        <th style="width:160px; text-align:center;">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in _quotations)
+                    {
+                        <tr>
+                            <td>
+                                <a href="/ban-hang/bao-gia/chi-tiet/@item.Id" style="font-weight:700; color:#1d4ed8; text-decoration:none;">
+                                    @item.Code
+                                </a>
+                                @if (item.ExpiryDate.HasValue)
+                                {
+                                    <div style="font-size:11px; color:#64748b;">Hạn: @item.ExpiryDate.Value.ToString("dd/MM/yyyy")</div>
+                                }
+                            </td>
+                            <td>@item.QuotationDate.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                <div style="font-weight:600;">@item.CustomerName</div>
+                                @if (!string.IsNullOrEmpty(item.CustomerPhone))
+                                {
+                                    <div style="font-size:12px; color:#64748b;">@item.CustomerPhone</div>
+                                }
+                            </td>
+                            <td style="text-align:right;">@item.SubTotal.ToString("N0") đ</td>
+                            <td style="text-align:right; color:#d97706;">
+                                @if (item.TotalDiscount > 0)
+                                {
+                                    <span>-@item.TotalDiscount.ToString("N0") đ</span>
+                                }
+                                else
+                                {
+                                    <span style="color:#94a3b8;">0</span>
+                                }
+                            </td>
+                            <td style="text-align:right;">
+                                <strong style="color:#0f766e; font-size:14px;">@item.GrandTotal.ToString("N0") đ</strong>
+                                <div style="font-size:10.5px; color:#64748b;">(Chưa gồm VAT)</div>
+                            </td>
+                            <td style="text-align:center;">
+                                @GetStatusBadge(item.Status, item.SalesOrderCode)
+                            </td>
+                            <td style="text-align:center; white-space:nowrap;">
+                                <a href="/ban-hang/bao-gia/chi-tiet/@item.Id" class="tf-btn tf-btn-sm tf-btn-outline-primary" style="padding:3px 8px;" title="Xem chi tiết">
+                                    Chi tiết
+                                </a>
+                                <a href="/api/quotations/@item.Id/export-pdf" target="_blank" class="tf-btn tf-btn-sm tf-btn-outline-secondary" style="padding:3px 8px;" title="Tải PDF">
+                                    PDF
+                                </a>
+                                @if (item.Status != QuotationStatus.Converted && item.Status != QuotationStatus.Cancelled && !item.SalesOrderId.HasValue)
+                                {
+                                    <button type="button" class="tf-btn tf-btn-sm tf-btn-outline-success" style="padding:3px 8px;" @onclick="() => ConfirmConvert(item)" title="Chuyển thành Đơn bán hàng">
+                                        → Đơn hàng
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@* Convert to Sales Order Confirmation Modal *@
+@if (_convertingQuotation != null)
+{
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1050; display:flex; align-items:center; justify-content:center;">
+        <div style="background:white; padding:24px; border-radius:8px; width:450px; max-width:92%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+            <h3 style="margin-top:0; margin-bottom:12px; font-size:17px; color:#0f766e;">Xác nhận chuyển thành Đơn bán hàng</h3>
+            <p style="margin-bottom:12px; font-size:13.5px; color:#334155;">
+                Bạn có chắc muốn tạo Đơn bán hàng từ báo giá <strong>@_convertingQuotation.Code</strong> của khách hàng <strong>@_convertingQuotation.CustomerName</strong>?
+            </p>
+            <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:10px 14px; font-size:12.5px; color:#166534; margin-bottom:16px;">
+                ✓ Thông tin khách hàng, số lượng, đơn giá trước VAT và mức chiết khấu sẽ được bảo lưu đầy đủ sang Đơn bán hàng.
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="() => _convertingQuotation = null" disabled="@_isConverting">Hủy</button>
+                <button type="button" class="tf-btn tf-btn-primary" @onclick="ExecuteConvert" disabled="@_isConverting">
+                    @if (_isConverting)
+                    {
+                        <span>Đang xử lý...</span>
+                    }
+                    else
+                    {
+                        <span>Xác nhận chuyển đổi</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<QuotationDto> _quotations = new();
+    private QuotationFilterDto _filter = new();
+    private string _selectedStatus = "";
+    private bool _isLoading = true;
+    private string? _actionSuccessMessage;
+    private string? _actionErrorMessage;
+
+    // Conversion state
+    private QuotationDto? _convertingQuotation;
+    private bool _isConverting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            _isLoading = true;
+            _quotations = await QuotationService.GetQuotationsAsync(_filter);
+        }
+        catch (Exception ex)
+        {
+            _actionErrorMessage = "Lỗi tải danh sách báo giá: " + ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task HandleSearch()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task ApplyFilter()
+    {
+        if (Enum.TryParse<QuotationStatus>(_selectedStatus, out var status))
+        {
+            _filter.Status = status;
+        }
+        else
+        {
+            _filter.Status = null;
+        }
+        await LoadDataAsync();
+    }
+
+    private async Task ResetFilter()
+    {
+        _filter = new QuotationFilterDto();
+        _selectedStatus = "";
+        await LoadDataAsync();
+    }
+
+    private void ConfirmConvert(QuotationDto quotation)
+    {
+        _convertingQuotation = quotation;
+        _actionErrorMessage = null;
+    }
+
+    private async Task ExecuteConvert()
+    {
+        if (_convertingQuotation == null) return;
+        try
+        {
+            _isConverting = true;
+            _actionErrorMessage = null;
+            var createdOrder = await QuotationService.ConvertToSalesOrderAsync(_convertingQuotation.Id);
+            _actionSuccessMessage = $"Đã chuyển đổi thành công sang Đơn bán hàng {createdOrder.Code}!";
+            _convertingQuotation = null;
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _actionErrorMessage = "Không thể chuyển đổi: " + ex.Message;
+        }
+        finally
+        {
+            _isConverting = false;
+        }
+    }
+
+    private RenderFragment GetStatusBadge(QuotationStatus status, string? salesOrderCode) => __builder =>
+    {
+        switch (status)
+        {
+            case QuotationStatus.Draft:
+                __builder.OpenElement(0, "span");
+                __builder.AddAttribute(1, "class", "tf-badge tf-badge-secondary");
+                __builder.AddContent(2, "Bản nháp");
+                __builder.CloseElement();
+                break;
+            case QuotationStatus.Sent:
+                __builder.OpenElement(0, "span");
+                __builder.AddAttribute(1, "class", "tf-badge tf-badge-info");
+                __builder.AddContent(2, "Đã gửi KH");
+                __builder.CloseElement();
+                break;
+            case QuotationStatus.Accepted:
+                __builder.OpenElement(0, "span");
+                __builder.AddAttribute(1, "class", "tf-badge tf-badge-primary");
+                __builder.AddContent(2, "Đã chấp nhận");
+                __builder.CloseElement();
+                break;
+            case QuotationStatus.Converted:
+                __builder.OpenElement(0, "span");
+                __builder.AddAttribute(1, "class", "tf-badge tf-badge-success");
+                __builder.AddContent(2, !string.IsNullOrEmpty(salesOrderCode) ? $"→ {salesOrderCode}" : "Đã chuyển đơn");
+                __builder.CloseElement();
+                break;
+            case QuotationStatus.Rejected:
+                __builder.OpenElement(0, "span");
+                __builder.AddAttribute(1, "class", "tf-badge tf-badge-warning");
+                __builder.AddContent(2, "Khách từ chối");
+                __builder.CloseElement();
+                break;
+            case QuotationStatus.Expired:
+                __builder.OpenElement(0, "span");
+                __builder.AddAttribute(1, "class", "tf-badge tf-badge-dark");
+                __builder.AddContent(2, "Hết hiệu lực");
+                __builder.CloseElement();
+                break;
+            case QuotationStatus.Cancelled:
+                __builder.OpenElement(0, "span");
+                __builder.AddAttribute(1, "class", "tf-badge tf-badge-danger");
+                __builder.AddContent(2, "Đã hủy");
+                __builder.CloseElement();
+                break;
+        }
+    };
+}

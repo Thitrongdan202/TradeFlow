@@ -28,6 +28,10 @@ public class SalesOrder : AuditableEntity<int>
     public decimal TotalTax { get; set; }
     public decimal GrandTotal { get; set; }
     
+    // Source Quotation relationship
+    public int? QuotationId { get; set; }
+    public Quotation? Quotation { get; set; }
+
     public ICollection<SalesOrderItem> Items { get; set; } = new List<SalesOrderItem>();
     public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
 }

@@ -1,0 +1,650 @@
+@page "/ban-hang/bao-gia/chi-tiet/{Id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Sales
+@using TradeFlow.Domain.Entities.Settings
+@using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
+@using TradeFlow.Web.Components.Common
+@inject IQuotationService QuotationService
+@inject TradeFlowDbContext DbContext
+@inject NavigationManager Nav
+@inject IAuthorizationService AuthService
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permission:Quotations:View")]
+
+<PageTitle>Chi tiết báo giá @(_quotation?.Code) | TradeFlow</PageTitle>
+
+@if (_isLoading)
+{
+    <div class="tf-loading">Đang tải thông tin báo giá...</div>
+}
+else if (_quotation == null)
+{
+    <div class="tf-empty-state">
+        <h3>Không tìm thấy báo giá</h3>
+        <p>Báo giá không tồn tại hoặc đã bị xóa khỏi hệ thống.</p>
+        <a href="/ban-hang/bao-gia" class="tf-btn tf-btn-secondary">Quay lại danh sách</a>
+    </div>
+}
+else
+{
+    @* Page Header *@
+    <div class="tf-page-header">
+        <div class="tf-page-header-content">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <h1 class="tf-page-title" style="margin-bottom:0;">Báo giá: @_quotation.Code</h1>
+                @GetStatusBadge(_quotation.Status, _quotation.SalesOrderCode)
+            </div>
+            <p class="tf-page-subtitle">
+                Ngày báo giá: @_quotation.QuotationDate.ToString("dd/MM/yyyy") | Khách hàng: <strong>@_quotation.CustomerName</strong>
+                @if (_quotation.ExpiryDate.HasValue)
+                {
+                    <span> | Hạn hiệu lực: @_quotation.ExpiryDate.Value.ToString("dd/MM/yyyy")</span>
+                }
+            </p>
+        </div>
+        <div class="tf-page-header-actions" style="display:flex; flex-wrap:wrap; gap:8px;">
+            <a href="/ban-hang/bao-gia" class="tf-btn tf-btn-outline-secondary">
+                ← Danh sách
+            </a>
+
+            @if (_quotation.Status != QuotationStatus.Converted && _quotation.Status != QuotationStatus.Cancelled)
+            {
+                <AuthorizeView Policy="Permission:Quotations:Edit">
+                    <a href="/ban-hang/bao-gia/chinh-sua/@Id" class="tf-btn tf-btn-outline-primary">
+                        Chỉnh sửa
+                    </a>
+                </AuthorizeView>
+            }
+
+            @* Status transition dropdown *@
+            @if (_quotation.Status != QuotationStatus.Converted)
+            {
+                <div style="display:inline-block; position:relative;">
+                    <button type="button" class="tf-btn tf-btn-outline-info" @onclick="ToggleStatusMenu">
+                        Trạng thái ▾
+                    </button>
+                    @if (_showStatusMenu)
+                    {
+                        <div style="position:absolute; right:0; top:100%; margin-top:4px; background:white; border:1px solid #cbd5e1; border-radius:6px; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1); z-index:100; min-width:180px; padding:6px 0;">
+                            @if (_quotation.Status != QuotationStatus.Draft)
+                            {
+                                <button type="button" class="tf-dropdown-item" @onclick="() => ChangeStatus(QuotationStatus.Draft)">Bản nháp</button>
+                            }
+                            @if (_quotation.Status != QuotationStatus.Sent)
+                            {
+                                <button type="button" class="tf-dropdown-item" @onclick="() => ChangeStatus(QuotationStatus.Sent)">Đã gửi khách hàng</button>
+                            }
+                            @if (_quotation.Status != QuotationStatus.Accepted)
+                            {
+                                <button type="button" class="tf-dropdown-item" @onclick="() => ChangeStatus(QuotationStatus.Accepted)">Khách chấp nhận</button>
+                            }
+                            @if (_quotation.Status != QuotationStatus.Rejected)
+                            {
+                                <button type="button" class="tf-dropdown-item" @onclick="() => ChangeStatus(QuotationStatus.Rejected)">Khách từ chối</button>
+                            }
+                            @if (_quotation.Status != QuotationStatus.Cancelled)
+                            {
+                                <button type="button" class="tf-dropdown-item" style="color:var(--tf-danger);" @onclick="() => ChangeStatus(QuotationStatus.Cancelled)">Hủy báo giá</button>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            @* Convert to Sales Order Button *@
+            @if (_quotation.Status != QuotationStatus.Converted && _quotation.Status != QuotationStatus.Cancelled && !_quotation.SalesOrderId.HasValue)
+            {
+                <button type="button" class="tf-btn tf-btn-success" @onclick="() => _showConvertModal = true">
+                    → Chuyển thành Đơn bán hàng
+                </button>
+            }
+            else if (_quotation.SalesOrderId.HasValue)
+            {
+                <a href="/ban-hang/don-ban-hang/chi-tiet/@_quotation.SalesOrderId" class="tf-btn tf-btn-outline-success">
+                    Xem Đơn bán hàng (@_quotation.SalesOrderCode)
+                </a>
+            }
+
+            <a href="/api/quotations/@Id/export-pdf" target="_blank" class="tf-btn tf-btn-outline-secondary" title="Tải xuống tệp PDF">
+                Xuất PDF
+            </a>
+            <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="PrintQuotation" title="In trực tiếp tài liệu">
+                In ấn
+            </button>
+
+            @if (_quotation.Status == QuotationStatus.Draft || _quotation.Status == QuotationStatus.Cancelled)
+            {
+                <button type="button" class="tf-btn tf-btn-outline-danger" @onclick="() => _showDeleteModal = true">
+                    Xóa
+                </button>
+            }
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_successMessage))
+    {
+        <div class="tf-alert tf-alert-success tf-mb-4">
+            @_successMessage
+            <button type="button" style="float:right; background:none; border:none; cursor:pointer;" @onclick="() => _successMessage = null">✕</button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="tf-alert tf-alert-danger tf-mb-4">
+            @_errorMessage
+            <button type="button" style="float:right; background:none; border:none; cursor:pointer;" @onclick="() => _errorMessage = null">✕</button>
+        </div>
+    }
+
+    @* Navigation Tabs *@
+    <div style="border-bottom:1px solid #cbd5e1; margin-bottom:20px; display:flex; gap:8px;">
+        <button type="button" class="tf-btn @(_activeTab == "preview" ? "tf-btn-primary" : "tf-btn-outline-secondary")" style="border-bottom-left-radius:0; border-bottom-right-radius:0;" @onclick="@(() => _activeTab = "preview")">
+            Xem trước Báo giá
+        </button>
+        <button type="button" class="tf-btn @(_activeTab == "documents" ? "tf-btn-primary" : "tf-btn-outline-secondary")" style="border-bottom-left-radius:0; border-bottom-right-radius:0;" @onclick="@(() => _activeTab = "documents")">
+            Tài liệu & Hồ sơ đính kèm
+        </button>
+        <button type="button" class="tf-btn @(_activeTab == "pdf" ? "tf-btn-primary" : "tf-btn-outline-secondary")" style="border-bottom-left-radius:0; border-bottom-right-radius:0;" @onclick="@(() => _activeTab = "pdf")">
+            File PDF gốc
+        </button>
+    </div>
+
+    @if (_activeTab == "preview")
+    {
+        @* ─── WEB PREVIEW MATCHING QUESTPDF COMMERCIAL QUOTATION ─── *@
+        <div id="print-quotation-area" class="quotation-print-sheet" style="max-width:850px; margin:0 auto 30px; font-family:'Times New Roman', Times, serif; font-size:13.5px; color:#000; background:#fff; padding:32px 36px; border:1px solid #cbd5e1; box-shadow:0 2px 6px rgba(0,0,0,0.08); line-height:1.45;">
+            
+            @* 1. HEADER *@
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; border-bottom:1px solid #000; padding-bottom:14px;">
+                <div style="flex:1;">
+                    <div style="font-size:17px; font-weight:bold; text-transform:uppercase; margin-bottom:3px;">
+                        @(_company?.CompanyName ?? "CÔNG TY TNHH XUẤT NHẬP KHẨU THƯƠNG MẠI DỊCH VỤ LACASA")
+                    </div>
+                    <div style="font-size:13px; margin-bottom:2px;">
+                        <strong>Địa chỉ:</strong> @(_company?.Address ?? "TP. Hồ Chí Minh")
+                    </div>
+                    <div style="font-size:13px; margin-bottom:2px;">
+                        <strong>MST:</strong> @(_company?.TaxCode ?? "—") | <strong>Hotline/Zalo:</strong> @(_company?.OrderHotline ?? _company?.Phone ?? "—")
+                    </div>
+                    <div style="font-size:13px;">
+                        <strong>Email:</strong> @(_company?.Email ?? "—") | <strong>Website:</strong> @(_company?.Website ?? "—")
+                    </div>
+                </div>
+                <div style="text-align:right; min-width:210px;">
+                    <div style="font-size:22px; font-weight:bold; text-transform:uppercase; color:#0f766e; margin-bottom:4px;">
+                        BÁO GIÁ
+                    </div>
+                    <div style="font-size:13.5px; font-weight:bold; margin-bottom:2px;">
+                        Số: @_quotation.Code
+                    </div>
+                    <div style="font-size:13px; font-style:italic;">
+                        Ngày: @_quotation.QuotationDate.ToString("dd/MM/yyyy")
+                    </div>
+                    @if (_quotation.ExpiryDate.HasValue)
+                    {
+                        <div style="font-size:12.5px; color:#475569;">
+                            Hiệu lực đến: @_quotation.ExpiryDate.Value.ToString("dd/MM/yyyy")
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @* 2. CUSTOMER & SALUTATION *@
+            <div style="margin-bottom:18px;">
+                <div style="margin-bottom:4px;">
+                    <strong>Kính gửi:</strong> <span style="font-size:14.5px; font-weight:bold;">@_quotation.CustomerName</span>
+                    @if (!string.IsNullOrEmpty(_quotation.CustomerContactPerson))
+                    {
+                        <span> - Người nhận: <strong>@_quotation.CustomerContactPerson</strong></span>
+                    }
+                </div>
+                <div style="margin-bottom:4px;">
+                    <strong>Địa chỉ:</strong> @(_quotation.CustomerAddress ?? "—")
+                </div>
+                <div style="margin-bottom:6px;">
+                    <strong>Điện thoại:</strong> @(_quotation.CustomerPhone ?? "—")
+                    @if (!string.IsNullOrEmpty(_quotation.CustomerEmail))
+                    {
+                        <span style="margin-left:16px;"><strong>Email:</strong> @_quotation.CustomerEmail</span>
+                    }
+                    @if (!string.IsNullOrEmpty(_quotation.CustomerTaxCode))
+                    {
+                        <span style="margin-left:16px;"><strong>MST:</strong> @_quotation.CustomerTaxCode</span>
+                    }
+                </div>
+                <div style="font-style:italic; font-size:13px; margin-top:8px;">
+                    Lời đầu tiên, <strong>@(_company?.CompanyName ?? "Công ty")</strong> xin trân trọng gửi lời chào và lời chúc thành công đến Quý khách hàng. Chúng tôi trân trọng gửi đến Quý khách bảng báo giá thương mại chi tiết như sau:
+                </div>
+            </div>
+
+            @* 3. PRODUCTS TABLE *@
+            @{
+                bool hasDiscount = _quotation.TotalDiscount > 0 || _quotation.Items.Any(x => x.DiscountAmount > 0);
+            }
+            <table style="width:100%; border-collapse:collapse; margin-bottom:0; font-size:13px;">
+                <thead>
+                    <tr style="background:#f1f5f9; border-top:1px solid #000; border-bottom:1px solid #000;">
+                        <th style="border:1px solid #000; padding:6px 4px; text-align:center; width:35px; font-weight:bold;">STT</th>
+                        <th style="border:1px solid #000; padding:6px 4px; text-align:center; width:90px; font-weight:bold;">Mã SP</th>
+                        <th style="border:1px solid #000; padding:6px 6px; text-align:left; font-weight:bold;">Tên sản phẩm, quy cách</th>
+                        <th style="border:1px solid #000; padding:6px 4px; text-align:center; width:55px; font-weight:bold;">ĐVT</th>
+                        <th style="border:1px solid #000; padding:6px 4px; text-align:center; width:55px; font-weight:bold;">SL</th>
+                        <th style="border:1px solid #000; padding:6px 4px; text-align:right; width:100px; font-weight:bold;">Đơn giá</th>
+                        @if (hasDiscount)
+                        {
+                            <th style="border:1px solid #000; padding:6px 4px; text-align:right; width:85px; font-weight:bold;">Chiết khấu</th>
+                        }
+                        <th style="border:1px solid #000; padding:6px 6px; text-align:right; width:110px; font-weight:bold;">Thành tiền</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        int rIdx = 1;
+                        foreach (var item in _quotation.Items)
+                        {
+                            <tr>
+                                <td style="border:1px solid #000; padding:6px 4px; text-align:center;">@rIdx</td>
+                                <td style="border:1px solid #000; padding:6px 4px; text-align:center; font-weight:bold;">@item.ProductCode</td>
+                                <td style="border:1px solid #000; padding:6px 6px; text-align:left;">
+                                    <div><strong>@item.ProductName</strong></div>
+                                    @if (!string.IsNullOrWhiteSpace(item.Notes))
+                                    {
+                                        <div style="font-size:11.5px; font-style:italic; color:#475569;">@item.Notes</div>
+                                    }
+                                </td>
+                                <td style="border:1px solid #000; padding:6px 4px; text-align:center;">@item.UnitName</td>
+                                <td style="border:1px solid #000; padding:6px 4px; text-align:center;">@item.Quantity.ToString("N0")</td>
+                                <td style="border:1px solid #000; padding:6px 4px; text-align:right;">@item.UnitPrice.ToString("N0")</td>
+                                @if (hasDiscount)
+                                {
+                                    <td style="border:1px solid #000; padding:6px 4px; text-align:right; color:#d97706;">
+                                        @if (item.DiscountAmount > 0)
+                                        {
+                                            <span>@item.DiscountAmount.ToString("N0")</span>
+                                        }
+                                        else
+                                        {
+                                            <span>—</span>
+                                        }
+                                    </td>
+                                }
+                                <td style="border:1px solid #000; padding:6px 6px; text-align:right; font-weight:bold;">
+                                    @item.LineTotal.ToString("N0")
+                                </td>
+                            </tr>
+                            rIdx++;
+                        }
+                    }
+
+                    @* TOTALS ROWS *@
+                    <tr>
+                        <td colspan="@(hasDiscount ? 6 : 5)" style="border:1px solid #000; padding:6px 8px; text-align:right; font-weight:bold;">
+                            Tổng tiền hàng (trước thuế GTGT):
+                        </td>
+                        @if (hasDiscount)
+                        {
+                            <td style="border:1px solid #000; padding:6px 4px;"></td>
+                        }
+                        <td style="border:1px solid #000; padding:6px 8px; text-align:right; font-weight:bold;">
+                            @_quotation.SubTotal.ToString("N0") đ
+                        </td>
+                    </tr>
+
+                    @if (hasDiscount)
+                    {
+                        <tr>
+                            <td colspan="6" style="border:1px solid #000; padding:6px 8px; text-align:right; color:#d97706;">
+                                Tổng chiết khấu thương mại:
+                            </td>
+                            <td style="border:1px solid #000; padding:6px 4px;"></td>
+                            <td style="border:1px solid #000; padding:6px 8px; text-align:right; font-weight:bold; color:#d97706;">
+                                -@_quotation.TotalDiscount.ToString("N0") đ
+                            </td>
+                        </tr>
+                    }
+
+                    <tr style="background:#f8fafc;">
+                        <td colspan="@(hasDiscount ? 6 : 5)" style="border:1px solid #000; padding:8px 8px; text-align:right; font-weight:bold; font-size:14px; text-transform:uppercase;">
+                            TỔNG CỘNG GIÁ TRỊ BÁO GIÁ:
+                        </td>
+                        @if (hasDiscount)
+                        {
+                            <td style="border:1px solid #000; padding:6px 4px;"></td>
+                        }
+                        <td style="border:1px solid #000; padding:8px 8px; text-align:right; font-weight:bold; font-size:14px; color:#0f766e;">
+                            @_quotation.GrandTotal.ToString("N0") đ
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            @* 4. NOTES & TERMS *@
+            <div style="border:1px solid #000; border-top:none; padding:8px 12px; margin-bottom:16px; background:#fff;">
+                <div style="font-weight:bold; margin-bottom:4px;">GHI CHÚ & ĐIỀU KHOẢN THƯƠNG MẠI:</div>
+                @if (!string.IsNullOrWhiteSpace(_quotation.Notes))
+                {
+                    <div style="margin-bottom:6px;"><strong>Ghi chú riêng:</strong> @_quotation.Notes</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(_quotation.Terms))
+                {
+                    <div style="white-space:pre-line; font-size:12.5px; color:#1e293b;">@_quotation.Terms</div>
+                }
+                <div style="font-size:12px; font-style:italic; color:#475569; margin-top:6px;">
+                    * Lưu ý: Đơn giá trong bảng báo giá là giá thương mại chuẩn chưa bao gồm thuế giá trị gia tăng (GTGT). Thuế GTGT sẽ được áp dụng theo quy định hiện hành khi xuất hóa đơn.
+                </div>
+            </div>
+
+            @* 5. BANK INFO & QR CODE BOX *@
+            <div style="border:1px solid #000; display:flex; margin-bottom:20px;">
+                <div style="flex:1; display:flex; flex-direction:column;">
+                    <div style="border-bottom:1px solid #000; padding:4px 8px; font-weight:bold;">
+                        THÔNG TIN TÀI KHOẢN THANH TOÁN:
+                    </div>
+                    <div style="border-bottom:1px solid #000; padding:4px 8px;">
+                        <strong>Tên tài khoản:</strong> @((_company?.BankAccountHolder ?? "").ToUpper())
+                    </div>
+                    <div style="border-bottom:1px solid #000; padding:4px 8px;">
+                        <strong>Số tài khoản:</strong> @(_company?.BankAccount ?? "—")
+                    </div>
+                    <div style="padding:4px 8px;">
+                        <strong>Ngân hàng:</strong> @((_company?.BankName ?? "").ToUpper())
+                    </div>
+                </div>
+                <div style="width:145px; border-left:1px solid #000; display:flex; align-items:center; justify-content:center; padding:6px;">
+                    @if (!string.IsNullOrEmpty(_company?.OrderQrCodePath))
+                    {
+                        <img src="@_company.OrderQrCodePath" alt="QR Code" style="max-width:130px; max-height:130px; object-fit:contain;" />
+                    }
+                    else
+                    {
+                        <div style="width:115px; height:115px; border:1px dashed #999; display:flex; align-items:center; justify-content:center; font-size:11px; color:#888;">VietQR</div>
+                    }
+                </div>
+            </div>
+
+            @* 6. SIGNATURE AREA *@
+            <div style="display:flex; justify-content:space-between; margin-top:24px; text-align:center;">
+                <div style="flex:1;">
+                    <div style="font-weight:bold; font-size:14px; text-transform:uppercase;">ĐẠI DIỆN KHÁCH HÀNG</div>
+                    <div style="font-size:12px; font-style:italic; color:#64748b;">(Ký, ghi rõ họ tên và đóng dấu)</div>
+                    <div style="height:90px;"></div>
+                </div>
+                <div style="flex:1;">
+                    <div style="font-weight:bold; font-size:14px; text-transform:uppercase;">
+                        ĐẠI DIỆN @((_company?.TradingName ?? "LACASA").ToUpper())
+                    </div>
+                    <div style="font-size:12px; font-style:italic; color:#64748b;">(Ký, ghi rõ họ tên và đóng dấu)</div>
+                    <div style="height:90px; display:flex; align-items:flex-end; justify-content:center;">
+                        <div style="font-weight:bold;">@(_quotation.SalespersonName ?? "Người lập báo giá")</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    }
+    else if (_activeTab == "documents")
+    {
+        <DocumentAttachmentSection EntityType="Quotation" EntityId="@Id" Title="Hồ sơ & Tài liệu Báo giá" />
+    }
+    else if (_activeTab == "pdf")
+    {
+        <div class="tf-card" style="padding:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <div style="font-weight:600;">Xem trực tiếp tệp PDF báo giá:</div>
+                <a href="/api/quotations/@Id/export-pdf" class="tf-btn tf-btn-sm tf-btn-primary" target="_blank" download>
+                    Tải về máy (.pdf)
+                </a>
+            </div>
+            <iframe src="/api/quotations/@Id/export-pdf" style="width:100%; height:800px; border:1px solid #cbd5e1; border-radius:6px;"></iframe>
+        </div>
+    }
+}
+
+@* Print Styles *@
+<style>
+    @@media print {
+        body * {
+            visibility: hidden;
+        }
+        #print-quotation-area, #print-quotation-area * {
+            visibility: visible;
+        }
+        #print-quotation-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            border: none;
+            box-shadow: none;
+        }
+    }
+
+    .tf-dropdown-item {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 8px 16px;
+        background: none;
+        border: none;
+        font-size: 13px;
+        cursor: pointer;
+        color: #1e293b;
+    }
+    .tf-dropdown-item:hover {
+        background: #f1f5f9;
+    }
+</style>
+
+@* Convert Modal *@
+@if (_showConvertModal && _quotation != null)
+{
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1050; display:flex; align-items:center; justify-content:center;">
+        <div style="background:white; padding:24px; border-radius:8px; width:450px; max-width:92%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+            <h3 style="margin-top:0; margin-bottom:12px; font-size:17px; color:#0f766e;">Chuyển thành Đơn bán hàng</h3>
+            <p style="margin-bottom:12px; font-size:13.5px; color:#334155;">
+                Bạn có chắc chắn muốn chuyển đổi báo giá <strong>@_quotation.Code</strong> thành Đơn bán hàng chính thức không?
+            </p>
+            <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:10px 14px; font-size:12.5px; color:#166534; margin-bottom:16px;">
+                ✓ Thông tin khách hàng, chi tiết mặt hàng, đơn giá trước VAT và chiết khấu sẽ được chuyển đầy đủ sang Đơn bán hàng.
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="() => _showConvertModal = false" disabled="@_isProcessing">Hủy</button>
+                <button type="button" class="tf-btn tf-btn-primary" @onclick="ExecuteConvert" disabled="@_isProcessing">
+                    @if (_isProcessing)
+                    {
+                        <span>Đang chuyển đổi...</span>
+                    }
+                    else
+                    {
+                        <span>Xác nhận chuyển</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Delete Modal *@
+@if (_showDeleteModal && _quotation != null)
+{
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1050; display:flex; align-items:center; justify-content:center;">
+        <div style="background:white; padding:24px; border-radius:8px; width:400px; max-width:90%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+            <h3 style="margin-top:0; margin-bottom:12px; font-size:17px; color:var(--tf-danger);">Xóa báo giá?</h3>
+            <p style="margin-bottom:16px; font-size:13.5px; color:#334155;">
+                Bạn có chắc muốn xóa báo giá <strong>@_quotation.Code</strong> không? Thao tác này không thể hoàn tác.
+            </p>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="() => _showDeleteModal = false">Hủy</button>
+                <button type="button" class="tf-btn tf-btn-danger" @onclick="ExecuteDelete">Xóa vĩnh viễn</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private QuotationDto? _quotation;
+    private CompanySettings? _company;
+    private bool _isLoading = true;
+    private bool _isProcessing = false;
+    private string _activeTab = "preview";
+    private string? _successMessage;
+    private string? _errorMessage;
+    private bool _showStatusMenu = false;
+    private bool _showConvertModal = false;
+    private bool _showDeleteModal = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            _isLoading = true;
+            _quotation = await QuotationService.GetQuotationByIdAsync(Id);
+            _company = await DbContext.CompanySettings.FirstOrDefaultAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi tải thông tin báo giá: " + ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ToggleStatusMenu()
+    {
+        _showStatusMenu = !_showStatusMenu;
+    }
+
+    private async Task ChangeStatus(QuotationStatus status)
+    {
+        _showStatusMenu = false;
+        try
+        {
+            _isProcessing = true;
+            var ok = await QuotationService.UpdateStatusAsync(Id, status);
+            if (ok)
+            {
+                _successMessage = $"Đã cập nhật trạng thái báo giá sang: {status}";
+                await LoadDataAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi khi đổi trạng thái: " + ex.Message;
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+
+    private async Task ExecuteConvert()
+    {
+        try
+        {
+            _isProcessing = true;
+            _errorMessage = null;
+            var createdOrder = await QuotationService.ConvertToSalesOrderAsync(Id);
+            _showConvertModal = false;
+            Nav.NavigateTo($"/ban-hang/don-ban-hang/chi-tiet/{createdOrder.Id}");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Không thể chuyển đổi: " + ex.Message;
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+
+    private async Task ExecuteDelete()
+    {
+        try
+        {
+            var ok = await QuotationService.DeleteQuotationAsync(Id);
+            if (ok)
+            {
+                Nav.NavigateTo("/ban-hang/bao-gia");
+            }
+            else
+            {
+                _errorMessage = "Không thể xóa báo giá.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi khi xóa: " + ex.Message;
+        }
+    }
+
+    private async Task PrintQuotation()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+
+    private RenderFragment GetStatusBadge(QuotationStatus status, string? salesOrderCode) => __builder =>
+    {
+        switch (status)
+        {
+            case QuotationStatus.Draft:
+                __builder.OpenElement(0, "span");
+                __builder.AddAttribute(1, "class", "tf-badge tf-badge-secondary");
+                __builder.AddContent(2, "Bản nháp");
+                __builder.CloseElement();
+                break;
+            case QuotationStatus.Sent:
+                __builder.OpenElement(0, "span");
+                __builder.AddAttribute(1, "class", "tf-badge tf-badge-info");
+                __builder.AddContent(2, "Đã gửi KH");
+                __builder.CloseElement();
+                break;
+            case QuotationStatus.Accepted:
+                __builder.OpenElement(0, "span");
+                __builder.AddAttribute(1, "class", "tf-badge tf-badge-primary");
+                __builder.AddContent(2, "Đã chấp nhận");
+                __builder.CloseElement();
+                break;
+            case QuotationStatus.Converted:
+                __builder.OpenElement(0, "span");
+                __builder.AddAttribute(1, "class", "tf-badge tf-badge-success");
+                __builder.AddContent(2, !string.IsNullOrEmpty(salesOrderCode) ? $"Đã chuyển thành ĐBH: {salesOrderCode}" : "Đã chuyển đơn hàng");
+                __builder.CloseElement();
+                break;
+            case QuotationStatus.Rejected:
+                __builder.OpenElement(0, "span");
+                __builder.AddAttribute(1, "class", "tf-badge tf-badge-warning");
+                __builder.AddContent(2, "Khách từ chối");
+                __builder.CloseElement();
+                break;
+            case QuotationStatus.Expired:
+                __builder.OpenElement(0, "span");
+                __builder.AddAttribute(1, "class", "tf-badge tf-badge-dark");
+                __builder.AddContent(2, "Hết hiệu lực");
+                __builder.CloseElement();
+                break;
+            case QuotationStatus.Cancelled:
+                __builder.OpenElement(0, "span");
+                __builder.AddAttribute(1, "class", "tf-badge tf-badge-danger");
+                __builder.AddContent(2, "Đã hủy");
+                __builder.CloseElement();
+                break;
+        }
+    };
+}

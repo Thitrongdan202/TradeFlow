@@ -1,4 +1,4 @@
-﻿namespace TradeFlow.Domain.Enums;
+namespace TradeFlow.Domain.Enums;
 
 /// <summary>Tài nguyên hệ thống được phân quyền</summary>
 public enum ResourceType
@@ -58,4 +58,7 @@ public enum ResourceType
 
     /// <summary>Hóa đơn</summary>
     Invoices = 32,
+
+    /// <summary>Tài liệu & Chứng từ / Hồ sơ</summary>
+    Documents = 33,
 }

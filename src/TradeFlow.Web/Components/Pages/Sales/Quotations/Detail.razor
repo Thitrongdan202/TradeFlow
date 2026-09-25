@@ -1,5 +1,6 @@
 @page "/ban-hang/bao-gia/chi-tiet/{Id:int}"
 @using Microsoft.AspNetCore.Authorization
+@using System.Globalization
 @using Microsoft.EntityFrameworkCore
 @using TradeFlow.Application.Common.Interfaces
 @using TradeFlow.Application.Common.Models.Sales
@@ -178,7 +179,7 @@ else
                 </div>
                 <div style="text-align:right; min-width:210px;">
                     <div style="font-size:22px; font-weight:bold; text-transform:uppercase; color:#0f766e; margin-bottom:4px;">
-                        BÁO GIÁ
+                        BẢNG BÁO GIÁ
                     </div>
                     <div style="font-size:13.5px; font-weight:bold; margin-bottom:2px;">
                         Số: @_quotation.Code
@@ -231,8 +232,8 @@ else
                 <thead>
                     <tr style="background:#f1f5f9; border-top:1px solid #000; border-bottom:1px solid #000;">
                         <th style="border:1px solid #000; padding:6px 4px; text-align:center; width:35px; font-weight:bold;">STT</th>
-                        <th style="border:1px solid #000; padding:6px 4px; text-align:center; width:90px; font-weight:bold;">Mã SP</th>
-                        <th style="border:1px solid #000; padding:6px 6px; text-align:left; font-weight:bold;">Tên sản phẩm, quy cách</th>
+                        <th style="border:1px solid #000; padding:6px 4px; text-align:center; width:90px; font-weight:bold;">Mã hàng</th>
+                        <th style="border:1px solid #000; padding:6px 6px; text-align:left; font-weight:bold;">Tên hàng hóa, quy cách</th>
                         <th style="border:1px solid #000; padding:6px 4px; text-align:center; width:55px; font-weight:bold;">ĐVT</th>
                         <th style="border:1px solid #000; padding:6px 4px; text-align:center; width:55px; font-weight:bold;">SL</th>
                         <th style="border:1px solid #000; padding:6px 4px; text-align:right; width:100px; font-weight:bold;">Đơn giá</th>
@@ -259,14 +260,14 @@ else
                                     }
                                 </td>
                                 <td style="border:1px solid #000; padding:6px 4px; text-align:center;">@item.UnitName</td>
-                                <td style="border:1px solid #000; padding:6px 4px; text-align:center;">@item.Quantity.ToString("N0")</td>
-                                <td style="border:1px solid #000; padding:6px 4px; text-align:right;">@item.UnitPrice.ToString("N0")</td>
+                                <td style="border:1px solid #000; padding:6px 4px; text-align:center;">@item.Quantity.ToString("N0", ViCulture)</td>
+                                <td style="border:1px solid #000; padding:6px 4px; text-align:right;">@item.UnitPrice.ToString("N0", ViCulture)</td>
                                 @if (hasDiscount)
                                 {
                                     <td style="border:1px solid #000; padding:6px 4px; text-align:right; color:#d97706;">
                                         @if (item.DiscountAmount > 0)
                                         {
-                                            <span>@item.DiscountAmount.ToString("N0")</span>
+                                            <span>@item.DiscountAmount.ToString("N0", ViCulture)</span>
                                         }
                                         else
                                         {
@@ -275,7 +276,7 @@ else
                                     </td>
                                 }
                                 <td style="border:1px solid #000; padding:6px 6px; text-align:right; font-weight:bold;">
-                                    @item.LineTotal.ToString("N0")
+                                    @item.LineTotal.ToString("N0", ViCulture)
                                 </td>
                             </tr>
                             rIdx++;
@@ -285,40 +286,40 @@ else
                     @* TOTALS ROWS *@
                     <tr>
                         <td colspan="@(hasDiscount ? 6 : 5)" style="border:1px solid #000; padding:6px 8px; text-align:right; font-weight:bold;">
-                            Tổng tiền hàng (trước thuế GTGT):
+                            Cộng tiền hàng:
                         </td>
                         @if (hasDiscount)
                         {
                             <td style="border:1px solid #000; padding:6px 4px;"></td>
                         }
                         <td style="border:1px solid #000; padding:6px 8px; text-align:right; font-weight:bold;">
-                            @_quotation.SubTotal.ToString("N0") đ
+                            @_quotation.SubTotal.ToString("N0", ViCulture) ₫
                         </td>
                     </tr>
 
                     @if (hasDiscount)
                     {
                         <tr>
-                            <td colspan="6" style="border:1px solid #000; padding:6px 8px; text-align:right; color:#d97706;">
-                                Tổng chiết khấu thương mại:
+                            <td colspan="6" style="border:1px solid #000; padding:6px 8px; text-align:right; color:#d97706; font-weight:bold;">
+                                Tiền chiết khấu:
                             </td>
                             <td style="border:1px solid #000; padding:6px 4px;"></td>
                             <td style="border:1px solid #000; padding:6px 8px; text-align:right; font-weight:bold; color:#d97706;">
-                                -@_quotation.TotalDiscount.ToString("N0") đ
+                                -@_quotation.TotalDiscount.ToString("N0", ViCulture) ₫
                             </td>
                         </tr>
                     }
 
                     <tr style="background:#f8fafc;">
                         <td colspan="@(hasDiscount ? 6 : 5)" style="border:1px solid #000; padding:8px 8px; text-align:right; font-weight:bold; font-size:14px; text-transform:uppercase;">
-                            TỔNG CỘNG GIÁ TRỊ BÁO GIÁ:
+                            TỔNG CỘNG TIỀN BÁO GIÁ:
                         </td>
                         @if (hasDiscount)
                         {
                             <td style="border:1px solid #000; padding:6px 4px;"></td>
                         }
                         <td style="border:1px solid #000; padding:8px 8px; text-align:right; font-weight:bold; font-size:14px; color:#0f766e;">
-                            @_quotation.GrandTotal.ToString("N0") đ
+                            @_quotation.GrandTotal.ToString("N0", ViCulture) ₫
                         </td>
                     </tr>
                 </tbody>
@@ -377,7 +378,7 @@ else
                 </div>
                 <div style="flex:1;">
                     <div style="font-weight:bold; font-size:14px; text-transform:uppercase;">
-                        ĐẠI DIỆN @((_company?.TradingName ?? "LACASA").ToUpper())
+                        ĐẠI DIỆN BÊN BÁO GIÁ
                     </div>
                     <div style="font-size:12px; font-style:italic; color:#64748b;">(Ký, ghi rõ họ tên và đóng dấu)</div>
                     <div style="height:90px; display:flex; align-items:flex-end; justify-content:center;">
@@ -490,6 +491,8 @@ else
 }
 
 @code {
+    private static readonly CultureInfo ViCulture = CultureInfo.GetCultureInfo("vi-VN");
+
     [Parameter] public int Id { get; set; }
 
     private QuotationDto? _quotation;

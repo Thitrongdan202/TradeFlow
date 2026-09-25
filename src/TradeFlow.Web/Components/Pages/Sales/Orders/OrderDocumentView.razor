@@ -1,5 +1,6 @@
 @page "/hoa-don/don-dat-hang/{OrderId:int}"
 @using Microsoft.AspNetCore.Authorization
+@using System.Globalization
 @using TradeFlow.Application.Common.Interfaces
 @using TradeFlow.Application.Common.Models.Sales
 @inject IInvoiceService InvoiceService
@@ -103,24 +104,24 @@ else
                             <td style="border:1px solid #000; padding:4px 3px; text-align:center;">@itm.CategoryName</td>
                             <td style="border:1px solid #000; padding:4px 3px; text-align:center;">@itm.ProductCode</td>
                             <td style="border:1px solid #000; padding:4px 3px; text-align:left;">@itm.Description</td>
-                            <td style="border:1px solid #000; padding:4px 3px; text-align:center;">@itm.Quantity.ToString("N0")</td>
-                            <td style="border:1px solid #000; padding:4px 3px; text-align:right;">@itm.UnitPrice.ToString("N0")</td>
-                            <td style="border:1px solid #000; padding:4px 3px; text-align:right;">@itm.LineTotal.ToString("N0")</td>
+                            <td style="border:1px solid #000; padding:4px 3px; text-align:center;">@itm.Quantity.ToString("N0", ViCulture)</td>
+                            <td style="border:1px solid #000; padding:4px 3px; text-align:right;">@itm.UnitPrice.ToString("N0", ViCulture)</td>
+                            <td style="border:1px solid #000; padding:4px 3px; text-align:right;">@itm.LineTotal.ToString("N0", ViCulture)</td>
                         </tr>
                     }
                     <!-- TOTALS ROW 1 -->
                     <tr>
                         <td colspan="4" style="border:1px solid #000; padding:4px 6px; text-align:right; font-weight:bold;">Tổng giá trị đơn hàng:</td>
-                        <td style="border:1px solid #000; padding:4px 3px; text-align:center; font-weight:bold;">@_orderDoc.TotalQuantity.ToString("N0")</td>
+                        <td style="border:1px solid #000; padding:4px 3px; text-align:center; font-weight:bold;">@_orderDoc.TotalQuantity.ToString("N0", ViCulture)</td>
                         <td style="border:1px solid #000; padding:4px 3px;"></td>
-                        <td style="border:1px solid #000; padding:4px 6px; text-align:right; font-weight:bold;">@_orderDoc.TotalAmount.ToString("N0")</td>
+                        <td style="border:1px solid #000; padding:4px 6px; text-align:right; font-weight:bold;">@_orderDoc.TotalAmount.ToString("N0", ViCulture)</td>
                     </tr>
                     <!-- TOTALS ROW 2 -->
                     <tr>
                         <td colspan="4" style="border:1px solid #000; padding:4px 6px; text-align:right;">Tổng cộng giá trị đơn hàng:</td>
                         <td style="border:1px solid #000; padding:4px 3px;"></td>
                         <td style="border:1px solid #000; padding:4px 3px;"></td>
-                        <td style="border:1px solid #000; padding:4px 6px; text-align:right; font-weight:bold;">@_orderDoc.GrandTotal.ToString("N0")</td>
+                        <td style="border:1px solid #000; padding:4px 6px; text-align:right; font-weight:bold;">@_orderDoc.GrandTotal.ToString("N0", ViCulture)</td>
                     </tr>
                 </tbody>
             </table>
@@ -197,6 +198,8 @@ else
 </style>
 
 @code {
+    private static readonly CultureInfo ViCulture = CultureInfo.GetCultureInfo("vi-VN");
+
     [Parameter] public int OrderId { get; set; }
 
     private OrderDocumentDto? _orderDoc;

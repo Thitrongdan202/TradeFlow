@@ -257,7 +257,7 @@ public class InvoiceDocument : IDocument
             table.Header(header =>
             {
                 header.Cell().Border(1).BorderColor(Colors.Grey.Medium).Background(Colors.Blue.Lighten4).Padding(4).AlignCenter().Text("STT").Bold();
-                header.Cell().Border(1).BorderColor(Colors.Grey.Medium).Background(Colors.Blue.Lighten4).Padding(4).AlignCenter().Text("Tên hàng hoá, dịch vụ").Bold();
+                header.Cell().Border(1).BorderColor(Colors.Grey.Medium).Background(Colors.Blue.Lighten4).Padding(4).AlignCenter().Text("Tên hàng hóa, dịch vụ").Bold();
                 header.Cell().Border(1).BorderColor(Colors.Grey.Medium).Background(Colors.Blue.Lighten4).Padding(4).AlignCenter().Text("ĐVT").Bold();
                 header.Cell().Border(1).BorderColor(Colors.Grey.Medium).Background(Colors.Blue.Lighten4).Padding(4).AlignCenter().Text("SL").Bold();
                 header.Cell().Border(1).BorderColor(Colors.Grey.Medium).Background(Colors.Blue.Lighten4).Padding(4).AlignCenter().Text("Đơn giá").Bold();

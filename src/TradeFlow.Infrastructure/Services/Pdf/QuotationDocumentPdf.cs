@@ -11,6 +11,8 @@ namespace TradeFlow.Infrastructure.Services.Pdf;
 
 public class QuotationDocumentPdf : IDocument
 {
+    private static readonly System.Globalization.CultureInfo ViCulture = System.Globalization.CultureInfo.GetCultureInfo("vi-VN");
+
     private readonly QuotationDto _model;
     private readonly CompanySettings? _company;
     private readonly string? _webRootPath;
@@ -192,14 +194,14 @@ public class QuotationDocumentPdf : IDocument
                     }
                 });
                 table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignCenter().Text(item.UnitName);
-                table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignCenter().Text(item.Quantity.ToString("N0"));
-                table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignRight().Text(item.UnitPrice.ToString("N0"));
+                table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignCenter().Text(item.Quantity.ToString("N0", ViCulture));
+                table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignRight().Text(item.UnitPrice.ToString("N0", ViCulture));
                 if (hasDiscount)
                 {
                     table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignRight()
-                        .Text(item.DiscountAmount > 0 ? item.DiscountAmount.ToString("N0") : "-");
+                        .Text(item.DiscountAmount > 0 ? item.DiscountAmount.ToString("N0", ViCulture) : "-");
                 }
-                table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignRight().Text(item.LineTotal.ToString("N0"));
+                table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignRight().Text(item.LineTotal.ToString("N0", ViCulture));
 
                 index++;
             }
@@ -210,16 +212,16 @@ public class QuotationDocumentPdf : IDocument
             if (hasDiscount)
             {
                 table.Cell().ColumnSpan(textSpan).Border(1).BorderColor(Colors.Black).Padding(3).AlignRight().Text("Cộng tiền hàng:").Bold();
-                table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignRight().Text(_model.SubTotal.ToString("N0")).Bold();
+                table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignRight().Text(_model.SubTotal.ToString("N0", ViCulture)).Bold();
 
                 table.Cell().ColumnSpan(textSpan).Border(1).BorderColor(Colors.Black).Padding(3).AlignRight().Text("Tiền chiết khấu:").Bold();
-                table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignRight().Text(_model.TotalDiscount.ToString("N0")).Bold();
+                table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignRight().Text(_model.TotalDiscount.ToString("N0", ViCulture)).Bold();
             }
 
             table.Cell().ColumnSpan(textSpan).Border(1).BorderColor(Colors.Black).Padding(4).AlignRight()
                 .Text("TỔNG CỘNG TIỀN BÁO GIÁ:").Bold().FontSize(10.5f);
             table.Cell().Border(1).BorderColor(Colors.Black).Padding(4).AlignRight()
-                .Text($"{_model.GrandTotal:N0} ₫").Bold().FontSize(10.5f);
+                .Text($"{_model.GrandTotal.ToString("N0", ViCulture)} ₫").Bold().FontSize(10.5f);
         });
     }
 
@@ -235,7 +237,10 @@ public class QuotationDocumentPdf : IDocument
 
                 col.Item().Padding(4).Column(c =>
                 {
-                    c.Item().Text("• Đơn giá trên là giá bán thương mại trước thuế GTGT (8%).").Bold();
+                    if (string.IsNullOrWhiteSpace(_model.Terms) || !_model.Terms.Contains("thuế GTGT", StringComparison.OrdinalIgnoreCase))
+                    {
+                        c.Item().Text("• Đơn giá trên là giá bán thương mại trước thuế GTGT (8%).").Bold();
+                    }
                     if (_model.ExpiryDate.HasValue)
                     {
                         c.Item().PaddingTop(2).Text($"• Hiệu lực báo giá: Đến hết ngày {_model.ExpiryDate.Value:dd/MM/yyyy}.");

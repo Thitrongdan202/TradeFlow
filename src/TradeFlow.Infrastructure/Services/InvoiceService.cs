@@ -576,6 +576,7 @@ public class InvoiceService : IInvoiceService
         var viCulture = System.Globalization.CultureInfo.GetCultureInfo("vi-VN");
 
         var itemsList = inv.Items.OrderBy(x => x.SortOrder).ToList();
+        bool hasDiscount = itemsList.Any(x => x.DiscountAmount > 0) || inv.TotalDiscount > 0;
         string amountWords = NumberToTextHelper.ConvertToWords((long)inv.GrandTotal) + " đồng chẵn.";
 
         var document = QuestPDF.Fluent.Document.Create(container =>
@@ -819,17 +820,21 @@ public class InvoiceService : IInvoiceService
                         });
                     });
 
-                    // ── 4. PRODUCT TABLE (8 columns for VAT) ────────────────
+                    // ── 4. PRODUCT TABLE ───────────────────────────────────
                     main.Item().BorderTop(1f).BorderColor(borderBlue).Table(table =>
                     {
                         // Column definitions matching template proportions
                         table.ColumnsDefinition(cols =>
                         {
                             cols.ConstantColumn(28);   // STT
-                            cols.RelativeColumn(3.4f); // Tên hàng hoá, dịch vụ
+                            cols.RelativeColumn(3.4f); // Tên hàng hóa, dịch vụ
                             cols.ConstantColumn(36);   // ĐVT
                             cols.ConstantColumn(40);   // SL
                             cols.ConstantColumn(62);   // Đơn giá
+                            if (hasDiscount)
+                            {
+                                cols.ConstantColumn(60); // Chiết khấu
+                            }
                             cols.ConstantColumn(68);   // Thành tiền
                             if (isVat)
                             {
@@ -863,10 +868,14 @@ public class InvoiceService : IInvoiceService
                             }
 
                             Th("STT", "(No.)");
-                            Th("Tên hàng hoá, dịch vụ", "(Description)", false);
+                            Th("Tên hàng hóa, dịch vụ", "(Description)", false);
                             Th("ĐVT", "(Unit)");
                             Th("SL", "(Quantity)");
                             Th("Đơn giá", "(Unit Price)");
+                            if (hasDiscount)
+                            {
+                                Th("Chiết khấu", "(Discount)");
+                            }
                             Th("Thành tiền", "(Amount)");
                             if (isVat)
                             {
@@ -875,7 +884,7 @@ public class InvoiceService : IInvoiceService
                             }
                         });
 
-                        // Header Row 2: Column numbers (1 | 2 | 3 | 4 | 5 | 6 = 4 x 5 | 7 | 8 = 6 x 7)
+                        // Header Row 2: Column numbers
                         void ColIdx(string text) =>
                             table.Cell().Background(rowAltBg).Border(0.5f).BorderColor(borderBlue).Padding(2).AlignCenter().Text(text).FontSize(7.5f).Italic().FontColor(textBlue);
 
@@ -884,11 +893,24 @@ public class InvoiceService : IInvoiceService
                         ColIdx("3");
                         ColIdx("4");
                         ColIdx("5");
-                        ColIdx("6 = 4 x 5");
-                        if (isVat)
+                        if (hasDiscount)
                         {
-                            ColIdx("7");
-                            ColIdx("8 = 6 x 7");
+                            ColIdx("6");
+                            ColIdx("7 = 4 x 5 - 6");
+                            if (isVat)
+                            {
+                                ColIdx("8");
+                                ColIdx("9 = 7 x 8");
+                            }
+                        }
+                        else
+                        {
+                            ColIdx("6 = 4 x 5");
+                            if (isVat)
+                            {
+                                ColIdx("7");
+                                ColIdx("8 = 6 x 7");
+                            }
                         }
 
                         // Data rows
@@ -902,6 +924,10 @@ public class InvoiceService : IInvoiceService
                             table.Cell().Border(0.5f).BorderColor(borderBlue).Padding(3).AlignCenter().Text(item.UnitName).FontSize(8).FontColor(black);
                             table.Cell().Border(0.5f).BorderColor(borderBlue).Padding(3).AlignRight().Text(item.Quantity.ToString("G29")).FontSize(8).FontColor(black);
                             table.Cell().Border(0.5f).BorderColor(borderBlue).Padding(3).AlignRight().Text(item.UnitPrice.ToString("N0", viCulture)).FontSize(8).FontColor(black);
+                            if (hasDiscount)
+                            {
+                                table.Cell().Border(0.5f).BorderColor(borderBlue).Padding(3).AlignRight().Text(item.DiscountAmount.ToString("N0", viCulture)).FontSize(8).FontColor(black);
+                            }
                             table.Cell().Border(0.5f).BorderColor(borderBlue).Padding(3).AlignRight().Text(lineAmt.ToString("N0", viCulture)).FontSize(8).FontColor(black);
 
                             if (isVat)
@@ -915,7 +941,7 @@ public class InvoiceService : IInvoiceService
 
                         // Pad table to 8 rows minimum to match the visual height of the reference template
                         int emptyCount = Math.Max(0, 8 - itemsList.Count);
-                        int colCount = isVat ? 8 : 6;
+                        int colCount = 6 + (hasDiscount ? 1 : 0) + (isVat ? 2 : 0);
                         for (int r = 0; r < emptyCount; r++)
                         {
                             for (int c = 0; c < colCount; c++)
@@ -951,7 +977,20 @@ public class InvoiceService : IInvoiceService
                         if (isVat)
                         {
                             TotRow("Cộng tiền hàng", "(Sub total)", inv.SubTotal);
+                            if (hasDiscount)
+                            {
+                                TotRow("Tiền chiết khấu", "(Discount)", inv.TotalDiscount);
+                                TotRow("Thành tiền chưa thuế", "(Amount before tax)", inv.SubTotal - inv.TotalDiscount);
+                            }
                             TotRow("Cộng tiền thuế GTGT", "(VAT amount)", inv.TotalTax);
+                        }
+                        else
+                        {
+                            if (hasDiscount)
+                            {
+                                TotRow("Cộng tiền hàng", "(Sub total)", inv.SubTotal);
+                                TotRow("Tiền chiết khấu", "(Discount)", inv.TotalDiscount);
+                            }
                         }
                         TotRow("Tổng cộng tiền thanh toán", "(Total payment)", inv.GrandTotal, true);
                     });
@@ -1155,7 +1194,7 @@ public class InvoiceService : IInvoiceService
             BankAccount = company?.BankAccount ?? "4987.9177",
             BankName = company?.BankName ?? "NGÂN HÀNG Á CHÂU (ACB)",
             QrCodePath = company?.OrderQrCodePath ?? "/images/lacasa_qr.png",
-            FooterNote1 = company?.OrderFooterNote1 ?? "Quý khách kiểm tra hàng hóa đúng số lượng trên hóa đơn và kiểm hàng trước khi rời khỏi kho Lacasa, kẻ vỡ Lacasa không chịu trách nhiệm.",
+            FooterNote1 = (company?.OrderFooterNote1 ?? "Quý khách kiểm tra hàng hóa đúng số lượng trên hóa đơn và kiểm hàng trước khi rời khỏi kho Lacasa, bể vỡ Lacasa không chịu trách nhiệm.").Replace("kẻ vỡ", "bể vỡ"),
             FooterNote2 = company?.OrderFooterNote2 ?? "Hàng hóa mua không nhận trả hàng ngoại trừ hàng bị lỗi do nhà sản xuất, đổi trả trong vòng 10 ngày kể từ ngày xuất kho."
         };
 
@@ -1223,7 +1262,7 @@ public class InvoiceService : IInvoiceService
             BankAccount = company?.BankAccount ?? "4987.9177",
             BankName = company?.BankName ?? "NGÂN HÀNG Á CHÂU (ACB)",
             QrCodePath = company?.OrderQrCodePath ?? "/images/lacasa_qr.png",
-            FooterNote1 = company?.OrderFooterNote1 ?? "Quý khách kiểm tra hàng hóa đúng số lượng trên hóa đơn và kiểm hàng trước khi rời khỏi kho Lacasa, kẻ vỡ Lacasa không chịu trách nhiệm.",
+            FooterNote1 = (company?.OrderFooterNote1 ?? "Quý khách kiểm tra hàng hóa đúng số lượng trên hóa đơn và kiểm hàng trước khi rời khỏi kho Lacasa, bể vỡ Lacasa không chịu trách nhiệm.").Replace("kẻ vỡ", "bể vỡ"),
             FooterNote2 = company?.OrderFooterNote2 ?? "Hàng hóa mua không nhận trả hàng ngoại trừ hàng bị lỗi do nhà sản xuất, đổi trả trong vòng 10 ngày kể từ ngày xuất kho."
         };
 

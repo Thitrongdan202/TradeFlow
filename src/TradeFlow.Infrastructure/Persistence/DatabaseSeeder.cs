@@ -265,7 +265,7 @@ public class DatabaseSeeder
                 OrderQrCodePath = "/images/lacasa_qr.png",
                 DefaultVatNote = "Đơn giá trên chưa bao gồm thuế GTGT (8%).",
                 OrderHotline = "0369.074.789 - Hotline",
-                OrderFooterNote1 = "Quý khách kiểm tra hàng hóa đúng số lượng trên hóa đơn và kiểm hàng trước khi rời khỏi kho Lacasa, kẻ vỡ Lacasa không chịu trách nhiệm.",
+                OrderFooterNote1 = "Quý khách kiểm tra hàng hóa đúng số lượng trên hóa đơn và kiểm hàng trước khi rời khỏi kho Lacasa, bể vỡ Lacasa không chịu trách nhiệm.",
                 OrderFooterNote2 = "Hàng hóa mua không nhận trả hàng ngoại trừ hàng bị lỗi do nhà sản xuất, đổi trả trong vòng 10 ngày kể từ ngày xuất kho."
             });
             await _context.SaveChangesAsync();
@@ -305,7 +305,12 @@ public class DatabaseSeeder
             }
             if (string.IsNullOrEmpty(company.OrderFooterNote1))
             {
-                company.OrderFooterNote1 = "Quý khách kiểm tra hàng hóa đúng số lượng trên hóa đơn và kiểm hàng trước khi rời khỏi kho Lacasa, kẻ vỡ Lacasa không chịu trách nhiệm.";
+                company.OrderFooterNote1 = "Quý khách kiểm tra hàng hóa đúng số lượng trên hóa đơn và kiểm hàng trước khi rời khỏi kho Lacasa, bể vỡ Lacasa không chịu trách nhiệm.";
+                modified = true;
+            }
+            else if (company.OrderFooterNote1.Contains("kẻ vỡ"))
+            {
+                company.OrderFooterNote1 = company.OrderFooterNote1.Replace("kẻ vỡ", "bể vỡ");
                 modified = true;
             }
             if (string.IsNullOrEmpty(company.OrderFooterNote2))

@@ -11,7 +11,7 @@ Hệ thống quản lý thương mại toàn diện (ERP/CRM) xây dựng trên 
 - [x] **Phase 3B**: Kiểm tra quan hệ dữ liệu + UX
 - [x] **Phase 4**: Bảng giá + Excel + hình ảnh + lịch sử giá
 - [x] **Phase 5**: Bán hàng + Đơn bán hàng + Hóa đơn + PDF
-- [ ] **Phase 6**: Báo giá + tài liệu/chứng từ (Đã dời từ Phase 5)
+- [x] **Phase 6**: Báo giá + tài liệu/chứng từ (Đã dời từ Phase 5)
 - [ ] **Phase 7**: Mua hàng
 - [ ] **Phase 8**: Kho
 - [ ] **Phase 9**: XNK

@@ -13,6 +13,8 @@ public class OrderDocumentPdf : IDocument
     private readonly OrderDocumentDto _model;
     private readonly string? _webRootPath;
 
+    private static readonly System.Globalization.CultureInfo ViCulture = System.Globalization.CultureInfo.GetCultureInfo("vi-VN");
+
     public OrderDocumentPdf(OrderDocumentDto model, string? webRootPath = null)
     {
         _model = model;
@@ -132,9 +134,9 @@ public class OrderDocumentPdf : IDocument
                 table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignCenter().Text(item.CategoryName);
                 table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignCenter().Text(item.ProductCode);
                 table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignLeft().Text(item.Description);
-                table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignCenter().Text(item.Quantity.ToString("N0"));
-                table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignRight().Text(item.UnitPrice.ToString("N0"));
-                table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignRight().Text(item.LineTotal.ToString("N0"));
+                table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignCenter().Text(item.Quantity.ToString("N0", ViCulture));
+                table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignRight().Text(item.UnitPrice.ToString("N0", ViCulture));
+                table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignRight().Text(item.LineTotal.ToString("N0", ViCulture));
             }
         });
     }
@@ -158,10 +160,10 @@ public class OrderDocumentPdf : IDocument
             table.Cell().ColumnSpan(4).Border(1).BorderColor(Colors.Black).Padding(3).AlignRight()
                 .Text("Tổng giá trị đơn hàng:").Bold();
             table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignCenter()
-                .Text(_model.TotalQuantity.ToString("N0")).Bold();
+                .Text(_model.TotalQuantity.ToString("N0", ViCulture)).Bold();
             table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).Text("");
             table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignRight()
-                .Text(_model.TotalAmount.ToString("N0")).Bold();
+                .Text(_model.TotalAmount.ToString("N0", ViCulture)).Bold();
 
             // Row 2: Tổng cộng giá trị đơn hàng
             table.Cell().ColumnSpan(4).Border(1).BorderColor(Colors.Black).Padding(3).AlignRight()
@@ -169,7 +171,7 @@ public class OrderDocumentPdf : IDocument
             table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).Text("");
             table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).Text("");
             table.Cell().Border(1).BorderColor(Colors.Black).Padding(3).AlignRight()
-                .Text(_model.GrandTotal.ToString("N0")).Bold();
+                .Text(_model.GrandTotal.ToString("N0", ViCulture)).Bold();
         });
     }
 

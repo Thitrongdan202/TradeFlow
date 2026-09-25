@@ -336,8 +336,73 @@ public class InvoiceTemplateTests
         File.WriteAllBytes(Path.Combine(outDir, "synthetic_invoice.pdf"), pdfBytes);
         File.WriteAllText(Path.Combine(outDir, "synthetic_invoice.xml"), xmlContent, System.Text.Encoding.UTF8);
 
+        try
+        {
+            File.WriteAllBytes(@"C:\Users\thitr\.gemini\antigravity\brain\fb94d497-815d-460b-bd53-9de32ef4d901\synthetic_invoice.pdf", pdfBytes);
+        }
+        catch { }
+
         Assert.True(File.Exists(Path.Combine(outDir, "synthetic_invoice.pdf")));
         Assert.True(File.Exists(Path.Combine(outDir, "synthetic_invoice.xml")));
+    }
+
+    [Fact]
+    public async Task GenerateInvoicePdf_WithDiscount_RendersDiscountColumnsSuccessfully()
+    {
+        using var context = CreateInMemoryDbContext();
+        var mockUser = new Mock<ICurrentUserService>();
+        mockUser.Setup(u => u.UserId).Returns("test-user");
+        var mockAudit = new Mock<IAuditService>();
+        var sigService = new DigitalSignatureService(context);
+        var invoiceService = new InvoiceService(context, mockUser.Object, mockAudit.Object, sigService);
+
+        var dto = new InvoiceDto
+        {
+            Type = InvoiceType.VatInvoice,
+            InvoiceDate = new DateTime(2026, 9, 23, 0, 0, 0, DateTimeKind.Utc),
+            CustomerName = "Công ty TNHH Kiến Trúc Xây Dựng Minh Khang",
+            CustomerCompanyName = "Công ty TNHH Kiến Trúc Xây Dựng Minh Khang",
+            CustomerTaxCode = "0318999888",
+            CustomerAddress = "123 Nguyễn Văn Cừ, Phường 2, Quận 5, TP Hồ Chí Minh",
+            CustomerEmail = "contact@minhkhang.vn",
+            CustomerBankAccount = "0071009876543",
+            CustomerBankName = "Vietcombank",
+            PaymentMethod = "TM/CK",
+            SubTotal = 25000000,
+            TotalDiscount = 1250000,
+            TotalTax = 1900000,
+            GrandTotal = 25650000,
+            Items = new List<InvoiceItemDto>
+            {
+                new()
+                {
+                    SortOrder = 1,
+                    ProductCode = "LC-SOFA01",
+                    ProductName = "Bộ bàn ghế sofa góc chữ L da Ý nhập khẩu",
+                    UnitName = "Bộ",
+                    Quantity = 1,
+                    UnitPrice = 25000000,
+                    DiscountAmount = 1250000,
+                    TaxRate = 8,
+                    TaxAmount = 1900000,
+                    LineTotal = 23750000
+                }
+            }
+        };
+
+        var invoice = await invoiceService.CreateManualInvoiceAsync(dto);
+        Assert.NotNull(invoice);
+
+        byte[] pdfBytes = await invoiceService.GeneratePdfAsync(invoice.Id);
+        Assert.NotEmpty(pdfBytes);
+        Assert.True(pdfBytes.Length > 1000);
+
+        try
+        {
+            var artifactPath = @"C:\Users\thitr\.gemini\antigravity\brain\fb94d497-815d-460b-bd53-9de32ef4d901\synthetic_invoice_discount.pdf";
+            File.WriteAllBytes(artifactPath, pdfBytes);
+        }
+        catch { }
     }
 
     [Fact]

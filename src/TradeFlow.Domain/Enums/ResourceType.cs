@@ -61,4 +61,12 @@ public enum ResourceType
 
     /// <summary>Tài liệu & Chứng từ / Hồ sơ</summary>
     Documents = 33,
+
+    // === An ninh & Chữ ký số ===
+
+    /// <summary>An ninh & Bảo mật</summary>
+    Security = 34,
+
+    /// <summary>Chữ ký số & Người ký</summary>
+    DigitalSignatures = 35
 }

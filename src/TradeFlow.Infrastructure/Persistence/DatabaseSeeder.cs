@@ -72,6 +72,7 @@ public class DatabaseSeeder
             await SeedSystemSequencesAsync();
             await SeedReferenceDataAsync();
             await SeedDocumentCategoriesAsync();
+            await SeedSecuritySettingsAsync();
         }
         catch (Exception ex)
         {
@@ -472,5 +473,27 @@ public class DatabaseSeeder
         }
 
         await _context.SaveChangesAsync();
+    }
+
+    private async Task SeedSecuritySettingsAsync()
+    {
+        var settings = await _context.CompanySecuritySettings.FirstOrDefaultAsync();
+        if (settings == null)
+        {
+            _logger.LogInformation("Seeding default company security settings.");
+            _context.CompanySecuritySettings.Add(new TradeFlow.Domain.Entities.Security.CompanySecuritySettings
+            {
+                RequireSignerPin = true,
+                PinMinLength = 6,
+                EnrollmentCodeExpirationMinutes = 30,
+                CertExpirationWarningDays = 30,
+                AllowAdminSignerEnrollment = true,
+                AutoRevokeOnTermination = true,
+                MaxFailedSignAttempts = 5,
+                DefaultSigningProvider = TradeFlow.Domain.Enums.SigningProviderType.SoftwareRsa,
+                CreatedBy = "System"
+            });
+            await _context.SaveChangesAsync();
+        }
     }
 }

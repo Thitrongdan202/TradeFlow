@@ -67,6 +67,15 @@ public class Invoice : AuditableEntity<int>
     public DateTime? SignedAt { get; set; }
     public string? SignatureValue { get; set; }
     public string? CertificateSubject { get; set; }
+    public string? CertificateSerialNumber { get; set; }
+    public string? SignerPosition { get; set; }
+    public SignerRole? SignerRole { get; set; }
+    public SigningProviderType? SigningProvider { get; set; }
+    public string? DocumentHash { get; set; }
+    public int? SignerIdentityId { get; set; }
+    public TradeFlow.Domain.Entities.Security.SignerIdentity? SignerIdentity { get; set; }
+    public DateTime? LastVerifiedAt { get; set; }
+    public string? LastVerifiedBy { get; set; }
 
     public ICollection<InvoiceItem> Items { get; set; } = new List<InvoiceItem>();
 }

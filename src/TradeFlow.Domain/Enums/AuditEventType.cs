@@ -98,5 +98,17 @@ public enum AuditEventType
     // === Tài liệu & Chứng từ (Phase 6) ===
     DocumentUploaded = 140,
     DocumentDeleted = 141,
-    DocumentDownloaded = 142
+    DocumentDownloaded = 142,
+
+    // === An ninh & Chữ ký số (Phase 7) ===
+    SignerEnrolled = 150,
+    SignerRevoked = 151,
+    SignerCodeIssued = 152,
+    SignerCodeRevoked = 153,
+    SignatureCreated = 154,
+    SignatureVerified = 155,
+    SignatureFailed = 156,
+    DocumentTampered = 157,
+    UserOffboarded = 158,
+    SecuritySettingsUpdated = 159
 }

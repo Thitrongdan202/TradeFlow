@@ -6,6 +6,7 @@
 @using TradeFlow.Domain.Enums
 @using TradeFlow.Web.Components.Common
 @inject IInvoiceService InvoiceService
+@inject ISecurityService SecurityService
 @inject Microsoft.AspNetCore.Authorization.IAuthorizationService AuthService
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
@@ -35,9 +36,13 @@
         {
             @if (_invoice != null)
             {
-                @if (_invoice.SignatureStatus != DigitalSignatureStatus.Signed)
+                @if (_invoice.SignatureStatus != DigitalSignatureStatus.Signed && _invoice.SignatureStatus != DigitalSignatureStatus.Valid)
                 {
-                    <button class="tf-btn tf-btn-success" @onclick="SignInvoice" disabled="@_isProcessing">✍ Ký điện tử</button>
+                    <button class="tf-btn tf-btn-success" @onclick="OpenSignModal" disabled="@_isProcessing">✍ Ký điện tử</button>
+                }
+                @if (_invoice.SignatureStatus != DigitalSignatureStatus.Unsigned)
+                {
+                    <button class="tf-btn tf-btn-outline-primary" @onclick="VerifySignature" disabled="@_isProcessing">🔍 Kiểm tra chữ ký</button>
                 }
                 <button class="tf-btn tf-btn-outline-primary" @onclick="ExportPdf" disabled="@_isProcessing">⬇ Tải PDF</button>
                 <button class="tf-btn tf-btn-outline-secondary" @onclick="ExportXml" disabled="@_isProcessing">📄 Tải XML</button>
@@ -346,16 +351,31 @@ else
                         <div style="font-size:7.5pt; font-style:italic; color:#4b5563;">(Sign, full name, stamp if any)</div>
 
                         @* Actual electronic signature state display *@
-                        @if (_invoice.SignatureStatus == DigitalSignatureStatus.Signed)
+                        @if (_invoice.SignatureStatus == DigitalSignatureStatus.Signed || _invoice.SignatureStatus == DigitalSignatureStatus.Valid)
                         {
                             <div style="margin:8px auto 0; display:inline-block; border:1px solid #4caf50; background:#f1f8e9; border-radius:6px; padding:10px 18px; min-width:210px; text-align:center;">
-                                <div style="font-weight:bold; color:#2e7d32; font-size:8.5pt;">Đã được ký điện tử bởi</div>
+                                <div style="font-weight:bold; color:#2e7d32; font-size:8.5pt;">✓ Đã được ký điện tử bởi</div>
                                 <div style="font-style:italic; color:#2e7d32; font-size:7.5pt;">(Signed digitally by)</div>
-                                <div style="font-size:24pt; color:#4caf50; line-height:1.2; margin:2px 0;">✓</div>
-                                <div style="font-weight:bold; color:#1b5e20; font-size:8.5pt; letter-spacing:0.4px;">@_invoice.CompanyName.ToUpper()</div>
-                                <div style="font-size:8pt; color:#2e7d32; margin-top:4px;">
-                                    Ký ngày: @((_invoice.SignedAt ?? _invoice.InvoiceDate).ToString("dd/MM/yyyy"))
+                                <div style="font-weight:bold; color:#1b5e20; font-size:9pt; margin-top:2px; letter-spacing:0.4px;">@((_invoice.SignedBy ?? _invoice.CompanyName).ToUpper())</div>
+                                @if (!string.IsNullOrEmpty(_invoice.SignerPosition))
+                                {
+                                    <div style="font-size:8pt; color:#2e7d32; font-weight:500;">@_invoice.SignerPosition</div>
+                                }
+                                <div style="font-size:8pt; color:#2e7d32; margin-top:3px;">
+                                    Ký ngày: @((_invoice.SignedAt ?? _invoice.InvoiceDate).ToString("dd/MM/yyyy HH:mm"))
                                 </div>
+                                @if (!string.IsNullOrEmpty(_invoice.CertificateSerialNumber))
+                                {
+                                    <div style="font-size:7pt; color:#558b2f; margin-top:2px;">Sê-ri: @_invoice.CertificateSerialNumber</div>
+                                }
+                            </div>
+                        }
+                        else if (_invoice.SignatureStatus == DigitalSignatureStatus.Tampered)
+                        {
+                            <div style="margin:8px auto 0; display:inline-block; border:2px solid #d32f2f; background:#ffebee; border-radius:6px; padding:10px 16px; text-align:center;">
+                                <div style="font-weight:bold; color:#c62828; font-size:9pt;">⚠ CẢNH BÁO TOÀN VẸN</div>
+                                <div style="font-weight:bold; color:#b71c1c; font-size:8.5pt; margin-top:2px;">Tài liệu đã bị thay đổi sau khi ký!</div>
+                                <div style="font-size:7.5pt; color:#c62828; margin-top:2px;">(Tampered - Data mismatch)</div>
                             </div>
                         }
                         else if (_invoice.SignatureStatus == DigitalSignatureStatus.Invalid)
@@ -363,6 +383,27 @@ else
                             <div style="margin:8px auto 0; display:inline-block; border:1px solid #e53935; background:#ffebee; border-radius:6px; padding:8px 16px; text-align:center;">
                                 <div style="font-weight:bold; color:#c62828; font-size:8.5pt;">Chữ ký không hợp lệ</div>
                                 <div style="font-style:italic; color:#c62828; font-size:7.5pt;">(Invalid signature)</div>
+                            </div>
+                        }
+                        else if (_invoice.SignatureStatus == DigitalSignatureStatus.CertificateExpired)
+                        {
+                            <div style="margin:8px auto 0; display:inline-block; border:1px solid #f57c00; background:#fff3e0; border-radius:6px; padding:8px 16px; text-align:center;">
+                                <div style="font-weight:bold; color:#e65100; font-size:8.5pt;">Chứng thư hết hạn</div>
+                                <div style="font-style:italic; color:#e65100; font-size:7.5pt;">(Certificate expired)</div>
+                            </div>
+                        }
+                        else if (_invoice.SignatureStatus == DigitalSignatureStatus.Revoked)
+                        {
+                            <div style="margin:8px auto 0; display:inline-block; border:1px solid #c2185b; background:#fce4ec; border-radius:6px; padding:8px 16px; text-align:center;">
+                                <div style="font-weight:bold; color:#880e4f; font-size:8.5pt;">Chữ ký đã bị thu hồi</div>
+                                <div style="font-style:italic; color:#880e4f; font-size:7.5pt;">(Signature revoked)</div>
+                            </div>
+                        }
+                        else if (_invoice.SignatureStatus == DigitalSignatureStatus.Pending)
+                        {
+                            <div style="margin:8px auto 0; display:inline-block; border:1px dashed #1976d2; background:#e3f2fd; border-radius:6px; padding:8px 16px; text-align:center;">
+                                <div style="font-weight:bold; color:#1565c0; font-size:8.5pt;">Đang chờ ký</div>
+                                <div style="font-style:italic; color:#1565c0; font-size:7.5pt;">(Pending signature)</div>
                             </div>
                         }
                         else
@@ -549,6 +590,111 @@ else
     </div>
 }
 
+@if (_showSignModal)
+{
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
+        <div style="background:white; padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0; font-size:18px; color:var(--tf-primary);">✍ Ký điện tử hóa đơn</h3>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showSignModal = false">✕</button>
+            </div>
+            
+            <p style="margin-bottom:16px; font-size:13px; color:var(--tf-text-muted);">
+                Xác thực danh tính và ký điện tử mật mã học RSA-SHA256 cho hóa đơn <strong>@_invoice?.InvoiceSeries-@_invoice?.InvoiceNo</strong>.
+            </p>
+
+            @if (!string.IsNullOrEmpty(_signModalError))
+            {
+                <div class="tf-alert tf-alert-danger" style="margin-bottom:16px;">@_signModalError</div>
+            }
+
+            <div class="tf-form-group" style="margin-bottom:16px;">
+                <label style="font-weight:600; font-size:13px; display:block; margin-bottom:6px;">Chọn danh tính người ký *</label>
+                @if (!_availableSigners.Any())
+                {
+                    <div class="tf-alert tf-alert-warning" style="font-size:13px;">
+                        Chưa có chứng thư số nào đang hoạt động. Vui lòng liên hệ Giám đốc hoặc Quản trị viên tại mục <strong>Hệ thống → An ninh & Chữ ký số</strong> để kích hoạt.
+                    </div>
+                }
+                else
+                {
+                    <select class="tf-form-control" @bind="_selectedSignerId" style="width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:6px;">
+                        @foreach (var s in _availableSigners)
+                        {
+                            <option value="@s.Id">@s.FullName — @s.Position (@s.SignerRole.ToVietnamese()) [Sê-ri: @s.CertificateSerialNumber]</option>
+                        }
+                    </select>
+                }
+            </div>
+
+            <div class="tf-form-group" style="margin-bottom:20px;">
+                <label style="font-weight:600; font-size:13px; display:block; margin-bottom:6px;">Mã PIN người ký (Bảo vệ khóa riêng tư) *</label>
+                <input type="password" class="tf-form-control" @bind="_signerPin" placeholder="Nhập mã PIN cá nhân..." style="width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:6px;" />
+                <span style="font-size:12px; color:var(--tf-text-muted); display:block; margin-top:4px;">
+                    Mã PIN dùng để giải mã khóa ký riêng tư (Private Key) được bảo vệ bằng AES-GCM.
+                </span>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:12px;">
+                <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="() => _showSignModal = false">Hủy</button>
+                <button type="button" class="tf-btn tf-btn-success" @onclick="ExecuteSigning" disabled="@(_isProcessing || !_availableSigners.Any())">
+                    @(_isProcessing ? "Đang xử lý ký..." : "Xác nhận ký điện tử")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showVerifyModal && _verifyResult != null)
+{
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
+        <div style="background:white; padding:24px; border-radius:8px; width:560px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0; font-size:18px; color:var(--tf-primary);">🔍 Kết quả kiểm tra chữ ký điện tử</h3>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showVerifyModal = false">✕</button>
+            </div>
+
+            <div style="margin-bottom:16px; text-align:center; padding:14px; border-radius:6px; background:@(_verifyResult.IsValid ? "#f1f8e9" : "#ffebee"); border:1px solid @(_verifyResult.IsValid ? "#4caf50" : "#d32f2f");">
+                <span class="@_verifyResult.Status.ToBadgeClass()" style="font-size:13px; padding:4px 10px;">@_verifyResult.Status.ToVietnamese()</span>
+                <div style="margin-top:8px; font-weight:600; font-size:14px; color:@(_verifyResult.IsValid ? "#2e7d32" : "#c62828");">
+                    @_verifyResult.Message
+                </div>
+            </div>
+
+            <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px; padding:14px; font-size:13px; line-height:1.6; margin-bottom:20px;">
+                <div><strong>Người ký:</strong> @(_verifyResult.SignedBy ?? "N/A")</div>
+                @if (!string.IsNullOrEmpty(_verifyResult.SignerPosition))
+                {
+                    <div><strong>Chức vụ / Vai trò:</strong> @_verifyResult.SignerPosition (@(_verifyResult.SignerRole?.ToVietnamese() ?? "Người ký"))</div>
+                }
+                <div><strong>Thời điểm ký:</strong> @(_verifyResult.SignedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") ?? "N/A")</div>
+                @if (!string.IsNullOrEmpty(_verifyResult.CertificateSerialNumber))
+                {
+                    <div><strong>Số sê-ri chứng thư:</strong> @_verifyResult.CertificateSerialNumber</div>
+                }
+                @if (!string.IsNullOrEmpty(_verifyResult.CertificateSubject))
+                {
+                    <div><strong>Chủ thể chứng thư:</strong> @_verifyResult.CertificateSubject</div>
+                }
+                <div><strong>Thuật toán:</strong> RSA-SHA256 (PKCS#1 v1.5)</div>
+                @if (!string.IsNullOrEmpty(_verifyResult.DocumentHash))
+                {
+                    <div style="margin-top:6px;">
+                        <strong>Mã băm dữ liệu gốc (Canonical Digest):</strong>
+                        <div style="font-family:monospace; font-size:11px; word-break:break-all; background:#fff; padding:4px 6px; border:1px solid #e5e7eb; border-radius:4px; margin-top:2px;">
+                            @_verifyResult.DocumentHash
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div style="display:flex; justify-content:flex-end;">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showVerifyModal = false">Đóng</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter] public int Id { get; set; }
 
@@ -698,31 +844,97 @@ else
         __builder.CloseElement();
     };
 
-    private async Task SignInvoice()
+    private bool _showSignModal = false;
+    private bool _showVerifyModal = false;
+    private List<SignerIdentityDto> _availableSigners = new();
+    private int _selectedSignerId;
+    private string _signerPin = "";
+    private string? _signModalError;
+    private SignatureVerificationResult? _verifyResult;
+
+    private async Task OpenSignModal()
     {
-        _isProcessing = true;
-        _errorMessage = null;
+        _signModalError = null;
+        _signerPin = "";
         try
         {
-            var ok = await InvoiceService.SignInvoiceAsync(Id);
-            if (ok)
+            var all = await SecurityService.GetAllSignersAsync();
+            _availableSigners = all.Where(s => s.Status == SignerStatus.Active && !s.IsExpired).ToList();
+            if (_availableSigners.Any())
             {
-                _successMessage = "Đã ký điện tử hóa đơn thành công!";
+                _selectedSignerId = _availableSigners.First().Id;
+            }
+            _showSignModal = true;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi khi lấy danh sách người ký: " + ex.Message;
+        }
+    }
+
+    private async Task ExecuteSigning()
+    {
+        _signModalError = null;
+        if (_selectedSignerId <= 0)
+        {
+            _signModalError = "Vui lòng chọn danh tính người ký số.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_signerPin))
+        {
+            _signModalError = "Vui lòng nhập mã PIN bảo vệ khóa riêng tư.";
+            return;
+        }
+
+        _isProcessing = true;
+        try
+        {
+            var res = await InvoiceService.SignInvoiceWithKeyAsync(Id, _selectedSignerId, _signerPin);
+            if (res.Succeeded)
+            {
+                _showSignModal = false;
+                _successMessage = $"Đã ký điện tử thành công bởi {res.SignedBy} ({res.SignerPosition})!";
                 await LoadDataAsync();
             }
             else
             {
-                _errorMessage = "Không thể ký điện tử hóa đơn.";
+                _signModalError = res.ErrorMessage ?? "Không thể ký hóa đơn.";
             }
         }
         catch (Exception ex)
         {
-            _errorMessage = "Lỗi khi ký: " + ex.Message;
+            _signModalError = "Lỗi khi ký: " + ex.Message;
         }
         finally
         {
             _isProcessing = false;
         }
+    }
+
+    private async Task VerifySignature()
+    {
+        _isProcessing = true;
+        _errorMessage = null;
+        try
+        {
+            _verifyResult = await InvoiceService.VerifyInvoiceSignatureAsync(Id);
+            _showVerifyModal = true;
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi khi kiểm tra chữ ký: " + ex.Message;
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+
+    private async Task SignInvoice()
+    {
+        await OpenSignModal();
     }
 
     private async Task ExportPdf()

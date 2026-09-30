@@ -1,0 +1,1112 @@
+@page "/cai-dat/an-ninh"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Domain.Entities.Sales
+@using TradeFlow.Domain.Entities.Security
+@using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
+@attribute [Authorize(Policy = "Permission:Users:View")]
+
+@inject ISecurityService SecurityService
+@inject IDigitalSignatureService DigitalSignatureService
+@inject IInvoiceService InvoiceService
+@inject UserManager<ApplicationUser> UserManager
+@inject TradeFlowDbContext DbContext
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+
+<PageTitle>Trung tâm An ninh & Chữ ký số — TradeFlow</PageTitle>
+
+<div class="tf-page-header">
+    <div class="tf-page-header-left">
+        <h1 class="tf-page-title">Trung tâm An ninh & Chữ ký số</h1>
+        <p class="tf-page-subtitle">Quản lý chứng thư số, mã kích hoạt người ký, xác thực tính toàn vẹn tài liệu và cấu hình chính sách an ninh</p>
+    </div>
+    <div class="tf-page-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="tf-btn tf-btn-secondary" @onclick="OpenEnrollModal">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            Kích hoạt người ký
+        </button>
+        <button class="tf-btn tf-btn-primary" @onclick="OpenIssueCodeModal">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Cấp mã kích hoạt
+        </button>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(_globalMessage))
+{
+    <div class="tf-alert @(_globalSuccess ? "tf-alert-success" : "tf-alert-error") tf-mb-4" style="display:flex; justify-content:space-between; align-items:center;">
+        <div>@_globalMessage</div>
+        <button class="tf-btn tf-btn-ghost tf-btn-sm" style="padding:2px 8px;" @onclick="() => _globalMessage = null">✕</button>
+    </div>
+}
+
+@* Tab Navigation *@
+<div style="display:flex; gap:8px; border-bottom:1px solid #e5e7eb; margin-bottom:20px; overflow-x:auto;">
+    <button type="button" class="tf-btn @(_activeTab == "overview" ? "tf-btn-primary" : "tf-btn-ghost")" @onclick='() => _activeTab = "overview"'>
+        📊 Tổng quan &amp; Cảnh báo
+        @if (_alerts.Any(a => a.AlertType == "error"))
+        {
+            <span style="margin-left:6px; background:#dc2626; color:#fff; border-radius:10px; padding:1px 6px; font-size:11px; font-weight:bold;">
+                @_alerts.Count(a => a.AlertType == "error")
+            </span>
+        }
+    </button>
+    <button type="button" class="tf-btn @(_activeTab == "signers" ? "tf-btn-primary" : "tf-btn-ghost")" @onclick='() => _activeTab = "signers"'>
+        ✍ Người ký &amp; Mã kích hoạt
+    </button>
+    <button type="button" class="tf-btn @(_activeTab == "verify" ? "tf-btn-primary" : "tf-btn-ghost")" @onclick='() => _activeTab = "verify"'>
+        🔍 Kiểm tra chữ ký tài liệu
+    </button>
+    <button type="button" class="tf-btn @(_activeTab == "audit" ? "tf-btn-primary" : "tf-btn-ghost")" @onclick='() => _activeTab = "audit"'>
+        📜 Nhật ký ký số
+    </button>
+    <button type="button" class="tf-btn @(_activeTab == "settings" ? "tf-btn-primary" : "tf-btn-ghost")" @onclick='() => _activeTab = "settings"'>
+        ⚙ Chính sách an ninh
+    </button>
+</div>
+
+@if (_isLoading)
+{
+    <div class="tf-card"><div class="tf-card-body" style="text-align:center; padding:40px;">Đang tải dữ liệu an ninh...</div></div>
+}
+else
+{
+    @* TAB 1: TỔNG QUAN & CẢNH BÁO *@
+    @if (_activeTab == "overview")
+    {
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:24px;">
+            <div class="tf-card" style="padding:16px;">
+                <div style="font-size:13px; color:var(--tf-text-secondary); margin-bottom:4px;">Người ký đang hoạt động</div>
+                <div style="font-size:26px; font-weight:700; color:var(--tf-primary);">
+                    @_stats.ActiveSigners <span style="font-size:14px; font-weight:400; color:var(--tf-text-muted);">/ @_stats.TotalSigners tổng số</span>
+                </div>
+                <div style="font-size:12px; color:var(--tf-text-muted); margin-top:4px;">Chứng thư RSA-2048 bảo vệ bằng mã PIN</div>
+            </div>
+
+            <div class="tf-card" style="padding:16px;">
+                <div style="font-size:13px; color:var(--tf-text-secondary); margin-bottom:4px;">Mã kích hoạt đang chờ</div>
+                <div style="font-size:26px; font-weight:700; color:#2563eb;">
+                    @_stats.ActiveEnrollmentCodes
+                </div>
+                <div style="font-size:12px; color:var(--tf-text-muted); margin-top:4px;">Mã xác thực 1 lần có thời hạn</div>
+            </div>
+
+            <div class="tf-card" style="padding:16px;">
+                <div style="font-size:13px; color:var(--tf-text-secondary); margin-bottom:4px;">Tài liệu / Hóa đơn đã ký</div>
+                <div style="font-size:26px; font-weight:700; color:#16a34a;">
+                    @_stats.TotalSignedDocuments
+                </div>
+                <div style="font-size:12px; color:var(--tf-text-muted); margin-top:4px;">Hóa đơn điện tử Nghị định 123</div>
+            </div>
+
+            <div class="tf-card" style="padding:16px; border-left:4px solid @(_stats.TamperedAlerts > 0 ? "#dc2626" : "#16a34a");">
+                <div style="font-size:13px; color:var(--tf-text-secondary); margin-bottom:4px;">Cảnh báo vi phạm / Thay đổi</div>
+                <div style="font-size:26px; font-weight:700; color:@(_stats.TamperedAlerts > 0 ? "#dc2626" : "#16a34a");">
+                    @_stats.TamperedAlerts
+                </div>
+                <div style="font-size:12px; color:@(_stats.TamperedAlerts > 0 ? "#dc2626" : "var(--tf-text-muted)"); margin-top:4px;">
+                    @(_stats.TamperedAlerts > 0 ? "Phát hiện tài liệu bị sửa đổi sau ký!" : "Hệ thống toàn vẹn, an toàn")
+                </div>
+            </div>
+        </div>
+
+        <div class="tf-card tf-mb-4">
+            <div class="tf-card-header" style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; font-size:16px; font-weight:600;">Thông báo &amp; Cảnh báo an ninh</h3>
+                <span class="tf-badge tf-badge-gray">@_alerts.Count cảnh báo</span>
+            </div>
+            <div class="tf-card-body" style="padding:0;">
+                @if (!_alerts.Any())
+                {
+                    <div style="padding:24px; text-align:center; color:#16a34a; display:flex; align-items:center; justify-content:center; gap:8px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        <strong>Tất cả kiểm tra an ninh đều bình thường. Không phát hiện bất thường nào.</strong>
+                    </div>
+                }
+                else
+                {
+                    <div style="display:flex; flex-direction:column; divide-y:1px solid #e5e7eb;">
+                        @foreach (var alert in _alerts)
+                        {
+                            var alertBg = alert.AlertType == "error" ? "#fef2f2" : (alert.AlertType == "warning" ? "#fffbeb" : "#f8fafc");
+                            var alertBorder = alert.AlertType == "error" ? "#dc2626" : (alert.AlertType == "warning" ? "#d97706" : "#2563eb");
+                            <div style="padding:14px 20px; background:@alertBg; border-left:4px solid @alertBorder; display:flex; justify-content:space-between; align-items:flex-start; gap:16px; border-bottom:1px solid #f1f5f9;">
+                                <div>
+                                    <div style="font-weight:600; font-size:14px; color:@(alert.AlertType == "error" ? "#b91c1c" : (alert.AlertType == "warning" ? "#b45309" : "#1e40af")); margin-bottom:2px;">
+                                        @alert.Title
+                                    </div>
+                                    <div style="font-size:13px; color:#374151;">@alert.Message</div>
+                                </div>
+                                <div style="font-size:12px; color:#6b7280; white-space:nowrap;">
+                                    @alert.Timestamp.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @* TAB 2: QUẢN LÝ NGƯỜI KÝ & MÃ KÍCH HOẠT *@
+    @if (_activeTab == "signers")
+    {
+        <div class="tf-card tf-mb-4">
+            <div class="tf-card-header" style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <h3 style="margin:0; font-size:16px; font-weight:600;">Danh sách chứng thư người ký số</h3>
+                    <p style="margin:4px 0 0; font-size:13px; color:var(--tf-text-secondary);">Mỗi người ký sở hữu một cặp khóa RSA-2048 được mã hóa AES-256 bằng mã PIN cá nhân</p>
+                </div>
+            </div>
+            <div class="tf-card-body" style="padding:0; overflow-x:auto;">
+                <table class="tf-table">
+                    <thead>
+                        <tr>
+                            <th>Họ và tên</th>
+                            <th>Tài khoản</th>
+                            <th>Vai trò ký</th>
+                            <th>Chức vụ</th>
+                            <th>Sê-ri chứng thư</th>
+                            <th>Hiệu lực đến</th>
+                            <th style="text-align:center;">Trạng thái</th>
+                            <th style="text-align:right;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!_signers.Any())
+                        {
+                            <tr><td colspan="8" style="text-align:center; padding:30px; color:var(--tf-text-muted);">Chưa có người ký nào được kích hoạt. Hãy cấp mã kích hoạt và kích hoạt chứng thư đầu tiên.</td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var s in _signers)
+                            {
+                                <tr>
+                                    <td><strong>@s.FullName</strong></td>
+                                    <td>@s.UserName</td>
+                                    <td>
+                                        <span class="tf-badge tf-badge-primary">@s.SignerRole.ToVietnamese()</span>
+                                    </td>
+                                    <td>@s.Position</td>
+                                    <td><code style="font-size:12px; background:#f1f5f9; padding:2px 6px; border-radius:4px;">@s.CertificateSerialNumber</code></td>
+                                    <td style="font-size:13px;">
+                                        @s.ValidTo.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                        @if (s.IsExpiringSoon)
+                                        {
+                                            <span style="color:#d97706; font-size:11px; font-weight:600; display:block;">⚠️ Sắp hết hạn</span>
+                                        }
+                                    </td>
+                                    <td style="text-align:center;">
+                                        @if (s.Status == SignerStatus.Active)
+                                        {
+                                            <span class="tf-badge tf-badge-success">Hoạt động</span>
+                                        }
+                                        else if (s.Status == SignerStatus.Revoked)
+                                        {
+                                            <span class="tf-badge tf-badge-error">Đã thu hồi</span>
+                                        }
+                                        else if (s.Status == SignerStatus.Expired)
+                                        {
+                                            <span class="tf-badge tf-badge-gray">Hết hạn</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="tf-badge tf-badge-warning">Tạm đình chỉ</span>
+                                        }
+                                    </td>
+                                    <td style="text-align:right;">
+                                        @if (s.Status == SignerStatus.Active)
+                                        {
+                                            <button class="tf-btn tf-btn-ghost tf-btn-sm" style="color:#dc2626;" @onclick="() => PromptRevokeSigner(s)" title="Thu hồi chứng thư">
+                                                Thu hồi
+                                            </button>
+                                        }
+                                        else if (s.Status == SignerStatus.Revoked && !string.IsNullOrEmpty(s.RevocationReason))
+                                        {
+                                            <span style="font-size:12px; color:var(--tf-text-muted);" title="@s.RevocationReason">Lý do: @(s.RevocationReason.Length > 20 ? s.RevocationReason[..20] + "..." : s.RevocationReason)</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tf-card">
+            <div class="tf-card-header" style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <h3 style="margin:0; font-size:16px; font-weight:600;">Mã kích hoạt người ký (Single-use Enrollment Codes)</h3>
+                    <p style="margin:4px 0 0; font-size:13px; color:var(--tf-text-secondary);">Mã ủy quyền một lần do Giám đốc/Admin cấp. Mã chỉ dùng một lần và được băm SHA-256 an toàn trong CSDL.</p>
+                </div>
+                <button class="tf-btn tf-btn-secondary tf-btn-sm" @onclick="OpenIssueCodeModal">
+                    + Cấp mã mới
+                </button>
+            </div>
+            <div class="tf-card-body" style="padding:0; overflow-x:auto;">
+                <table class="tf-table">
+                    <thead>
+                        <tr>
+                            <th>Nhân viên nhận</th>
+                            <th>Vai trò cấp</th>
+                            <th>Chức vụ</th>
+                            <th>Người cấp</th>
+                            <th>Ngày cấp</th>
+                            <th>Hết hạn vào</th>
+                            <th style="text-align:center;">Trạng thái</th>
+                            <th style="text-align:right;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!_enrollmentCodes.Any())
+                        {
+                            <tr><td colspan="8" style="text-align:center; padding:30px; color:var(--tf-text-muted);">Chưa có mã kích hoạt nào được tạo.</td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var c in _enrollmentCodes)
+                            {
+                                <tr>
+                                    <td>
+                                        <strong>@c.TargetFullName</strong>
+                                        <div style="font-size:12px; color:var(--tf-text-muted);">@c.TargetUserName</div>
+                                    </td>
+                                    <td><span class="tf-badge tf-badge-primary">@c.TargetSignerRole.ToVietnamese()</span></td>
+                                    <td>@c.TargetPosition</td>
+                                    <td>@c.CreatedBy</td>
+                                    <td style="font-size:13px;">@c.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td style="font-size:13px;">@c.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td style="text-align:center;">
+                                        @if (c.IsUsed)
+                                        {
+                                            <span class="tf-badge tf-badge-gray">Đã kích hoạt</span>
+                                        }
+                                        else if (c.IsRevoked)
+                                        {
+                                            <span class="tf-badge tf-badge-error">Đã hủy</span>
+                                        }
+                                        else if (c.IsExpired)
+                                        {
+                                            <span class="tf-badge tf-badge-warning">Đã hết hạn</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="tf-badge tf-badge-success">Chờ kích hoạt</span>
+                                        }
+                                    </td>
+                                    <td style="text-align:right;">
+                                        @if (c.IsActive)
+                                        {
+                                            <button class="tf-btn tf-btn-ghost tf-btn-sm" style="color:#dc2626;" @onclick="() => PromptRevokeCode(c)">
+                                                Hủy mã
+                                            </button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @* TAB 3: CÔNG CỤ XÁC MINH CHỮ KÝ TÀI LIỆU *@
+    @if (_activeTab == "verify")
+    {
+        <div class="tf-card tf-mb-4">
+            <div class="tf-card-header">
+                <h3 style="margin:0; font-size:16px; font-weight:600;">🔍 Công cụ kiểm tra toàn vẹn chữ ký số &amp; Phát hiện can thiệp</h3>
+                <p style="margin:4px 0 0; font-size:13px; color:var(--tf-text-secondary);">
+                    Kiểm tra tính hợp lệ về mặt toán học của chữ ký điện tử RSA-2048 và so khớp mã băm gốc (Canonical Digest).
+                    Nếu bất kỳ số liệu tiền tệ, số lượng, mã số thuế hay dòng hàng nào bị chỉnh sửa trong cơ sở dữ liệu, hệ thống sẽ phát hiện ngay lập tức.
+                </p>
+            </div>
+            <div class="tf-card-body">
+                <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; max-width:700px; margin-bottom:20px;">
+                    <div style="flex:1; min-width:240px;">
+                        <label class="tf-form-label" style="font-weight:600;">Chọn hóa đơn cần kiểm tra</label>
+                        <select class="tf-form-control" @bind="_selectedVerifyInvoiceId">
+                            <option value="0">-- Chọn hóa đơn trong hệ thống --</option>
+                            @foreach (var inv in _recentInvoices)
+                            {
+                                <option value="@inv.Id">
+                                    [@inv.InvoiceSeries - @inv.InvoiceNo] @inv.CustomerName (@inv.GrandTotal.ToString("N0") đ) - @inv.SignatureStatus.ToVietnamese()
+                                </option>
+                            }
+                        </select>
+                    </div>
+                    <button type="button" class="tf-btn tf-btn-primary" @onclick="VerifySelectedInvoice" disabled="@(_selectedVerifyInvoiceId == 0 || _isVerifying)">
+                        @(_isVerifying ? "Đang giải mã và băm..." : "Kiểm tra tính toàn vẹn")
+                    </button>
+                </div>
+
+                @if (_manualVerifyResult != null)
+                {
+                    <div style="border-radius:8px; border:1px solid @(_manualVerifyResult.IsValid ? "#22c55e" : "#ef4444"); background:@(_manualVerifyResult.IsValid ? "#f0fdf4" : "#fef2f2"); padding:20px;">
+                        <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                            <span class="@_manualVerifyResult.Status.ToBadgeClass()" style="font-size:14px; padding:6px 14px;">
+                                @_manualVerifyResult.Status.ToVietnamese()
+                            </span>
+                            <div style="font-size:16px; font-weight:700; color:@(_manualVerifyResult.IsValid ? "#15803d" : "#b91c1c");">
+                                @_manualVerifyResult.Message
+                            </div>
+                        </div>
+
+                        @if (_manualVerifyResult.IsTampered)
+                        {
+                            <div class="tf-alert tf-alert-error tf-mb-4" style="font-size:13px; font-weight:500;">
+                                ⚠️ <strong>CẢNH BÁO NGUY CƠ GIẢ MẠO:</strong> Dữ liệu hiện tại của hóa đơn không khớp với mã băm toán học đã ký điện tử ban đầu!
+                                Bất kỳ thay đổi nào đối với số tiền, thuế suất, số lượng hoặc bên mua/bên bán sau khi ký đều làm mất hiệu lực pháp lý của hóa đơn này.
+                            </div>
+                        }
+
+                        <div style="background:#fff; border:1px solid #e5e7eb; border-radius:6px; padding:16px; font-size:13px; line-height:1.7;">
+                            <div style="display:grid; grid-template-columns:180px 1fr; gap:6px 12px;">
+                                <div><strong>Người ký:</strong></div>
+                                <div>@(_manualVerifyResult.SignedBy ?? "N/A")</div>
+
+                                <div><strong>Chức danh / Vai trò:</strong></div>
+                                <div>@(_manualVerifyResult.SignerPosition ?? "N/A") (@(_manualVerifyResult.SignerRole?.ToVietnamese() ?? "Người ký"))</div>
+
+                                <div><strong>Thời điểm ký:</strong></div>
+                                <div>@(_manualVerifyResult.SignedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") ?? "N/A")</div>
+
+                                <div><strong>Sê-ri chứng thư số:</strong></div>
+                                <div><code>@(_manualVerifyResult.CertificateSerialNumber ?? "N/A")</code></div>
+
+                                <div><strong>Chủ thể chứng thư:</strong></div>
+                                <div>@(_manualVerifyResult.CertificateSubject ?? "N/A")</div>
+
+                                <div><strong>Tiêu chuẩn kỹ thuật:</strong></div>
+                                <div>RSA-SHA256 (2048-bit) / W3C XMLDSig (Nghị định 123/2020/NĐ-CP &amp; Thông tư 78/2021/TT-BTC)</div>
+
+                                <div><strong>Mã băm dữ liệu gốc:</strong></div>
+                                <div style="word-break:break-all; font-family:monospace; font-size:12px; color:#1e293b; background:#f8fafc; padding:4px 8px; border-radius:4px; border:1px solid #e2e8f0;">
+                                    @(_manualVerifyResult.DocumentHash ?? "N/A")
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @* TAB 4: NHẬT KÝ KÝ SỐ *@
+    @if (_activeTab == "audit")
+    {
+        <div class="tf-card">
+            <div class="tf-card-header" style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <h3 style="margin:0; font-size:16px; font-weight:600;">Nhật ký ký điện tử &amp; Xác thực tài liệu</h3>
+                    <p style="margin:4px 0 0; font-size:13px; color:var(--tf-text-secondary);">Ghi nhận bất biến mọi lần tạo chữ ký, kiểm tra xác thực hoặc cảnh báo sai lệch</p>
+                </div>
+                <button class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="LoadAuditLogsAsync">
+                    🔄 Làm mới
+                </button>
+            </div>
+            <div class="tf-card-body" style="padding:0; overflow-x:auto;">
+                <table class="tf-table">
+                    <thead>
+                        <tr>
+                            <th>Thời gian</th>
+                            <th>Tài liệu</th>
+                            <th>Người ký</th>
+                            <th>Chức danh / Vai trò</th>
+                            <th>Trạng thái</th>
+                            <th>Sê-ri chứng thư</th>
+                            <th>Chi tiết / Kết quả kiểm tra</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!_audits.Any())
+                        {
+                            <tr><td colspan="7" style="text-align:center; padding:30px; color:var(--tf-text-muted);">Chưa có nhật ký ký số nào được ghi nhận.</td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var a in _audits)
+                            {
+                                <tr>
+                                    <td style="font-size:12px; white-space:nowrap;">
+                                        @a.SigningTime.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")
+                                    </td>
+                                    <td>
+                                        <a href="/hoa-don/@a.DocumentId" style="font-weight:600; color:var(--tf-primary); text-decoration:none;">
+                                            @a.DocumentNumber
+                                        </a>
+                                        <div style="font-size:11px; color:var(--tf-text-muted);">@a.DocumentType</div>
+                                    </td>
+                                    <td><strong>@a.SignerName</strong></td>
+                                    <td>
+                                        <div>@a.SignerPosition</div>
+                                        <div style="font-size:11px; color:var(--tf-text-muted);">@a.SignerRole.ToVietnamese()</div>
+                                    </td>
+                                    <td>
+                                        <span class="@a.SignatureStatus.ToBadgeClass()">@a.SignatureStatus.ToVietnamese()</span>
+                                    </td>
+                                    <td>
+                                        <code style="font-size:11px;">@(a.CertificateSerialNumber ?? "—")</code>
+                                    </td>
+                                    <td style="font-size:12px; max-width:280px; word-break:break-word;">
+                                        @(a.VerificationResult ?? a.ErrorMessage ?? "Ký thành công")
+                                        @if (a.LastVerifiedAt.HasValue)
+                                        {
+                                            <div style="font-size:11px; color:var(--tf-text-muted); margin-top:2px;">
+                                                Xác minh lúc: @a.LastVerifiedAt.Value.ToLocalTime().ToString("dd/MM HH:mm") bởi @a.LastVerifiedBy
+                                            </div>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @* TAB 5: CHÍNH SÁCH AN NINH *@
+    @if (_activeTab == "settings")
+    {
+        <div class="tf-card" style="max-width:800px;">
+            <div class="tf-card-header">
+                <h3 style="margin:0; font-size:16px; font-weight:600;">Cấu hình chính sách an ninh &amp; Chữ ký số</h3>
+                <p style="margin:4px 0 0; font-size:13px; color:var(--tf-text-secondary);">Thiết lập các tiêu chuẩn an toàn cho toàn doanh nghiệp</p>
+            </div>
+            <div class="tf-card-body">
+                <form @onsubmit="SaveSecuritySettingsAsync">
+                    <div class="tf-form-group tf-mb-4">
+                        <label style="display:flex; align-items:center; gap:8px; font-weight:600; cursor:pointer;">
+                            <input type="checkbox" @bind="_settings.RequireSignerPin" />
+                            Bắt buộc nhập mã PIN khi thực hiện ký số điện tử
+                        </label>
+                        <p style="margin:4px 0 0 24px; font-size:12px; color:var(--tf-text-muted);">
+                            Mã PIN được dùng để giải mã khóa riêng RSA trên máy chủ. Khóa riêng không bao giờ được giải mã khi không có PIN.
+                        </p>
+                    </div>
+
+                    <div class="tf-form-group tf-mb-4">
+                        <label class="tf-form-label" style="font-weight:600;">Độ dài tối thiểu của mã PIN ký số</label>
+                        <input type="number" class="tf-form-control" style="max-width:180px;" min="4" max="16" @bind="_settings.PinMinLength" />
+                        <p style="margin:4px 0 0; font-size:12px; color:var(--tf-text-muted);">Khuyến nghị tối thiểu 6 ký tự để đảm bảo chống dò quét brute-force.</p>
+                    </div>
+
+                    <div class="tf-form-group tf-mb-4">
+                        <label class="tf-form-label" style="font-weight:600;">Thời gian hiệu lực của mã kích hoạt (phút)</label>
+                        <input type="number" class="tf-form-control" style="max-width:180px;" min="5" max="10080" @bind="_settings.EnrollmentCodeExpirationMinutes" />
+                        <p style="margin:4px 0 0; font-size:12px; color:var(--tf-text-muted);">Mặc định: 1440 phút (24 giờ). Sau thời gian này mã sẽ tự hủy nếu chưa được sử dụng.</p>
+                    </div>
+
+                    <div class="tf-form-group tf-mb-4">
+                        <label class="tf-form-label" style="font-weight:600;">Cảnh báo trước khi chứng thư hết hạn (ngày)</label>
+                        <input type="number" class="tf-form-control" style="max-width:180px;" min="1" max="90" @bind="_settings.CertExpirationWarningDays" />
+                        <p style="margin:4px 0 0; font-size:12px; color:var(--tf-text-muted);">Hệ thống sẽ gửi cảnh báo trên bảng điều khiển trước khi chứng thư số hết hiệu lực.</p>
+                    </div>
+
+                    <div class="tf-form-group tf-mb-4">
+                        <label style="display:flex; align-items:center; gap:8px; font-weight:600; cursor:pointer;">
+                            <input type="checkbox" @bind="_settings.AllowAdminSignerEnrollment" />
+                            Cho phép Quản trị viên hệ thống (Admin) cấp mã kích hoạt người ký
+                        </label>
+                        <p style="margin:4px 0 0 24px; font-size:12px; color:var(--tf-text-muted);">
+                            Nếu bỏ chọn, chỉ Giám đốc hoặc Phó giám đốc mới có quyền ủy quyền cấp mã kích hoạt người ký.
+                        </p>
+                    </div>
+
+                    <div class="tf-form-group tf-mb-4">
+                        <label style="display:flex; align-items:center; gap:8px; font-weight:600; cursor:pointer;">
+                            <input type="checkbox" @bind="_settings.AutoRevokeOnTermination" />
+                            Tự động thu hồi chứng thư và quyền ký số khi nhân viên thôi việc (Offboard)
+                        </label>
+                        <p style="margin:4px 0 0 24px; font-size:12px; color:var(--tf-text-muted);">
+                            Khuyến nghị bật: Ngăn chặn nhân viên đã nghỉ việc tiếp tục sử dụng chứng thư để ký văn bản.
+                        </p>
+                    </div>
+
+                    <div class="tf-form-group tf-mb-4">
+                        <label class="tf-form-label" style="font-weight:600;">Phương thức ký mặc định</label>
+                        <select class="tf-form-control" style="max-width:320px;" @bind="_settings.DefaultSigningProvider">
+                            <option value="@SigningProviderType.SoftwareRsa">Khóa phần mềm RSA-2048 (Server HSM)</option>
+                            <option value="@SigningProviderType.UsbTokenPkcs11">USB Token phần cứng (PKCS#11)</option>
+                            <option value="@SigningProviderType.CloudCa">Dịch vụ ký số từ xa đám mây (Cloud CA)</option>
+                        </select>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:24px;">
+                        <button type="submit" class="tf-btn tf-btn-primary" disabled="@_isSavingSettings">
+                            @(_isSavingSettings ? "Đang lưu..." : "Lưu cài đặt chính sách")
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+}
+
+@* MODAL 1: CẤP MÃ KÍCH HOẠT MỚI *@
+@if (_showIssueCodeModal)
+{
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
+        <div style="background:white; padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0; font-size:18px; color:var(--tf-primary);">🔑 Cấp mã kích hoạt người ký số</h3>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showIssueCodeModal = false">✕</button>
+            </div>
+
+            <div class="tf-alert tf-alert-info tf-mb-4" style="font-size:13px; line-height:1.5;">
+                Mã kích hoạt là mã xác thực 1 lần (Single-use OTP) dùng để ủy quyền cho nhân viên khởi tạo cặp khóa ký số RSA.
+                Mã sẽ được gửi bảo mật cho nhân viên và chỉ hiển thị duy nhất 1 lần sau khi tạo.
+            </div>
+
+            <div class="tf-form-group tf-mb-4">
+                <label class="tf-form-label" style="font-weight:600;">Chọn nhân viên nhận ủy quyền <span style="color:var(--tf-error);">*</span></label>
+                <select class="tf-form-control" @bind="_targetUserId">
+                    <option value="">-- Chọn nhân viên trong danh sách --</option>
+                    @foreach (var u in _availableUsers)
+                    {
+                        <option value="@u.Id">@u.FullName (@u.UserName)</option>
+                    }
+                </select>
+            </div>
+
+            <div class="tf-form-group tf-mb-4">
+                <label class="tf-form-label" style="font-weight:600;">Vai trò ký số ủy quyền <span style="color:var(--tf-error);">*</span></label>
+                <select class="tf-form-control" @bind="_targetSignerRole">
+                    <option value="@SignerRole.AuthorizedSigner">Người ký được ủy quyền (Kế toán/Nhân viên bán hàng)</option>
+                    <option value="@SignerRole.DeputyDirector">Phó giám đốc</option>
+                    <option value="@SignerRole.Director">Giám đốc (Người đại diện pháp luật)</option>
+                    <option value="@SignerRole.SecurityAdmin">Quản trị viên an ninh</option>
+                </select>
+            </div>
+
+            <div class="tf-form-group tf-mb-4">
+                <label class="tf-form-label" style="font-weight:600;">Chức danh hiển thị trên chứng thư <span style="color:var(--tf-error);">*</span></label>
+                <input type="text" class="tf-form-control" placeholder="VD: Giám đốc điều hành, Kế toán trưởng, Nhân viên kinh doanh..." @bind="_targetPosition" />
+            </div>
+
+            <div class="tf-form-group tf-mb-4">
+                <label class="tf-form-label" style="font-weight:600;">Thời gian hiệu lực của mã (phút)</label>
+                <input type="number" class="tf-form-control" min="10" max="10080" @bind="_codeExpirationMinutes" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(_issueCodeError))
+            {
+                <div class="tf-alert tf-alert-error tf-mb-4">@_issueCodeError</div>
+            }
+
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showIssueCodeModal = false">Hủy</button>
+                <button type="button" class="tf-btn tf-btn-primary" @onclick="ExecuteIssueCode" disabled="@_isProcessingIssueCode">
+                    @(_isProcessingIssueCode ? "Đang tạo mã..." : "Tạo và cấp mã")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* MODAL 2: HIỂN THỊ MÃ MỚI CẤP DUY NHẤT 1 LẦN *@
+@if (_newlyIssuedCode != null)
+{
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1100; display:flex; align-items:center; justify-content:center;">
+        <div style="background:white; padding:28px; border-radius:8px; width:540px; max-width:95%; box-shadow:0 12px 30px rgba(0,0,0,0.3);">
+            <div style="text-align:center; margin-bottom:16px;">
+                <div style="font-size:32px; margin-bottom:8px;">🔐</div>
+                <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--tf-primary);">Mã kích hoạt đã được tạo thành công</h3>
+                <p style="margin:4px 0 0; font-size:13px; color:var(--tf-text-secondary);">Gửi mã này an toàn cho nhân viên được ủy quyền</p>
+            </div>
+
+            <div style="background:#f1f5f9; border:2px dashed #94a3b8; border-radius:8px; padding:16px; text-align:center; margin-bottom:16px;">
+                <div style="font-size:11px; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:1px; margin-bottom:4px;">
+                    Mã kích hoạt 1 lần (Single-use Code)
+                </div>
+                <div style="font-family:monospace; font-size:22px; font-weight:700; color:#0f172a; letter-spacing:2px; word-break:break-all;">
+                    @_newlyIssuedCode.RawCode
+                </div>
+                <div style="font-size:12px; color:#d97706; margin-top:8px;">
+                    Hết hạn vào: @_newlyIssuedCode.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                </div>
+            </div>
+
+            <div class="tf-alert tf-alert-warning tf-mb-4" style="font-size:13px; line-height:1.5;">
+                <strong>LƯU Ý BẢO MẬT:</strong> Mã này chỉ hiển thị <strong>DUY NHẤT một lần tại đây</strong>.
+                Hệ thống chỉ lưu bản băm mật mã học (SHA-256) và không thể hiển thị lại mã này sau khi đóng cửa sổ.
+            </div>
+
+            <div style="display:flex; justify-content:center;">
+                <button type="button" class="tf-btn tf-btn-primary" style="min-width:140px;" @onclick="CloseNewlyIssuedCodeModal">
+                    Tôi đã sao chép / Đóng
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* MODAL 3: KÍCH HOẠT NGƯỜI KÝ BẰNG MÃ VÀ PIN *@
+@if (_showEnrollSignerModal)
+{
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
+        <div style="background:white; padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0; font-size:18px; color:var(--tf-primary);">🛡️ Kích hoạt chứng thư ký số mới</h3>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showEnrollSignerModal = false">✕</button>
+            </div>
+
+            <div class="tf-form-group tf-mb-4">
+                <label class="tf-form-label" style="font-weight:600;">Mã kích hoạt nhận được <span style="color:var(--tf-error);">*</span></label>
+                <input type="text" class="tf-form-control" placeholder="TF-SIGN-XXXX-XXXX-XXXX" @bind="_enrollRawCode" />
+            </div>
+
+            <div class="tf-form-group tf-mb-4">
+                <label class="tf-form-label" style="font-weight:600;">Thiết lập mã PIN ký số <span style="color:var(--tf-error);">*</span></label>
+                <input type="password" class="tf-form-control" placeholder="Tối thiểu @_settings.PinMinLength ký tự" @bind="_enrollPin" />
+                <p style="margin:4px 0 0; font-size:12px; color:var(--tf-text-muted);">
+                    Mã PIN được dùng trực tiếp để mã hóa khóa riêng RSA bằng thuật toán AES-256-GCM. Bạn phải ghi nhớ mã PIN này để ký các tài liệu.
+                </p>
+            </div>
+
+            <div class="tf-form-group tf-mb-4">
+                <label class="tf-form-label" style="font-weight:600;">Xác nhận lại mã PIN <span style="color:var(--tf-error);">*</span></label>
+                <input type="password" class="tf-form-control" placeholder="Nhập lại mã PIN" @bind="_enrollConfirmPin" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(_enrollError))
+            {
+                <div class="tf-alert tf-alert-error tf-mb-4">@_enrollError</div>
+            }
+
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showEnrollSignerModal = false">Hủy</button>
+                <button type="button" class="tf-btn tf-btn-primary" @onclick="ExecuteEnrollSigner" disabled="@_isEnrolling">
+                    @(_isEnrolling ? "Đang sinh khóa RSA 2048-bit..." : "Kích hoạt chứng thư")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* MODAL 4: THU HỒI CHỨNG THƯ KÝ SỐ *@
+@if (_showRevokeSignerModal && _selectedSignerToRevoke != null)
+{
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
+        <div style="background:white; padding:24px; border-radius:8px; width:500px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0; font-size:18px; color:#dc2626;">⚠️ Xác nhận thu hồi chứng thư ký số</h3>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showRevokeSignerModal = false">✕</button>
+            </div>
+
+            <div class="tf-alert tf-alert-warning tf-mb-4" style="font-size:13px;">
+                Người ký: <strong>@_selectedSignerToRevoke.FullName</strong> (@_selectedSignerToRevoke.Position)<br/>
+                Sê-ri chứng thư: <code>@_selectedSignerToRevoke.CertificateSerialNumber</code><br/>
+                Sau khi thu hồi, chứng thư sẽ không còn có thể sử dụng để ký tài liệu mới.
+            </div>
+
+            <div class="tf-form-group tf-mb-4">
+                <label class="tf-form-label" style="font-weight:600;">Lý do thu hồi <span style="color:var(--tf-error);">*</span></label>
+                <textarea class="tf-form-control" rows="3" placeholder="Nhập lý do thu hồi (chuyển công tác, nghi ngờ lộ khóa, thay đổi chức danh...)" @bind="_revokeReason"></textarea>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_revokeError))
+            {
+                <div class="tf-alert tf-alert-error tf-mb-4">@_revokeError</div>
+            }
+
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showRevokeSignerModal = false">Hủy</button>
+                <button type="button" class="tf-btn tf-btn-primary" style="background:#dc2626; border-color:#dc2626;" @onclick="ExecuteRevokeSigner" disabled="@_isRevoking">
+                    @(_isRevoking ? "Đang xử lý..." : "Xác nhận thu hồi")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* MODAL 5: HỦY MÃ KÍCH HOẠT *@
+@if (_showRevokeCodeModal && _selectedCodeToRevoke != null)
+{
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
+        <div style="background:white; padding:24px; border-radius:8px; width:500px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0; font-size:18px; color:#dc2626;">Hủy mã kích hoạt người ký</h3>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showRevokeCodeModal = false">✕</button>
+            </div>
+
+            <div style="font-size:14px; margin-bottom:16px;">
+                Bạn có chắc chắn muốn hủy mã kích hoạt đã cấp cho <strong>@_selectedCodeToRevoke.TargetFullName</strong> (@_selectedCodeToRevoke.TargetPosition)?
+            </div>
+
+            <div class="tf-form-group tf-mb-4">
+                <label class="tf-form-label" style="font-weight:600;">Lý do hủy mã <span style="color:var(--tf-error);">*</span></label>
+                <input type="text" class="tf-form-control" placeholder="Nhập lý do hủy mã" @bind="_revokeCodeReason" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(_revokeCodeError))
+            {
+                <div class="tf-alert tf-alert-error tf-mb-4">@_revokeCodeError</div>
+            }
+
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showRevokeCodeModal = false">Đóng</button>
+                <button type="button" class="tf-btn tf-btn-primary" style="background:#dc2626; border-color:#dc2626;" @onclick="ExecuteRevokeCode">
+                    Xác nhận hủy
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string _activeTab = "overview";
+    private bool _isLoading = true;
+    private string? _globalMessage;
+    private bool _globalSuccess;
+    private string? _currentUsername;
+
+    private SecurityDashboardStats _stats = new();
+    private List<SecurityAlertDto> _alerts = new();
+    private List<SignerIdentityDto> _signers = new();
+    private List<SignerEnrollmentCodeDto> _enrollmentCodes = new();
+    private List<DocumentSignatureAuditDto> _audits = new();
+    private CompanySecuritySettings _settings = new();
+    private List<ApplicationUser> _availableUsers = new();
+    private List<Invoice> _recentInvoices = new();
+
+    // Verify Tab
+    private int _selectedVerifyInvoiceId = 0;
+    private bool _isVerifying = false;
+    private SignatureVerificationResult? _manualVerifyResult;
+
+    // Issue Code Modal
+    private bool _showIssueCodeModal;
+    private string _targetUserId = "";
+    private SignerRole _targetSignerRole = SignerRole.AuthorizedSigner;
+    private string _targetPosition = "";
+    private int _codeExpirationMinutes = 1440;
+    private bool _isProcessingIssueCode;
+    private string? _issueCodeError;
+    private IssuedEnrollmentCodeResult? _newlyIssuedCode;
+
+    // Enroll Signer Modal
+    private bool _showEnrollSignerModal;
+    private string _enrollRawCode = "";
+    private string _enrollPin = "";
+    private string _enrollConfirmPin = "";
+    private bool _isEnrolling;
+    private string? _enrollError;
+
+    // Revoke Signer Modal
+    private bool _showRevokeSignerModal;
+    private SignerIdentityDto? _selectedSignerToRevoke;
+    private string _revokeReason = "";
+    private bool _isRevoking;
+    private string? _revokeError;
+
+    // Revoke Code Modal
+    private bool _showRevokeCodeModal;
+    private SignerEnrollmentCodeDto? _selectedCodeToRevoke;
+    private string _revokeCodeReason = "";
+    private string? _revokeCodeError;
+
+    // Settings save
+    private bool _isSavingSettings;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        _currentUsername = auth.User.Identity?.Name ?? "Admin";
+        await LoadAllDataAsync();
+    }
+
+    private async Task LoadAllDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _stats = await SecurityService.GetDashboardStatsAsync();
+            _alerts = await SecurityService.GetSecurityAlertsAsync();
+            _signers = await SecurityService.GetAllSignersAsync();
+            _enrollmentCodes = await SecurityService.GetEnrollmentCodesAsync();
+            _audits = await SecurityService.GetSignatureAuditsAsync(50);
+            _settings = await SecurityService.GetSecuritySettingsAsync();
+
+            _availableUsers = await UserManager.Users
+                .Where(u => u.Status == UserStatus.Active)
+                .OrderBy(u => u.FullName)
+                .ToListAsync();
+
+            _recentInvoices = await DbContext.Invoices
+                .OrderByDescending(x => x.Id)
+                .Take(30)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _globalMessage = "Lỗi khi tải dữ liệu an ninh: " + ex.Message;
+            _globalSuccess = false;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadAuditLogsAsync()
+    {
+        _audits = await SecurityService.GetSignatureAuditsAsync(50);
+    }
+
+    private void OpenIssueCodeModal()
+    {
+        _targetUserId = "";
+        _targetSignerRole = SignerRole.AuthorizedSigner;
+        _targetPosition = "";
+        _codeExpirationMinutes = _settings.EnrollmentCodeExpirationMinutes > 0 ? _settings.EnrollmentCodeExpirationMinutes : 1440;
+        _issueCodeError = null;
+        _showIssueCodeModal = true;
+    }
+
+    private async Task ExecuteIssueCode()
+    {
+        if (string.IsNullOrEmpty(_targetUserId))
+        {
+            _issueCodeError = "Vui lòng chọn nhân viên nhận ủy quyền.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(_targetPosition))
+        {
+            _issueCodeError = "Vui lòng nhập chức danh người ký.";
+            return;
+        }
+
+        _isProcessingIssueCode = true;
+        _issueCodeError = null;
+        try
+        {
+            var res = await SecurityService.IssueEnrollmentCodeAsync(
+                _targetUserId,
+                _targetSignerRole,
+                _targetPosition.Trim(),
+                _codeExpirationMinutes,
+                _currentUsername ?? "Admin");
+
+            if (!res.Succeeded)
+            {
+                _issueCodeError = res.ErrorMessage;
+                return;
+            }
+
+            _showIssueCodeModal = false;
+            _newlyIssuedCode = res;
+            await LoadAllDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _issueCodeError = "Lỗi tạo mã: " + ex.Message;
+        }
+        finally
+        {
+            _isProcessingIssueCode = false;
+        }
+    }
+
+    private void CloseNewlyIssuedCodeModal()
+    {
+        _newlyIssuedCode = null;
+    }
+
+    private void OpenEnrollModal()
+    {
+        _enrollRawCode = "";
+        _enrollPin = "";
+        _enrollConfirmPin = "";
+        _enrollError = null;
+        _showEnrollSignerModal = true;
+    }
+
+    private async Task ExecuteEnrollSigner()
+    {
+        if (string.IsNullOrWhiteSpace(_enrollRawCode))
+        {
+            _enrollError = "Vui lòng nhập mã kích hoạt.";
+            return;
+        }
+        if (string.IsNullOrEmpty(_enrollPin) || _enrollPin.Length < _settings.PinMinLength)
+        {
+            _enrollError = $"Mã PIN phải có tối thiểu {_settings.PinMinLength} ký tự.";
+            return;
+        }
+        if (_enrollPin != _enrollConfirmPin)
+        {
+            _enrollError = "Mật mã PIN xác nhận không khớp.";
+            return;
+        }
+
+        _isEnrolling = true;
+        _enrollError = null;
+        try
+        {
+            var res = await SecurityService.EnrollSignerAsync(_enrollRawCode.Trim(), _enrollPin, _currentUsername);
+            if (!res.Succeeded)
+            {
+                _enrollError = res.ErrorMessage;
+                return;
+            }
+
+            _showEnrollSignerModal = false;
+            _globalMessage = $"Kích hoạt thành công chứng thư ký số cho {res.FullName} (Sê-ri: {res.CertificateSerialNumber})!";
+            _globalSuccess = true;
+            await LoadAllDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _enrollError = "Lỗi kích hoạt: " + ex.Message;
+        }
+        finally
+        {
+            _isEnrolling = false;
+        }
+    }
+
+    private void PromptRevokeSigner(SignerIdentityDto signer)
+    {
+        _selectedSignerToRevoke = signer;
+        _revokeReason = "";
+        _revokeError = null;
+        _showRevokeSignerModal = true;
+    }
+
+    private async Task ExecuteRevokeSigner()
+    {
+        if (_selectedSignerToRevoke == null) return;
+        if (string.IsNullOrWhiteSpace(_revokeReason))
+        {
+            _revokeError = "Vui lòng nhập lý do thu hồi.";
+            return;
+        }
+
+        _isRevoking = true;
+        _revokeError = null;
+        try
+        {
+            var ok = await SecurityService.RevokeSignerAsync(_selectedSignerToRevoke.Id, _revokeReason.Trim(), _currentUsername ?? "Admin");
+            if (!ok)
+            {
+                _revokeError = "Không thể thu hồi chứng thư này.";
+                return;
+            }
+
+            _showRevokeSignerModal = false;
+            _globalMessage = $"Đã thu hồi chứng thư ký số của {_selectedSignerToRevoke.FullName}.";
+            _globalSuccess = true;
+            await LoadAllDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _revokeError = "Lỗi khi thu hồi: " + ex.Message;
+        }
+        finally
+        {
+            _isRevoking = false;
+        }
+    }
+
+    private void PromptRevokeCode(SignerEnrollmentCodeDto code)
+    {
+        _selectedCodeToRevoke = code;
+        _revokeCodeReason = "";
+        _revokeCodeError = null;
+        _showRevokeCodeModal = true;
+    }
+
+    private async Task ExecuteRevokeCode()
+    {
+        if (_selectedCodeToRevoke == null) return;
+        if (string.IsNullOrWhiteSpace(_revokeCodeReason))
+        {
+            _revokeCodeError = "Vui lòng nhập lý do hủy mã.";
+            return;
+        }
+
+        try
+        {
+            var ok = await SecurityService.RevokeEnrollmentCodeAsync(_selectedCodeToRevoke.Id, _revokeCodeReason.Trim(), _currentUsername ?? "Admin");
+            if (ok)
+            {
+                _showRevokeCodeModal = false;
+                _globalMessage = "Đã hủy mã kích hoạt thành công.";
+                _globalSuccess = true;
+                await LoadAllDataAsync();
+            }
+            else
+            {
+                _revokeCodeError = "Không thể hủy mã kích hoạt này.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _revokeCodeError = "Lỗi khi hủy mã: " + ex.Message;
+        }
+    }
+
+    private async Task VerifySelectedInvoice()
+    {
+        if (_selectedVerifyInvoiceId <= 0) return;
+        _isVerifying = true;
+        _manualVerifyResult = null;
+        try
+        {
+            _manualVerifyResult = await InvoiceService.VerifyInvoiceSignatureAsync(_selectedVerifyInvoiceId, _currentUsername);
+            await LoadAllDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _globalMessage = "Lỗi xác minh hóa đơn: " + ex.Message;
+            _globalSuccess = false;
+        }
+        finally
+        {
+            _isVerifying = false;
+        }
+    }
+
+    private async Task SaveSecuritySettingsAsync()
+    {
+        _isSavingSettings = true;
+        try
+        {
+            var ok = await SecurityService.UpdateSecuritySettingsAsync(_settings, _currentUsername ?? "Admin");
+            if (ok)
+            {
+                _globalMessage = "Đã lưu cài đặt chính sách an ninh thành công.";
+                _globalSuccess = true;
+            }
+            else
+            {
+                _globalMessage = "Không thể lưu cài đặt.";
+                _globalSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _globalMessage = "Lỗi khi lưu cài đặt: " + ex.Message;
+            _globalSuccess = false;
+        }
+        finally
+        {
+            _isSavingSettings = false;
+        }
+    }
+}

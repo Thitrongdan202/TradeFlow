@@ -10,6 +10,7 @@
 
 @inject UserManager<ApplicationUser> UserManager
 @inject IAuditService AuditService
+@inject ISecurityService SecurityService
 @inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Quản lý người dùng — TradeFlow</PageTitle>
@@ -156,6 +157,15 @@
                                                     title="Thu hồi tất cả phiên đăng nhập">
                                                 Thu hồi phiên
                                             </button>
+                                            @if (entry.User.Status != UserStatus.Disabled)
+                                            {
+                                                <button class="tf-btn tf-btn-ghost tf-btn-sm"
+                                                        style="color:#dc2626;font-weight:600;"
+                                                        @onclick="() => PromptOffboard(entry.User)"
+                                                        title="Quy trình thôi việc nhân viên">
+                                                    Thôi việc
+                                                </button>
+                                            }
                                         }
                                     </AuthorizeView>
                                 </div>
@@ -168,6 +178,50 @@
     </div>
 </div>
 
+@if (_showOffboardModal && _offboardUser != null)
+{
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
+        <div style="background:white; padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0; font-size:18px; color:#dc2626;">⚠️ Xác nhận quy trình thôi việc</h3>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="CancelOffboard">✕</button>
+            </div>
+
+            <div class="tf-alert tf-alert-warning tf-mb-4" style="font-size:13px; line-height:1.5;">
+                <strong>Lưu ý quan trọng:</strong> Quy trình thôi việc sẽ thực hiện:
+                <ul style="margin:6px 0 0 18px; padding:0;">
+                    <li>Vô hiệu hóa tài khoản đăng nhập của nhân viên.</li>
+                    <li>Thu hồi tức thì mọi phiên làm việc hiện tại (Security Stamp).</li>
+                    <li>Thu hồi toàn bộ chứng thư ký số đang hoạt động của nhân viên.</li>
+                    <li>Hủy tất cả mã kích hoạt chữ ký số chưa sử dụng.</li>
+                    <li>Lịch sử chứng từ và hóa đơn đã ký trước đây vẫn được lưu trữ toàn vẹn.</li>
+                </ul>
+            </div>
+
+            <div style="margin-bottom:16px; font-size:14px;">
+                <div>Nhân viên: <strong>@_offboardUser.FullName</strong></div>
+                <div>Tài khoản: <strong>@_offboardUser.UserName</strong> (@_offboardUser.Email)</div>
+            </div>
+
+            <div class="tf-form-group tf-mb-4">
+                <label class="tf-form-label" style="font-weight:600;">Lý do thôi việc <span style="color:var(--tf-error);">*</span></label>
+                <textarea class="tf-form-control" rows="3" placeholder="Nhập lý do thôi việc (nghỉ việc, chấm dứt hợp đồng, chuyển công tác...)" @bind="_offboardReason"></textarea>
+                @if (_offboardError != null)
+                {
+                    <div style="color:var(--tf-error); font-size:12px; margin-top:4px;">@_offboardError</div>
+                }
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="CancelOffboard" disabled="@_isOffboarding">Hủy</button>
+                <button type="button" class="tf-btn tf-btn-primary" style="background:#dc2626; border-color:#dc2626;" @onclick="ExecuteOffboard" disabled="@_isOffboarding">
+                    @(_isOffboarding ? "Đang xử lý..." : "Xác nhận thôi việc")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private record UserEntry(ApplicationUser User, IList<string> Roles);
 
@@ -176,6 +230,12 @@
     private bool _actionSuccess;
     private string? _currentUsername;
     private (string Username, string TempPassword)? _resetPasswordInfo;
+
+    private bool _showOffboardModal;
+    private ApplicationUser? _offboardUser;
+    private string _offboardReason = string.Empty;
+    private string? _offboardError;
+    private bool _isOffboarding;
 
     protected override async Task OnInitializedAsync()
     {
@@ -245,23 +305,70 @@
         _actionMessage = null;
         try
         {
-            // Generate a random temporary password
-            var tempPw = "Tf" + Guid.NewGuid().ToString("N")[..8] + "1!";
-            var token = await UserManager.GeneratePasswordResetTokenAsync(user);
-            var result = await UserManager.ResetPasswordAsync(user, token, tempPw);
-            if (!result.Succeeded)
+            var res = await SecurityService.AdminResetPasswordAsync(user.Id, _currentUsername);
+            if (!res.Succeeded)
             {
-                _actionMessage = string.Join("; ", result.Errors.Select(e => e.Description));
+                _actionMessage = res.ErrorMessage;
                 _actionSuccess = false;
                 return;
             }
-            await AuditService.LogAsync(AuditEventType.PasswordReset, _currentUsername, "User", user.UserName, "Administrator reset password (no plaintext logged)");
-            _resetPasswordInfo = (user.UserName ?? user.Email ?? user.Id, tempPw);
+            _resetPasswordInfo = (res.UserName ?? user.UserName ?? user.Id, res.TempPassword ?? "");
         }
         catch (Exception ex)
         {
             _actionMessage = "Lỗi: " + ex.Message;
             _actionSuccess = false;
+        }
+    }
+
+    private void PromptOffboard(ApplicationUser user)
+    {
+        _offboardUser = user;
+        _offboardReason = string.Empty;
+        _offboardError = null;
+        _showOffboardModal = true;
+    }
+
+    private void CancelOffboard()
+    {
+        _showOffboardModal = false;
+        _offboardUser = null;
+        _offboardReason = string.Empty;
+        _offboardError = null;
+    }
+
+    private async Task ExecuteOffboard()
+    {
+        if (_offboardUser == null) return;
+        if (string.IsNullOrWhiteSpace(_offboardReason))
+        {
+            _offboardError = "Vui lòng nhập lý do thôi việc.";
+            return;
+        }
+
+        _isOffboarding = true;
+        _offboardError = null;
+        try
+        {
+            var result = await SecurityService.OffboardEmployeeAsync(_offboardUser.Id, _offboardReason, _currentUsername ?? "Admin");
+            if (!result.Succeeded)
+            {
+                _offboardError = result.ErrorMessage;
+                return;
+            }
+
+            _actionMessage = $"Đã hoàn tất quy trình thôi việc cho nhân viên {result.UserName}. Đã thu hồi {result.RevokedSignerIdentitiesCount} chứng thư ký số liên quan.";
+            _actionSuccess = true;
+            CancelOffboard();
+            await LoadUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            _offboardError = "Lỗi xử lý thôi việc: " + ex.Message;
+        }
+        finally
+        {
+            _isOffboarding = false;
         }
     }
 

@@ -45,12 +45,17 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(x => x.SignedBy).HasMaxLength(255);
         builder.Property(x => x.SignatureValue).HasMaxLength(4000);
         builder.Property(x => x.CertificateSubject).HasMaxLength(1000);
+        builder.Property(x => x.CertificateSerialNumber).HasMaxLength(100);
+        builder.Property(x => x.SignerPosition).HasMaxLength(150);
+        builder.Property(x => x.DocumentHash).HasMaxLength(256);
+        builder.Property(x => x.LastVerifiedBy).HasMaxLength(256);
 
         builder.HasIndex(x => x.InvoiceNumber).IsUnique();
         builder.HasIndex(x => new { x.FormNumber, x.InvoiceSeries, x.InvoiceNo });
         builder.HasIndex(x => x.InvoiceDate);
         builder.HasIndex(x => x.SalesOrderId);
         builder.HasIndex(x => x.CustomerId);
+        builder.HasIndex(x => x.SignerIdentityId);
 
         builder.HasOne(x => x.SalesOrder)
             .WithMany(x => x.Invoices)
@@ -60,6 +65,11 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.HasOne(x => x.Customer)
             .WithMany()
             .HasForeignKey(x => x.CustomerId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(x => x.SignerIdentity)
+            .WithMany()
+            .HasForeignKey(x => x.SignerIdentityId)
             .OnDelete(DeleteBehavior.SetNull);
     }
 }

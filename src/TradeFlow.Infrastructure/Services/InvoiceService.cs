@@ -358,35 +358,79 @@ public class InvoiceService : IInvoiceService
 
     public async Task<bool> IssueInvoiceAsync(int id, CancellationToken cancellationToken = default)
     {
-        var inv = await _context.Invoices.FindAsync(new object[] { id }, cancellationToken);
+        var inv = await _context.Invoices.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (inv == null || inv.Status != InvoiceStatus.Draft) return false;
 
         inv.Status = InvoiceStatus.Issued;
 
-        // Auto-sign on issuance if currently unsigned
+        // Auto-sign on issuance if currently unsigned and active signer exists
         if (inv.SignatureStatus == DigitalSignatureStatus.Unsigned)
         {
-            await _digitalSignatureService.SignInvoiceAsync(inv, null, cancellationToken);
+            try
+            {
+                await SignInvoiceAsync(inv.Id, null, cancellationToken);
+            }
+            catch
+            {
+                // Can be signed interactively later with personal PIN
+            }
         }
 
         await _context.SaveChangesAsync(cancellationToken);
-        await _auditService.LogAsync(AuditEventType.InvoiceIssued, "Invoice", inv.Id.ToString(), "Invoice issued and signed", _currentUserService.UserId);
+        await _auditService.LogAsync(AuditEventType.InvoiceIssued, "Invoice", inv.Id.ToString(), "Invoice issued", _currentUserService.UserId);
         return true;
     }
 
     public async Task<bool> SignInvoiceAsync(int invoiceId, string? signedBy = null, CancellationToken cancellationToken = default)
     {
-        var inv = await _context.Invoices.FindAsync(new object[] { invoiceId }, cancellationToken);
+        var inv = await _context.Invoices.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == invoiceId, cancellationToken);
         if (inv == null) return false;
 
         var result = await _digitalSignatureService.SignInvoiceAsync(inv, signedBy, cancellationToken);
         if (result.Succeeded)
         {
             await _context.SaveChangesAsync(cancellationToken);
-            await _auditService.LogAsync(AuditEventType.InvoiceUpdated, "Invoice", inv.Id.ToString(), $"Invoice signed by {inv.SignedBy}", _currentUserService.UserId);
+            await _auditService.LogAsync(AuditEventType.InvoiceUpdated, _currentUserService.UserId ?? "System", "Invoice", inv.InvoiceNumber, $"Hóa đơn đã được ký điện tử bởi {inv.SignedBy}");
             return true;
         }
+
         return false;
+    }
+
+    public async Task<SignatureResult> SignInvoiceWithKeyAsync(
+        int invoiceId,
+        int signerIdentityId,
+        string pin,
+        string? ipAddress = null,
+        string? userAgent = null,
+        CancellationToken cancellationToken = default)
+    {
+        var inv = await _context.Invoices.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == invoiceId, cancellationToken);
+        if (inv == null)
+        {
+            return new SignatureResult { Succeeded = false, ErrorMessage = "Không tìm thấy hóa đơn." };
+        }
+
+        var result = await _digitalSignatureService.SignInvoiceAsync(inv, signerIdentityId, pin, ipAddress, userAgent, cancellationToken);
+        if (result.Succeeded)
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+            await _auditService.LogAsync(AuditEventType.InvoiceUpdated, _currentUserService.UserId ?? "System", "Invoice", inv.InvoiceNumber, $"Hóa đơn đã được ký điện tử bởi {inv.SignedBy}");
+        }
+        return result;
+    }
+
+    public async Task<SignatureVerificationResult> VerifyInvoiceSignatureAsync(int invoiceId, string? verifiedBy = null, CancellationToken cancellationToken = default)
+    {
+        var inv = await _context.Invoices.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == invoiceId, cancellationToken);
+        if (inv == null)
+        {
+            return new SignatureVerificationResult { IsValid = false, Status = DigitalSignatureStatus.Unsigned, Message = "Không tìm thấy hóa đơn." };
+        }
+
+        var result = await _digitalSignatureService.VerifyInvoiceSignatureAsync(inv, verifiedBy ?? _currentUserService.UserId, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+        return result;
     }
 
     public async Task<bool> DeleteInvoiceAsync(int id, CancellationToken cancellationToken = default)
@@ -519,21 +563,21 @@ public class InvoiceService : IInvoiceService
                 new XElement("DLQRCode", inv.QrCodeData ?? ""),
                 new XElement("DSCKS",
                     new XElement("NBan",
-                        inv.SignatureStatus == DigitalSignatureStatus.Signed
+                        (inv.SignatureStatus == DigitalSignatureStatus.Signed || inv.SignatureStatus == DigitalSignatureStatus.Valid)
                             ? new XElement(XName.Get("Signature", "http://www.w3.org/2000/09/xmldsig#"),
                                 new XElement(XName.Get("SignedInfo", "http://www.w3.org/2000/09/xmldsig#"),
                                     new XElement(XName.Get("CanonicalizationMethod", "http://www.w3.org/2000/09/xmldsig#"), new XAttribute("Algorithm", "http://www.w3.org/TR/2001/REC-xml-c14n-20010315")),
                                     new XElement(XName.Get("SignatureMethod", "http://www.w3.org/2000/09/xmldsig#"), new XAttribute("Algorithm", "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256")),
                                     new XElement(XName.Get("Reference", "http://www.w3.org/2000/09/xmldsig#"), new XAttribute("URI", $"#Invoice_{inv.InvoiceNo}"),
                                         new XElement(XName.Get("DigestMethod", "http://www.w3.org/2000/09/xmldsig#"), new XAttribute("Algorithm", "http://www.w3.org/2001/04/xmlenc#sha256")),
-                                        new XElement(XName.Get("DigestValue", "http://www.w3.org/2000/09/xmldsig#"), inv.SignatureValue ?? "")
+                                        new XElement(XName.Get("DigestValue", "http://www.w3.org/2000/09/xmldsig#"), inv.DocumentHash ?? inv.SignatureValue ?? "")
                                     )
                                 ),
                                 new XElement(XName.Get("SignatureValue", "http://www.w3.org/2000/09/xmldsig#"), inv.SignatureValue ?? ""),
                                 new XElement(XName.Get("KeyInfo", "http://www.w3.org/2000/09/xmldsig#"),
                                     new XElement(XName.Get("X509Data", "http://www.w3.org/2000/09/xmldsig#"),
                                         new XElement(XName.Get("X509SubjectName", "http://www.w3.org/2000/09/xmldsig#"), inv.CertificateSubject ?? $"CN={inv.CompanyName}"),
-                                        new XElement(XName.Get("X509Certificate", "http://www.w3.org/2000/09/xmldsig#"), "")
+                                        new XElement(XName.Get("X509SerialNumber", "http://www.w3.org/2000/09/xmldsig#"), inv.CertificateSerialNumber ?? "")
                                     )
                                 ),
                                 new XElement(XName.Get("Object", "http://www.w3.org/2000/09/xmldsig#"),
@@ -1118,7 +1162,16 @@ public class InvoiceService : IInvoiceService
             QrCodeData = invoice.QrCodeData,
             SignatureStatus = invoice.SignatureStatus,
             SignedBy = invoice.SignedBy,
-            SignedAt = invoice.SignedAt
+            SignedAt = invoice.SignedAt,
+            SignatureValue = invoice.SignatureValue,
+            CertificateSubject = invoice.CertificateSubject,
+            CertificateSerialNumber = invoice.CertificateSerialNumber,
+            SignerPosition = invoice.SignerPosition,
+            SignerRole = invoice.SignerRole,
+            DocumentHash = invoice.DocumentHash,
+            SignerIdentityId = invoice.SignerIdentityId,
+            LastVerifiedAt = invoice.LastVerifiedAt,
+            LastVerifiedBy = invoice.LastVerifiedBy
         };
 
         foreach (var item in invoice.Items.OrderBy(x => x.SortOrder))

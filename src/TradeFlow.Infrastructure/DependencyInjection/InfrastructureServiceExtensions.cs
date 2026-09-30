@@ -93,6 +93,10 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IQuotationService, Services.QuotationService>();
         services.AddScoped<IDocumentService, Services.DocumentService>();
 
+        // Register Phase 7 Security & Digital Signature services
+        services.AddSingleton<ISigningProvider, Services.Security.RsaSoftwareSigningProvider>();
+        services.AddScoped<ISecurityService, Services.Security.SecurityService>();
+
         return services;
     }
 }

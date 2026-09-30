@@ -15,6 +15,8 @@ public interface IInvoiceService
     Task<byte[]> GeneratePdfAsync(int invoiceId, CancellationToken cancellationToken = default);
     Task<string> GenerateXmlAsync(int invoiceId, CancellationToken cancellationToken = default);
     Task<bool> SignInvoiceAsync(int invoiceId, string? signedBy = null, CancellationToken cancellationToken = default);
+    Task<SignatureResult> SignInvoiceWithKeyAsync(int invoiceId, int signerIdentityId, string pin, string? ipAddress = null, string? userAgent = null, CancellationToken cancellationToken = default);
+    Task<SignatureVerificationResult> VerifyInvoiceSignatureAsync(int invoiceId, string? verifiedBy = null, CancellationToken cancellationToken = default);
 
     // Chứng từ nội bộ: Đơn đặt hàng
     Task<OrderDocumentDto?> GetOrderDocumentByInvoiceIdAsync(int invoiceId, CancellationToken cancellationToken = default);

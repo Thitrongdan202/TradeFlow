@@ -55,6 +55,15 @@ public class InvoiceDto
     public DigitalSignatureStatus SignatureStatus { get; set; } = DigitalSignatureStatus.Unsigned;
     public string? SignedBy { get; set; }
     public DateTime? SignedAt { get; set; }
+    public string? SignatureValue { get; set; }
+    public string? CertificateSubject { get; set; }
+    public string? CertificateSerialNumber { get; set; }
+    public string? SignerPosition { get; set; }
+    public SignerRole? SignerRole { get; set; }
+    public string? DocumentHash { get; set; }
+    public int? SignerIdentityId { get; set; }
+    public DateTime? LastVerifiedAt { get; set; }
+    public string? LastVerifiedBy { get; set; }
     
     public List<InvoiceItemDto> Items { get; set; } = new();
 

@@ -1,4 +1,4 @@
-﻿@page "/cai-dat"
+@page "/cai-dat"
 @attribute [Authorize]
 @rendermode InteractiveServer
 
@@ -52,6 +52,21 @@
                     </a>
                     <p style="margin: 6px 0 0; font-size: 13px; color: var(--tf-text-secondary); padding-left: 26px;">
                         Định nghĩa các nhóm vai trò và phân quyền chi tiết (Xem, Thêm, Sửa, Xóa, Phê duyệt, Import, Export).
+                    </p>
+                </li>
+            </AuthorizeView>
+
+            <AuthorizeView Policy="Permission:Users:View">
+                <li style="padding: 12px; border: 1px solid var(--tf-border); border-radius: 8px; transition: background 0.15s ease;">
+                    <a href="/cai-dat/an-ninh" style="font-weight: 600; font-size: 15px; color: var(--tf-primary); text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        An ninh &amp; Chữ ký số
+                    </a>
+                    <p style="margin: 6px 0 0; font-size: 13px; color: var(--tf-text-secondary); padding-left: 26px;">
+                        Quản lý người ký, cấp mã kích hoạt bảo mật, chứng thư ký số RSA, giám sát vi phạm và cấu hình chính sách ký số.
                     </p>
                 </li>
             </AuthorizeView>

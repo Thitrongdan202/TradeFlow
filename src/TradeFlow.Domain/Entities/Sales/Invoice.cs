@@ -74,6 +74,7 @@ public class Invoice : AuditableEntity<int>
     public string? DocumentHash { get; set; }
     public int? SignerIdentityId { get; set; }
     public TradeFlow.Domain.Entities.Security.SignerIdentity? SignerIdentity { get; set; }
+    public string? SignerHandwrittenSignatureImage { get; set; }
     public DateTime? LastVerifiedAt { get; set; }
     public string? LastVerifiedBy { get; set; }
 

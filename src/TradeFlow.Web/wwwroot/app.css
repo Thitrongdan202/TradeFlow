@@ -55,15 +55,18 @@
   --tf-border-strong:   var(--tf-gray-300);
   --tf-border-focus:    var(--tf-primary);
 
-  /* --- Sidebar Specific --- */
-  --tf-sidebar-width:         240px;
-  --tf-sidebar-bg:            #0f172a;
-  --tf-sidebar-text:          #94a3b8;
-  --tf-sidebar-text-active:   #ffffff;
-  --tf-sidebar-item-active:   rgba(99, 102, 241, 0.2);
-  --tf-sidebar-item-hover:    rgba(255, 255, 255, 0.06);
-  --tf-sidebar-brand-text:    #ffffff;
-  --tf-sidebar-section-text:  #475569;
+  /* --- Sidebar Specific (Modern Light ERP/POS Theme) --- */
+  --tf-sidebar-width:         224px;
+  --tf-sidebar-bg:            #ffffff;
+  --tf-sidebar-border:        #eaecf0;
+  --tf-sidebar-text:          #344054;
+  --tf-sidebar-text-muted:    #667085;
+  --tf-sidebar-text-hover:    #101828;
+  --tf-sidebar-text-active:   #1d4ed8;
+  --tf-sidebar-item-active:   #dbeafe;
+  --tf-sidebar-item-hover:    #f8fafc;
+  --tf-sidebar-brand-text:    #101828;
+  --tf-sidebar-section-text:  #98a2b3;
 
   /* --- Topbar Specific --- */
   --tf-topbar-height:         56px;
@@ -204,6 +207,7 @@ h1:focus { outline: none; }
   width: var(--tf-sidebar-width);
   min-height: 100vh;
   background-color: var(--tf-sidebar-bg);
+  border-right: 1px solid var(--tf-sidebar-border);
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -212,7 +216,6 @@ h1:focus { outline: none; }
   bottom: 0;
   z-index: var(--tf-z-sticky);
   transition: width var(--tf-transition-slow);
-  overflow: hidden;
 }
 
 /* --- Main Content Wrapper --- */
@@ -250,218 +253,456 @@ h1:focus { outline: none; }
 /* ============================================================
    SIDEBAR — Brand Header
    ============================================================ */
+/* ============================================================
+   SIDEBAR — Brand Header (Clean Modern POS/ERP Style)
+   ============================================================ */
 .tf-brand {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--tf-space-3);
-  padding: var(--tf-space-5) var(--tf-space-4);
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-  min-height: 64px;
+  justify-content: center;
+  padding: 20px 16px 14px;
+  text-decoration: none;
+  border-bottom: 1px solid var(--tf-sidebar-border);
+  background: var(--tf-sidebar-bg);
+  transition: background-color 0.15s ease;
+}
+
+.tf-brand:hover {
   text-decoration: none;
 }
 
-.tf-brand:hover { text-decoration: none; }
-
 .tf-brand-logo {
-  width: 34px;
-  height: 34px;
-  background: linear-gradient(135deg, var(--tf-primary) 0%, #6366f1 100%);
-  border-radius: var(--tf-radius-md);
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(99,102,241,0.4);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.22);
+  margin-bottom: 8px;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+}
+
+.tf-brand:hover .tf-brand-logo {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
 }
 
 .tf-brand-logo svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   fill: white;
 }
 
 .tf-brand-text {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  align-items: center;
+  text-align: center;
 }
 
 .tf-brand-name {
-  font-size: var(--tf-text-md);
-  font-weight: var(--tf-font-bold);
-  color: var(--tf-sidebar-brand-text);
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
   letter-spacing: -0.01em;
   line-height: 1.2;
 }
 
 .tf-brand-tagline {
-  font-size: var(--tf-text-xs);
-  font-weight: var(--tf-font-medium);
-  color: #4f6396;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  margin-top: 1px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #64748b;
+  letter-spacing: 0.02em;
+  margin-top: 2px;
 }
 
 /* ============================================================
-   SIDEBAR — Navigation
+   SIDEBAR — Navigation & Item Grouping
    ============================================================ */
 .tf-nav-scroll {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
-  padding: var(--tf-space-3) 0;
+  overflow-x: visible;
+  padding: 10px 0;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.1) transparent;
+  scrollbar-color: #e2e8f0 transparent;
 }
 
 .tf-nav-scroll::-webkit-scrollbar {
   width: 4px;
 }
 
-.tf-nav-scroll::-webkit-scrollbar-track { background: transparent; }
+.tf-nav-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
 
 .tf-nav-scroll::-webkit-scrollbar-thumb {
-  background-color: rgba(255,255,255,0.1);
-  border-radius: 2px;
+  background-color: #e2e8f0;
+  border-radius: 4px;
 }
 
 .tf-nav-section {
-  margin-bottom: var(--tf-space-3);
+  margin-bottom: 2px;
 }
 
 .tf-nav-section-label {
-  padding: var(--tf-space-2) var(--tf-space-4) var(--tf-space-1);
-  font-size: var(--tf-text-xs);
-  font-weight: var(--tf-font-semibold);
-  color: var(--tf-sidebar-section-text);
-  letter-spacing: 0.07em;
+  padding: 10px 18px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   user-select: none;
 }
 
 .tf-nav-item {
+  position: relative;
   display: block;
-  margin: 1px var(--tf-space-2);
+  margin: 2px 8px;
 }
 
 .tf-nav-link {
   display: flex;
   align-items: center;
-  gap: var(--tf-space-3);
-  padding: var(--tf-space-2) var(--tf-space-3);
-  border-radius: var(--tf-radius);
-  color: var(--tf-sidebar-text);
-  font-size: var(--tf-text-sm);
-  font-weight: var(--tf-font-medium);
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  color: #334155;
+  font-size: 13.5px;
+  font-weight: 500;
   text-decoration: none;
-  transition: background-color var(--tf-transition), color var(--tf-transition);
+  transition: background-color 0.15s ease, color 0.15s ease;
   cursor: pointer;
   border: none;
   background: none;
   width: 100%;
   text-align: left;
   white-space: nowrap;
+  user-select: none;
 }
 
 .tf-nav-link:hover {
-  background-color: var(--tf-sidebar-item-hover);
-  color: var(--tf-white);
+  background-color: #f8fafc;
+  color: #0f172a;
   text-decoration: none;
 }
 
+/* Active Menu Item Styling — Matching the "Tổng quan" Pill in Reference Image */
 .tf-nav-link.active,
-.tf-nav-link.tf-nav-active {
-  background-color: var(--tf-sidebar-item-active);
-  color: var(--tf-white);
+.tf-nav-link.tf-nav-active,
+.tf-nav-item.is-active > .tf-nav-link {
+  background-color: #dbeafe !important;
+  color: #1d4ed8 !important;
+  font-weight: 600 !important;
 }
 
 .tf-nav-link.active .tf-nav-icon,
-.tf-nav-link.tf-nav-active .tf-nav-icon {
-  color: #818cf8; /* Indigo-400 */
+.tf-nav-link.tf-nav-active .tf-nav-icon,
+.tf-nav-item.is-active > .tf-nav-link .tf-nav-icon {
+  color: #1d4ed8 !important;
+}
+
+.tf-nav-link.active .tf-nav-chevron,
+.tf-nav-link.tf-nav-active .tf-nav-chevron,
+.tf-nav-item.is-active > .tf-nav-link .tf-nav-chevron {
+  color: #1d4ed8 !important;
+  opacity: 0.9;
 }
 
 .tf-nav-icon {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
   flex-shrink: 0;
-  opacity: 0.8;
-  color: var(--tf-gray-400);
-  transition: color var(--tf-transition);
-  display: flex;
+  color: #64748b;
+  transition: color 0.15s ease;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
+.tf-nav-icon svg {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
+  flex-shrink: 0;
+}
+
 .tf-nav-link:hover .tf-nav-icon {
-  color: var(--tf-gray-200);
-  opacity: 1;
+  color: #1e293b;
 }
 
 .tf-nav-label {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: -0.01em;
 }
 
-.tf-nav-chevron {
+.tf-nav-chevron-wrap {
   margin-left: auto;
-  font-size: 10px;
-  opacity: 0.5;
-  transition: transform var(--tf-transition);
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
+  min-height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
-.tf-nav-chevron.expanded {
-  transform: rotate(180deg);
+.tf-nav-chevron {
+  width: 12px !important;
+  height: 12px !important;
+  min-width: 12px !important;
+  min-height: 12px !important;
+  max-width: 12px !important;
+  max-height: 12px !important;
+  color: #94a3b8;
+  opacity: 0.7;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.15s ease;
+  flex-shrink: 0;
 }
 
-/* Sub-items */
+.tf-nav-link:hover .tf-nav-chevron {
+  opacity: 1;
+  color: #475569;
+}
+
+.tf-nav-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+/* ============================================================
+   FLY-OUT SUBMENU (Desktop Hover Interaction & Positioning)
+   ============================================================ */
+@media (min-width: 1024px) {
+  .tf-sidebar,
+  .tf-sidebar-inner,
+  .tf-nav-scroll {
+    overflow: visible !important;
+  }
+
+  .tf-nav-item {
+    position: relative;
+  }
+
+  .tf-nav-flyout {
+    display: none;
+    position: absolute;
+    left: calc(100% + 12px);
+    top: 0;
+    z-index: 1050;
+    min-width: 215px;
+    background: #ffffff;
+    border: 1px solid var(--tf-sidebar-border);
+    border-radius: 10px;
+    box-shadow: 0 10px 25px -5px rgba(16, 24, 40, 0.12), 0 8px 10px -6px rgba(16, 24, 40, 0.04);
+    padding: 6px;
+    pointer-events: auto;
+  }
+
+  /* Seamless invisible hover bridge between sidebar item and flyout */
+  .tf-nav-flyout::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    bottom: -6px;
+    left: -16px;
+    width: 20px;
+    background: transparent;
+  }
+
+  /* Reveal flyout when hovering the parent nav item */
+  .tf-nav-item:hover > .tf-nav-flyout {
+    display: block;
+    animation: tfFlyoutFadeIn 0.16s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* Smart positioning for bottom items to avoid bottom viewport cutoff */
+  .tf-nav-item.align-bottom > .tf-nav-flyout {
+    top: auto;
+    bottom: 0;
+  }
+
+  /* Hide inline accordion on desktop so flyout remains the single elegant submenu */
+  .tf-nav-sub {
+    display: none !important;
+  }
+
+  @keyframes tfFlyoutFadeIn {
+    from {
+      opacity: 0;
+      transform: translateX(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+}
+
+@media (max-width: 1023px) {
+  .tf-nav-flyout {
+    display: none !important;
+  }
+}
+
+.tf-nav-flyout-header {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 4px;
+}
+
+.tf-nav-flyout-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tf-flyout-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475467;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.tf-flyout-link:hover {
+  background-color: #f8fafc;
+  color: #101828;
+  text-decoration: none;
+}
+
+.tf-flyout-link.active {
+  background-color: #eff6ff !important;
+  color: #1d4ed8 !important;
+  font-weight: 600 !important;
+}
+
+.tf-flyout-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: #94a3b8;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.tf-flyout-link:hover .tf-flyout-dot {
+  background-color: #475569;
+}
+
+.tf-flyout-link.active .tf-flyout-dot {
+  background-color: #2563eb;
+  transform: scale(1.2);
+}
+
+/* ============================================================
+   INLINE SUBMENU (Mobile / Collapsible Accordion Toggle)
+   ============================================================ */
 .tf-nav-sub {
   overflow: hidden;
   max-height: 0;
-  transition: max-height var(--tf-transition-slow);
+  transition: max-height 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .tf-nav-sub.expanded {
-  max-height: 300px;
+  max-height: 340px;
 }
 
 .tf-nav-sub-item {
   display: block;
-  margin: 1px var(--tf-space-2) 1px calc(var(--tf-space-2) + 26px);
+  margin: 1px 0 1px 24px;
 }
 
 .tf-nav-sub-link {
   display: flex;
   align-items: center;
-  gap: var(--tf-space-2);
-  padding: 6px var(--tf-space-3);
-  border-radius: var(--tf-radius-sm);
-  color: #64748b;
-  font-size: var(--tf-text-sm);
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 6px;
+  color: #475467;
+  font-size: 13px;
+  font-weight: 500;
   text-decoration: none;
-  transition: color var(--tf-transition), background-color var(--tf-transition);
+  transition: color 0.15s ease, background-color 0.15s ease;
 }
 
 .tf-nav-sub-link:hover {
-  color: var(--tf-white);
-  background-color: var(--tf-sidebar-item-hover);
+  color: #101828;
+  background-color: #f8fafc;
   text-decoration: none;
 }
 
 .tf-nav-sub-link.active {
-  color: #a5b4fc; /* Indigo-300 */
-  background-color: rgba(99,102,241,0.12);
+  color: #1d4ed8 !important;
+  background-color: #eff6ff !important;
+  font-weight: 600 !important;
 }
 
 .tf-nav-sub-dot {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background-color: currentColor;
+  background-color: #94a3b8;
   flex-shrink: 0;
-  opacity: 0.5;
+}
+
+.tf-nav-sub-link.active .tf-nav-sub-dot {
+  background-color: #2563eb;
+}
+
+/* ============================================================
+   SIDEBAR BOTTOM PINNED DOCK ("Bảng điều khiển")
+   ============================================================ */
+.tf-nav-bottom {
+  border-top: 1px solid var(--tf-sidebar-border);
+  padding: 8px;
+  background: var(--tf-sidebar-bg);
+  flex-shrink: 0;
+}
+
+.tf-nav-bottom-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  color: #334155;
+  font-size: 13.5px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+}
+
+.tf-nav-bottom-item:hover {
+  background-color: #f8fafc;
+  color: #0f172a;
+  text-decoration: none;
 }
 
 /* Sidebar mobile toggle */
@@ -510,6 +751,39 @@ h1:focus { outline: none; }
   height: 24px;
   background-color: var(--tf-gray-200);
   margin: 0 var(--tf-space-1);
+}
+
+.tf-topbar-warehouse-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.tf-topbar-warehouse-pill:hover {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.tf-topbar-badge-dot {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #ef4444;
+  border: 1.5px solid #ffffff;
 }
 
 /* User menu in topbar */

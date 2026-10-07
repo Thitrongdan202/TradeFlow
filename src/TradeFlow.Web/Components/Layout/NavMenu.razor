@@ -2,377 +2,586 @@
 @implements IDisposable
 @inject NavigationManager Nav
 
-<nav class="tf-sidebar-inner">
-    @* Brand *@
+<nav class="tf-sidebar-inner" style="display:flex; flex-direction:column; height:100%;">
+    @* Brand Header — Circular Badge & Modern Identity *@
     <a href="/" class="tf-brand">
         <div class="tf-brand-logo">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 3h7v7H3V3z" fill="white"/>
-                <path d="M14 3h7v7h-7V3z" fill="white" opacity="0.6"/>
-                <path d="M3 14h7v7H3v-7z" fill="white" opacity="0.6"/>
-                <path d="M14 14h7v7h-7v-7z" fill="white"/>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
             </svg>
         </div>
         <div class="tf-brand-text">
             <span class="tf-brand-name">TradeFlow</span>
-            <span class="tf-brand-tagline">Quản lý thương mại</span>
+            <span class="tf-brand-tagline">ERP &amp; Bán hàng</span>
         </div>
     </a>
 
-    @* Nav items *@
+    @* Navigation Menu Items *@
     <div class="tf-nav-scroll">
 
-        @* ---- TỔNG QUAN ---- *@
-        <div class="tf-nav-section">
-            <div class="tf-nav-item">
-                <NavLink class="tf-nav-link" href="" Match="NavLinkMatch.All" ActiveClass="tf-nav-active">
-                    <span class="tf-nav-icon">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-                            <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-                        </svg>
-                    </span>
-                    <span class="tf-nav-label">Tổng quan</span>
-                </NavLink>
-            </div>
-        </div>
-
-        @* ---- DANH MỤC ---- *@
-        <div class="tf-nav-section">
-            <div class="tf-nav-section-label">Danh mục</div>
-
-            <div class="tf-nav-item">
-                <button type="button" class="tf-nav-link" @onclick="ToggleCatalog">
-                    <span class="tf-nav-icon">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="8" y1="6" x2="21" y2="6"/>
-                            <line x1="8" y1="12" x2="21" y2="12"/>
-                            <line x1="8" y1="18" x2="21" y2="18"/>
-                            <line x1="3" y1="6" x2="3.01" y2="6"/>
-                            <line x1="3" y1="12" x2="3.01" y2="12"/>
-                            <line x1="3" y1="18" x2="3.01" y2="18"/>
-                        </svg>
-                    </span>
-                    <span class="tf-nav-label">Danh mục</span>
-                    <svg class="tf-nav-chevron @(IsCatalogOpen ? "expanded" : "")" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="6 9 12 15 18 9"/>
+        @* 1. TỔNG QUAN (DASHBOARD) *@
+        <div class="tf-nav-item">
+            <NavLink class="tf-nav-link" href="" Match="NavLinkMatch.All" ActiveClass="active">
+                <span class="tf-nav-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+                        <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+                        <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1.5"/>
                     </svg>
-                </button>
-                <div class="tf-nav-sub @(IsCatalogOpen ? "expanded" : "")">
-                    <AuthorizeView Policy="Permission:Products:View">
-                        <div class="tf-nav-sub-item">
-                            <NavLink class="tf-nav-sub-link" href="/danh-muc/san-pham" ActiveClass="active">
-                                <span class="tf-nav-sub-dot"></span>Sản phẩm
-                            </NavLink>
-                        </div>
-                    </AuthorizeView>
-                    <AuthorizeView Policy="Permission:ProductCategories:View">
-                        <div class="tf-nav-sub-item">
-                            <NavLink class="tf-nav-sub-link" href="/danh-muc/danh-muc-san-pham" ActiveClass="active">
-                                <span class="tf-nav-sub-dot"></span>Danh mục sản phẩm
-                            </NavLink>
-                        </div>
-                    </AuthorizeView>
-                    <AuthorizeView Policy="Permission:UnitOfMeasures:View">
-                        <div class="tf-nav-sub-item">
-                            <NavLink class="tf-nav-sub-link" href="/danh-muc/don-vi-tinh" ActiveClass="active">
-                                <span class="tf-nav-sub-dot"></span>Đơn vị tính
-                            </NavLink>
-                        </div>
-                    </AuthorizeView>
-                    <AuthorizeView Policy="Permission:Currencies:View">
-                        <div class="tf-nav-sub-item">
-                            <NavLink class="tf-nav-sub-link" href="/danh-muc/loai-tien" ActiveClass="active">
-                                <span class="tf-nav-sub-dot"></span>Loại tiền
-                            </NavLink>
-                        </div>
-                    </AuthorizeView>
-                </div>
-            </div>
+                </span>
+                <span class="tf-nav-label">Tổng quan</span>
+            </NavLink>
         </div>
 
-        @* ---- ĐỐI TÁC ---- *@
-        <div class="tf-nav-section">
-            <div class="tf-nav-section-label">Đối tác</div>
-
-            <div class="tf-nav-item">
-                <button type="button" class="tf-nav-link" @onclick="TogglePartners">
-                    <span class="tf-nav-icon">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-                            <circle cx="9" cy="7" r="4"/>
-                            <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
-                        </svg>
-                    </span>
-                    <span class="tf-nav-label">Đối tác</span>
-                    <svg class="tf-nav-chevron @(IsPartnersOpen ? "expanded" : "")" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="6 9 12 15 18 9"/>
+        @* 2. BÁN HÀNG *@
+        <div class="tf-nav-item @(IsSectionActive("ban-hang") ? "is-active" : "")">
+            <button type="button" class="tf-nav-link @(IsSectionActive("ban-hang") ? "active" : "")" @onclick="ToggleSales">
+                <span class="tf-nav-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="9" cy="21" r="1"/>
+                        <circle cx="20" cy="21" r="1"/>
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
                     </svg>
-                </button>
-                <div class="tf-nav-sub @(IsPartnersOpen ? "expanded" : "")">
-                    <AuthorizeView Policy="Permission:Customers:View">
-                        <div class="tf-nav-sub-item">
-                            <NavLink class="tf-nav-sub-link" href="/doi-tac/khach-hang" ActiveClass="active">
-                                <span class="tf-nav-sub-dot"></span>Khách hàng
-                            </NavLink>
-                        </div>
-                    </AuthorizeView>
-                    <AuthorizeView Policy="Permission:Suppliers:View">
-                        <div class="tf-nav-sub-item">
-                            <NavLink class="tf-nav-sub-link" href="/doi-tac/nha-cung-cap" ActiveClass="active">
-                                <span class="tf-nav-sub-dot"></span>Nhà cung cấp
-                            </NavLink>
-                        </div>
-                    </AuthorizeView>
-                </div>
-            </div>
-        </div>
-
-        @* ---- KHO HÀNG ---- *@
-        <div class="tf-nav-section">
-            <div class="tf-nav-section-label">Kho hàng</div>
-
-            <div class="tf-nav-item">
-                <button type="button" class="tf-nav-link" @onclick="ToggleWarehouse">
-                    <span class="tf-nav-icon">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M22 2H2v5l10 5 10-5V2z"/><path d="M12 22V12"/><path d="M2 7v15h20V7"/>
-                        </svg>
-                    </span>
-                    <span class="tf-nav-label">Kho hàng</span>
-                    <svg class="tf-nav-chevron @(IsWarehouseOpen ? "expanded" : "")" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="6 9 12 15 18 9"/>
+                </span>
+                <span class="tf-nav-label">Bán hàng</span>
+                <span class="tf-nav-chevron-wrap">
+                    <svg class="tf-nav-chevron @(IsSalesOpen ? "expanded" : "")" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"/>
                     </svg>
-                </button>
-                <div class="tf-nav-sub @(IsWarehouseOpen ? "expanded" : "")">
-                    <AuthorizeView Policy="Permission:Warehouses:View">
-                        <div class="tf-nav-sub-item">
-                            <NavLink class="tf-nav-sub-link" href="/kho-hang" ActiveClass="active">
-                                <span class="tf-nav-sub-dot"></span>Kho hàng
-                            </NavLink>
-                        </div>
-                    </AuthorizeView>
-                </div>
-            </div>
-        </div>
+                </span>
+            </button>
 
-        @* ---- BẢNG GIÁ (Phase 4) ---- *@
-        <div class="tf-nav-section">
-            <div class="tf-nav-section-label">Bảng giá</div>
-
-            <div class="tf-nav-item">
-                <button type="button" class="tf-nav-link" @onclick="TogglePricing">
-                    <span class="tf-nav-icon">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
-                        </svg>
-                    </span>
-                    <span class="tf-nav-label">Bảng giá</span>
-                    <svg class="tf-nav-chevron @(IsPricingOpen ? "expanded" : "")" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="6 9 12 15 18 9"/>
-                    </svg>
-                </button>
-                <div class="tf-nav-sub @(IsPricingOpen ? "expanded" : "")">
-                    <AuthorizeView Policy="Permission:PriceLists:View">
-                        <div class="tf-nav-sub-item">
-                            <NavLink class="tf-nav-sub-link" href="/bang-gia" Match="NavLinkMatch.All" ActiveClass="active">
-                                <span class="tf-nav-sub-dot"></span>Danh sách bảng giá
-                            </NavLink>
-                        </div>
-                    </AuthorizeView>
-                    <AuthorizeView Policy="Permission:PriceLists:Create">
-                        <div class="tf-nav-sub-item">
-                            <NavLink class="tf-nav-sub-link" href="/bang-gia/nhap-excel" ActiveClass="active">
-                                <span class="tf-nav-sub-dot"></span>Nhập từ Excel
-                            </NavLink>
-                        </div>
-                    </AuthorizeView>
-                    <AuthorizeView Policy="Permission:PriceLists:View">
-                        <div class="tf-nav-sub-item">
-                            <NavLink class="tf-nav-sub-link" href="/bang-gia/so-sanh" ActiveClass="active">
-                                <span class="tf-nav-sub-dot"></span>So sánh bảng giá
-                            </NavLink>
-                        </div>
-                        <div class="tf-nav-sub-item">
-                            <NavLink class="tf-nav-sub-link" href="/bang-gia/lich-su" ActiveClass="active">
-                                <span class="tf-nav-sub-dot"></span>Lịch sử giá SP
-                            </NavLink>
-                        </div>
-                    </AuthorizeView>
-                </div>
-            </div>
-        </div>
-
-
-        @* ---- BÁN HÀNG (Phase 5) ---- *@
-        <div class="tf-nav-section">
-            <div class="tf-nav-section-label">Bán hàng</div>
-
-            <div class="tf-nav-item">
-                <button type="button" class="tf-nav-link" @onclick="ToggleSales">
-                    <span class="tf-nav-icon">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle>
-                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-                        </svg>
-                    </span>
-                    <span class="tf-nav-label">Bán hàng</span>
-                    <svg class="tf-nav-chevron @(IsSalesOpen ? "expanded" : "")" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-                </button>
-                <div class="tf-nav-sub @(IsSalesOpen ? "expanded" : "")">
+            @* Desktop Fly-out Submenu *@
+            <div class="tf-nav-flyout">
+                <div class="tf-nav-flyout-header">Bán hàng</div>
+                <div class="tf-nav-flyout-body">
                     <AuthorizeView Policy="Permission:Quotations:View">
-                        <div class="tf-nav-sub-item">
-                            <NavLink class="tf-nav-sub-link" href="/ban-hang/bao-gia" Match="NavLinkMatch.All" ActiveClass="active">
-                                <span class="tf-nav-sub-dot"></span>Báo giá
-                            </NavLink>
-                        </div>
-                    </AuthorizeView>
-                    <div class="tf-nav-sub-item">
-                        <NavLink class="tf-nav-sub-link" href="/ban-hang/don-ban-hang" Match="NavLinkMatch.All" ActiveClass="active">
-                            <span class="tf-nav-sub-dot"></span>Đơn bán hàng
+                        <NavLink class="tf-flyout-link" href="/ban-hang/bao-gia" Match="NavLinkMatch.All" ActiveClass="active">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Báo giá</span>
                         </NavLink>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="tf-nav-item">
-                <button type="button" class="tf-nav-link" @onclick="ToggleInvoice">
-                    <span class="tf-nav-icon">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                            <polyline points="14 2 14 8 20 8"></polyline>
-                            <line x1="16" y1="13" x2="8" y2="13"></line>
-                            <line x1="16" y1="17" x2="8" y2="17"></line>
-                            <polyline points="10 9 9 9 8 9"></polyline>
-                        </svg>
-                    </span>
-                    <span class="tf-nav-label">Hóa đơn</span>
-                    <svg class="tf-nav-chevron @(IsInvoiceOpen ? "expanded" : "")" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-                </button>
-                <div class="tf-nav-sub @(IsInvoiceOpen ? "expanded" : "")">
-                    <div class="tf-nav-sub-item">
-                        <NavLink class="tf-nav-sub-link" href="/hoa-don" Match="NavLinkMatch.All" ActiveClass="active">
-                            <span class="tf-nav-sub-dot"></span>Danh sách hóa đơn
-                        </NavLink>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        @* ---- HỒ SƠ & CHỨNG TỪ (Phase 6) ---- *@
-        <div class="tf-nav-section">
-            <div class="tf-nav-section-label">Hồ sơ & Chứng từ</div>
-
-            <div class="tf-nav-item">
-                <button type="button" class="tf-nav-link" @onclick="ToggleDocuments">
-                    <span class="tf-nav-icon">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                            <polyline points="14 2 14 8 20 8"></polyline>
-                            <line x1="16" y1="13" x2="8" y2="13"></line>
-                            <line x1="16" y1="17" x2="8" y2="17"></line>
-                            <polyline points="10 9 9 9 8 9"></polyline>
-                        </svg>
-                    </span>
-                    <span class="tf-nav-label">Tài liệu</span>
-                    <svg class="tf-nav-chevron @(IsDocumentsOpen ? "expanded" : "")" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-                </button>
-                <div class="tf-nav-sub @(IsDocumentsOpen ? "expanded" : "")">
-                    <AuthorizeView Policy="Permission:Documents:View">
-                        <div class="tf-nav-sub-item">
-                            <NavLink class="tf-nav-sub-link" href="/tai-lieu" Match="NavLinkMatch.All" ActiveClass="active">
-                                <span class="tf-nav-sub-dot"></span>Tài liệu lưu trữ
-                            </NavLink>
-                        </div>
-                        <div class="tf-nav-sub-item">
-                            <NavLink class="tf-nav-sub-link" href="/tai-lieu/danh-muc" Match="NavLinkMatch.All" ActiveClass="active">
-                                <span class="tf-nav-sub-dot"></span>Danh mục chứng từ
-                            </NavLink>
-                        </div>
                     </AuthorizeView>
-                </div>
-            </div>
-        </div>
-
-        @* ---- CÀI ĐẶT ---- *@
-        <div class="tf-nav-section">
-            <div class="tf-nav-section-label">Hệ thống</div>
-
-            <div class="tf-nav-item">
-                <NavLink class="tf-nav-link" href="/cai-dat" Match="NavLinkMatch.All" ActiveClass="tf-nav-active">
-                    <span class="tf-nav-icon">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="3"/>
-                            <path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/>
-                        </svg>
-                    </span>
-                    <span class="tf-nav-label">Cài đặt</span>
-                </NavLink>
-            </div>
-
-            <AuthorizeView Policy="Permission:Users:View">
-                <div class="tf-nav-item">
-                    <NavLink class="tf-nav-link" href="/cai-dat/an-ninh" ActiveClass="tf-nav-active">
-                        <span class="tf-nav-icon">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                            </svg>
-                        </span>
-                        <span class="tf-nav-label">An ninh &amp; Chữ ký số</span>
+                    <NavLink class="tf-flyout-link" href="/ban-hang/don-ban-hang" Match="NavLinkMatch.All" ActiveClass="active">
+                        <span class="tf-flyout-dot"></span>
+                        <span>Đơn bán hàng</span>
                     </NavLink>
                 </div>
-            </AuthorizeView>
+            </div>
+
+            @* Mobile / Click Accordion Submenu *@
+            <div class="tf-nav-sub @(IsSalesOpen ? "expanded" : "")">
+                <AuthorizeView Policy="Permission:Quotations:View">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/ban-hang/bao-gia" Match="NavLinkMatch.All" ActiveClass="active">
+                            <span class="tf-nav-sub-dot"></span>Báo giá
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+                <div class="tf-nav-sub-item">
+                    <NavLink class="tf-nav-sub-link" href="/ban-hang/don-ban-hang" Match="NavLinkMatch.All" ActiveClass="active">
+                        <span class="tf-nav-sub-dot"></span>Đơn bán hàng
+                    </NavLink>
+                </div>
+            </div>
         </div>
 
+        @* 3. HÓA ĐƠN *@
+        <div class="tf-nav-item @(IsSectionActive("hoa-don") ? "is-active" : "")">
+            <button type="button" class="tf-nav-link @(IsSectionActive("hoa-don") ? "active" : "")" @onclick="ToggleInvoice">
+                <span class="tf-nav-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                </span>
+                <span class="tf-nav-label">Hóa đơn</span>
+                <span class="tf-nav-chevron-wrap">
+                    <svg class="tf-nav-chevron @(IsInvoiceOpen ? "expanded" : "")" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </span>
+            </button>
+
+            @* Desktop Fly-out Submenu *@
+            <div class="tf-nav-flyout">
+                <div class="tf-nav-flyout-header">Hóa đơn</div>
+                <div class="tf-nav-flyout-body">
+                    <NavLink class="tf-flyout-link" href="/hoa-don" Match="NavLinkMatch.All" ActiveClass="active">
+                        <span class="tf-flyout-dot"></span>
+                        <span>Danh sách hóa đơn</span>
+                    </NavLink>
+                </div>
+            </div>
+
+            @* Mobile / Click Accordion Submenu *@
+            <div class="tf-nav-sub @(IsInvoiceOpen ? "expanded" : "")">
+                <div class="tf-nav-sub-item">
+                    <NavLink class="tf-nav-sub-link" href="/hoa-don" Match="NavLinkMatch.All" ActiveClass="active">
+                        <span class="tf-nav-sub-dot"></span>Danh sách hóa đơn
+                    </NavLink>
+                </div>
+            </div>
+        </div>
+
+        @* 4. SẢN PHẨM & DANH MỤC *@
+        <div class="tf-nav-item @(IsSectionActive("danh-muc") ? "is-active" : "")">
+            <button type="button" class="tf-nav-link @(IsSectionActive("danh-muc") ? "active" : "")" @onclick="ToggleCatalog">
+                <span class="tf-nav-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                        <line x1="12" y1="22.08" x2="12" y2="12"/>
+                    </svg>
+                </span>
+                <span class="tf-nav-label">Sản phẩm</span>
+                <span class="tf-nav-chevron-wrap">
+                    <svg class="tf-nav-chevron @(IsCatalogOpen ? "expanded" : "")" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </span>
+            </button>
+
+            @* Desktop Fly-out Submenu *@
+            <div class="tf-nav-flyout">
+                <div class="tf-nav-flyout-header">Sản phẩm &amp; Danh mục</div>
+                <div class="tf-nav-flyout-body">
+                    <AuthorizeView Policy="Permission:Products:View">
+                        <NavLink class="tf-flyout-link" href="/danh-muc/san-pham" ActiveClass="active">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Danh sách sản phẩm</span>
+                        </NavLink>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permission:ProductCategories:View">
+                        <NavLink class="tf-flyout-link" href="/danh-muc/danh-muc-san-pham" ActiveClass="active">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Danh mục sản phẩm</span>
+                        </NavLink>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permission:UnitOfMeasures:View">
+                        <NavLink class="tf-flyout-link" href="/danh-muc/don-vi-tinh" ActiveClass="active">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Đơn vị tính</span>
+                        </NavLink>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permission:Currencies:View">
+                        <NavLink class="tf-flyout-link" href="/danh-muc/loai-tien" ActiveClass="active">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Loại tiền tệ</span>
+                        </NavLink>
+                    </AuthorizeView>
+                </div>
+            </div>
+
+            @* Mobile / Click Accordion Submenu *@
+            <div class="tf-nav-sub @(IsCatalogOpen ? "expanded" : "")">
+                <AuthorizeView Policy="Permission:Products:View">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/danh-muc/san-pham" ActiveClass="active">
+                            <span class="tf-nav-sub-dot"></span>Danh sách sản phẩm
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+                <AuthorizeView Policy="Permission:ProductCategories:View">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/danh-muc/danh-muc-san-pham" ActiveClass="active">
+                            <span class="tf-nav-sub-dot"></span>Danh mục sản phẩm
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+                <AuthorizeView Policy="Permission:UnitOfMeasures:View">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/danh-muc/don-vi-tinh" ActiveClass="active">
+                            <span class="tf-nav-sub-dot"></span>Đơn vị tính
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+                <AuthorizeView Policy="Permission:Currencies:View">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/danh-muc/loai-tien" ActiveClass="active">
+                            <span class="tf-nav-sub-dot"></span>Loại tiền
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+            </div>
+        </div>
+
+        @* 5. BẢNG GIÁ *@
+        <div class="tf-nav-item @(IsSectionActive("bang-gia") ? "is-active" : "")">
+            <button type="button" class="tf-nav-link @(IsSectionActive("bang-gia") ? "active" : "")" @onclick="TogglePricing">
+                <span class="tf-nav-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                        <line x1="7" y1="7" x2="7.01" y2="7"/>
+                    </svg>
+                </span>
+                <span class="tf-nav-label">Bảng giá</span>
+                <span class="tf-nav-chevron-wrap">
+                    <svg class="tf-nav-chevron @(IsPricingOpen ? "expanded" : "")" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </span>
+            </button>
+
+            @* Desktop Fly-out Submenu *@
+            <div class="tf-nav-flyout">
+                <div class="tf-nav-flyout-header">Bảng giá</div>
+                <div class="tf-nav-flyout-body">
+                    <AuthorizeView Policy="Permission:PriceLists:View">
+                        <NavLink class="tf-flyout-link" href="/bang-gia" Match="NavLinkMatch.All" ActiveClass="active">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Danh sách bảng giá</span>
+                        </NavLink>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permission:PriceLists:Create">
+                        <NavLink class="tf-flyout-link" href="/bang-gia/nhap-excel" ActiveClass="active">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Nhập từ Excel</span>
+                        </NavLink>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permission:PriceLists:View">
+                        <NavLink class="tf-flyout-link" href="/bang-gia/so-sanh" ActiveClass="active">
+                            <span class="tf-flyout-dot"></span>
+                            <span>So sánh bảng giá</span>
+                        </NavLink>
+                        <NavLink class="tf-flyout-link" href="/bang-gia/lich-su" ActiveClass="active">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Lịch sử giá SP</span>
+                        </NavLink>
+                    </AuthorizeView>
+                </div>
+            </div>
+
+            @* Mobile / Click Accordion Submenu *@
+            <div class="tf-nav-sub @(IsPricingOpen ? "expanded" : "")">
+                <AuthorizeView Policy="Permission:PriceLists:View">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/bang-gia" Match="NavLinkMatch.All" ActiveClass="active">
+                            <span class="tf-nav-sub-dot"></span>Danh sách bảng giá
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+                <AuthorizeView Policy="Permission:PriceLists:Create">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/bang-gia/nhap-excel" ActiveClass="active">
+                            <span class="tf-nav-sub-dot"></span>Nhập từ Excel
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+                <AuthorizeView Policy="Permission:PriceLists:View">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/bang-gia/so-sanh" ActiveClass="active">
+                            <span class="tf-nav-sub-dot"></span>So sánh bảng giá
+                        </NavLink>
+                    </div>
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/bang-gia/lich-su" ActiveClass="active">
+                            <span class="tf-nav-sub-dot"></span>Lịch sử giá SP
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+            </div>
+        </div>
+
+        @* 6. KHO HÀNG *@
+        <div class="tf-nav-item @(IsSectionActive("kho") ? "is-active" : "")">
+            <button type="button" class="tf-nav-link @(IsSectionActive("kho") ? "active" : "")" @onclick="ToggleWarehouse">
+                <span class="tf-nav-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                        <polyline points="9 22 9 12 15 12 15 22"/>
+                    </svg>
+                </span>
+                <span class="tf-nav-label">Kho hàng</span>
+                <span class="tf-nav-chevron-wrap">
+                    <svg class="tf-nav-chevron @(IsWarehouseOpen ? "expanded" : "")" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </span>
+            </button>
+
+            @* Desktop Fly-out Submenu *@
+            <div class="tf-nav-flyout">
+                <div class="tf-nav-flyout-header">Kho hàng</div>
+                <div class="tf-nav-flyout-body">
+                    <AuthorizeView Policy="Permission:Warehouses:View">
+                        <NavLink class="tf-flyout-link" href="/kho-hang" ActiveClass="active">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Danh sách kho hàng</span>
+                        </NavLink>
+                    </AuthorizeView>
+                </div>
+            </div>
+
+            @* Mobile / Click Accordion Submenu *@
+            <div class="tf-nav-sub @(IsWarehouseOpen ? "expanded" : "")">
+                <AuthorizeView Policy="Permission:Warehouses:View">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/kho-hang" ActiveClass="active">
+                            <span class="tf-nav-sub-dot"></span>Danh sách kho
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+            </div>
+        </div>
+
+        @* 7. ĐỐI TÁC *@
+        <div class="tf-nav-item @(IsSectionActive("doi-tac") ? "is-active" : "")">
+            <button type="button" class="tf-nav-link @(IsSectionActive("doi-tac") ? "active" : "")" @onclick="TogglePartners">
+                <span class="tf-nav-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                </span>
+                <span class="tf-nav-label">Đối tác</span>
+                <span class="tf-nav-chevron-wrap">
+                    <svg class="tf-nav-chevron @(IsPartnersOpen ? "expanded" : "")" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </span>
+            </button>
+
+            @* Desktop Fly-out Submenu *@
+            <div class="tf-nav-flyout">
+                <div class="tf-nav-flyout-header">Đối tác &amp; Khách hàng</div>
+                <div class="tf-nav-flyout-body">
+                    <AuthorizeView Policy="Permission:Customers:View">
+                        <NavLink class="tf-flyout-link" href="/doi-tac/khach-hang" ActiveClass="active">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Khách hàng</span>
+                        </NavLink>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permission:Suppliers:View">
+                        <NavLink class="tf-flyout-link" href="/doi-tac/nha-cung-cap" ActiveClass="active">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Nhà cung cấp</span>
+                        </NavLink>
+                    </AuthorizeView>
+                </div>
+            </div>
+
+            @* Mobile / Click Accordion Submenu *@
+            <div class="tf-nav-sub @(IsPartnersOpen ? "expanded" : "")">
+                <AuthorizeView Policy="Permission:Customers:View">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/doi-tac/khach-hang" ActiveClass="active">
+                            <span class="tf-nav-sub-dot"></span>Khách hàng
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+                <AuthorizeView Policy="Permission:Suppliers:View">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/doi-tac/nha-cung-cap" ActiveClass="active">
+                            <span class="tf-nav-sub-dot"></span>Nhà cung cấp
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+            </div>
+        </div>
+
+        @* 8. HỒ SƠ & CHỨNG TỪ *@
+        <div class="tf-nav-item @(IsSectionActive("tai-lieu") ? "is-active" : "")">
+            <button type="button" class="tf-nav-link @(IsSectionActive("tai-lieu") ? "active" : "")" @onclick="ToggleDocuments">
+                <span class="tf-nav-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                    </svg>
+                </span>
+                <span class="tf-nav-label">Chứng từ</span>
+                <span class="tf-nav-chevron-wrap">
+                    <svg class="tf-nav-chevron @(IsDocumentsOpen ? "expanded" : "")" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </span>
+            </button>
+
+            @* Desktop Fly-out Submenu *@
+            <div class="tf-nav-flyout">
+                <div class="tf-nav-flyout-header">Hồ sơ &amp; Chứng từ</div>
+                <div class="tf-nav-flyout-body">
+                    <AuthorizeView Policy="Permission:Documents:View">
+                        <NavLink class="tf-flyout-link" href="/tai-lieu" Match="NavLinkMatch.All" ActiveClass="active">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Tài liệu lưu trữ</span>
+                        </NavLink>
+                        <NavLink class="tf-flyout-link" href="/tai-lieu/danh-muc" Match="NavLinkMatch.All" ActiveClass="active">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Danh mục chứng từ</span>
+                        </NavLink>
+                    </AuthorizeView>
+                </div>
+            </div>
+
+            @* Mobile / Click Accordion Submenu *@
+            <div class="tf-nav-sub @(IsDocumentsOpen ? "expanded" : "")">
+                <AuthorizeView Policy="Permission:Documents:View">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/tai-lieu" Match="NavLinkMatch.All" ActiveClass="active">
+                            <span class="tf-nav-sub-dot"></span>Tài liệu lưu trữ
+                        </NavLink>
+                    </div>
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/tai-lieu/danh-muc" Match="NavLinkMatch.All" ActiveClass="active">
+                            <span class="tf-nav-sub-dot"></span>Danh mục chứng từ
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+            </div>
+        </div>
+
+        @* 9. CÀI ĐẶT & HỆ THỐNG *@
+        <div class="tf-nav-item align-bottom @(IsSectionActive("cai-dat") || IsSectionActive("ho-tro") || IsSectionActive("ho-tro-ky-thuat") ? "is-active" : "")">
+            <button type="button" class="tf-nav-link @(IsSectionActive("cai-dat") || IsSectionActive("ho-tro") || IsSectionActive("ho-tro-ky-thuat") ? "active" : "")" @onclick="ToggleSettings">
+                <span class="tf-nav-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                </span>
+                <span class="tf-nav-label">Cài đặt</span>
+                <span class="tf-nav-chevron-wrap">
+                    <svg class="tf-nav-chevron @(IsSettingsOpen ? "expanded" : "")" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </span>
+            </button>
+
+            @* Desktop Fly-out Submenu *@
+            <div class="tf-nav-flyout">
+                <div class="tf-nav-flyout-header">Cài đặt &amp; Quản trị</div>
+                <div class="tf-nav-flyout-body">
+                    <NavLink class="tf-flyout-link" href="/cai-dat" Match="NavLinkMatch.All" ActiveClass="active">
+                        <span class="tf-flyout-dot"></span>
+                        <span>Cài đặt hệ thống</span>
+                    </NavLink>
+                    <AuthorizeView Policy="Permission:Users:View">
+                        <NavLink class="tf-flyout-link" href="/cai-dat/an-ninh" ActiveClass="active">
+                            <span class="tf-flyout-dot"></span>
+                            <span>An ninh &amp; Chữ ký số</span>
+                        </NavLink>
+                        <NavLink class="tf-flyout-link" href="/cai-dat/nguoi-dung" ActiveClass="active">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Quản lý người dùng</span>
+                        </NavLink>
+                        <NavLink class="tf-flyout-link" href="/cai-dat/nhat-ky" ActiveClass="active">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Nhật ký kiểm toán</span>
+                        </NavLink>
+                    </AuthorizeView>
+                    <NavLink class="tf-flyout-link" href="/cai-dat/ho-tro" ActiveClass="active">
+                        <span class="tf-flyout-dot"></span>
+                        <span>Hỗ trợ kỹ thuật</span>
+                    </NavLink>
+                </div>
+            </div>
+
+            @* Mobile / Click Accordion Submenu *@
+            <div class="tf-nav-sub @(IsSettingsOpen ? "expanded" : "")">
+                <div class="tf-nav-sub-item">
+                    <NavLink class="tf-nav-sub-link" href="/cai-dat" Match="NavLinkMatch.All" ActiveClass="active">
+                        <span class="tf-nav-sub-dot"></span>Cài đặt hệ thống
+                    </NavLink>
+                </div>
+                <AuthorizeView Policy="Permission:Users:View">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/cai-dat/an-ninh" ActiveClass="active">
+                            <span class="tf-nav-sub-dot"></span>An ninh &amp; Chữ ký số
+                        </NavLink>
+                    </div>
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/cai-dat/nguoi-dung" ActiveClass="active">
+                            <span class="tf-nav-sub-dot"></span>Người dùng
+                        </NavLink>
+                    </div>
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/cai-dat/nhat-ky" ActiveClass="active">
+                            <span class="tf-nav-sub-dot"></span>Nhật ký kiểm toán
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+                <div class="tf-nav-sub-item">
+                    <NavLink class="tf-nav-sub-link" href="/cai-dat/ho-tro" ActiveClass="active">
+                        <span class="tf-nav-sub-dot"></span>Hỗ trợ kỹ thuật
+                    </NavLink>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    @* Bottom Pinned Dock — Pinned "Bảng điều khiển" as shown in reference POS/ERP *@
+    <div class="tf-nav-bottom">
+        <NavLink href="/" class="tf-nav-bottom-item">
+            <span class="tf-nav-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/>
+                    <line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+            </span>
+            <span class="tf-nav-label">Bảng điều khiển</span>
+        </NavLink>
     </div>
 </nav>
 
 @code {
-    
-
-    private bool IsCatalogOpen { get; set; }
-    private bool IsPartnersOpen { get; set; }
-    private bool IsWarehouseOpen { get; set; }
-    private bool IsPricingOpen { get; set; }
     private bool IsSalesOpen { get; set; }
     private bool IsInvoiceOpen { get; set; }
+    private bool IsCatalogOpen { get; set; }
+    private bool IsPricingOpen { get; set; }
+    private bool IsWarehouseOpen { get; set; }
+    private bool IsPartnersOpen { get; set; }
     private bool IsDocumentsOpen { get; set; }
+    private bool IsSettingsOpen { get; set; }
 
     private string _currentUrl = "";
 
     protected override void OnInitialized()
     {
-        _currentUrl = Nav.ToBaseRelativePath(Nav.Uri);
+        _currentUrl = Nav.ToBaseRelativePath(Nav.Uri).TrimStart('/');
         AutoExpandSection(_currentUrl);
         Nav.LocationChanged += OnLocationChanged;
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        _currentUrl = Nav.ToBaseRelativePath(e.Location);
+        _currentUrl = Nav.ToBaseRelativePath(e.Location).TrimStart('/');
         AutoExpandSection(_currentUrl);
         StateHasChanged();
     }
 
-    private void AutoExpandSection(string url)
+    private bool IsSectionActive(string prefix)
     {
-        if (url.StartsWith("danh-muc")) IsCatalogOpen = true;
-        if (url.StartsWith("doi-tac")) IsPartnersOpen = true;
-        if (url.StartsWith("kho")) IsWarehouseOpen = true;
-        if (url.StartsWith("bang-gia")) IsPricingOpen = true;
-        if (url.StartsWith("ban-hang")) IsSalesOpen = true;
-        if (url.StartsWith("hoa-don")) IsInvoiceOpen = true;
-        if (url.StartsWith("tai-lieu")) IsDocumentsOpen = true;
+        if (string.IsNullOrEmpty(_currentUrl)) return false;
+        return _currentUrl.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
     }
 
-    private void ToggleCatalog() => IsCatalogOpen = !IsCatalogOpen;
-    private void TogglePartners() => IsPartnersOpen = !IsPartnersOpen;
-    private void ToggleWarehouse() => IsWarehouseOpen = !IsWarehouseOpen;
-    private void TogglePricing() => IsPricingOpen = !IsPricingOpen;
+    private void AutoExpandSection(string url)
+    {
+        if (url.StartsWith("ban-hang", StringComparison.OrdinalIgnoreCase)) IsSalesOpen = true;
+        if (url.StartsWith("hoa-don", StringComparison.OrdinalIgnoreCase)) IsInvoiceOpen = true;
+        if (url.StartsWith("danh-muc", StringComparison.OrdinalIgnoreCase)) IsCatalogOpen = true;
+        if (url.StartsWith("bang-gia", StringComparison.OrdinalIgnoreCase)) IsPricingOpen = true;
+        if (url.StartsWith("kho", StringComparison.OrdinalIgnoreCase)) IsWarehouseOpen = true;
+        if (url.StartsWith("doi-tac", StringComparison.OrdinalIgnoreCase)) IsPartnersOpen = true;
+        if (url.StartsWith("tai-lieu", StringComparison.OrdinalIgnoreCase)) IsDocumentsOpen = true;
+        if (url.StartsWith("cai-dat", StringComparison.OrdinalIgnoreCase) || url.StartsWith("ho-tro", StringComparison.OrdinalIgnoreCase)) IsSettingsOpen = true;
+    }
+
     private void ToggleSales() => IsSalesOpen = !IsSalesOpen;
     private void ToggleInvoice() => IsInvoiceOpen = !IsInvoiceOpen;
+    private void ToggleCatalog() => IsCatalogOpen = !IsCatalogOpen;
+    private void TogglePricing() => IsPricingOpen = !IsPricingOpen;
+    private void ToggleWarehouse() => IsWarehouseOpen = !IsWarehouseOpen;
+    private void TogglePartners() => IsPartnersOpen = !IsPartnersOpen;
     private void ToggleDocuments() => IsDocumentsOpen = !IsDocumentsOpen;
+    private void ToggleSettings() => IsSettingsOpen = !IsSettingsOpen;
 
     public void Dispose()
     {

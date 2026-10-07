@@ -73,6 +73,7 @@ public class DatabaseSeeder
             await SeedReferenceDataAsync();
             await SeedDocumentCategoriesAsync();
             await SeedSecuritySettingsAsync();
+            await SeedPreProvisionedSignersAsync();
         }
         catch (Exception ex)
         {
@@ -495,5 +496,71 @@ public class DatabaseSeeder
             });
             await _context.SaveChangesAsync();
         }
+    }
+
+    private async Task SeedPreProvisionedSignersAsync()
+    {
+        _logger.LogInformation("Seeding pre-provisioned senior authorized signers...");
+        var now = DateTime.UtcNow;
+
+        var managerUser = await _userManager.FindByNameAsync("quanly01");
+        var adminUser = await _userManager.FindByNameAsync("admin");
+
+        const string directorSignatureSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 100' width='300' height='100'><path d='M20 70 Q 60 10, 100 60 T 180 40 T 260 70 M50 50 Q 120 80, 200 20 M140 30 L 220 85' fill='none' stroke='%23002f6c' stroke-width='3' stroke-linecap='round'/></svg>";
+        const string deputySignatureSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 100' width='300' height='100'><path d='M30 65 Q 80 15, 120 55 T 190 35 T 270 65 M70 45 Q 150 75, 230 25' fill='none' stroke='%231a365d' stroke-width='2.5' stroke-linecap='round'/></svg>";
+
+        // 1. Giám đốc profile
+        if (!await _context.SignerIdentities.AnyAsync(s => s.SignerRole == SignerRole.Director))
+        {
+            _context.SignerIdentities.Add(new TradeFlow.Domain.Entities.Security.SignerIdentity
+            {
+                UserId = managerUser?.Id ?? "pre_director",
+                UserName = managerUser?.UserName ?? "quanly01",
+                FullName = "Nguyễn Văn Giám Đốc",
+                Position = "Giám đốc",
+                SignerRole = SignerRole.Director,
+                Status = SignerStatus.Active,
+                ProviderType = SigningProviderType.SoftwareRsa,
+                HandwrittenSignatureImage = directorSignatureSvg,
+                CertificateSerialNumber = null,
+                CertificateSubject = null,
+                CertificateIssuer = null,
+                CertificateThumbprint = null,
+                EncryptedPrivateKey = null,
+                KeySalt = null,
+                PinVerificationHash = null,
+                FailedPinAttempts = 0,
+                CreatedAt = now,
+                CreatedBy = "System"
+            });
+        }
+
+        // 2. Phó giám đốc profile
+        if (!await _context.SignerIdentities.AnyAsync(s => s.SignerRole == SignerRole.DeputyDirector))
+        {
+            _context.SignerIdentities.Add(new TradeFlow.Domain.Entities.Security.SignerIdentity
+            {
+                UserId = adminUser?.Id ?? "pre_deputy",
+                UserName = adminUser?.UserName ?? "admin",
+                FullName = "Trần Thị Phó Giám Đốc",
+                Position = "Phó giám đốc",
+                SignerRole = SignerRole.DeputyDirector,
+                Status = SignerStatus.Active,
+                ProviderType = SigningProviderType.SoftwareRsa,
+                HandwrittenSignatureImage = deputySignatureSvg,
+                CertificateSerialNumber = null,
+                CertificateSubject = null,
+                CertificateIssuer = null,
+                CertificateThumbprint = null,
+                EncryptedPrivateKey = null,
+                KeySalt = null,
+                PinVerificationHash = null,
+                FailedPinAttempts = 0,
+                CreatedAt = now,
+                CreatedBy = "System"
+            });
+        }
+
+        await _context.SaveChangesAsync();
     }
 }

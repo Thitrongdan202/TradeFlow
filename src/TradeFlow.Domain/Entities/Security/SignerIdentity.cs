@@ -32,16 +32,16 @@ public class SignerIdentity : AuditableEntity<int>
     public SigningProviderType ProviderType { get; set; } = SigningProviderType.SoftwareRsa;
 
     /// <summary>Số sê-ri chứng thư số</summary>
-    public string CertificateSerialNumber { get; set; } = string.Empty;
+    public string? CertificateSerialNumber { get; set; }
 
     /// <summary>Chủ thể chứng thư (Subject Distinguished Name)</summary>
-    public string CertificateSubject { get; set; } = string.Empty;
+    public string? CertificateSubject { get; set; }
 
     /// <summary>Đơn vị cấp chứng thư (Issuer)</summary>
-    public string CertificateIssuer { get; set; } = "TradeFlow Security CA";
+    public string? CertificateIssuer { get; set; } = "TradeFlow Security CA";
 
     /// <summary>Mã băm chứng thư (Thumbprint)</summary>
-    public string CertificateThumbprint { get; set; } = string.Empty;
+    public string? CertificateThumbprint { get; set; }
 
     /// <summary>Ngày bắt đầu hiệu lực (UTC)</summary>
     public DateTime ValidFrom { get; set; } = DateTime.UtcNow;
@@ -84,4 +84,19 @@ public class SignerIdentity : AuditableEntity<int>
 
     /// <summary>Ghi chú bổ sung</summary>
     public string? Notes { get; set; }
+
+    /// <summary>Ảnh chữ ký tay (Data URI base64 hoặc URL) - chỉ mang tính chất hiển thị trực quan</summary>
+    public string? HandwrittenSignatureImage { get; set; }
+
+    /// <summary>Số lần thử nhập mã PIN sai liên tiếp</summary>
+    public int FailedPinAttempts { get; set; } = 0;
+
+    /// <summary>Thời điểm kết thúc tạm khóa do nhập sai mã PIN nhiều lần (UTC)</summary>
+    public DateTime? LockoutEnd { get; set; }
+
+    /// <summary>Kiểm tra xem người ký có đang bị tạm khóa do nhập sai PIN không</summary>
+    public bool IsLockedOut => LockoutEnd.HasValue && LockoutEnd.Value > DateTime.UtcNow;
+
+    /// <summary>Đã được thiết lập chứng thư số và mã PIN chưa</summary>
+    public bool HasCredential => !string.IsNullOrEmpty(EncryptedPrivateKey) && !string.IsNullOrEmpty(PinVerificationHash);
 }

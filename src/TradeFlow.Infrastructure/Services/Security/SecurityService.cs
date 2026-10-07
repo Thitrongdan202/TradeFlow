@@ -32,11 +32,23 @@ public class SecurityService : ISecurityService
         _logger = logger;
     }
 
-    public async Task<IssuedEnrollmentCodeResult> IssueEnrollmentCodeAsync(
+    public Task<IssuedEnrollmentCodeResult> IssueEnrollmentCodeAsync(
         string targetUserId,
         SignerRole targetRole,
         string position,
         int expirationMinutes,
+        string issuedBy,
+        CancellationToken cancellationToken = default)
+    {
+        return IssueEnrollmentCodeAsync(targetUserId, targetRole, position, true, expirationMinutes, issuedBy, cancellationToken);
+    }
+
+    public async Task<IssuedEnrollmentCodeResult> IssueEnrollmentCodeAsync(
+        string targetUserId,
+        SignerRole targetRole,
+        string position,
+        bool hasExpiration,
+        int? expirationMinutes,
         string issuedBy,
         CancellationToken cancellationToken = default)
     {
@@ -56,7 +68,14 @@ public class SecurityService : ISecurityService
             position = targetRole.ToVietnamese();
         }
 
-        if (expirationMinutes <= 0) expirationMinutes = 30;
+        DateTime now = DateTime.UtcNow;
+        DateTime? expiresAt = null;
+        if (hasExpiration)
+        {
+            int expMinutes = expirationMinutes.GetValueOrDefault(1440);
+            if (expMinutes <= 0) expMinutes = 30;
+            expiresAt = now.AddMinutes(expMinutes);
+        }
 
         // Generate 16-char cryptographically random code formatted as TF-SIGN-XXXX-XXXX-XXXX
         string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // readable chars without ambiguous 0/O/1/I
@@ -70,8 +89,6 @@ public class SecurityService : ISecurityService
 
         // Hash raw code with SHA-256 for secure storage
         string codeHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawCode)));
-        DateTime now = DateTime.UtcNow;
-        DateTime expiresAt = now.AddMinutes(expirationMinutes);
 
         var enrollmentCode = new SignerEnrollmentCode
         {
@@ -81,6 +98,7 @@ public class SecurityService : ISecurityService
             TargetFullName = targetUser.FullName ?? targetUser.UserName ?? string.Empty,
             TargetPosition = position.Trim(),
             TargetSignerRole = targetRole,
+            HasExpiration = hasExpiration,
             ExpiresAt = expiresAt,
             IsUsed = false,
             IsRevoked = false,
@@ -91,17 +109,22 @@ public class SecurityService : ISecurityService
         _context.SignerEnrollmentCodes.Add(enrollmentCode);
         await _context.SaveChangesAsync(cancellationToken);
 
+        string expiryText = hasExpiration && expiresAt.HasValue
+            ? $"hết hạn: {expiresAt.Value:dd/MM/yyyy HH:mm} UTC"
+            : "không giới hạn thời gian (dùng 1 lần duy nhất)";
+
         await _auditService.LogAsync(
             AuditEventType.SignerCodeIssued,
             issuedBy,
             "SignerEnrollmentCode",
             targetUser.UserName,
-            $"Cấp mã kích hoạt người ký cho {targetUser.FullName} ({targetUser.UserName}), vai trò: {targetRole.ToVietnamese()}, chức vụ: {position}, hết hạn: {expiresAt:dd/MM/yyyy HH:mm} UTC");
+            $"Cấp mã kích hoạt người ký cho {targetUser.FullName} ({targetUser.UserName}), vai trò: {targetRole.ToVietnamese()}, chức vụ: {position}, {expiryText}");
 
         return new IssuedEnrollmentCodeResult
         {
             Succeeded = true,
             RawCode = rawCode,
+            HasExpiration = hasExpiration,
             ExpiresAt = expiresAt
         };
     }
@@ -141,6 +164,7 @@ public class SecurityService : ISecurityService
                 TargetFullName = c.TargetFullName,
                 TargetPosition = c.TargetPosition,
                 TargetSignerRole = c.TargetSignerRole,
+                HasExpiration = c.HasExpiration,
                 ExpiresAt = c.ExpiresAt,
                 IsUsed = c.IsUsed,
                 UsedAt = c.UsedAt,
@@ -192,9 +216,9 @@ public class SecurityService : ISecurityService
             return new SignerEnrollmentResult { Succeeded = false, ErrorMessage = "Mã kích hoạt này đã được sử dụng trước đó (chỉ dùng 1 lần duy nhất)." };
         }
 
-        if (DateTime.UtcNow > code.ExpiresAt)
+        if (code.HasExpiration && code.ExpiresAt.HasValue && DateTime.UtcNow > code.ExpiresAt.Value)
         {
-            return new SignerEnrollmentResult { Succeeded = false, ErrorMessage = $"Mã kích hoạt đã hết hạn hiệu lực lúc {code.ExpiresAt.ToLocalTime():dd/MM/yyyy HH:mm}." };
+            return new SignerEnrollmentResult { Succeeded = false, ErrorMessage = $"Mã kích hoạt đã hết hạn hiệu lực lúc {code.ExpiresAt.Value.ToLocalTime():dd/MM/yyyy HH:mm}." };
         }
 
         var targetUser = await _userManager.FindByIdAsync(code.TargetUserId);
@@ -214,39 +238,76 @@ public class SecurityService : ISecurityService
             var keyPair = await _signingProvider.GenerateKeyPairAsync(pin, subject, cancellationToken);
 
             DateTime now = DateTime.UtcNow;
-            var signer = new SignerIdentity
+
+            var existingSigner = await _context.SignerIdentities
+                .FirstOrDefaultAsync(s => (s.UserId == targetUser.Id || (string.IsNullOrEmpty(s.CertificateSerialNumber) && s.SignerRole == code.TargetSignerRole)), cancellationToken);
+
+            SignerIdentity signer;
+            if (existingSigner != null)
             {
-                UserId = targetUser.Id,
-                UserName = targetUser.UserName ?? string.Empty,
-                FullName = code.TargetFullName,
-                Position = code.TargetPosition,
-                SignerRole = code.TargetSignerRole,
-                Status = SignerStatus.Active,
-                ProviderType = _signingProvider.ProviderType,
-                CertificateSerialNumber = keyPair.CertificateSerialNumber,
-                CertificateSubject = subject,
-                CertificateIssuer = $"TradeFlow CA - {companyName}",
-                CertificateThumbprint = keyPair.CertificateThumbprint,
-                ValidFrom = now,
-                ValidTo = now.AddYears(1),
-                EncryptedPrivateKey = keyPair.EncryptedPrivateKey,
-                KeySalt = keyPair.KeySalt,
-                PinVerificationHash = keyPair.PinVerificationHash,
-                PublicKeyXml = keyPair.PublicKeyXml,
-                PublicKeyPem = keyPair.PublicKeyPem,
-                EnrollmentCodeHash = code.CodeHash,
-                EnrolledBy = code.CreatedBy ?? performedBy ?? "System",
-                EnrolledAt = now,
-                CreatedAt = now,
-                CreatedBy = performedBy ?? targetUser.UserName
-            };
+                signer = existingSigner;
+                signer.UserId = targetUser.Id;
+                signer.UserName = targetUser.UserName ?? string.Empty;
+                signer.FullName = code.TargetFullName;
+                signer.Position = code.TargetPosition;
+                signer.SignerRole = code.TargetSignerRole;
+                signer.Status = SignerStatus.Active;
+                signer.ProviderType = _signingProvider.ProviderType;
+                signer.CertificateSerialNumber = keyPair.CertificateSerialNumber;
+                signer.CertificateSubject = subject;
+                signer.CertificateIssuer = $"TradeFlow CA - {companyName}";
+                signer.CertificateThumbprint = keyPair.CertificateThumbprint;
+                signer.ValidFrom = now;
+                signer.ValidTo = now.AddYears(1);
+                signer.EncryptedPrivateKey = keyPair.EncryptedPrivateKey;
+                signer.KeySalt = keyPair.KeySalt;
+                signer.PinVerificationHash = keyPair.PinVerificationHash;
+                signer.PublicKeyXml = keyPair.PublicKeyXml;
+                signer.PublicKeyPem = keyPair.PublicKeyPem;
+                signer.EnrollmentCodeHash = code.CodeHash;
+                signer.EnrolledBy = code.CreatedBy ?? performedBy ?? "System";
+                signer.EnrolledAt = now;
+                signer.FailedPinAttempts = 0;
+                signer.LockoutEnd = null;
+                signer.UpdatedAt = now;
+                signer.UpdatedBy = performedBy ?? targetUser.UserName;
+            }
+            else
+            {
+                signer = new SignerIdentity
+                {
+                    UserId = targetUser.Id,
+                    UserName = targetUser.UserName ?? string.Empty,
+                    FullName = code.TargetFullName,
+                    Position = code.TargetPosition,
+                    SignerRole = code.TargetSignerRole,
+                    Status = SignerStatus.Active,
+                    ProviderType = _signingProvider.ProviderType,
+                    CertificateSerialNumber = keyPair.CertificateSerialNumber,
+                    CertificateSubject = subject,
+                    CertificateIssuer = $"TradeFlow CA - {companyName}",
+                    CertificateThumbprint = keyPair.CertificateThumbprint,
+                    ValidFrom = now,
+                    ValidTo = now.AddYears(1),
+                    EncryptedPrivateKey = keyPair.EncryptedPrivateKey,
+                    KeySalt = keyPair.KeySalt,
+                    PinVerificationHash = keyPair.PinVerificationHash,
+                    PublicKeyXml = keyPair.PublicKeyXml,
+                    PublicKeyPem = keyPair.PublicKeyPem,
+                    EnrollmentCodeHash = code.CodeHash,
+                    EnrolledBy = code.CreatedBy ?? performedBy ?? "System",
+                    EnrolledAt = now,
+                    CreatedAt = now,
+                    CreatedBy = performedBy ?? targetUser.UserName
+                };
+                _context.SignerIdentities.Add(signer);
+            }
 
             // Mark code as used
             code.IsUsed = true;
             code.UsedAt = now;
             code.UsedBy = performedBy ?? targetUser.UserName;
 
-            _context.SignerIdentities.Add(signer);
             await _context.SaveChangesAsync(cancellationToken);
 
             await _auditService.LogAsync(
@@ -312,17 +373,20 @@ public class SecurityService : ISecurityService
                 SignerRole = s.SignerRole,
                 Status = s.Status,
                 ProviderType = s.ProviderType,
-                CertificateSerialNumber = s.CertificateSerialNumber,
-                CertificateSubject = s.CertificateSubject,
-                CertificateIssuer = s.CertificateIssuer,
-                CertificateThumbprint = s.CertificateThumbprint,
+                CertificateSerialNumber = s.CertificateSerialNumber ?? string.Empty,
+                CertificateSubject = s.CertificateSubject ?? string.Empty,
+                CertificateIssuer = s.CertificateIssuer ?? string.Empty,
+                CertificateThumbprint = s.CertificateThumbprint ?? string.Empty,
                 ValidFrom = s.ValidFrom,
                 ValidTo = s.ValidTo,
-                EnrolledBy = s.EnrolledBy,
+                EnrolledBy = s.EnrolledBy ?? string.Empty,
                 EnrolledAt = s.EnrolledAt,
                 RevokedAt = s.RevokedAt,
                 RevokedBy = s.RevokedBy,
-                RevocationReason = s.RevocationReason
+                RevocationReason = s.RevocationReason,
+                HandwrittenSignatureImage = s.HandwrittenSignatureImage,
+                FailedPinAttempts = s.FailedPinAttempts,
+                LockoutEnd = s.LockoutEnd
             })
             .ToListAsync(cancellationToken);
     }
@@ -344,14 +408,17 @@ public class SecurityService : ISecurityService
                 SignerRole = s.SignerRole,
                 Status = s.Status,
                 ProviderType = s.ProviderType,
-                CertificateSerialNumber = s.CertificateSerialNumber,
-                CertificateSubject = s.CertificateSubject,
-                CertificateIssuer = s.CertificateIssuer,
-                CertificateThumbprint = s.CertificateThumbprint,
+                CertificateSerialNumber = s.CertificateSerialNumber ?? string.Empty,
+                CertificateSubject = s.CertificateSubject ?? string.Empty,
+                CertificateIssuer = s.CertificateIssuer ?? string.Empty,
+                CertificateThumbprint = s.CertificateThumbprint ?? string.Empty,
                 ValidFrom = s.ValidFrom,
                 ValidTo = s.ValidTo,
-                EnrolledBy = s.EnrolledBy,
-                EnrolledAt = s.EnrolledAt
+                EnrolledBy = s.EnrolledBy ?? string.Empty,
+                EnrolledAt = s.EnrolledAt,
+                HandwrittenSignatureImage = s.HandwrittenSignatureImage,
+                FailedPinAttempts = s.FailedPinAttempts,
+                LockoutEnd = s.LockoutEnd
             })
             .ToListAsync(cancellationToken);
     }
@@ -360,6 +427,242 @@ public class SecurityService : ISecurityService
     {
         return await _context.SignerIdentities
             .FirstOrDefaultAsync(s => s.Id == signerId, cancellationToken);
+    }
+
+    public async Task<bool> UpdateSignerProfileAsync(
+        int signerId,
+        string fullName,
+        string position,
+        string? handwrittenSignatureImage,
+        string performedBy,
+        CancellationToken cancellationToken = default)
+    {
+        var signer = await _context.SignerIdentities.FirstOrDefaultAsync(s => s.Id == signerId, cancellationToken);
+        if (signer == null) return false;
+
+        signer.FullName = fullName.Trim();
+        signer.Position = position.Trim();
+        if (handwrittenSignatureImage != null)
+        {
+            signer.HandwrittenSignatureImage = handwrittenSignatureImage;
+        }
+        signer.UpdatedAt = DateTime.UtcNow;
+        signer.UpdatedBy = performedBy;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        await _auditService.LogAsync(
+            AuditEventType.SignerProfileUpdated,
+            performedBy,
+            "SignerIdentity",
+            signer.Id.ToString(),
+            $"Cập nhật hồ sơ người ký: {signer.FullName} ({signer.Position})");
+
+        return true;
+    }
+
+    public async Task<PinOperationResult> SetupSignerPinAndCredentialAsync(
+        int signerId,
+        string pin,
+        string performedBy,
+        CancellationToken cancellationToken = default)
+    {
+        var signer = await _context.SignerIdentities.FirstOrDefaultAsync(s => s.Id == signerId, cancellationToken);
+        if (signer == null)
+        {
+            return new PinOperationResult { Succeeded = false, ErrorMessage = "Không tìm thấy hồ sơ người ký." };
+        }
+
+        if (string.IsNullOrWhiteSpace(pin) || pin.Length < 6)
+        {
+            return new PinOperationResult { Succeeded = false, ErrorMessage = "Mã PIN bảo mật phải có ít nhất 6 ký tự." };
+        }
+
+        var company = await _context.CompanySettings.FirstOrDefaultAsync(cancellationToken);
+        string companyName = company?.CompanyName ?? "TRADEFLOW";
+        string companyTaxCode = company?.TaxCode ?? "0123456789";
+
+        string subject = $"CN={signer.FullName.ToUpperInvariant()}, POSITION={signer.Position.ToUpperInvariant()}, O={companyName.ToUpperInvariant()}, MST={companyTaxCode}, C=VN";
+
+        try
+        {
+            var keyPair = await _signingProvider.GenerateKeyPairAsync(pin, subject, cancellationToken);
+            DateTime now = DateTime.UtcNow;
+
+            signer.CertificateSerialNumber = keyPair.CertificateSerialNumber;
+            signer.CertificateSubject = subject;
+            signer.CertificateIssuer = $"TradeFlow CA - {companyName}";
+            signer.CertificateThumbprint = keyPair.CertificateThumbprint;
+            signer.ValidFrom = now;
+            signer.ValidTo = now.AddYears(1);
+            signer.EncryptedPrivateKey = keyPair.EncryptedPrivateKey;
+            signer.KeySalt = keyPair.KeySalt;
+            signer.PinVerificationHash = keyPair.PinVerificationHash;
+            signer.PublicKeyXml = keyPair.PublicKeyXml;
+            signer.PublicKeyPem = keyPair.PublicKeyPem;
+            signer.FailedPinAttempts = 0;
+            signer.LockoutEnd = null;
+            signer.Status = SignerStatus.Active;
+            signer.UpdatedAt = now;
+            signer.UpdatedBy = performedBy;
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            await _auditService.LogAsync(
+                AuditEventType.SignerPinChanged,
+                performedBy,
+                "SignerIdentity",
+                signer.CertificateSerialNumber,
+                $"Thiết lập mã PIN và cặp khóa chứng thư số thành công cho người ký {signer.FullName} ({signer.Position})");
+
+            return new PinOperationResult { Succeeded = true };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting up signer PIN and credential for signer {SignerId}", signerId);
+            return new PinOperationResult { Succeeded = false, ErrorMessage = $"Lỗi thiết lập mã PIN: {ex.Message}" };
+        }
+    }
+
+    public async Task<PinOperationResult> ChangeSignerPinAsync(
+        int signerId,
+        string currentPin,
+        string newPin,
+        string performedBy,
+        CancellationToken cancellationToken = default)
+    {
+        var signer = await _context.SignerIdentities.FirstOrDefaultAsync(s => s.Id == signerId, cancellationToken);
+        if (signer == null)
+        {
+            return new PinOperationResult { Succeeded = false, ErrorMessage = "Không tìm thấy hồ sơ người ký." };
+        }
+
+        if (signer.IsLockedOut)
+        {
+            return new PinOperationResult { Succeeded = false, ErrorMessage = $"Tài khoản ký số đang tạm khóa đến {signer.LockoutEnd!.Value.ToLocalTime():HH:mm:ss dd/MM/yyyy} do nhập sai PIN nhiều lần." };
+        }
+
+        if (!signer.HasCredential || string.IsNullOrEmpty(signer.EncryptedPrivateKey) || string.IsNullOrEmpty(signer.KeySalt))
+        {
+            return new PinOperationResult { Succeeded = false, ErrorMessage = "Người ký chưa có chứng thư hoặc khóa ký để đổi PIN. Vui lòng thiết lập PIN mới." };
+        }
+
+        if (string.IsNullOrWhiteSpace(newPin) || newPin.Length < 6)
+        {
+            return new PinOperationResult { Succeeded = false, ErrorMessage = "Mã PIN mới phải có ít nhất 6 ký tự." };
+        }
+
+        try
+        {
+            var result = await _signingProvider.ChangePinAsync(signer.EncryptedPrivateKey, signer.KeySalt, currentPin, newPin, cancellationToken);
+            signer.EncryptedPrivateKey = result.EncryptedPrivateKey;
+            signer.KeySalt = result.KeySalt;
+            signer.PinVerificationHash = result.PinVerificationHash;
+            signer.FailedPinAttempts = 0;
+            signer.LockoutEnd = null;
+            signer.UpdatedAt = DateTime.UtcNow;
+            signer.UpdatedBy = performedBy;
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            await _auditService.LogAsync(
+                AuditEventType.SignerPinChanged,
+                performedBy,
+                "SignerIdentity",
+                signer.CertificateSerialNumber,
+                $"Đổi mã PIN ký số thành công cho người ký {signer.FullName}");
+
+            return new PinOperationResult { Succeeded = true };
+        }
+        catch (CryptographicException)
+        {
+            signer.FailedPinAttempts++;
+            var settings = await GetSecuritySettingsAsync(cancellationToken);
+            if (signer.FailedPinAttempts >= settings.MaxFailedSignAttempts)
+            {
+                signer.LockoutEnd = DateTime.UtcNow.AddMinutes(15);
+                await _auditService.LogAsync(
+                    AuditEventType.SignerLockedOut,
+                    performedBy,
+                    "SignerIdentity",
+                    signer.CertificateSerialNumber,
+                    $"Khóa tạm thời người ký {signer.FullName} trong 15 phút do nhập sai mã PIN hiện tại {signer.FailedPinAttempts} lần.");
+            }
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return new PinOperationResult
+            {
+                Succeeded = false,
+                ErrorMessage = signer.IsLockedOut
+                    ? "Mã PIN hiện tại không đúng. Tài khoản ký số đã bị khóa tạm thời 15 phút."
+                    : $"Mã PIN hiện tại không đúng. Còn {Math.Max(0, settings.MaxFailedSignAttempts - signer.FailedPinAttempts)} lần thử."
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error changing PIN for signer {SignerId}", signerId);
+            return new PinOperationResult { Succeeded = false, ErrorMessage = $"Lỗi khi đổi mã PIN: {ex.Message}" };
+        }
+    }
+
+    public async Task<PinOperationResult> AdminResetSignerPinAsync(
+        int signerId,
+        string reason,
+        string performedBy,
+        CancellationToken cancellationToken = default)
+    {
+        var signer = await _context.SignerIdentities.FirstOrDefaultAsync(s => s.Id == signerId, cancellationToken);
+        if (signer == null)
+        {
+            return new PinOperationResult { Succeeded = false, ErrorMessage = "Không tìm thấy hồ sơ người ký." };
+        }
+
+        signer.EncryptedPrivateKey = null;
+        signer.KeySalt = null;
+        signer.PinVerificationHash = null;
+        signer.CertificateSerialNumber = string.Empty;
+        signer.CertificateSubject = string.Empty;
+        signer.CertificateIssuer = string.Empty;
+        signer.CertificateThumbprint = string.Empty;
+        signer.PublicKeyPem = string.Empty;
+        signer.PublicKeyXml = string.Empty;
+        signer.FailedPinAttempts = 0;
+        signer.LockoutEnd = null;
+        signer.UpdatedAt = DateTime.UtcNow;
+        signer.UpdatedBy = performedBy;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        await _auditService.LogAsync(
+            AuditEventType.SignerPinReset,
+            performedBy,
+            "SignerIdentity",
+            signer.Id.ToString(),
+            $"Quản trị viên {performedBy} đã đặt lại mã PIN và xóa khóa ký cũ của người ký {signer.FullName}. Người ký cần thiết lập lại mã PIN mới. Lý do: {reason}");
+
+        return new PinOperationResult { Succeeded = true };
+    }
+
+    public async Task<bool> UnlockSignerLockoutAsync(int signerId, string performedBy, CancellationToken cancellationToken = default)
+    {
+        var signer = await _context.SignerIdentities.FirstOrDefaultAsync(s => s.Id == signerId, cancellationToken);
+        if (signer == null) return false;
+
+        signer.FailedPinAttempts = 0;
+        signer.LockoutEnd = null;
+        signer.UpdatedAt = DateTime.UtcNow;
+        signer.UpdatedBy = performedBy;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        await _auditService.LogAsync(
+            AuditEventType.SignerProfileUpdated,
+            performedBy,
+            "SignerIdentity",
+            signer.CertificateSerialNumber,
+            $"Quản trị viên {performedBy} đã mở khóa tài khoản ký số cho {signer.FullName}.");
+
+        return true;
     }
 
     public async Task<OffboardEmployeeResult> OffboardEmployeeAsync(

@@ -353,15 +353,22 @@ else
                         @* Actual electronic signature state display *@
                         @if (_invoice.SignatureStatus == DigitalSignatureStatus.Signed || _invoice.SignatureStatus == DigitalSignatureStatus.Valid)
                         {
-                            <div style="margin:8px auto 0; display:inline-block; border:1px solid #4caf50; background:#f1f8e9; border-radius:6px; padding:10px 18px; min-width:210px; text-align:center;">
-                                <div style="font-weight:bold; color:#2e7d32; font-size:8.5pt;">✓ Đã được ký điện tử bởi</div>
-                                <div style="font-style:italic; color:#2e7d32; font-size:7.5pt;">(Signed digitally by)</div>
-                                <div style="font-weight:bold; color:#1b5e20; font-size:9pt; margin-top:2px; letter-spacing:0.4px;">@((_invoice.SignedBy ?? _invoice.CompanyName).ToUpper())</div>
-                                @if (!string.IsNullOrEmpty(_invoice.SignerPosition))
-                                {
-                                    <div style="font-size:8pt; color:#2e7d32; font-weight:500;">@_invoice.SignerPosition</div>
-                                }
-                                <div style="font-size:8pt; color:#2e7d32; margin-top:3px;">
+                            @if (!string.IsNullOrEmpty(_invoice.SignerHandwrittenSignatureImage))
+                            {
+                                <div style="margin:4px auto; text-align:center;">
+                                    <img src="@_invoice.SignerHandwrittenSignatureImage" alt="Chữ ký tay" style="max-height:55px; max-width:180px; object-fit:contain; display:inline-block;" />
+                                </div>
+                            }
+                            <div style="font-weight:bold; font-size:9pt; margin-top:2px; color:#111827;">@((_invoice.SignedBy ?? _invoice.CompanyName).ToUpper())</div>
+                            @if (!string.IsNullOrEmpty(_invoice.SignerPosition))
+                            {
+                                <div style="font-size:8pt; color:#4b5563; font-weight:500;">@_invoice.SignerPosition</div>
+                            }
+
+                            <div style="margin:8px auto 0; display:inline-block; border:1px solid #4caf50; background:#f1f8e9; border-radius:6px; padding:8px 14px; min-width:200px; text-align:center;">
+                                <div style="font-weight:bold; color:#2e7d32; font-size:8.5pt;">✓ Đã ký điện tử hợp lệ</div>
+                                <div style="font-style:italic; color:#2e7d32; font-size:7.5pt;">(Digitally Signed)</div>
+                                <div style="font-size:7.5pt; color:#2e7d32; margin-top:2px;">
                                     Ký ngày: @((_invoice.SignedAt ?? _invoice.InvoiceDate).ToString("dd/MM/yyyy HH:mm"))
                                 </div>
                                 @if (!string.IsNullOrEmpty(_invoice.CertificateSerialNumber))
@@ -593,7 +600,7 @@ else
 @if (_showSignModal)
 {
     <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
-        <div style="background:white; padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+        <div style="background:white; padding:24px; border-radius:8px; width:540px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                 <h3 style="margin:0; font-size:18px; color:var(--tf-primary);">✍ Ký điện tử hóa đơn</h3>
                 <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showSignModal = false">✕</button>
@@ -608,39 +615,112 @@ else
                 <div class="tf-alert tf-alert-danger" style="margin-bottom:16px;">@_signModalError</div>
             }
 
-            <div class="tf-form-group" style="margin-bottom:16px;">
-                <label style="font-weight:600; font-size:13px; display:block; margin-bottom:6px;">Chọn danh tính người ký *</label>
-                @if (!_availableSigners.Any())
-                {
-                    <div class="tf-alert tf-alert-warning" style="font-size:13px;">
-                        Chưa có chứng thư số nào đang hoạt động. Vui lòng liên hệ Giám đốc hoặc Quản trị viên tại mục <strong>Hệ thống → An ninh & Chữ ký số</strong> để kích hoạt.
+            @* CASE C: Không có người ký số nào *@
+            @if (!_availableSigners.Any())
+            {
+                <div class="tf-alert tf-alert-warning" style="font-size:13.5px; line-height:1.6; margin-bottom:20px;">
+                    <div style="font-weight:600; font-size:14px; margin-bottom:4px;">⚠️ Chưa có người ký số được kích hoạt</div>
+                    Chưa có danh tính người ký số nào được kích hoạt hoặc thiết lập chứng thư trong hệ thống.
+                    Vui lòng liên hệ Quản trị viên An ninh để cấp mã kích hoạt hoặc cấu hình người ký tại Trung tâm An ninh.
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:12px;">
+                    <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="() => _showSignModal = false">Đóng</button>
+                    <a href="/cai-dat/an-ninh" class="tf-btn tf-btn-primary">Đến Trung tâm An ninh</a>
+                </div>
+            }
+            @* CASE A: Đúng 1 người ký số active *@
+            else if (_availableSigners.Count == 1)
+            {
+                var s = _availableSigners[0];
+                <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:16px; margin-bottom:16px;">
+                    <div style="font-size:11px; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:0.5px; margin-bottom:6px;">
+                        Người ký được chỉ định
                     </div>
-                }
-                else
-                {
-                    <select class="tf-form-control" @bind="_selectedSignerId" style="width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:6px;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div>
+                            <div style="font-size:16px; font-weight:700; color:#0f172a;">@s.FullName</div>
+                            <div style="font-size:13px; color:#334155; margin-top:2px;">
+                                <strong>@s.Position</strong> (@s.SignerRole.ToVietnamese())
+                            </div>
+                            <div style="font-size:12px; color:#64748b; margin-top:4px;">
+                                Chứng thư số: <code style="background:#e2e8f0; padding:1px 5px; border-radius:3px;">@s.CertificateSerialNumber</code>
+                            </div>
+                            <div style="font-size:12px; color:#16a34a; margin-top:2px;">
+                                Trạng thái: Đang hoạt động (Hiệu lực đến @s.ValidTo.ToLocalTime().ToString("dd/MM/yyyy"))
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(s.HandwrittenSignatureImage))
+                        {
+                            <div style="text-align:center;">
+                                <div style="font-size:10px; color:#64748b; margin-bottom:2px;">Chữ ký tay</div>
+                                <img src="@s.HandwrittenSignatureImage" alt="Chữ ký" style="height:40px; max-width:100px; object-fit:contain; border:1px solid #cbd5e1; border-radius:4px; padding:2px; background:#fff;" />
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="tf-form-group" style="margin-bottom:20px;">
+                    <label style="font-weight:600; font-size:13px; display:block; margin-bottom:6px;">Mã PIN người ký (Bảo vệ khóa riêng tư) *</label>
+                    <input type="password" class="tf-form-control" @bind="_signerPin" placeholder="Nhập mã PIN cá nhân..." style="width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:6px;" />
+                    <span style="font-size:12px; color:var(--tf-text-muted); display:block; margin-top:4px;">
+                        Mã PIN dùng để giải mã khóa ký riêng tư (Private Key) được bảo vệ bằng AES-GCM.
+                    </span>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:12px;">
+                    <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="() => _showSignModal = false">Hủy</button>
+                    <button type="button" class="tf-btn tf-btn-success" @onclick="ExecuteSigning" disabled="@_isProcessing">
+                        @(_isProcessing ? "Đang xử lý ký..." : "Xác nhận ký điện tử")
+                    </button>
+                </div>
+            }
+            @* CASE B: Nhiều người ký số active *@
+            else
+            {
+                <div class="tf-form-group" style="margin-bottom:16px;">
+                    <label style="font-weight:600; font-size:13px; display:block; margin-bottom:6px;">Chọn người ký ủy quyền *</label>
+                    <div style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:6px; padding:8px;">
                         @foreach (var s in _availableSigners)
                         {
-                            <option value="@s.Id">@s.FullName — @s.Position (@s.SignerRole.ToVietnamese()) [Sê-ri: @s.CertificateSerialNumber]</option>
+                            var isSelected = _selectedSignerId == s.Id;
+                            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-radius:6px; border:2px solid @(isSelected ? "var(--tf-primary)" : "#e2e8f0"); background:@(isSelected ? "#f0f9ff" : "#fff"); cursor:pointer;" @onclick="() => _selectedSignerId = s.Id">
+                                <div>
+                                    <div style="font-weight:700; font-size:14px; color:#0f172a;">@s.FullName</div>
+                                    <div style="font-size:12px; color:#475569;">
+                                        <strong>@s.Position</strong> — @s.SignerRole.ToVietnamese()
+                                    </div>
+                                    <div style="font-size:11px; color:#64748b; margin-top:2px;">
+                                        Sê-ri: <code>@s.CertificateSerialNumber</code> | Hạn: @s.ValidTo.ToLocalTime().ToString("dd/MM/yyyy")
+                                    </div>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    @if (!string.IsNullOrEmpty(s.HandwrittenSignatureImage))
+                                    {
+                                        <img src="@s.HandwrittenSignatureImage" alt="Chữ ký" style="height:32px; max-width:80px; object-fit:contain; border:1px solid #cbd5e1; border-radius:4px; padding:2px; background:#fff;" />
+                                    }
+                                    <input type="radio" name="signer_select" checked="@isSelected" @onchange="() => _selectedSignerId = s.Id" style="cursor:pointer;" />
+                                </div>
+                            </div>
                         }
-                    </select>
-                }
-            </div>
+                    </div>
+                </div>
 
-            <div class="tf-form-group" style="margin-bottom:20px;">
-                <label style="font-weight:600; font-size:13px; display:block; margin-bottom:6px;">Mã PIN người ký (Bảo vệ khóa riêng tư) *</label>
-                <input type="password" class="tf-form-control" @bind="_signerPin" placeholder="Nhập mã PIN cá nhân..." style="width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:6px;" />
-                <span style="font-size:12px; color:var(--tf-text-muted); display:block; margin-top:4px;">
-                    Mã PIN dùng để giải mã khóa ký riêng tư (Private Key) được bảo vệ bằng AES-GCM.
-                </span>
-            </div>
+                <div class="tf-form-group" style="margin-bottom:20px;">
+                    <label style="font-weight:600; font-size:13px; display:block; margin-bottom:6px;">Mã PIN người ký (Bảo vệ khóa riêng tư) *</label>
+                    <input type="password" class="tf-form-control" @bind="_signerPin" placeholder="Nhập mã PIN cá nhân của người ký đã chọn..." style="width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:6px;" />
+                    <span style="font-size:12px; color:var(--tf-text-muted); display:block; margin-top:4px;">
+                        Mã PIN dùng để giải mã khóa ký riêng tư (Private Key) được bảo vệ bằng AES-GCM.
+                    </span>
+                </div>
 
-            <div style="display:flex; justify-content:flex-end; gap:12px;">
-                <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="() => _showSignModal = false">Hủy</button>
-                <button type="button" class="tf-btn tf-btn-success" @onclick="ExecuteSigning" disabled="@(_isProcessing || !_availableSigners.Any())">
-                    @(_isProcessing ? "Đang xử lý ký..." : "Xác nhận ký điện tử")
-                </button>
-            </div>
+                <div style="display:flex; justify-content:flex-end; gap:12px;">
+                    <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="() => _showSignModal = false">Hủy</button>
+                    <button type="button" class="tf-btn tf-btn-success" @onclick="ExecuteSigning" disabled="@(_isProcessing || _selectedSignerId <= 0)">
+                        @(_isProcessing ? "Đang xử lý ký..." : "Xác nhận ký điện tử")
+                    </button>
+                </div>
+            }
         </div>
     </div>
 }
@@ -859,10 +939,18 @@ else
         try
         {
             var all = await SecurityService.GetAllSignersAsync();
-            _availableSigners = all.Where(s => s.Status == SignerStatus.Active && !s.IsExpired).ToList();
-            if (_availableSigners.Any())
+            _availableSigners = all.Where(s => s.Status == SignerStatus.Active && s.HasCredential && !s.IsExpired).ToList();
+            if (_availableSigners.Count == 1)
             {
-                _selectedSignerId = _availableSigners.First().Id;
+                _selectedSignerId = _availableSigners[0].Id;
+            }
+            else if (_availableSigners.Count > 1)
+            {
+                _selectedSignerId = _availableSigners[0].Id;
+            }
+            else
+            {
+                _selectedSignerId = 0;
             }
             _showSignModal = true;
         }

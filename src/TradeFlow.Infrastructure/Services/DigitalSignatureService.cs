@@ -161,6 +161,15 @@ public class DigitalSignatureService : IDigitalSignatureService
             return new SignatureResult { Succeeded = false, ErrorMessage = "Không tìm thấy danh tính người ký số được chỉ định." };
         }
 
+        if (signer.IsLockedOut)
+        {
+            return new SignatureResult
+            {
+                Succeeded = false,
+                ErrorMessage = $"Tài khoản ký số của {signer.FullName} đang bị tạm khóa đến {signer.LockoutEnd!.Value.ToLocalTime():HH:mm:ss dd/MM/yyyy} do nhập sai mã PIN nhiều lần. Vui lòng thử lại sau hoặc liên hệ Quản trị viên để mở khóa."
+            };
+        }
+
         if (signer.Status != SignerStatus.Active)
         {
             return new SignatureResult { Succeeded = false, ErrorMessage = $"Chứng thư của người ký đang ở trạng thái '{signer.Status.ToVietnamese()}'. Không thể sử dụng để ký." };
@@ -171,9 +180,9 @@ public class DigitalSignatureService : IDigitalSignatureService
             return new SignatureResult { Succeeded = false, ErrorMessage = "Chứng thư số của người ký đã hết hạn hiệu lực." };
         }
 
-        if (string.IsNullOrWhiteSpace(signer.EncryptedPrivateKey) || string.IsNullOrWhiteSpace(signer.KeySalt))
+        if (!signer.HasCredential || string.IsNullOrWhiteSpace(signer.EncryptedPrivateKey) || string.IsNullOrWhiteSpace(signer.KeySalt))
         {
-            return new SignatureResult { Succeeded = false, ErrorMessage = "Chứng thư người ký thiếu thông tin khóa bảo mật." };
+            return new SignatureResult { Succeeded = false, ErrorMessage = "Người ký chưa được thiết lập chứng thư số hoặc khóa bảo mật." };
         }
 
         // Ensure invoice items are loaded
@@ -199,7 +208,11 @@ public class DigitalSignatureService : IDigitalSignatureService
             string signatureValueBase64 = Convert.ToBase64String(signatureBytes);
             DateTime signingTime = DateTime.UtcNow;
 
-            // 3. Update invoice signature state
+            // 3. Reset failed attempts on success
+            signer.FailedPinAttempts = 0;
+            signer.LockoutEnd = null;
+
+            // 4. Update invoice signature state
             invoice.SignatureStatus = DigitalSignatureStatus.Signed;
             invoice.SignedBy = signer.FullName;
             invoice.SignedAt = signingTime;
@@ -213,8 +226,9 @@ public class DigitalSignatureService : IDigitalSignatureService
             invoice.SignerIdentityId = signer.Id;
             invoice.LastVerifiedAt = signingTime;
             invoice.LastVerifiedBy = signer.FullName;
+            invoice.SignerHandwrittenSignatureImage = signer.HandwrittenSignatureImage;
 
-            // 4. Record tamper-proof audit
+            // 5. Record tamper-proof audit
             var audit = new DocumentSignatureAudit
             {
                 DocumentType = "Invoice",
@@ -268,6 +282,26 @@ public class DigitalSignatureService : IDigitalSignatureService
         {
             _logger.LogWarning(ex, "Cryptographic signing failed for invoice {InvoiceId}", invoice.Id);
 
+            signer.FailedPinAttempts++;
+            var settings = await _context.CompanySecuritySettings.FirstOrDefaultAsync(cancellationToken);
+            int maxAttempts = settings?.MaxFailedSignAttempts ?? 5;
+            bool lockedNow = false;
+
+            if (signer.FailedPinAttempts >= maxAttempts)
+            {
+                signer.LockoutEnd = DateTime.UtcNow.AddMinutes(15);
+                lockedNow = true;
+
+                await _auditService.LogAsync(
+                    AuditEventType.SignerLockedOut,
+                    signer.UserName,
+                    "SignerIdentity",
+                    signer.CertificateSerialNumber,
+                    $"Khóa tạm thời quyền ký số của {signer.FullName} trong 15 phút do nhập sai mã PIN {signer.FailedPinAttempts} lần liên tiếp.");
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+
             // Audit failed attempt
             await _auditService.LogAsync(
                 AuditEventType.SignatureFailed,
@@ -276,10 +310,14 @@ public class DigitalSignatureService : IDigitalSignatureService
                 invoice.InvoiceNumber,
                 $"Thao tác ký hóa đơn {invoice.InvoiceNumber} thất bại bởi {signer.FullName}: {ex.Message}");
 
+            string errorMessage = lockedNow
+                ? $"Mã PIN không chính xác. Quyền ký của bạn đã bị tạm khóa 15 phút do nhập sai {maxAttempts} lần."
+                : $"Mã PIN không chính xác. Bạn còn {Math.Max(0, maxAttempts - signer.FailedPinAttempts)} lần thử trước khi bị tạm khóa.";
+
             return new SignatureResult
             {
                 Succeeded = false,
-                ErrorMessage = ex.Message
+                ErrorMessage = errorMessage
             };
         }
         catch (Exception ex)

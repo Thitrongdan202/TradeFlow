@@ -185,4 +185,115 @@ public class RsaSoftwareSigningProvider : ISigningProvider
             return Task.FromResult(false);
         }
     }
+
+    public Task<ChangedPinKeyResult> ChangePinAsync(
+        string encryptedPrivateKey,
+        string currentKeySalt,
+        string currentPin,
+        string newPin,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(currentPin))
+        {
+            throw new CryptographicException("Mã PIN hiện tại không được để trống.");
+        }
+        if (string.IsNullOrWhiteSpace(newPin) || newPin.Length < 6)
+        {
+            throw new ArgumentException("Mã PIN mới phải có tối thiểu 6 ký tự.", nameof(newPin));
+        }
+        if (string.IsNullOrWhiteSpace(encryptedPrivateKey) || string.IsNullOrWhiteSpace(currentKeySalt))
+        {
+            throw new CryptographicException("Dữ liệu khóa ký không hợp lệ hoặc bị thiếu.");
+        }
+
+        byte[] oldSalt = Convert.FromBase64String(currentKeySalt);
+        byte[] oldPacked = Convert.FromBase64String(encryptedPrivateKey);
+
+        if (oldPacked.Length < GcmNonceSizeBytes + GcmTagSizeBytes)
+        {
+            throw new CryptographicException("Dữ liệu khóa ký bị hỏng.");
+        }
+
+        // 1. Derive old AES key
+        byte[] oldAesKey = Rfc2898DeriveBytes.Pbkdf2(
+            Encoding.UTF8.GetBytes(currentPin),
+            oldSalt,
+            Pbkdf2Iterations,
+            HashAlgorithmName.SHA256,
+            AesKeySizeBytes);
+
+        byte[] oldNonce = new byte[GcmNonceSizeBytes];
+        byte[] oldTag = new byte[GcmTagSizeBytes];
+        int ciphertextSize = oldPacked.Length - GcmNonceSizeBytes - GcmTagSizeBytes;
+        byte[] oldCiphertext = new byte[ciphertextSize];
+
+        Buffer.BlockCopy(oldPacked, 0, oldNonce, 0, GcmNonceSizeBytes);
+        Buffer.BlockCopy(oldPacked, GcmNonceSizeBytes, oldTag, 0, GcmTagSizeBytes);
+        Buffer.BlockCopy(oldPacked, GcmNonceSizeBytes + GcmTagSizeBytes, oldCiphertext, 0, ciphertextSize);
+
+        byte[] decryptedPrivateKey = new byte[ciphertextSize];
+
+        try
+        {
+            using (var aesGcm = new AesGcm(oldAesKey, GcmTagSizeBytes))
+            {
+                aesGcm.Decrypt(oldNonce, oldCiphertext, oldTag, decryptedPrivateKey);
+            }
+        }
+        catch (AuthenticationTagMismatchException)
+        {
+            CryptographicOperations.ZeroMemory(oldAesKey);
+            throw new CryptographicException("Mã PIN hiện tại không chính xác.");
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(oldAesKey);
+        }
+
+        try
+        {
+            // 2. Generate new salt and derive new AES key
+            byte[] newSalt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
+            string newSaltBase64 = Convert.ToBase64String(newSalt);
+
+            byte[] newAesKey = Rfc2898DeriveBytes.Pbkdf2(
+                Encoding.UTF8.GetBytes(newPin),
+                newSalt,
+                Pbkdf2Iterations,
+                HashAlgorithmName.SHA256,
+                AesKeySizeBytes);
+
+            byte[] newNonce = RandomNumberGenerator.GetBytes(GcmNonceSizeBytes);
+            byte[] newCiphertext = new byte[decryptedPrivateKey.Length];
+            byte[] newTag = new byte[GcmTagSizeBytes];
+
+            using (var aesGcm = new AesGcm(newAesKey, GcmTagSizeBytes))
+            {
+                aesGcm.Encrypt(newNonce, decryptedPrivateKey, newCiphertext, newTag);
+            }
+
+            CryptographicOperations.ZeroMemory(newAesKey);
+
+            byte[] newPacked = new byte[GcmNonceSizeBytes + GcmTagSizeBytes + newCiphertext.Length];
+            Buffer.BlockCopy(newNonce, 0, newPacked, 0, GcmNonceSizeBytes);
+            Buffer.BlockCopy(newTag, 0, newPacked, GcmNonceSizeBytes, GcmTagSizeBytes);
+            Buffer.BlockCopy(newCiphertext, 0, newPacked, GcmNonceSizeBytes + GcmTagSizeBytes, newCiphertext.Length);
+
+            string newEncryptedPrivateKeyBase64 = Convert.ToBase64String(newPacked);
+
+            byte[] pinCheckBytes = SHA256.HashData(Encoding.UTF8.GetBytes(newSaltBase64 + ":" + newPin));
+            string newPinHashBase64 = Convert.ToBase64String(pinCheckBytes);
+
+            return Task.FromResult(new ChangedPinKeyResult
+            {
+                EncryptedPrivateKey = newEncryptedPrivateKeyBase64,
+                KeySalt = newSaltBase64,
+                PinVerificationHash = newPinHashBase64
+            });
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(decryptedPrivateKey);
+        }
+    }
 }

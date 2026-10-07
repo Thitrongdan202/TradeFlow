@@ -19,4 +19,12 @@ public interface ISigningProvider
     Task<GeneratedKeyPair> GenerateKeyPairAsync(string pin, string subject, CancellationToken cancellationToken = default);
     Task<byte[]> SignDataAsync(byte[] dataToSign, string encryptedPrivateKey, string keySalt, string pin, CancellationToken cancellationToken = default);
     Task<bool> VerifySignatureAsync(byte[] data, byte[] signature, string publicKeyXmlOrPem, CancellationToken cancellationToken = default);
+    Task<ChangedPinKeyResult> ChangePinAsync(string encryptedPrivateKey, string currentKeySalt, string currentPin, string newPin, CancellationToken cancellationToken = default);
+}
+
+public class ChangedPinKeyResult
+{
+    public string EncryptedPrivateKey { get; set; } = string.Empty;
+    public string KeySalt { get; set; } = string.Empty;
+    public string PinVerificationHash { get; set; } = string.Empty;
 }

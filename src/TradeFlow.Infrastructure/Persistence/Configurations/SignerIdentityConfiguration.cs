@@ -15,23 +15,26 @@ public class SignerIdentityConfiguration : IEntityTypeConfiguration<SignerIdenti
         builder.Property(x => x.UserName).HasMaxLength(256).IsRequired();
         builder.Property(x => x.FullName).HasMaxLength(256).IsRequired();
         builder.Property(x => x.Position).HasMaxLength(150).IsRequired();
-        builder.Property(x => x.CertificateSerialNumber).HasMaxLength(100).IsRequired();
-        builder.Property(x => x.CertificateSubject).HasMaxLength(500).IsRequired();
-        builder.Property(x => x.CertificateIssuer).HasMaxLength(256).IsRequired();
-        builder.Property(x => x.CertificateThumbprint).HasMaxLength(128).IsRequired();
+        builder.Property(x => x.CertificateSerialNumber).HasMaxLength(100).IsRequired(false);
+        builder.Property(x => x.CertificateSubject).HasMaxLength(500).IsRequired(false);
+        builder.Property(x => x.CertificateIssuer).HasMaxLength(256).IsRequired(false);
+        builder.Property(x => x.CertificateThumbprint).HasMaxLength(128).IsRequired(false);
         builder.Property(x => x.EncryptedPrivateKey).HasMaxLength(4000);
         builder.Property(x => x.KeySalt).HasMaxLength(256);
         builder.Property(x => x.PinVerificationHash).HasMaxLength(256);
         builder.Property(x => x.PublicKeyXml).HasMaxLength(4000);
         builder.Property(x => x.PublicKeyPem).HasMaxLength(4000);
         builder.Property(x => x.EnrollmentCodeHash).HasMaxLength(128);
-        builder.Property(x => x.EnrolledBy).HasMaxLength(256).IsRequired();
+        builder.Property(x => x.EnrolledBy).HasMaxLength(256);
         builder.Property(x => x.RevokedBy).HasMaxLength(256);
         builder.Property(x => x.RevocationReason).HasMaxLength(500);
         builder.Property(x => x.Notes).HasMaxLength(1000);
+        builder.Property(x => x.HandwrittenSignatureImage);
+        builder.Property(x => x.FailedPinAttempts);
+        builder.Property(x => x.LockoutEnd);
 
         builder.HasIndex(x => x.UserId);
-        builder.HasIndex(x => x.CertificateSerialNumber).IsUnique();
+        builder.HasIndex(x => x.CertificateSerialNumber).IsUnique().HasFilter("\"CertificateSerialNumber\" IS NOT NULL AND \"CertificateSerialNumber\" <> ''");
         builder.HasIndex(x => x.Status);
     }
 }

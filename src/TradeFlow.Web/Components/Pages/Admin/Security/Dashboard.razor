@@ -177,6 +177,7 @@ else
                             <th>Tài khoản</th>
                             <th>Vai trò ký</th>
                             <th>Chức vụ</th>
+                            <th>Chữ ký tay</th>
                             <th>Sê-ri chứng thư</th>
                             <th>Hiệu lực đến</th>
                             <th style="text-align:center;">Trạng thái</th>
@@ -186,7 +187,7 @@ else
                     <tbody>
                         @if (!_signers.Any())
                         {
-                            <tr><td colspan="8" style="text-align:center; padding:30px; color:var(--tf-text-muted);">Chưa có người ký nào được kích hoạt. Hãy cấp mã kích hoạt và kích hoạt chứng thư đầu tiên.</td></tr>
+                            <tr><td colspan="9" style="text-align:center; padding:30px; color:var(--tf-text-muted);">Chưa có người ký nào được kích hoạt. Hãy cấp mã kích hoạt và kích hoạt chứng thư đầu tiên.</td></tr>
                         }
                         else
                         {
@@ -199,16 +200,50 @@ else
                                         <span class="tf-badge tf-badge-primary">@s.SignerRole.ToVietnamese()</span>
                                     </td>
                                     <td>@s.Position</td>
-                                    <td><code style="font-size:12px; background:#f1f5f9; padding:2px 6px; border-radius:4px;">@s.CertificateSerialNumber</code></td>
-                                    <td style="font-size:13px;">
-                                        @s.ValidTo.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
-                                        @if (s.IsExpiringSoon)
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(s.HandwrittenSignatureImage))
                                         {
-                                            <span style="color:#d97706; font-size:11px; font-weight:600; display:block;">⚠️ Sắp hết hạn</span>
+                                            <img src="@s.HandwrittenSignatureImage" alt="Chữ ký" style="height:28px; max-width:80px; object-fit:contain; border:1px solid #e2e8f0; border-radius:4px; padding:2px; background:#fff;" />
+                                        }
+                                        else
+                                        {
+                                            <span style="font-size:12px; color:var(--tf-text-muted);">Chưa tải ảnh</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (s.HasCredential)
+                                        {
+                                            <code style="font-size:12px; background:#f1f5f9; padding:2px 6px; border-radius:4px;">@s.CertificateSerialNumber</code>
+                                        }
+                                        else
+                                        {
+                                            <span class="tf-badge tf-badge-warning" style="font-size:11px;">Chưa có chứng thư</span>
+                                        }
+                                    </td>
+                                    <td style="font-size:13px;">
+                                        @if (s.HasCredential)
+                                        {
+                                            @s.ValidTo.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                            @if (s.IsExpiringSoon)
+                                            {
+                                                <span style="color:#d97706; font-size:11px; font-weight:600; display:block;">⚠️ Sắp hết hạn</span>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span style="color:var(--tf-text-muted);">-</span>
                                         }
                                     </td>
                                     <td style="text-align:center;">
-                                        @if (s.Status == SignerStatus.Active)
+                                        @if (s.IsLockedOut)
+                                        {
+                                            <span class="tf-badge tf-badge-error" title="Tạm khóa do sai PIN">Khóa tạm thời</span>
+                                        }
+                                        else if (s.Status == SignerStatus.Active && !s.HasCredential)
+                                        {
+                                            <span class="tf-badge tf-badge-warning">Chờ lập PIN</span>
+                                        }
+                                        else if (s.Status == SignerStatus.Active)
                                         {
                                             <span class="tf-badge tf-badge-success">Hoạt động</span>
                                         }
@@ -226,16 +261,41 @@ else
                                         }
                                     </td>
                                     <td style="text-align:right;">
-                                        @if (s.Status == SignerStatus.Active)
-                                        {
-                                            <button class="tf-btn tf-btn-ghost tf-btn-sm" style="color:#dc2626;" @onclick="() => PromptRevokeSigner(s)" title="Thu hồi chứng thư">
-                                                Thu hồi
+                                        <div style="display:inline-flex; gap:4px; align-items:center;">
+                                            @if (s.IsLockedOut)
+                                            {
+                                                <button class="tf-btn tf-btn-warning tf-btn-sm" @onclick="() => UnlockSigner(s)" title="Mở khóa tài khoản ký">
+                                                    Mở khóa
+                                                </button>
+                                            }
+                                            @if (!s.HasCredential)
+                                            {
+                                                <button class="tf-btn tf-btn-primary tf-btn-sm" @onclick="() => PromptSetupPin(s)" title="Thiết lập mã PIN & sinh cặp khóa ký số">
+                                                    Lập PIN &amp; Khóa
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <button class="tf-btn tf-btn-secondary tf-btn-sm" @onclick="() => PromptChangePin(s)" title="Đổi mã PIN người ký">
+                                                    Đổi PIN
+                                                </button>
+                                            }
+                                            <button class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => PromptEditSignatureImage(s)" title="Quản lý ảnh chữ ký tay">
+                                                Chữ ký tay
                                             </button>
-                                        }
-                                        else if (s.Status == SignerStatus.Revoked && !string.IsNullOrEmpty(s.RevocationReason))
-                                        {
-                                            <span style="font-size:12px; color:var(--tf-text-muted);" title="@s.RevocationReason">Lý do: @(s.RevocationReason.Length > 20 ? s.RevocationReason[..20] + "..." : s.RevocationReason)</span>
-                                        }
+                                            @if (s.HasCredential)
+                                            {
+                                                <button class="tf-btn tf-btn-ghost tf-btn-sm" style="color:#d97706;" @onclick="() => PromptAdminResetPin(s)" title="Quản trị viên đặt lại PIN (xóa khóa cũ)">
+                                                    Đặt lại PIN
+                                                </button>
+                                            }
+                                            @if (s.Status == SignerStatus.Active)
+                                            {
+                                                <button class="tf-btn tf-btn-ghost tf-btn-sm" style="color:#dc2626;" @onclick="() => PromptRevokeSigner(s)" title="Thu hồi chứng thư">
+                                                    Thu hồi
+                                                </button>
+                                            }
+                                        </div>
                                     </td>
                                 </tr>
                             }
@@ -287,7 +347,16 @@ else
                                     <td>@c.TargetPosition</td>
                                     <td>@c.CreatedBy</td>
                                     <td style="font-size:13px;">@c.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-                                    <td style="font-size:13px;">@c.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td style="font-size:13px;">
+                                        @if (c.HasExpiration && c.ExpiresAt.HasValue)
+                                        {
+                                            @c.ExpiresAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                        }
+                                        else
+                                        {
+                                            <span class="tf-badge tf-badge-info" style="font-size:11px;">Vô thời hạn (1 lần)</span>
+                                        }
+                                    </td>
                                     <td style="text-align:center;">
                                         @if (c.IsUsed)
                                         {
@@ -599,9 +668,22 @@ else
             </div>
 
             <div class="tf-form-group tf-mb-4">
-                <label class="tf-form-label" style="font-weight:600;">Thời gian hiệu lực của mã (phút)</label>
-                <input type="number" class="tf-form-control" min="10" max="10080" @bind="_codeExpirationMinutes" />
+                <label style="display:flex; align-items:center; gap:8px; font-weight:600; cursor:pointer;">
+                    <input type="checkbox" @bind="_codeHasExpiration" />
+                    Mã kích hoạt có giới hạn thời gian hiệu lực
+                </label>
+                <p style="margin:4px 0 0 24px; font-size:12px; color:var(--tf-text-muted);">
+                    Khi tắt tùy chọn này, mã không bị giới hạn thời gian nhưng vẫn chỉ sử dụng được 1 lần duy nhất và có thể bị thu hồi bất cứ lúc nào.
+                </p>
             </div>
+
+            @if (_codeHasExpiration)
+            {
+                <div class="tf-form-group tf-mb-4" style="margin-left:24px;">
+                    <label class="tf-form-label" style="font-weight:600;">Thời gian hiệu lực của mã (phút)</label>
+                    <input type="number" class="tf-form-control" min="10" max="10080" @bind="_codeExpirationMinutes" />
+                </div>
+            }
 
             @if (!string.IsNullOrEmpty(_issueCodeError))
             {
@@ -637,7 +719,14 @@ else
                     @_newlyIssuedCode.RawCode
                 </div>
                 <div style="font-size:12px; color:#d97706; margin-top:8px;">
-                    Hết hạn vào: @_newlyIssuedCode.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                    @if (_newlyIssuedCode.HasExpiration && _newlyIssuedCode.ExpiresAt.HasValue)
+                    {
+                        <span>Hết hạn vào: @_newlyIssuedCode.ExpiresAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                    }
+                    else
+                    {
+                        <span style="color:#16a34a; font-weight:600;">Thời hạn: Không giới hạn thời gian (Sử dụng 1 lần duy nhất)</span>
+                    }
                 </div>
             </div>
 
@@ -768,12 +857,217 @@ else
     </div>
 }
 
+@* MODAL 6: THIẾT LẬP MÃ PIN & KHÓA KÝ CHO NGƯỜI KÝ PRE-PROVISIONED *@
+@if (_showSetupPinModal && _selectedSignerToSetup != null)
+{
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
+        <div style="background:white; padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0; font-size:18px; color:var(--tf-primary);">🔑 Thiết lập mã PIN &amp; Tạo khóa chứng thư</h3>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showSetupPinModal = false">✕</button>
+            </div>
+
+            <div class="tf-alert tf-alert-info tf-mb-4" style="font-size:13px;">
+                Người ký: <strong>@_selectedSignerToSetup.FullName</strong> (@_selectedSignerToSetup.Position)<br/>
+                Tài khoản liên kết: <code>@_selectedSignerToSetup.UserName</code> | Vai trò: <strong>@_selectedSignerToSetup.SignerRole.ToVietnamese()</strong>
+            </div>
+
+            <div class="tf-form-group tf-mb-4">
+                <label class="tf-form-label" style="font-weight:600;">Mã PIN bảo mật mới <span style="color:var(--tf-error);">*</span></label>
+                <input type="password" class="tf-form-control" placeholder="Tối thiểu @_settings.PinMinLength ký tự" @bind="_setupPin" />
+                <p style="margin:4px 0 0; font-size:12px; color:var(--tf-text-muted);">
+                    Mã PIN này được dùng để mã hóa AES-256 khóa riêng tư RSA-2048 và bắt buộc phải nhập mỗi khi thực hiện ký hóa đơn.
+                </p>
+            </div>
+
+            <div class="tf-form-group tf-mb-4">
+                <label class="tf-form-label" style="font-weight:600;">Xác nhận lại mã PIN <span style="color:var(--tf-error);">*</span></label>
+                <input type="password" class="tf-form-control" placeholder="Nhập lại mã PIN" @bind="_setupConfirmPin" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(_setupPinError))
+            {
+                <div class="tf-alert tf-alert-error tf-mb-4">@_setupPinError</div>
+            }
+
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showSetupPinModal = false">Hủy</button>
+                <button type="button" class="tf-btn tf-btn-primary" @onclick="ExecuteSetupPin" disabled="@_isSettingUpPin">
+                    @(_isSettingUpPin ? "Đang sinh cặp khóa RSA..." : "Khởi tạo cặp khóa &amp; PIN")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* MODAL 7: ĐỔI MÃ PIN KÝ SỐ *@
+@if (_showChangePinModal && _selectedSignerToChangePin != null)
+{
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
+        <div style="background:white; padding:24px; border-radius:8px; width:500px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0; font-size:18px; color:var(--tf-primary);">🔄 Đổi mã PIN ký số</h3>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showChangePinModal = false">✕</button>
+            </div>
+
+            <div class="tf-alert tf-alert-info tf-mb-4" style="font-size:13px;">
+                Người ký: <strong>@_selectedSignerToChangePin.FullName</strong> (@_selectedSignerToChangePin.Position)<br/>
+                Sê-ri chứng thư: <code>@_selectedSignerToChangePin.CertificateSerialNumber</code>
+            </div>
+
+            <div class="tf-form-group tf-mb-4">
+                <label class="tf-form-label" style="font-weight:600;">Mã PIN hiện tại <span style="color:var(--tf-error);">*</span></label>
+                <input type="password" class="tf-form-control" placeholder="Nhập mã PIN hiện tại" @bind="_changeCurrentPin" />
+            </div>
+
+            <div class="tf-form-group tf-mb-4">
+                <label class="tf-form-label" style="font-weight:600;">Mã PIN mới <span style="color:var(--tf-error);">*</span></label>
+                <input type="password" class="tf-form-control" placeholder="Tối thiểu @_settings.PinMinLength ký tự" @bind="_changeNewPin" />
+            </div>
+
+            <div class="tf-form-group tf-mb-4">
+                <label class="tf-form-label" style="font-weight:600;">Xác nhận mã PIN mới <span style="color:var(--tf-error);">*</span></label>
+                <input type="password" class="tf-form-control" placeholder="Nhập lại mã PIN mới" @bind="_changeConfirmPin" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(_changePinError))
+            {
+                <div class="tf-alert tf-alert-error tf-mb-4">@_changePinError</div>
+            }
+
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showChangePinModal = false">Hủy</button>
+                <button type="button" class="tf-btn tf-btn-primary" @onclick="ExecuteChangePin" disabled="@_isChangingPin">
+                    @(_isChangingPin ? "Đang mã hóa lại..." : "Cập nhật mã PIN")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* MODAL 8: QUẢN TRỊ VIÊN ĐẶT LẠI PIN *@
+@if (_showAdminResetPinModal && _selectedSignerToResetPin != null)
+{
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
+        <div style="background:white; padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0; font-size:18px; color:#d97706;">⚠️ Đặt lại mã PIN người ký</h3>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showAdminResetPinModal = false">✕</button>
+            </div>
+
+            <div class="tf-alert tf-alert-warning tf-mb-4" style="font-size:13px; line-height:1.5;">
+                Người ký: <strong>@_selectedSignerToResetPin.FullName</strong> (@_selectedSignerToResetPin.Position)<br/>
+                <strong>LƯU Ý:</strong> Vì lý do bảo mật, Admin không thể xem mã PIN dạng văn bản rõ.
+                Thao tác đặt lại này sẽ xóa khóa ký cũ và đưa người ký về trạng thái cần thiết lập lại mã PIN mới.
+            </div>
+
+            <div class="tf-form-group tf-mb-4">
+                <label class="tf-form-label" style="font-weight:600;">Lý do đặt lại PIN <span style="color:var(--tf-error);">*</span></label>
+                <input type="text" class="tf-form-control" placeholder="VD: Người ký quên mã PIN, nghi ngờ rò rỉ bảo mật..." @bind="_adminResetReason" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(_adminResetError))
+            {
+                <div class="tf-alert tf-alert-error tf-mb-4">@_adminResetError</div>
+            }
+
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showAdminResetPinModal = false">Hủy</button>
+                <button type="button" class="tf-btn tf-btn-warning" @onclick="ExecuteAdminResetPin" disabled="@_isResettingPin">
+                    @(_isResettingPin ? "Đang xử lý..." : "Xác nhận đặt lại PIN")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* MODAL 9: QUẢN LÝ ẢNH CHỮ KÝ TAY *@
+@if (_showEditSignatureModal && _selectedSignerToEditSig != null)
+{
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
+        <div style="background:white; padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0; font-size:18px; color:var(--tf-primary);">✍ Quản lý ảnh chữ ký tay</h3>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showEditSignatureModal = false">✕</button>
+            </div>
+
+            <div class="tf-alert tf-alert-info tf-mb-4" style="font-size:13px;">
+                Người ký: <strong>@_selectedSignerToEditSig.FullName</strong> (@_selectedSignerToEditSig.Position)<br/>
+                Ảnh chữ ký tay là hình ảnh trực quan hiển thị trên văn bản/hóa đơn và không thay thế cho chữ ký số mật mã học RSA.
+            </div>
+
+            @if (!string.IsNullOrEmpty(_editSignatureImage))
+            {
+                <div style="text-align:center; padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; margin-bottom:16px;">
+                    <div style="font-size:12px; color:var(--tf-text-secondary); margin-bottom:6px;">Xem trước chữ ký:</div>
+                    <img src="@_editSignatureImage" alt="Chữ ký tay" style="max-height:80px; max-width:240px; object-fit:contain; background:#fff; padding:6px; border:1px solid #cbd5e1; border-radius:4px;" />
+                </div>
+            }
+
+            <div class="tf-form-group tf-mb-4">
+                <label class="tf-form-label" style="font-weight:600;">Dữ liệu ảnh chữ ký (Data URI SVG hoặc PNG base64)</label>
+                <textarea class="tf-form-control" rows="4" placeholder="data:image/svg+xml;utf8,... hoặc data:image/png;base64,..." @bind="_editSignatureImage"></textarea>
+            </div>
+
+            <div style="display:flex; gap:8px; margin-bottom:16px;">
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="GenerateSampleSignature1">Mẫu chữ ký 1</button>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="GenerateSampleSignature2">Mẫu chữ ký 2</button>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" style="color:#dc2626;" @onclick="() => _editSignatureImage = string.Empty">Xóa ảnh</button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_editSigError))
+            {
+                <div class="tf-alert tf-alert-error tf-mb-4">@_editSigError</div>
+            }
+
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showEditSignatureModal = false">Hủy</button>
+                <button type="button" class="tf-btn tf-btn-primary" @onclick="ExecuteSaveSignatureImage" disabled="@_isSavingSig">
+                    @(_isSavingSig ? "Đang lưu..." : "Lưu chữ ký tay")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private string _activeTab = "overview";
     private bool _isLoading = true;
     private string? _globalMessage;
     private bool _globalSuccess;
     private string? _currentUsername;
+    private bool _codeHasExpiration = true;
+
+    // Setup PIN Modal (for pre-provisioned signers without credential)
+    private bool _showSetupPinModal;
+    private SignerIdentityDto? _selectedSignerToSetup;
+    private string _setupPin = "";
+    private string _setupConfirmPin = "";
+    private bool _isSettingUpPin;
+    private string? _setupPinError;
+
+    // Change PIN Modal
+    private bool _showChangePinModal;
+    private SignerIdentityDto? _selectedSignerToChangePin;
+    private string _changeCurrentPin = "";
+    private string _changeNewPin = "";
+    private string _changeConfirmPin = "";
+    private bool _isChangingPin;
+    private string? _changePinError;
+
+    // Admin Reset PIN Modal
+    private bool _showAdminResetPinModal;
+    private SignerIdentityDto? _selectedSignerToResetPin;
+    private string _adminResetReason = "";
+    private bool _isResettingPin;
+    private string? _adminResetError;
+
+    // Edit Signature Image Modal
+    private bool _showEditSignatureModal;
+    private SignerIdentityDto? _selectedSignerToEditSig;
+    private string _editSignatureImage = "";
+    private bool _isSavingSig;
+    private string? _editSigError;
 
     private SecurityDashboardStats _stats = new();
     private List<SecurityAlertDto> _alerts = new();
@@ -899,7 +1193,8 @@ else
                 _targetUserId,
                 _targetSignerRole,
                 _targetPosition.Trim(),
-                _codeExpirationMinutes,
+                _codeHasExpiration,
+                _codeHasExpiration ? _codeExpirationMinutes : null,
                 _currentUsername ?? "Admin");
 
             if (!res.Succeeded)
@@ -1107,6 +1402,226 @@ else
         finally
         {
             _isSavingSettings = false;
+        }
+    }
+
+    private void PromptSetupPin(SignerIdentityDto signer)
+    {
+        _selectedSignerToSetup = signer;
+        _setupPin = "";
+        _setupConfirmPin = "";
+        _setupPinError = null;
+        _showSetupPinModal = true;
+    }
+
+    private async Task ExecuteSetupPin()
+    {
+        if (_selectedSignerToSetup == null) return;
+        if (string.IsNullOrWhiteSpace(_setupPin) || _setupPin.Length < _settings.PinMinLength)
+        {
+            _setupPinError = $"Mã PIN phải có tối thiểu {_settings.PinMinLength} ký tự.";
+            return;
+        }
+        if (_setupPin != _setupConfirmPin)
+        {
+            _setupPinError = "Mật mã PIN xác nhận không khớp.";
+            return;
+        }
+
+        _isSettingUpPin = true;
+        _setupPinError = null;
+        try
+        {
+            var res = await SecurityService.SetupSignerPinAndCredentialAsync(_selectedSignerToSetup.Id, _setupPin, _currentUsername ?? "Admin");
+            if (!res.Succeeded)
+            {
+                _setupPinError = res.ErrorMessage;
+                return;
+            }
+
+            _showSetupPinModal = false;
+            _globalMessage = $"Thiết lập mã PIN và cặp khóa RSA thành công cho {_selectedSignerToSetup.FullName}!";
+            _globalSuccess = true;
+            await LoadAllDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _setupPinError = "Lỗi thiết lập PIN: " + ex.Message;
+        }
+        finally
+        {
+            _isSettingUpPin = false;
+        }
+    }
+
+    private void PromptChangePin(SignerIdentityDto signer)
+    {
+        _selectedSignerToChangePin = signer;
+        _changeCurrentPin = "";
+        _changeNewPin = "";
+        _changeConfirmPin = "";
+        _changePinError = null;
+        _showChangePinModal = true;
+    }
+
+    private async Task ExecuteChangePin()
+    {
+        if (_selectedSignerToChangePin == null) return;
+        if (string.IsNullOrWhiteSpace(_changeCurrentPin))
+        {
+            _changePinError = "Vui lòng nhập mã PIN hiện tại.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(_changeNewPin) || _changeNewPin.Length < _settings.PinMinLength)
+        {
+            _changePinError = $"Mã PIN mới phải có tối thiểu {_settings.PinMinLength} ký tự.";
+            return;
+        }
+        if (_changeNewPin != _changeConfirmPin)
+        {
+            _changePinError = "Mật mã PIN xác nhận không khớp.";
+            return;
+        }
+
+        _isChangingPin = true;
+        _changePinError = null;
+        try
+        {
+            var res = await SecurityService.ChangeSignerPinAsync(_selectedSignerToChangePin.Id, _changeCurrentPin, _changeNewPin, _currentUsername ?? "Admin");
+            if (!res.Succeeded)
+            {
+                _changePinError = res.ErrorMessage;
+                return;
+            }
+
+            _showChangePinModal = false;
+            _globalMessage = $"Đổi mã PIN thành công cho người ký {_selectedSignerToChangePin.FullName}!";
+            _globalSuccess = true;
+            await LoadAllDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _changePinError = "Lỗi khi đổi PIN: " + ex.Message;
+        }
+        finally
+        {
+            _isChangingPin = false;
+        }
+    }
+
+    private void PromptAdminResetPin(SignerIdentityDto signer)
+    {
+        _selectedSignerToResetPin = signer;
+        _adminResetReason = "";
+        _adminResetError = null;
+        _showAdminResetPinModal = true;
+    }
+
+    private async Task ExecuteAdminResetPin()
+    {
+        if (_selectedSignerToResetPin == null) return;
+        if (string.IsNullOrWhiteSpace(_adminResetReason))
+        {
+            _adminResetError = "Vui lòng nhập lý do đặt lại PIN.";
+            return;
+        }
+
+        _isResettingPin = true;
+        _adminResetError = null;
+        try
+        {
+            var res = await SecurityService.AdminResetSignerPinAsync(_selectedSignerToResetPin.Id, _adminResetReason.Trim(), _currentUsername ?? "Admin");
+            if (!res.Succeeded)
+            {
+                _adminResetError = res.ErrorMessage;
+                return;
+            }
+
+            _showAdminResetPinModal = false;
+            _globalMessage = $"Đã đặt lại trạng thái PIN cho {_selectedSignerToResetPin.FullName}. Khóa cũ đã được xóa.";
+            _globalSuccess = true;
+            await LoadAllDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _adminResetError = "Lỗi khi đặt lại PIN: " + ex.Message;
+        }
+        finally
+        {
+            _isResettingPin = false;
+        }
+    }
+
+    private void PromptEditSignatureImage(SignerIdentityDto signer)
+    {
+        _selectedSignerToEditSig = signer;
+        _editSignatureImage = signer.HandwrittenSignatureImage ?? "";
+        _editSigError = null;
+        _showEditSignatureModal = true;
+    }
+
+    private void GenerateSampleSignature1()
+    {
+        _editSignatureImage = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 100' width='300' height='100'><path d='M20 70 Q 60 10, 100 60 T 180 40 T 260 70 M50 50 Q 120 80, 200 20 M140 30 L 220 85' fill='none' stroke='%23002f6c' stroke-width='3' stroke-linecap='round'/></svg>";
+    }
+
+    private void GenerateSampleSignature2()
+    {
+        _editSignatureImage = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 100' width='300' height='100'><path d='M30 65 Q 80 15, 120 55 T 190 35 T 270 65 M70 45 Q 150 75, 230 25' fill='none' stroke='%231a365d' stroke-width='2.5' stroke-linecap='round'/></svg>";
+    }
+
+    private async Task ExecuteSaveSignatureImage()
+    {
+        if (_selectedSignerToEditSig == null) return;
+        _isSavingSig = true;
+        _editSigError = null;
+        try
+        {
+            string? sigImg = string.IsNullOrWhiteSpace(_editSignatureImage) ? null : _editSignatureImage.Trim();
+            var ok = await SecurityService.UpdateSignerProfileAsync(
+                _selectedSignerToEditSig.Id,
+                _selectedSignerToEditSig.FullName,
+                _selectedSignerToEditSig.Position,
+                sigImg,
+                _currentUsername ?? "Admin");
+
+            if (!ok)
+            {
+                _editSigError = "Không thể cập nhật ảnh chữ ký.";
+                return;
+            }
+
+            _showEditSignatureModal = false;
+            _globalMessage = $"Đã cập nhật ảnh chữ ký tay cho {_selectedSignerToEditSig.FullName}!";
+            _globalSuccess = true;
+            await LoadAllDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _editSigError = "Lỗi khi lưu chữ ký: " + ex.Message;
+        }
+        finally
+        {
+            _isSavingSig = false;
+        }
+    }
+
+    private async Task UnlockSigner(SignerIdentityDto signer)
+    {
+        try
+        {
+            var ok = await SecurityService.UnlockSignerLockoutAsync(signer.Id, _currentUsername ?? "Admin");
+            if (ok)
+            {
+                _globalMessage = $"Đã mở khóa phiên ký số cho {signer.FullName} thành công.";
+                _globalSuccess = true;
+                await LoadAllDataAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _globalMessage = "Lỗi khi mở khóa: " + ex.Message;
+            _globalSuccess = false;
         }
     }
 }

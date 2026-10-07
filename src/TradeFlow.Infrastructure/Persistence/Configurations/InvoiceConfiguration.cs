@@ -48,6 +48,7 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(x => x.CertificateSerialNumber).HasMaxLength(100);
         builder.Property(x => x.SignerPosition).HasMaxLength(150);
         builder.Property(x => x.DocumentHash).HasMaxLength(256);
+        builder.Property(x => x.SignerHandwrittenSignatureImage);
         builder.Property(x => x.LastVerifiedBy).HasMaxLength(256);
 
         builder.HasIndex(x => x.InvoiceNumber).IsUnique();

@@ -62,6 +62,7 @@ public class InvoiceDto
     public SignerRole? SignerRole { get; set; }
     public string? DocumentHash { get; set; }
     public int? SignerIdentityId { get; set; }
+    public string? SignerHandwrittenSignatureImage { get; set; }
     public DateTime? LastVerifiedAt { get; set; }
     public string? LastVerifiedBy { get; set; }
     

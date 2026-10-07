@@ -28,8 +28,11 @@ public class SignerEnrollmentCode : AuditableEntity<int>
     /// <summary>Vai trò thẩm quyền ký được chỉ định</summary>
     public SignerRole TargetSignerRole { get; set; } = SignerRole.AuthorizedSigner;
 
-    /// <summary>Thời điểm hết hạn của mã (UTC)</summary>
-    public DateTime ExpiresAt { get; set; }
+    /// <summary>Mã kích hoạt có áp dụng thời gian hết hạn không (ON/OFF)</summary>
+    public bool HasExpiration { get; set; } = true;
+
+    /// <summary>Thời điểm hết hạn của mã (UTC) - null nếu không hết hạn theo thời gian</summary>
+    public DateTime? ExpiresAt { get; set; }
 
     /// <summary>Đã được sử dụng chưa</summary>
     public bool IsUsed { get; set; }

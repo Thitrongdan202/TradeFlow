@@ -1170,6 +1170,7 @@ public class InvoiceService : IInvoiceService
             SignerRole = invoice.SignerRole,
             DocumentHash = invoice.DocumentHash,
             SignerIdentityId = invoice.SignerIdentityId,
+            SignerHandwrittenSignatureImage = invoice.SignerHandwrittenSignatureImage,
             LastVerifiedAt = invoice.LastVerifiedAt,
             LastVerifiedBy = invoice.LastVerifiedBy
         };

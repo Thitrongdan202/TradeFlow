@@ -110,5 +110,10 @@ public enum AuditEventType
     SignatureFailed = 156,
     DocumentTampered = 157,
     UserOffboarded = 158,
-    SecuritySettingsUpdated = 159
+    SecuritySettingsUpdated = 159,
+    SignerPinChanged = 160,
+    SignerPinReset = 161,
+    SignerLockedOut = 162,
+    SignerProfileCreated = 163,
+    SignerProfileUpdated = 164
 }

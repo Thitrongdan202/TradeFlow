@@ -6,6 +6,147 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="TradeFlow — Hệ thống quản lý kinh doanh nội bộ" />
     <base href="/" />
+    @if (!string.IsNullOrEmpty(_branding.LogoPath))
+    {
+        <link rel="preload" as="image" href="@_branding.LogoPath" />
+    }
+    <style>
+        /* Critical Startup Loading Screen - Inlined for instant 60 FPS render with 0 layout shift */
+        #tf-startup-loader {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            user-select: none;
+            contain: strict;
+        }
+
+        #tf-startup-loader.is-fading-out {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            transition: opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+
+        .tf-loading-backdrop {
+            position: absolute;
+            inset: 0;
+            background-color: rgba(248, 250, 252, 0.72);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            pointer-events: none;
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+        }
+
+        .tf-loading-container {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 24px;
+        }
+
+        .tf-loading-brand-visual {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 14px;
+            contain: layout size;
+        }
+
+        .tf-loading-ring-wrapper {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            transform-origin: 50% 50%;
+            will-change: transform;
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+            animation: tf-spin-ring 1.4s linear infinite;
+        }
+
+        .tf-loading-ring-svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+            pointer-events: none;
+            overflow: visible;
+        }
+
+        .tf-loading-logo-box {
+            position: relative;
+            z-index: 3;
+            width: 95px;
+            height: 65px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px;
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+        }
+
+        .tf-loading-logo-img {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            display: block;
+            user-select: none;
+            pointer-events: none;
+        }
+
+        .tf-loading-company-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 6px;
+            letter-spacing: 0.2px;
+            max-width: 320px;
+            min-height: 22px;
+            line-height: 1.4;
+        }
+
+        .tf-loading-status-text {
+            font-size: 13px;
+            font-weight: 500;
+            color: #64748b;
+            letter-spacing: 0.3px;
+            min-height: 20px;
+            line-height: 1.4;
+        }
+
+        @@keyframes tf-spin-ring {
+            0% {
+                transform: rotate(0deg) translate3d(0, 0, 0);
+            }
+            100% {
+                transform: rotate(360deg) translate3d(0, 0, 0);
+            }
+        }
+
+        @@media (prefers-reduced-motion: reduce) {
+            .tf-loading-ring-wrapper {
+                animation: none !important;
+            }
+        }
+    </style>
     <ResourcePreloader />
     <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]" />
     <link rel="stylesheet" href="@Assets["app.css"]" />
@@ -19,26 +160,28 @@
     @if (_branding.ShowLoadingScreen)
     {
         <div id="tf-startup-loader" class="tf-loading-overlay is-active" role="status" aria-busy="true" aria-live="polite" aria-label="Đang tải...">
+            <div class="tf-loading-backdrop"></div>
             <div class="tf-loading-container">
                 <div class="tf-loading-brand-visual">
-                    <svg class="tf-loading-ring-svg tf-loading-ring-animated"
-                         viewBox="0 0 100 100"
-                         style="animation-duration: @GetSpeedDuration(_branding.SpinnerSpeed);"
-                         aria-hidden="true">
-                        <circle cx="50" cy="50" r="44"
-                                fill="none"
-                                stroke="@_branding.SpinnerColor"
-                                stroke-width="2"
-                                opacity="@Math.Min(_branding.SpinnerOpacity * 0.14, 0.18)" />
-                        <circle cx="50" cy="50" r="44"
-                                fill="none"
-                                stroke="@_branding.SpinnerColor"
-                                stroke-width="2.5"
-                                stroke-dasharray="85 190"
-                                stroke-dashoffset="0"
-                                stroke-linecap="round"
-                                opacity="@Math.Min(_branding.SpinnerOpacity, 0.88)" />
-                    </svg>
+                    <div class="tf-loading-ring-wrapper" style="animation-duration: @GetSpeedDuration(_branding.SpinnerSpeed);">
+                        <svg class="tf-loading-ring-svg"
+                             viewBox="0 0 100 100"
+                             aria-hidden="true">
+                            <circle cx="50" cy="50" r="44"
+                                    fill="none"
+                                    stroke="@_branding.SpinnerColor"
+                                    stroke-width="2"
+                                    opacity="@Math.Min(_branding.SpinnerOpacity * 0.14, 0.18)" />
+                            <circle cx="50" cy="50" r="44"
+                                    fill="none"
+                                    stroke="@_branding.SpinnerColor"
+                                    stroke-width="2.5"
+                                    stroke-dasharray="85 190"
+                                    stroke-dashoffset="0"
+                                    stroke-linecap="round"
+                                    opacity="@Math.Min(_branding.SpinnerOpacity, 0.88)" />
+                        </svg>
+                    </div>
 
                     <div class="tf-loading-logo-box">
                         @if (!string.IsNullOrEmpty(_branding.LogoPath))
@@ -46,7 +189,10 @@
                             <img src="@_branding.LogoPath"
                                  alt="@_branding.CompanyName"
                                  class="tf-loading-logo-img"
-                                 loading="eager" />
+                                 width="95"
+                                 height="65"
+                                 loading="eager"
+                                 decoding="async" />
                         }
                         else
                         {

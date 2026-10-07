@@ -14,32 +14,34 @@
          aria-label="@CurrentLoadingText"
          style="@(_isFadingOut || !IsActive ? "pointer-events: none;" : "")">
         
+        <div class="tf-loading-backdrop"></div>
         <div class="tf-loading-container">
             @* Centered Circular Visual with Rotating Ring and Stationary Logo *@
             <div class="tf-loading-brand-visual">
-                @* Rotating Ring (SVG with subtle track and soft rounded arc) *@
-                <svg class="tf-loading-ring-svg tf-loading-ring-animated"
-                     viewBox="0 0 100 100"
-                     style="animation-duration: @GetSpeedDuration(CurrentBranding.SpinnerSpeed);"
-                     aria-hidden="true">
-                    
-                    @* Faint subtle guide circle track *@
-                    <circle cx="50" cy="50" r="44"
-                            fill="none"
-                            stroke="@CurrentBranding.SpinnerColor"
-                            stroke-width="2"
-                            opacity="@Math.Min(CurrentBranding.SpinnerOpacity * 0.14, 0.18)" />
-                    
-                    @* Active rotating translucent arc with smooth rounded ends *@
-                    <circle cx="50" cy="50" r="44"
-                            fill="none"
-                            stroke="@CurrentBranding.SpinnerColor"
-                            stroke-width="2.5"
-                            stroke-dasharray="85 190"
-                            stroke-dashoffset="0"
-                            stroke-linecap="round"
-                            opacity="@Math.Min(CurrentBranding.SpinnerOpacity, 0.88)" />
-                </svg>
+                @* Rotating Ring (Wrapped for GPU Compositor Isolation) *@
+                <div class="tf-loading-ring-wrapper" style="animation-duration: @GetSpeedDuration(CurrentBranding.SpinnerSpeed);">
+                    <svg class="tf-loading-ring-svg"
+                         viewBox="0 0 100 100"
+                         aria-hidden="true">
+                        
+                        @* Faint subtle guide circle track *@
+                        <circle cx="50" cy="50" r="44"
+                                fill="none"
+                                stroke="@CurrentBranding.SpinnerColor"
+                                stroke-width="2"
+                                opacity="@Math.Min(CurrentBranding.SpinnerOpacity * 0.14, 0.18)" />
+                        
+                        @* Active rotating translucent arc with smooth rounded ends *@
+                        <circle cx="50" cy="50" r="44"
+                                fill="none"
+                                stroke="@CurrentBranding.SpinnerColor"
+                                stroke-width="2.5"
+                                stroke-dasharray="85 190"
+                                stroke-dashoffset="0"
+                                stroke-linecap="round"
+                                opacity="@Math.Min(CurrentBranding.SpinnerOpacity, 0.88)" />
+                    </svg>
+                </div>
 
                 @* Stationary Central Company Logo (Preserves transparent background, never rotates) *@
                 <div class="tf-loading-logo-box">
@@ -48,7 +50,10 @@
                         <img src="@CurrentBranding.LogoPath"
                              alt="@CurrentBranding.CompanyName"
                              class="tf-loading-logo-img"
-                             loading="eager" />
+                             width="95"
+                             height="65"
+                             loading="eager"
+                             decoding="async" />
                     }
                     else
                     {

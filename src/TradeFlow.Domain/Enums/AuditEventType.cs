@@ -115,5 +115,18 @@ public enum AuditEventType
     SignerPinReset = 161,
     SignerLockedOut = 162,
     SignerProfileCreated = 163,
-    SignerProfileUpdated = 164
+    SignerProfileUpdated = 164,
+
+    // === Quản lý nhân viên (Phase 8 - Nhân viên) ===
+    EmployeeCreated = 170,
+    EmployeeUpdated = 171,
+    EmployeeStatusChanged = 172,
+    EmployeeRetired = 173,
+    EmployeeRequestSubmitted = 174,
+    EmployeeRequestApproved = 175,
+    EmployeeRequestRejected = 176,
+    EmployeeLinkedToUser = 177,
+    EmployeeUnlinkedFromUser = 178,
+    DepartmentCreated = 179,
+    PositionCreated = 180
 }

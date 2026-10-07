@@ -81,15 +81,34 @@
     </div>
 </div>
 
+<GlobalLoadingScreen />
+
 <div id="blazor-error-ui" data-nosnippet>
     Đã xảy ra lỗi không mong đợi.
     <a href="." class="reload">Tải lại</a>
     <span class="dismiss">✕</span>
 </div>
 
+@inject IJSRuntime JSRuntime
+
 @code {
     private bool _sidebarOpen;
 
     private void ToggleSidebar() => _sidebarOpen = !_sidebarOpen;
     private void CloseSidebar() => _sidebarOpen = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("tfDismissStartupLoader");
+            }
+            catch
+            {
+                // Ignore JS interop errors if circuit disconnected
+            }
+        }
+    }
 }

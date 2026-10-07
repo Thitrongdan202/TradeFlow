@@ -68,5 +68,19 @@ public enum ResourceType
     Security = 34,
 
     /// <summary>Chữ ký số & Người ký</summary>
-    DigitalSignatures = 35
+    DigitalSignatures = 35,
+
+    // === Nhân viên & Nhân sự ===
+
+    /// <summary>Nhân viên</summary>
+    Employees = 40,
+
+    /// <summary>Yêu cầu thêm nhân viên</summary>
+    EmployeeRequests = 41,
+
+    /// <summary>Phòng ban</summary>
+    Departments = 42,
+
+    /// <summary>Chức danh</summary>
+    Positions = 43
 }

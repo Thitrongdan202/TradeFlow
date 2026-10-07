@@ -435,7 +435,63 @@
             </div>
         </div>
 
-        @* 9. CÀI ĐẶT & HỆ THỐNG *@
+        @* 9. NHÂN VIÊN *@
+        <AuthorizeView Policy="Permission:Employees:View">
+            <div class="tf-nav-item @(IsSectionActive("nhan-vien") ? "is-active" : "")">
+                <button type="button" class="tf-nav-link @(IsSectionActive("nhan-vien") ? "active" : "")" @onclick="ToggleEmployees">
+                    <span class="tf-nav-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="4" width="18" height="16" rx="2"/>
+                            <circle cx="9" cy="10" r="2"/>
+                            <line x1="15" y1="8" x2="17" y2="8"/>
+                            <line x1="15" y1="12" x2="17" y2="12"/>
+                            <path d="M6 16a3 3 0 0 1 6 0"/>
+                        </svg>
+                    </span>
+                    <span class="tf-nav-label">Nhân viên</span>
+                    <span class="tf-nav-chevron-wrap">
+                        <svg class="tf-nav-chevron @(IsEmployeesOpen ? "expanded" : "")" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                    </span>
+                </button>
+
+                @* Desktop Fly-out Submenu *@
+                <div class="tf-nav-flyout">
+                    <div class="tf-nav-flyout-header">Nhân sự &amp; Nhân viên</div>
+                    <div class="tf-nav-flyout-body">
+                        <NavLink class="tf-flyout-link" href="/nhan-vien" Match="NavLinkMatch.All" ActiveClass="active">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Danh sách nhân viên</span>
+                        </NavLink>
+                        <AuthorizeView Policy="Permission:EmployeeRequests:View" Context="flyoutReq">
+                            <NavLink class="tf-flyout-link" href="/nhan-vien?tab=requests" ActiveClass="active">
+                                <span class="tf-flyout-dot"></span>
+                                <span>Duyệt yêu cầu</span>
+                            </NavLink>
+                        </AuthorizeView>
+                    </div>
+                </div>
+
+                @* Mobile / Click Accordion Submenu *@
+                <div class="tf-nav-sub @(IsEmployeesOpen ? "expanded" : "")">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/nhan-vien" Match="NavLinkMatch.All" ActiveClass="active">
+                            <span class="tf-nav-sub-dot"></span>Danh sách nhân viên
+                        </NavLink>
+                    </div>
+                    <AuthorizeView Policy="Permission:EmployeeRequests:View" Context="subReq">
+                        <div class="tf-nav-sub-item">
+                            <NavLink class="tf-nav-sub-link" href="/nhan-vien?tab=requests" ActiveClass="active">
+                                <span class="tf-nav-sub-dot"></span>Duyệt yêu cầu
+                            </NavLink>
+                        </div>
+                    </AuthorizeView>
+                </div>
+            </div>
+        </AuthorizeView>
+
+        @* 10. CÀI ĐẶT & HỆ THỐNG *@
         <div class="tf-nav-item align-bottom @(IsSectionActive("cai-dat") || IsSectionActive("ho-tro") || IsSectionActive("ho-tro-ky-thuat") ? "is-active" : "")">
             <button type="button" class="tf-nav-link @(IsSectionActive("cai-dat") || IsSectionActive("ho-tro") || IsSectionActive("ho-tro-ky-thuat") ? "active" : "")" @onclick="ToggleSettings">
                 <span class="tf-nav-icon">
@@ -460,6 +516,12 @@
                         <span class="tf-flyout-dot"></span>
                         <span>Cài đặt hệ thống</span>
                     </NavLink>
+                    <AuthorizeView Policy="Permission:CompanySettings:View">
+                        <NavLink class="tf-flyout-link" href="/cai-dat/thuong-hieu" ActiveClass="active">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Thương hiệu &amp; Màn hình tải</span>
+                        </NavLink>
+                    </AuthorizeView>
                     <AuthorizeView Policy="Permission:Users:View">
                         <NavLink class="tf-flyout-link" href="/cai-dat/an-ninh" ActiveClass="active">
                             <span class="tf-flyout-dot"></span>
@@ -488,6 +550,13 @@
                         <span class="tf-nav-sub-dot"></span>Cài đặt hệ thống
                     </NavLink>
                 </div>
+                <AuthorizeView Policy="Permission:CompanySettings:View">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/cai-dat/thuong-hieu" ActiveClass="active">
+                            <span class="tf-nav-sub-dot"></span>Thương hiệu &amp; Màn hình tải
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
                 <AuthorizeView Policy="Permission:Users:View">
                     <div class="tf-nav-sub-item">
                         <NavLink class="tf-nav-sub-link" href="/cai-dat/an-ninh" ActiveClass="active">
@@ -538,6 +607,7 @@
     private bool IsWarehouseOpen { get; set; }
     private bool IsPartnersOpen { get; set; }
     private bool IsDocumentsOpen { get; set; }
+    private bool IsEmployeesOpen { get; set; }
     private bool IsSettingsOpen { get; set; }
 
     private string _currentUrl = "";
@@ -571,6 +641,7 @@
         if (url.StartsWith("kho", StringComparison.OrdinalIgnoreCase)) IsWarehouseOpen = true;
         if (url.StartsWith("doi-tac", StringComparison.OrdinalIgnoreCase)) IsPartnersOpen = true;
         if (url.StartsWith("tai-lieu", StringComparison.OrdinalIgnoreCase)) IsDocumentsOpen = true;
+        if (url.StartsWith("nhan-vien", StringComparison.OrdinalIgnoreCase)) IsEmployeesOpen = true;
         if (url.StartsWith("cai-dat", StringComparison.OrdinalIgnoreCase) || url.StartsWith("ho-tro", StringComparison.OrdinalIgnoreCase)) IsSettingsOpen = true;
     }
 
@@ -581,6 +652,7 @@
     private void ToggleWarehouse() => IsWarehouseOpen = !IsWarehouseOpen;
     private void TogglePartners() => IsPartnersOpen = !IsPartnersOpen;
     private void ToggleDocuments() => IsDocumentsOpen = !IsDocumentsOpen;
+    private void ToggleEmployees() => IsEmployeesOpen = !IsEmployeesOpen;
     private void ToggleSettings() => IsSettingsOpen = !IsSettingsOpen;
 
     public void Dispose()

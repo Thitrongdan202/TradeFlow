@@ -1,0 +1,177 @@
+@rendermode InteractiveServer
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Settings
+@implements IDisposable
+@inject ILoadingService LoadingService
+@inject ICompanyBrandingService BrandingService
+
+@if (ShouldRenderOverlay)
+{
+    <div class="tf-loading-overlay @(IsActive ? "is-active" : "") @(IsPreview ? "is-preview-mode" : "") @(_isFadingOut ? "is-fading-out" : "")"
+         role="status"
+         aria-busy="@(IsActive ? "true" : "false")"
+         aria-live="polite"
+         aria-label="@CurrentLoadingText"
+         style="@(_isFadingOut || !IsActive ? "pointer-events: none;" : "")">
+        
+        <div class="tf-loading-container">
+            @* Centered Circular Visual with Rotating Ring and Stationary Logo *@
+            <div class="tf-loading-brand-visual">
+                @* Rotating Ring (SVG with subtle track and soft rounded arc) *@
+                <svg class="tf-loading-ring-svg tf-loading-ring-animated"
+                     viewBox="0 0 100 100"
+                     style="animation-duration: @GetSpeedDuration(CurrentBranding.SpinnerSpeed);"
+                     aria-hidden="true">
+                    
+                    @* Faint subtle guide circle track *@
+                    <circle cx="50" cy="50" r="43"
+                            fill="none"
+                            stroke="@CurrentBranding.SpinnerColor"
+                            stroke-width="3"
+                            opacity="@(CurrentBranding.SpinnerOpacity * 0.18)" />
+                    
+                    @* Active rotating translucent arc with smooth rounded ends *@
+                    <circle cx="50" cy="50" r="43"
+                            fill="none"
+                            stroke="@CurrentBranding.SpinnerColor"
+                            stroke-width="3.5"
+                            stroke-dasharray="210"
+                            stroke-dashoffset="65"
+                            stroke-linecap="round"
+                            opacity="@CurrentBranding.SpinnerOpacity" />
+                </svg>
+
+                @* Stationary Central Company Logo (Preserves transparent background, never rotates) *@
+                <div class="tf-loading-logo-box">
+                    @if (!string.IsNullOrEmpty(CurrentBranding.LogoPath))
+                    {
+                        <img src="@CurrentBranding.LogoPath"
+                             alt="@CurrentBranding.CompanyName"
+                             class="tf-loading-logo-img"
+                             loading="eager" />
+                    }
+                    else
+                    {
+                        @* Clean brand mark fallback when no logo is configured *@
+                        <div style="font-weight: 800; font-size: 17px; letter-spacing: 0.8px; color: var(--tf-primary); text-transform: uppercase;">
+                            @(string.IsNullOrWhiteSpace(CurrentBranding.CompanyName) ? "TradeFlow" : GetFallbackInitials(CurrentBranding.CompanyName))
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @* Optional Configurable Company Name *@
+            @if (CurrentBranding.ShowCompanyNameOnLoading && !string.IsNullOrWhiteSpace(CurrentBranding.CompanyName))
+            {
+                <div class="tf-loading-company-name">
+                    @CurrentBranding.CompanyName
+                </div>
+            }
+
+            @* Progress / Status Text *@
+            <div class="tf-loading-status-text">
+                @CurrentLoadingText
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsPreview { get; set; }
+    [Parameter] public CompanyBrandingDto? PreviewBranding { get; set; }
+
+    private CompanyBrandingDto _liveBranding = new();
+    private bool _disposed;
+    private bool _isFadingOut;
+    private bool _wasActive;
+
+    private CompanyBrandingDto CurrentBranding => IsPreview && PreviewBranding != null ? PreviewBranding : _liveBranding;
+
+    private bool IsActive => IsPreview || LoadingService.IsLoading;
+
+    // Only render overlay DOM when previewing, actively loading, or during fade-out
+    private bool ShouldRenderOverlay => IsPreview || IsActive || _isFadingOut;
+
+    private string CurrentLoadingText => IsPreview ? "Đang tải..." : LoadingService.LoadingText;
+
+    protected override void OnInitialized()
+    {
+        if (!IsPreview)
+        {
+            LoadingService.OnChange += HandleLoadingChanged;
+        }
+    }
+
+    private void HandleLoadingChanged()
+    {
+        if (_disposed) return;
+
+        bool nowActive = LoadingService.IsLoading;
+
+        if (nowActive && string.IsNullOrEmpty(_liveBranding.LogoPath))
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    _liveBranding = await BrandingService.GetBrandingAsync();
+                    await InvokeAsync(StateHasChanged);
+                }
+                catch
+                {
+                    // Fallback branding already active
+                }
+            });
+        }
+
+        if (_wasActive && !nowActive)
+        {
+            // Transition from active -> inactive: start short 200ms fade-out
+            _isFadingOut = true;
+            _wasActive = false;
+            InvokeAsync(StateHasChanged);
+
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(200);
+                if (!_disposed)
+                {
+                    _isFadingOut = false;
+                    await InvokeAsync(StateHasChanged);
+                }
+            });
+        }
+        else
+        {
+            _wasActive = nowActive;
+            _isFadingOut = false;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private static string GetSpeedDuration(string? speed)
+    {
+        return (speed?.ToLowerInvariant()) switch
+        {
+            "slow" => "2.4s",
+            "fast" => "0.85s",
+            _ => "1.4s"
+        };
+    }
+
+    private static string GetFallbackInitials(string name)
+    {
+        var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length <= 2) return name;
+        return $"{parts[0]} {parts[^1]}";
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        if (!IsPreview)
+        {
+            LoadingService.OnChange -= HandleLoadingChanged;
+        }
+    }
+}

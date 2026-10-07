@@ -66,4 +66,19 @@ public class CompanySettings : AuditableEntity<int>
 
     /// <summary>Ghi chú chân trang 2 (Chính sách đổi trả)</summary>
     public string? OrderFooterNote2 { get; set; }
+
+    /// <summary>Bật/tắt màn hình tải toàn cục có thương hiệu</summary>
+    public bool ShowLoadingScreen { get; set; } = true;
+
+    /// <summary>Bật/tắt hiển thị tên công ty trên màn hình tải</summary>
+    public bool ShowCompanyNameOnLoading { get; set; } = true;
+
+    /// <summary>Màu sắc vòng xoay (mã HEX, mặc định #10b981)</summary>
+    public string SpinnerColor { get; set; } = "#10b981";
+
+    /// <summary>Độ trong suốt của vòng xoay (0.1 - 1.0, mặc định 0.8)</summary>
+    public double SpinnerOpacity { get; set; } = 0.8;
+
+    /// <summary>Tốc độ xoay: 'slow' (2.5s), 'normal' (1.5s), 'fast' (0.8s)</summary>
+    public string SpinnerSpeed { get; set; } = "normal";
 }

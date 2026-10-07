@@ -62,6 +62,23 @@ public class CompanySettingsConfiguration : IEntityTypeConfiguration<CompanySett
         builder.Property(x => x.OrderFooterNote2)
             .HasMaxLength(500);
 
+        builder.Property(x => x.ShowLoadingScreen)
+            .HasDefaultValue(true);
+
+        builder.Property(x => x.ShowCompanyNameOnLoading)
+            .HasDefaultValue(true);
+
+        builder.Property(x => x.SpinnerColor)
+            .HasMaxLength(30)
+            .HasDefaultValue("#10b981");
+
+        builder.Property(x => x.SpinnerOpacity)
+            .HasDefaultValue(0.8);
+
+        builder.Property(x => x.SpinnerSpeed)
+            .HasMaxLength(20)
+            .HasDefaultValue("normal");
+
         builder.Property(x => x.CreatedBy)
             .HasMaxLength(256);
 

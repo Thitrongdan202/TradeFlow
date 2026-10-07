@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TradeFlow.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using TradeFlow.Infrastructure.Persistence;
 namespace TradeFlow.Infrastructure.Migrations
 {
     [DbContext(typeof(TradeFlowDbContext))]
-    partial class TradeFlowDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261007162305_Phase8_EmployeeManagement")]
+    partial class Phase8_EmployeeManagement
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2418,37 +2421,8 @@ namespace TradeFlow.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<bool>("ShowCompanyNameOnLoading")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
-
-                    b.Property<bool>("ShowLoadingScreen")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
-
                     b.Property<string>("SignaturePath")
                         .HasColumnType("text");
-
-                    b.Property<string>("SpinnerColor")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasDefaultValue("#10b981");
-
-                    b.Property<double>("SpinnerOpacity")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("double precision")
-                        .HasDefaultValue(0.80000000000000004);
-
-                    b.Property<string>("SpinnerSpeed")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasDefaultValue("normal");
 
                     b.Property<string>("TaxCode")
                         .HasMaxLength(50)

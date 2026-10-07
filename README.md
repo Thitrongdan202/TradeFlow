@@ -14,7 +14,8 @@ Hệ thống quản lý thương mại toàn diện (ERP/CRM) xây dựng trên 
 - [x] **Phase 6**: Báo giá + tài liệu/chứng từ (Đã dời từ Phase 5)
 - [ ] **Phase 7**: Mua hàng
 - [ ] **Phase 8**: Kho
-- [ ] **Phase 9**: XNK
+- [x] **Phase 8.5**: Quản lý Nhân sự & Nhân viên (Employee Management)
+- [x] **Phase 9**: Nhận diện thương hiệu & Màn hình tải toàn cục (Company Branding & Global Loading Screen)
 - [ ] **Phase 10**: Báo cáo
 
 ---
@@ -133,3 +134,54 @@ Tính năng Hóa đơn được thiết kế chuyên nghiệp, hỗ trợ các q
   * Sử dụng thư viện QuestPDF tạo file PDF vector chất lượng cao (A4), hiển thị hoàn hảo tiếng Việt (UTF-8).
   * Bản xem trước trên Web sử dụng chính template PDF để đảm bảo tính đồng nhất 100% giữa nội dung xem trước và bản in.
 * **Xác nhận của Công ty**: Hỗ trợ hiển thị vùng "Xác nhận của công ty (Signature Valid)" dựa trên dữ liệu cấu hình trong hệ thống (CompanySettings).
+
+## Quản lý Nhân sự & Nhân viên (Phase 8 - Employee Management)
+
+Module quản lý nhân viên chuyên biệt cho TradeFlow, bám sát nghiệp vụ và giao diện chuẩn ERP/POS:
+* **Điều hướng (Navigation)**:
+  * Thêm mục "Nhân viên" trên thanh điều hướng bên trái với menu fly-out chuyên nghiệp gồm:
+    * "Danh sách nhân viên" (`/nhan-vien`)
+    * "Duyệt yêu cầu" (`/nhan-vien?tab=requests`)
+* **Danh sách nhân viên (`/nhan-vien`)**:
+  * **Bộ lọc bên trái**: Lọc theo trạng thái ("Đang làm việc" vs "Đã nghỉ"), Phòng ban (kèm nút "+ Tạo mới"), Chức danh (kèm nút "+ Tạo mới").
+  * **Bảng danh sách**: Hiển thị ảnh đại diện (Avatar), Mã NV (`NV00001`), Mã chấm công, Tên NV, SĐT, CMND/CCCD, Nợ & tạm ứng, Ghi chú.
+  * **Mở rộng & Chỉnh sửa trực tiếp (Inline Expansion & Editing)**:
+    * Bấm vào dòng nhân viên để mở rộng vùng chi tiết 3 cột đầy đủ (Thông tin nhân sự, Vị trí & tổ chức, Hệ thống & tài khoản TradeFlow liên kết).
+    * Hỗ trợ nút "Chỉnh sửa" để kích hoạt chế độ chỉnh sửa ngay trong vùng mở rộng, lưu trực tiếp mà không cần rời trang.
+* **Quy trình Yêu cầu & Phê duyệt (Employee Creation Requests)**:
+  * Cho phép người dùng gửi "Yêu cầu thêm nhân viên" đề xuất nhân sự mới.
+  * Màn hình / Modal "Duyệt yêu cầu" cho cấp quản lý để duyệt (tự động tạo hồ sơ nhân viên `Active`) hoặc từ chối kèm lý do.
+* **Quy trình Thôi việc (Employee Offboarding)**:
+  * Hỗ trợ chuyển trạng thái nhân viên sang "Đã nghỉ", lưu ngày thôi việc và lý do.
+  * Tích hợp với `SecurityService.OffboardEmployeeAsync`: Tự động vô hiệu hóa tài khoản liên kết, thu hồi phiên đăng nhập và chứng thư chữ ký số nội bộ.
+* **Tạo nhanh danh mục (Quick Create)**: Hỗ trợ tạo nhanh Phòng ban và Chức danh ngay trên màn hình thao tác.
+
+---
+
+## Nhận diện Thương hiệu & Màn hình Tải Toàn cục (Phase 9 - Company Branding & Global Loading Screen)
+
+Tính năng tùy biến thương hiệu và màn hình tải ứng dụng mang đậm phong cách nhận diện doanh nghiệp:
+
+* **Màn hình tải toàn cục mang thương hiệu (Company-Branded Loading Screen)**:
+  * **Logo công ty cố định ở vị trí trung tâm (Stationary Center Logo)**: Sử dụng logo thực tế của doanh nghiệp (mặc định là logo LACASA). Bảo toàn 100% độ trong suốt của ảnh gốc, không bị biến dạng tỷ lệ (`object-fit: contain`), không thêm khối vuông màu trắng ép buộc. Khi chưa có ảnh logo, hệ thống tự động sinh chữ viết tắt thương hiệu tinh tế.
+  * **Vòng xoay mềm mại bao quanh (Rotating Ring Animation)**: Vòng tròn vector SVG xoay êm ái quanh logo với các đầu nét bo tròn mềm mại (`stroke-linecap="round"`), đường nét mảnh thanh lịch (~3.5px), kết hợp đường ray mờ mờ tinh tế bên dưới. Hỗ trợ chuẩn trợ năng `prefers-reduced-motion` tự động giảm chuyển động khi người dùng yêu cầu.
+  * **Lớp phủ nền làm mờ (Global Overlay)**: Phủ mờ toàn màn hình với màu trắng bán trong suốt `rgba(255, 255, 255, 0.82)` kết hợp hiệu ứng kính mờ `backdrop-filter: blur(5px)`.
+  * **Dịch vụ điều khiển trạng thái (`ILoadingService`)**: Phạm vi Scoped trên Blazor circuit cung cấp các hàm `Show(text)` / `Hide()` và `ShowAsync` / `HideAsync`. Tự động đếm tác vụ lồng nhau (nested operations) và tự động kích hoạt mượt mà khi ứng dụng khởi chạy lần đầu (~750ms).
+* **Trang Quản lý Thương hiệu & Màn hình Tải (`/cai-dat/thuong-hieu`)**:
+  * **Quản lý Tệp Logo**: Hỗ trợ định dạng PNG, SVG, WebP, JPG với dung lượng tối đa 5MB. Xác thực nghiêm ngặt Magic Bytes của tệp tại server để chống tệp giả mạo. Lưu trữ file an toàn trong `wwwroot/uploads/branding/` và không commit lên Git.
+  * **Tùy biến Nhận diện & Trạng thái**:
+    * Nhập Tên doanh nghiệp.
+    * Tùy chọn bật/tắt hiển thị Tên công ty bên dưới vòng xoay.
+    * Tùy chọn bật/tắt toàn bộ Màn hình tải toàn cục (Global Loading Screen).
+  * **Tùy biến Vòng xoay (Spinner Settings)**:
+    * Bảng chọn màu (Color Picker) + Nhập mã màu Hex trực tiếp + 6 Bảng màu thiết kế sẵn (Emerald #10b981, Deep Teal #0f766e, Royal Blue #2563eb, Indigo #6366f1, Purple #8b5cf6, Coral Orange #f97316).
+    * Thanh trượt điều chỉnh Độ trong suốt (Opacity: 10% – 100%).
+    * Lựa chọn Tốc độ xoay: Chậm (2.4s), Bình thường (1.4s), Nhanh (0.8s).
+  * **Xem trước Trực tiếp Thời gian thực (Live Interactive Preview)**:
+    * Khu vực xem trước ngay trên giao diện cài đặt mô phỏng môi trường làm việc ERP thật.
+    * Tự động cập nhật tức thì (100% Real-time) theo từng thao tác kéo thanh trượt, đổi mã màu, nhập tên hoặc thay logo mà chưa cần nhấn Lưu.
+    * Nút "Chạy thử toàn màn hình" kích hoạt lớp phủ toàn cục trong 2 giây để kiểm tra trải nghiệm người dùng thực tế.
+  * **Cơ chế Cache & Nhật ký Kiểm toán (Audit Logging)**:
+    * Tích hợp `IMemoryCache` lưu đệm cấu hình thương hiệu (10 phút) để tối ưu hiệu năng trang web, tự động xóa cache khi có cập nhật mới.
+    * Tự động ghi nhận mọi thao tác tải lên, cập nhật, xóa logo vào hệ thống Nhật ký hoạt động (`AuditLog`).
+

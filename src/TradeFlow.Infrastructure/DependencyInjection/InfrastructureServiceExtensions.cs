@@ -97,6 +97,13 @@ public static class InfrastructureServiceExtensions
         services.AddSingleton<ISigningProvider, Services.Security.RsaSoftwareSigningProvider>();
         services.AddScoped<ISecurityService, Services.Security.SecurityService>();
 
+        // Register Phase 8 Employee Management services
+        services.AddScoped<IEmployeeService, Services.EmployeeService>();
+
+        // Register Phase 9 Company Branding & Global Loading Screen services
+        services.AddScoped<ICompanyBrandingService, Services.CompanyBrandingService>();
+        services.AddScoped<ILoadingService, Services.LoadingService>();
+
         return services;
     }
 }

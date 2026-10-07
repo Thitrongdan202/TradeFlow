@@ -1,0 +1,930 @@
+@page "/nhan-vien"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Employees
+@using TradeFlow.Domain.Entities.Employees
+@using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
+@attribute [Authorize(Policy = "Permission:Employees:View")]
+
+@inject IEmployeeService EmployeeService
+@inject TradeFlowDbContext DbContext
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>Danh sách nhân viên — TradeFlow</PageTitle>
+
+@* Top Page Header *@
+<div class="tf-page-header">
+    <div class="tf-page-header-left">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <h1 class="tf-page-title" style="margin:0;">Danh sách nhân viên</h1>
+            <span class="tf-badge tf-badge-info" style="font-size:12px; font-weight:600; padding:3px 8px;">
+                @_totalCount nhân viên
+            </span>
+        </div>
+        <p class="tf-page-subtitle">Quản lý hồ sơ nhân sự, phòng ban, chức danh và yêu cầu tuyển dụng</p>
+    </div>
+
+    <div class="tf-page-actions">
+        <div class="tf-search-wrap" style="position:relative; width:260px;">
+            <input type="text"
+                   class="tf-input"
+                   placeholder="Theo mã, tên, SĐT..."
+                   value="@_searchTerm"
+                   @oninput="HandleSearchInput"
+                   style="padding-left:34px; height:36px; font-size:13px;" />
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--tf-text-muted);">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            @if (!string.IsNullOrEmpty(_searchTerm))
+            {
+                <button type="button" @onclick="ClearSearch" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:var(--tf-text-muted); padding:2px;">
+                    ✕
+                </button>
+            }
+        </div>
+
+        <AuthorizeView Policy="Permission:EmployeeRequests:View">
+            <button type="button" class="tf-btn tf-btn-outline" @onclick="() => _showRequestModal = true" style="display:flex; align-items:center; gap:6px; height:36px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <path d="M9 15l2 2 4-4"/>
+                </svg>
+                <span>Duyệt yêu cầu</span>
+                @if (_pendingRequestCount > 0)
+                {
+                    <span class="tf-badge tf-badge-warning" style="margin-left:2px; font-size:11px; padding:1px 6px;">
+                        @_pendingRequestCount
+                    </span>
+                }
+            </button>
+        </AuthorizeView>
+
+        <AuthorizeView Policy="Permission:Employees:Create">
+            <Authorized>
+                <button type="button" class="tf-btn tf-btn-primary" @onclick="() => _showCreateModal = true" style="display:flex; align-items:center; gap:6px; height:36px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    <span>Nhân viên</span>
+                </button>
+            </Authorized>
+            <NotAuthorized>
+                <AuthorizeView Policy="Permission:EmployeeRequests:Create" Context="reqCreateAuth">
+                    <button type="button" class="tf-btn tf-btn-primary" @onclick="() => _showCreateModal = true" style="display:flex; align-items:center; gap:6px; height:36px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        <span>Gửi yêu cầu</span>
+                    </button>
+                </AuthorizeView>
+            </NotAuthorized>
+        </AuthorizeView>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(_notificationMessage))
+{
+    <div class="tf-alert @(_notificationIsSuccess ? "tf-alert-success" : "tf-alert-error") tf-mb-4" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>@_notificationMessage</span>
+        <button type="button" class="tf-btn-icon" @onclick="() => _notificationMessage = null" style="background:none; border:none; cursor:pointer;">✕</button>
+    </div>
+}
+
+@* Main Container: Left Filter Panel + Right Table *@
+<div class="tf-employee-layout">
+    @* Left Filter Sidebar *@
+    <div class="tf-employee-sidebar">
+        @* 1. Bộ lọc Trạng thái *@
+        <div class="tf-filter-card tf-mb-4">
+            <div class="tf-filter-header">
+                <span class="tf-filter-title">Trạng thái</span>
+            </div>
+            <div class="tf-filter-body">
+                <label class="tf-filter-option @(_selectedStatus == EmployeeStatus.Active ? "selected" : "")" @onclick="() => SetStatusFilter(EmployeeStatus.Active)">
+                    <input type="radio" name="empStatus" checked="@(_selectedStatus == EmployeeStatus.Active)" />
+                    <span>Đang làm việc</span>
+                    <span class="tf-filter-count">@_activeCount</span>
+                </label>
+                <label class="tf-filter-option @(_selectedStatus == EmployeeStatus.Retired ? "selected" : "")" @onclick="() => SetStatusFilter(EmployeeStatus.Retired)">
+                    <input type="radio" name="empStatus" checked="@(_selectedStatus == EmployeeStatus.Retired)" />
+                    <span>Đã nghỉ</span>
+                    <span class="tf-filter-count">@_retiredCount</span>
+                </label>
+            </div>
+        </div>
+
+        @* 2. Bộ lọc Phòng ban *@
+        <div class="tf-filter-card tf-mb-4">
+            <div class="tf-filter-header" style="display:flex; justify-content:space-between; align-items:center;">
+                <span class="tf-filter-title">Phòng ban</span>
+                <AuthorizeView Policy="Permission:Departments:Create">
+                    <button type="button" class="tf-link-action" @onclick="() => _showQuickDeptModal = true">
+                        + Tạo mới
+                    </button>
+                </AuthorizeView>
+            </div>
+            <div class="tf-filter-body">
+                <div class="tf-filter-option @(_selectedDepartmentId == null ? "selected" : "")" @onclick="() => SetDepartmentFilter(null)">
+                    <span>Tất cả phòng ban</span>
+                </div>
+                @foreach (var dept in _departments)
+                {
+                    <div class="tf-filter-option @(_selectedDepartmentId == dept.Id ? "selected" : "")" @onclick="() => SetDepartmentFilter(dept.Id)">
+                        <span>@dept.Name</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* 3. Bộ lọc Chức danh *@
+        <div class="tf-filter-card">
+            <div class="tf-filter-header" style="display:flex; justify-content:space-between; align-items:center;">
+                <span class="tf-filter-title">Chức danh</span>
+                <AuthorizeView Policy="Permission:Positions:Create">
+                    <button type="button" class="tf-link-action" @onclick="() => _showQuickPosModal = true">
+                        + Tạo mới
+                    </button>
+                </AuthorizeView>
+            </div>
+            <div class="tf-filter-body">
+                <div class="tf-filter-option @(_selectedPositionId == null ? "selected" : "")" @onclick="() => SetPositionFilter(null)">
+                    <span>Tất cả chức danh</span>
+                </div>
+                @foreach (var pos in _positions)
+                {
+                    <div class="tf-filter-option @(_selectedPositionId == pos.Id ? "selected" : "")" @onclick="() => SetPositionFilter(pos.Id)">
+                        <span>@pos.Name</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* Right Main Employee Table *@
+    <div class="tf-employee-main">
+        <div class="tf-card" style="margin-bottom:0; overflow:hidden;">
+            <div class="tf-card-body" style="padding:0; overflow-x:auto;">
+                @if (_isLoading)
+                {
+                    <div style="padding:60px 20px; text-align:center; color:var(--tf-text-muted);">
+                        <span class="tf-spinner-sm"></span> Đang tải danh sách nhân viên...
+                    </div>
+                }
+                else if (!_employees.Any())
+                {
+                    <div class="tf-empty" style="padding:60px 20px;">
+                        <div class="tf-empty-icon">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="7" r="4"/>
+                                <path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/>
+                            </svg>
+                        </div>
+                        <div class="tf-empty-title">Chưa có dữ liệu nhân viên</div>
+                        <div class="tf-empty-desc">
+                            Không tìm thấy nhân viên nào phù hợp với bộ lọc và điều kiện tìm kiếm.
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <table class="tf-table tf-employee-table">
+                        <thead>
+                            <tr>
+                                <th style="width:36px; text-align:center;">
+                                    <input type="checkbox" />
+                                </th>
+                                <th style="width:40px; text-align:center;"></th>
+                                <th style="width:110px;">Mã NV</th>
+                                <th style="width:110px;">Mã chấm công</th>
+                                <th>Tên nhân viên</th>
+                                <th style="width:120px;">Điện thoại</th>
+                                <th style="width:130px;">CMND/CCCD</th>
+                                <th style="width:130px; text-align:right;">Nợ &amp; tạm ứng</th>
+                                <th>Ghi chú</th>
+                                <th style="width:80px; text-align:center;">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var emp in _employees)
+                            {
+                                bool isExpanded = _expandedEmployeeId == emp.Id;
+                                bool isEditing = _editingEmployeeId == emp.Id;
+
+                                <tr class="tf-emp-row @(isExpanded ? "is-expanded" : "")" @onclick="() => ToggleExpand(emp.Id)">
+                                    <td style="text-align:center;" @onclick:stopPropagation="true">
+                                        <input type="checkbox" />
+                                    </td>
+                                    <td style="text-align:center; padding:6px 0;">
+                                        <div class="tf-emp-avatar">
+                                            @GetInitials(emp.FullName)
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="tf-emp-code">@emp.Code</span>
+                                    </td>
+                                    <td>
+                                        <span class="tf-emp-attendance">@(emp.AttendanceCode ?? "—")</span>
+                                    </td>
+                                    <td>
+                                        <div style="font-weight:600; color:#1e293b;">@emp.FullName</div>
+                                        @if (!string.IsNullOrEmpty(emp.PositionName) || !string.IsNullOrEmpty(emp.DepartmentName))
+                                        {
+                                            <div style="font-size:12px; color:#64748b;">
+                                                @(emp.PositionName ?? "")@(!string.IsNullOrEmpty(emp.PositionName) && !string.IsNullOrEmpty(emp.DepartmentName) ? " • " : "")@(emp.DepartmentName ?? "")
+                                            </div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span>@(emp.Phone ?? "—")</span>
+                                    </td>
+                                    <td>
+                                        <span>@(emp.NationalId ?? "—")</span>
+                                    </td>
+                                    <td style="text-align:right; font-variant-numeric:tabular-nums; font-weight:500;">
+                                        @emp.DebtAndAdvance.ToString("N0") ₫
+                                    </td>
+                                    <td>
+                                        <span class="tf-truncate" title="@emp.Notes">@(emp.Notes ?? "—")</span>
+                                    </td>
+                                    <td style="text-align:center;" @onclick:stopPropagation="true">
+                                        <button type="button" class="tf-btn-icon" title="Chi tiết" @onclick="() => ToggleExpand(emp.Id)">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:@(isExpanded ? "rotate(180deg)" : "rotate(0deg)"); transition:transform 0.2s;">
+                                                <polyline points="6 9 12 15 18 9"/>
+                                            </svg>
+                                        </button>
+                                    </td>
+                                </tr>
+
+                                @* Inline Expanded Row *@
+                                @if (isExpanded)
+                                {
+                                    <tr class="tf-emp-detail-tr">
+                                        <td colspan="10" style="padding:0; background-color:#f8fafc; border-bottom:2px solid #cbd5e1;">
+                                            <div class="tf-emp-expanded-box">
+                                                @* Expanded Header Bar *@
+                                                <div class="tf-emp-expanded-header">
+                                                    <div style="display:flex; align-items:center; gap:16px;">
+                                                        <div class="tf-emp-avatar-lg">
+                                                            @GetInitials(emp.FullName)
+                                                        </div>
+                                                        <div>
+                                                            <div style="display:flex; align-items:center; gap:10px;">
+                                                                <h2 style="margin:0; font-size:18px; font-weight:700; color:#1e293b;">@emp.FullName</h2>
+                                                                <span class="tf-emp-badge-code">@emp.Code</span>
+                                                                @if (emp.Status == EmployeeStatus.Active)
+                                                                {
+                                                                    <span class="tf-badge tf-badge-success" style="display:flex; align-items:center; gap:4px; font-size:12px;">
+                                                                        <span style="width:6px; height:6px; border-radius:50%; background:#16a34a;"></span>
+                                                                        Đang làm việc
+                                                                    </span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="tf-badge tf-badge-secondary" style="display:flex; align-items:center; gap:4px; font-size:12px;">
+                                                                        <span style="width:6px; height:6px; border-radius:50%; background:#64748b;"></span>
+                                                                        Đã nghỉ
+                                                                    </span>
+                                                                }
+                                                            </div>
+                                                            <div style="font-size:13px; color:#64748b; margin-top:4px;">
+                                                                @(emp.DepartmentName ?? "Chưa phân phòng ban")
+                                                                @if (!string.IsNullOrEmpty(emp.PositionName))
+                                                                {
+                                                                    <span> • @emp.PositionName</span>
+                                                                }
+                                                                @if (!string.IsNullOrEmpty(emp.UserName))
+                                                                {
+                                                                    <span> • Tài khoản: <strong style="color:var(--tf-primary);">@emp.UserName</strong></span>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="tf-emp-expanded-actions">
+                                                        @if (isEditing)
+                                                        {
+                                                            <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="CancelInlineEdit" disabled="@_isSavingInline">
+                                                                Hủy
+                                                            </button>
+                                                            <button type="button" class="tf-btn tf-btn-primary tf-btn-sm" @onclick="SaveInlineEdit" disabled="@_isSavingInline">
+                                                                @if (_isSavingInline)
+                                                                {
+                                                                    <span class="tf-spinner-sm tf-mr-1"></span>
+                                                                    <span>Đang lưu...</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;">
+                                                                        <polyline points="20 6 9 17 4 12"/>
+                                                                    </svg>
+                                                                    <span>Lưu thay đổi</span>
+                                                                }
+                                                            </button>
+                                                        }
+                                                        else
+                                                        {
+                                                            <AuthorizeView Policy="Permission:Employees:Edit">
+                                                                <button type="button" class="tf-btn tf-btn-outline tf-btn-sm" @onclick="() => StartInlineEdit(emp)" style="display:flex; align-items:center; gap:4px;">
+                                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                        <path d="M12 20h9"/>
+                                                                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                                                                    </svg>
+                                                                    Chỉnh sửa
+                                                                </button>
+                                                            </AuthorizeView>
+
+                                                            @if (emp.Status == EmployeeStatus.Active)
+                                                            {
+                                                                <AuthorizeView Policy="Permission:Employees:Edit">
+                                                                    <button type="button" class="tf-btn tf-btn-outline-danger tf-btn-sm" @onclick="() => OpenRetireModal(emp)" style="color:#dc2626; border-color:#fca5a5; display:flex; align-items:center; gap:4px;">
+                                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                            <circle cx="12" cy="12" r="10"/>
+                                                                            <line x1="15" y1="9" x2="9" y2="15"/>
+                                                                            <line x1="9" y1="9" x2="15" y2="15"/>
+                                                                        </svg>
+                                                                        Thôi việc
+                                                                    </button>
+                                                                </AuthorizeView>
+                                                            }
+
+                                                            <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => ToggleExpand(emp.Id)">
+                                                                Đóng
+                                                            </button>
+                                                        }
+                                                    </div>
+                                                </div>
+
+                                                @* Inline Mode Switch: View vs Edit *@
+                                                @if (isEditing && _inlineEditModel != null)
+                                                {
+                                                    @* 3 Columns Edit Mode *@
+                                                    <div class="tf-emp-detail-grid">
+                                                        @* Col 1 Edit *@
+                                                        <div class="tf-emp-detail-col">
+                                                            <div class="tf-emp-section-heading">Thông tin nhân sự</div>
+                                                            <div class="tf-form-group tf-mb-3">
+                                                                <label class="tf-label">Họ và tên <span class="tf-text-danger">*</span></label>
+                                                                <input type="text" class="tf-input" @bind="_inlineEditModel.FullName" />
+                                                            </div>
+                                                            <div class="tf-form-group tf-mb-3">
+                                                                <label class="tf-label">Điện thoại</label>
+                                                                <input type="text" class="tf-input" @bind="_inlineEditModel.Phone" />
+                                                            </div>
+                                                            <div class="tf-form-group tf-mb-3">
+                                                                <label class="tf-label">Phòng ban</label>
+                                                                <select class="tf-input" @bind="_inlineEditModel.DepartmentId">
+                                                                    <option value="">-- Chọn phòng ban --</option>
+                                                                    @foreach (var d in _departments)
+                                                                    {
+                                                                        <option value="@d.Id">@d.Name</option>
+                                                                    }
+                                                                </select>
+                                                            </div>
+                                                            <div class="tf-form-group tf-mb-3">
+                                                                <label class="tf-label">Số CMND / CCCD</label>
+                                                                <input type="text" class="tf-input" @bind="_inlineEditModel.NationalId" />
+                                                            </div>
+                                                            <div class="tf-form-group tf-mb-3">
+                                                                <label class="tf-label">Địa chỉ</label>
+                                                                <input type="text" class="tf-input" @bind="_inlineEditModel.Address" />
+                                                            </div>
+                                                            <div class="tf-form-group tf-mb-3">
+                                                                <label class="tf-label">Ngày bắt đầu làm việc</label>
+                                                                <input type="date" class="tf-input" @bind="_inlineEditModel.StartDate" />
+                                                            </div>
+                                                            <div class="tf-form-group">
+                                                                <label class="tf-label">Thông tin ngân hàng</label>
+                                                                <input type="text" class="tf-input" @bind="_inlineEditModel.BankInformation" placeholder="Số TK, Ngân hàng, Chi nhánh" />
+                                                            </div>
+                                                        </div>
+
+                                                        @* Col 2 Edit *@
+                                                        <div class="tf-emp-detail-col">
+                                                            <div class="tf-emp-section-heading">Vị trí &amp; Tổ chức</div>
+                                                            <div class="tf-form-group tf-mb-3">
+                                                                <label class="tf-label">Chức danh</label>
+                                                                <select class="tf-input" @bind="_inlineEditModel.PositionId">
+                                                                    <option value="">-- Chọn chức danh --</option>
+                                                                    @foreach (var p in _positions)
+                                                                    {
+                                                                        <option value="@p.Id">@p.Name</option>
+                                                                    }
+                                                                </select>
+                                                            </div>
+                                                            <div class="tf-form-group tf-mb-3">
+                                                                <label class="tf-label">Chi nhánh tính lương</label>
+                                                                <input type="text" class="tf-input" @bind="_inlineEditModel.PayrollBranch" />
+                                                            </div>
+                                                            <div class="tf-form-group tf-mb-3">
+                                                                <label class="tf-label">Ngày sinh</label>
+                                                                <input type="date" class="tf-input" @bind="_inlineEditModel.DateOfBirth" />
+                                                            </div>
+                                                            <div class="tf-form-group tf-mb-3">
+                                                                <label class="tf-label">Email</label>
+                                                                <input type="email" class="tf-input" @bind="_inlineEditModel.Email" />
+                                                            </div>
+                                                            <div class="tf-form-group tf-mb-3">
+                                                                <label class="tf-label">Mã chấm công</label>
+                                                                <input type="text" class="tf-input" @bind="_inlineEditModel.AttendanceCode" />
+                                                            </div>
+                                                            <div class="tf-form-group">
+                                                                <label class="tf-label">Ghi chú</label>
+                                                                <textarea class="tf-input" rows="2" @bind="_inlineEditModel.Notes"></textarea>
+                                                            </div>
+                                                        </div>
+
+                                                        @* Col 3 Edit *@
+                                                        <div class="tf-emp-detail-col">
+                                                            <div class="tf-emp-section-heading">Hệ thống &amp; Khác</div>
+                                                            <div class="tf-form-group tf-mb-3">
+                                                                <label class="tf-label">Chi nhánh làm việc</label>
+                                                                <input type="text" class="tf-input" @bind="_inlineEditModel.WorkingBranch" />
+                                                            </div>
+                                                            <div class="tf-form-group tf-mb-3">
+                                                                <label class="tf-label">Tài khoản TradeFlow</label>
+                                                                <select class="tf-input" @bind="_inlineEditModel.UserId">
+                                                                    <option value="">-- Chưa liên kết tài khoản --</option>
+                                                                    @foreach (var u in _availableUsersForEdit)
+                                                                    {
+                                                                        <option value="@u.Id">@u.UserName (@u.FullName)</option>
+                                                                    }
+                                                                </select>
+                                                            </div>
+                                                            <div class="tf-form-group tf-mb-3">
+                                                                <label class="tf-label">Giới tính</label>
+                                                                <select class="tf-input" @bind="_inlineEditModel.Gender">
+                                                                    <option value="Nam">Nam</option>
+                                                                    <option value="Nữ">Nữ</option>
+                                                                    <option value="Khác">Khác</option>
+                                                                </select>
+                                                            </div>
+                                                            <div class="tf-form-group tf-mb-3">
+                                                                <label class="tf-label">Facebook</label>
+                                                                <input type="text" class="tf-input" @bind="_inlineEditModel.Facebook" />
+                                                            </div>
+                                                            <div class="tf-form-group">
+                                                                <label class="tf-label">Nợ &amp; tạm ứng (VNĐ)</label>
+                                                                <input type="number" class="tf-input" @bind="_inlineEditModel.DebtAndAdvance" />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    @* 3 Columns View Mode *@
+                                                    <div class="tf-emp-detail-grid">
+                                                        @* Col 1 View *@
+                                                        <div class="tf-emp-detail-col">
+                                                            <div class="tf-emp-section-heading">Thông tin nhân sự</div>
+                                                            <div class="tf-emp-field">
+                                                                <span class="tf-emp-field-label">Điện thoại:</span>
+                                                                <span class="tf-emp-field-value">@(emp.Phone ?? "—")</span>
+                                                            </div>
+                                                            <div class="tf-emp-field">
+                                                                <span class="tf-emp-field-label">Phòng ban:</span>
+                                                                <span class="tf-emp-field-value">@(emp.DepartmentName ?? "—")</span>
+                                                            </div>
+                                                            <div class="tf-emp-field">
+                                                                <span class="tf-emp-field-label">Số CMND / CCCD:</span>
+                                                                <span class="tf-emp-field-value">@(emp.NationalId ?? "—")</span>
+                                                            </div>
+                                                            <div class="tf-emp-field">
+                                                                <span class="tf-emp-field-label">Địa chỉ:</span>
+                                                                <span class="tf-emp-field-value">@(emp.Address ?? "—")</span>
+                                                            </div>
+                                                            <div class="tf-emp-field">
+                                                                <span class="tf-emp-field-label">Ngày bắt đầu làm việc:</span>
+                                                                <span class="tf-emp-field-value">@(emp.StartDate?.ToString("dd/MM/yyyy") ?? "—")</span>
+                                                            </div>
+                                                            <div class="tf-emp-field">
+                                                                <span class="tf-emp-field-label">Tài khoản ngân hàng:</span>
+                                                                <span class="tf-emp-field-value">@(emp.BankInformation ?? "—")</span>
+                                                            </div>
+                                                        </div>
+
+                                                        @* Col 2 View *@
+                                                        <div class="tf-emp-detail-col">
+                                                            <div class="tf-emp-section-heading">Vị trí &amp; Tổ chức</div>
+                                                            <div class="tf-emp-field">
+                                                                <span class="tf-emp-field-label">Chi nhánh tính lương:</span>
+                                                                <span class="tf-emp-field-value">@(emp.PayrollBranch ?? "—")</span>
+                                                            </div>
+                                                            <div class="tf-emp-field">
+                                                                <span class="tf-emp-field-label">Chức danh:</span>
+                                                                <span class="tf-emp-field-value">@(emp.PositionName ?? "—")</span>
+                                                            </div>
+                                                            <div class="tf-emp-field">
+                                                                <span class="tf-emp-field-label">Ngày sinh:</span>
+                                                                <span class="tf-emp-field-value">@(emp.DateOfBirth?.ToString("dd/MM/yyyy") ?? "—")</span>
+                                                            </div>
+                                                            <div class="tf-emp-field">
+                                                                <span class="tf-emp-field-label">Email:</span>
+                                                                <span class="tf-emp-field-value">@(emp.Email ?? "—")</span>
+                                                            </div>
+                                                            <div class="tf-emp-field">
+                                                                <span class="tf-emp-field-label">Mã chấm công:</span>
+                                                                <span class="tf-emp-field-value">@(emp.AttendanceCode ?? "—")</span>
+                                                            </div>
+                                                            <div class="tf-emp-field">
+                                                                <span class="tf-emp-field-label">Ghi chú:</span>
+                                                                <span class="tf-emp-field-value">@(emp.Notes ?? "—")</span>
+                                                            </div>
+                                                        </div>
+
+                                                        @* Col 3 View *@
+                                                        <div class="tf-emp-detail-col">
+                                                            <div class="tf-emp-section-heading">Hệ thống &amp; Khác</div>
+                                                            <div class="tf-emp-field">
+                                                                <span class="tf-emp-field-label">Chi nhánh làm việc:</span>
+                                                                <span class="tf-emp-field-value">@(emp.WorkingBranch ?? "—")</span>
+                                                            </div>
+                                                            <div class="tf-emp-field">
+                                                                <span class="tf-emp-field-label">Tài khoản TradeFlow:</span>
+                                                                <span class="tf-emp-field-value">
+                                                                    @if (!string.IsNullOrEmpty(emp.UserName))
+                                                                    {
+                                                                        <strong style="color:var(--tf-primary);">@emp.UserName</strong>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <span style="color:#94a3b8;">Chưa liên kết</span>
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                            <div class="tf-emp-field">
+                                                                <span class="tf-emp-field-label">Giới tính:</span>
+                                                                <span class="tf-emp-field-value">@(emp.Gender ?? "—")</span>
+                                                            </div>
+                                                            <div class="tf-emp-field">
+                                                                <span class="tf-emp-field-label">Facebook:</span>
+                                                                <span class="tf-emp-field-value">@(emp.Facebook ?? "—")</span>
+                                                            </div>
+                                                            <div class="tf-emp-field">
+                                                                <span class="tf-emp-field-label">Nợ &amp; tạm ứng:</span>
+                                                                <span class="tf-emp-field-value" style="font-weight:600;">@emp.DebtAndAdvance.ToString("N0") ₫</span>
+                                                            </div>
+                                                            @if (emp.Status == EmployeeStatus.Retired)
+                                                            {
+                                                                <div class="tf-emp-field" style="background:#fee2e2; padding:6px 10px; border-radius:6px; margin-top:8px;">
+                                                                    <span class="tf-emp-field-label" style="color:#991b1b;">Ngày thôi việc:</span>
+                                                                    <span class="tf-emp-field-value" style="color:#991b1b; font-weight:600;">
+                                                                        @(emp.TerminationDate?.ToString("dd/MM/yyyy") ?? "—")
+                                                                    </span>
+                                                                </div>
+                                                                @if (!string.IsNullOrEmpty(emp.TerminationReason))
+                                                                {
+                                                                    <div class="tf-emp-field" style="background:#fee2e2; padding:6px 10px; border-radius:6px; margin-top:4px;">
+                                                                        <span class="tf-emp-field-label" style="color:#991b1b;">Lý do:</span>
+                                                                        <span class="tf-emp-field-value" style="color:#991b1b;">@emp.TerminationReason</span>
+                                                                    </div>
+                                                                }
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Child Modals *@
+<EmployeeFormModal @bind-IsOpen="_showCreateModal" OnEmployeeSaved="HandleEmployeeSaved" />
+<EmployeeRequestModal @bind-IsOpen="_showRequestModal" OnRequestsChanged="HandleRequestsChanged" />
+<RetireEmployeeModal @bind-IsOpen="_showRetireModal" Employee="_selectedEmployeeForRetire" OnEmployeeRetired="HandleEmployeeRetired" />
+<QuickDepartmentModal @bind-IsOpen="_showQuickDeptModal" OnDepartmentCreated="HandleDepartmentCreated" />
+<QuickPositionModal @bind-IsOpen="_showQuickPosModal" OnPositionCreated="HandlePositionCreated" />
+
+@code {
+    [SupplyParameterFromQuery(Name = "tab")]
+    public string? TabParam { get; set; }
+
+    private List<EmployeeDto> _employees = new();
+    private List<DepartmentDto> _departments = new();
+    private List<PositionDto> _positions = new();
+    private List<UserSelectDto> _availableUsersForEdit = new();
+
+    private EmployeeStatus _selectedStatus = EmployeeStatus.Active;
+    private int? _selectedDepartmentId;
+    private int? _selectedPositionId;
+    private string _searchTerm = string.Empty;
+
+    private int _totalCount;
+    private int _activeCount;
+    private int _retiredCount;
+    private int _pendingRequestCount;
+    private bool _isLoading;
+
+    // Inline row expansion & edit states
+    private int? _expandedEmployeeId;
+    private int? _editingEmployeeId;
+    private UpdateEmployeeCommand? _inlineEditModel;
+    private bool _isSavingInline;
+
+    // Modals
+    private bool _showCreateModal;
+    private bool _showRequestModal;
+    private bool _showRetireModal;
+    private bool _showQuickDeptModal;
+    private bool _showQuickPosModal;
+    private EmployeeDto? _selectedEmployeeForRetire;
+
+    // Notification banner
+    private string? _notificationMessage;
+    private bool _notificationIsSuccess = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMasterDataAsync();
+        await LoadEmployeesAsync();
+        await LoadCountsAsync();
+
+        if (string.Equals(TabParam, "requests", StringComparison.OrdinalIgnoreCase))
+        {
+            _showRequestModal = true;
+        }
+    }
+
+    private async Task LoadMasterDataAsync()
+    {
+        try
+        {
+            _departments = await EmployeeService.GetDepartmentsAsync();
+            _positions = await EmployeeService.GetPositionsAsync();
+        }
+        catch (Exception ex)
+        {
+            _notificationMessage = $"Lỗi tải dữ liệu phòng ban: {ex.Message}";
+            _notificationIsSuccess = false;
+        }
+    }
+
+    private async Task LoadCountsAsync()
+    {
+        try
+        {
+            _activeCount = await EmployeeService.GetEmployeeCountAsync(EmployeeStatus.Active);
+            _retiredCount = await EmployeeService.GetEmployeeCountAsync(EmployeeStatus.Retired);
+            _pendingRequestCount = await EmployeeService.GetPendingRequestCountAsync();
+            _totalCount = _selectedStatus == EmployeeStatus.Active ? _activeCount : _retiredCount;
+        }
+        catch
+        {
+            // Ignore count load error
+        }
+    }
+
+    private async Task LoadEmployeesAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var filter = new EmployeeFilterDto
+            {
+                SearchTerm = string.IsNullOrWhiteSpace(_searchTerm) ? null : _searchTerm.Trim(),
+                Status = _selectedStatus,
+                DepartmentId = _selectedDepartmentId,
+                PositionId = _selectedPositionId,
+                PageIndex = 1,
+                PageSize = 200
+            };
+
+            _employees = await EmployeeService.GetEmployeesAsync(filter);
+            _totalCount = _employees.Count;
+        }
+        catch (Exception ex)
+        {
+            _notificationMessage = $"Lỗi tải danh sách nhân viên: {ex.Message}";
+            _notificationIsSuccess = false;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SetStatusFilter(EmployeeStatus status)
+    {
+        if (_selectedStatus != status)
+        {
+            _selectedStatus = status;
+            _expandedEmployeeId = null;
+            _editingEmployeeId = null;
+            await LoadEmployeesAsync();
+        }
+    }
+
+    private async Task SetDepartmentFilter(int? deptId)
+    {
+        if (_selectedDepartmentId != deptId)
+        {
+            _selectedDepartmentId = deptId;
+            await LoadEmployeesAsync();
+        }
+    }
+
+    private async Task SetPositionFilter(int? posId)
+    {
+        if (_selectedPositionId != posId)
+        {
+            _selectedPositionId = posId;
+            await LoadEmployeesAsync();
+        }
+    }
+
+    private async Task HandleSearchInput(ChangeEventArgs e)
+    {
+        _searchTerm = e.Value?.ToString() ?? "";
+        await LoadEmployeesAsync();
+    }
+
+    private async Task ClearSearch()
+    {
+        _searchTerm = string.Empty;
+        await LoadEmployeesAsync();
+    }
+
+    private void ToggleExpand(int employeeId)
+    {
+        if (_expandedEmployeeId == employeeId)
+        {
+            _expandedEmployeeId = null;
+            _editingEmployeeId = null;
+        }
+        else
+        {
+            _expandedEmployeeId = employeeId;
+            _editingEmployeeId = null;
+        }
+    }
+
+    private async Task StartInlineEdit(EmployeeDto emp)
+    {
+        _editingEmployeeId = emp.Id;
+        _inlineEditModel = new UpdateEmployeeCommand
+        {
+            Id = emp.Id,
+            FullName = emp.FullName,
+            AttendanceCode = emp.AttendanceCode,
+            NationalId = emp.NationalId,
+            DateOfBirth = emp.DateOfBirth,
+            Gender = emp.Gender ?? "Nam",
+            AvatarPath = emp.AvatarPath,
+            Phone = emp.Phone,
+            Email = emp.Email,
+            Address = emp.Address,
+            Facebook = emp.Facebook,
+            MobileDevice = emp.MobileDevice,
+            DepartmentId = emp.DepartmentId,
+            PositionId = emp.PositionId,
+            WorkingBranch = emp.WorkingBranch,
+            PayrollBranch = emp.PayrollBranch,
+            StartDate = emp.StartDate,
+            BankInformation = emp.BankInformation,
+            DebtAndAdvance = emp.DebtAndAdvance,
+            Notes = emp.Notes,
+            UserId = emp.UserId
+        };
+
+        // Query available users for linking
+        try
+        {
+            var assignedUserIds = await DbContext.Employees
+                .Where(e => e.UserId != null && e.Id != emp.Id)
+                .Select(e => e.UserId!)
+                .ToListAsync();
+
+            _availableUsersForEdit = await DbContext.Users
+                .Where(u => !assignedUserIds.Contains(u.Id))
+                .Select(u => new UserSelectDto { Id = u.Id, UserName = u.UserName ?? "", FullName = u.FullName ?? "" })
+                .ToListAsync();
+        }
+        catch
+        {
+            _availableUsersForEdit = new();
+        }
+    }
+
+    private void CancelInlineEdit()
+    {
+        _editingEmployeeId = null;
+        _inlineEditModel = null;
+    }
+
+    private async Task SaveInlineEdit()
+    {
+        if (_inlineEditModel == null) return;
+
+        _isSavingInline = true;
+        _notificationMessage = null;
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var username = authState.User.Identity?.Name ?? "Admin";
+
+            var updated = await EmployeeService.UpdateEmployeeAsync(_inlineEditModel, username);
+            _notificationMessage = $"Cập nhật thông tin nhân viên {updated.FullName} thành công!";
+            _notificationIsSuccess = true;
+            _editingEmployeeId = null;
+            _inlineEditModel = null;
+
+            await LoadEmployeesAsync();
+            await LoadCountsAsync();
+        }
+        catch (Exception ex)
+        {
+            _notificationMessage = $"Cập nhật thất bại: {ex.Message}";
+            _notificationIsSuccess = false;
+        }
+        finally
+        {
+            _isSavingInline = false;
+        }
+    }
+
+    private void OpenRetireModal(EmployeeDto emp)
+    {
+        _selectedEmployeeForRetire = emp;
+        _showRetireModal = true;
+    }
+
+    private async Task HandleEmployeeSaved(EmployeeDto? employee)
+    {
+        if (employee != null)
+        {
+            _notificationMessage = $"Thêm mới nhân viên {employee.FullName} ({employee.Code}) thành công!";
+            _notificationIsSuccess = true;
+            _expandedEmployeeId = employee.Id;
+        }
+        else
+        {
+            _notificationMessage = "Đã gửi yêu cầu thêm nhân viên tới ban quản lý!";
+            _notificationIsSuccess = true;
+        }
+
+        await LoadEmployeesAsync();
+        await LoadCountsAsync();
+    }
+
+    private async Task HandleRequestsChanged()
+    {
+        await LoadEmployeesAsync();
+        await LoadCountsAsync();
+    }
+
+    private async Task HandleEmployeeRetired(bool success)
+    {
+        _notificationMessage = $"Đã xác nhận thôi việc cho nhân viên {_selectedEmployeeForRetire?.FullName}.";
+        _notificationIsSuccess = true;
+        _expandedEmployeeId = null;
+        _selectedEmployeeForRetire = null;
+
+        await LoadEmployeesAsync();
+        await LoadCountsAsync();
+    }
+
+    private async Task HandleDepartmentCreated(DepartmentDto dept)
+    {
+        await LoadMasterDataAsync();
+        _selectedDepartmentId = dept.Id;
+        await LoadEmployeesAsync();
+    }
+
+    private async Task HandlePositionCreated(PositionDto pos)
+    {
+        await LoadMasterDataAsync();
+        _selectedPositionId = pos.Id;
+        await LoadEmployeesAsync();
+    }
+
+    private string GetInitials(string fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName)) return "NV";
+        var parts = fullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0][0].ToString().ToUpperInvariant();
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+    }
+
+    private class UserSelectDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string UserName { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+    }
+}

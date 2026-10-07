@@ -16,9 +16,143 @@
 </head>
 
 <body>
+    @if (_branding.ShowLoadingScreen)
+    {
+        <div id="tf-startup-loader" class="tf-loading-overlay is-active" role="status" aria-busy="true" aria-live="polite" aria-label="Đang tải...">
+            <div class="tf-loading-container">
+                <div class="tf-loading-brand-visual">
+                    <svg class="tf-loading-ring-svg tf-loading-ring-animated"
+                         viewBox="0 0 100 100"
+                         style="animation-duration: @GetSpeedDuration(_branding.SpinnerSpeed);"
+                         aria-hidden="true">
+                        <circle cx="50" cy="50" r="43"
+                                fill="none"
+                                stroke="@_branding.SpinnerColor"
+                                stroke-width="3"
+                                opacity="@(_branding.SpinnerOpacity * 0.18)" />
+                        <circle cx="50" cy="50" r="43"
+                                fill="none"
+                                stroke="@_branding.SpinnerColor"
+                                stroke-width="3.5"
+                                stroke-dasharray="210"
+                                stroke-dashoffset="65"
+                                stroke-linecap="round"
+                                opacity="@_branding.SpinnerOpacity" />
+                    </svg>
+
+                    <div class="tf-loading-logo-box">
+                        @if (!string.IsNullOrEmpty(_branding.LogoPath))
+                        {
+                            <img src="@_branding.LogoPath"
+                                 alt="@_branding.CompanyName"
+                                 class="tf-loading-logo-img"
+                                 loading="eager" />
+                        }
+                        else
+                        {
+                            <div style="font-weight: 800; font-size: 17px; letter-spacing: 0.8px; color: var(--tf-primary); text-transform: uppercase;">
+                                @(string.IsNullOrWhiteSpace(_branding.CompanyName) ? "TradeFlow" : _branding.CompanyName)
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @if (_branding.ShowCompanyNameOnLoading && !string.IsNullOrWhiteSpace(_branding.CompanyName))
+                {
+                    <div class="tf-loading-company-name">
+                        @_branding.CompanyName
+                    </div>
+                }
+
+                <div class="tf-loading-status-text">
+                    Đang tải...
+                </div>
+            </div>
+        </div>
+    }
+
     <Routes />
     <ReconnectModal />
     <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script>
+        (function () {
+            var loader = document.getElementById('tf-startup-loader');
+            if (!loader) return;
+
+            var dismissed = false;
+            function dismissStartupLoader() {
+                if (dismissed) return;
+                dismissed = true;
+
+                // 1. Immediately disable pointer-events so clicks are never intercepted
+                loader.style.pointerEvents = 'none';
+                loader.classList.remove('is-active');
+                loader.classList.add('is-fading-out');
+
+                // 2. Remove completely from DOM after fade-out transition
+                setTimeout(function () {
+                    if (loader && loader.parentNode) {
+                        loader.parentNode.removeChild(loader);
+                    }
+                }, 260);
+            }
+
+            window.tfDismissStartupLoader = dismissStartupLoader;
+
+            // Guaranteed safety fallback: Maximum 2.5 seconds timeout
+            setTimeout(dismissStartupLoader, 2500);
+
+            // Fast startup: dismiss as soon as the application is ready
+            if (document.readyState === 'complete') {
+                setTimeout(dismissStartupLoader, 250);
+            } else {
+                window.addEventListener('load', function () {
+                    setTimeout(dismissStartupLoader, 250);
+                });
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                setTimeout(dismissStartupLoader, 350);
+            });
+        })();
+    </script>
 </body>
 
 </html>
+
+@code {
+    [Inject] private TradeFlow.Application.Common.Interfaces.ICompanyBrandingService BrandingService { get; set; } = null!;
+
+    private TradeFlow.Application.Common.Models.Settings.CompanyBrandingDto _branding = new()
+    {
+        CompanyName = "TỔNG KHO THIẾT BỊ VỆ SINH LACASA",
+        LogoPath = "/uploads/branding/lacasa_logo.png",
+        ShowLoadingScreen = true,
+        ShowCompanyNameOnLoading = true,
+        SpinnerColor = "#10b981",
+        SpinnerOpacity = 0.8,
+        SpinnerSpeed = "normal"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _branding = await BrandingService.GetBrandingAsync();
+        }
+        catch
+        {
+            // Fail-safe: use defaults if DB query fails or times out
+        }
+    }
+
+    private static string GetSpeedDuration(string? speed)
+    {
+        return (speed?.ToLowerInvariant()) switch
+        {
+            "slow" => "2.4s",
+            "fast" => "0.85s",
+            _ => "1.4s"
+        };
+    }
+}

@@ -1,0 +1,201 @@
+@using System.ComponentModel.DataAnnotations
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Employees
+@inject IEmployeeService EmployeeService
+@inject AuthenticationStateProvider AuthStateProvider
+
+@if (IsOpen && Employee != null)
+{
+    <div class="tf-modal-overlay" @onclick="HandleBackdropClick">
+        <div class="tf-modal tf-modal-md" @onclick:stopPropagation="true">
+            <div class="tf-modal-header" style="background-color: #fff7ed; border-bottom: 1px solid #ffedd5;">
+                <h3 class="tf-modal-title" style="color: #9a3412; display: flex; align-items: center; gap: 8px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#ea580c;">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    Xác nhận thôi việc nhân viên
+                </h3>
+                <button type="button" class="tf-btn-icon" @onclick="Close">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+
+            <EditForm Model="_model" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+
+                <div class="tf-modal-body">
+                    @if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <div class="tf-alert tf-alert-error tf-mb-4">
+                            @_errorMessage
+                        </div>
+                    }
+
+                    <div style="background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 16px; margin-bottom:16px;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <div style="width:44px; height:44px; border-radius:50%; background-color:#e0e7ff; color:#4338ca; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px;">
+                                @GetInitials(Employee.FullName)
+                            </div>
+                            <div>
+                                <div style="font-weight:700; font-size:15px; color:#1e293b;">@Employee.FullName</div>
+                                <div style="font-size:13px; color:#64748b;">
+                                    Mã: <span style="font-family:monospace; font-weight:600; color:#0f766e;">@Employee.Code</span>
+                                    @if (!string.IsNullOrEmpty(Employee.DepartmentName))
+                                    {
+                                        <span> • @Employee.DepartmentName</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(Employee.PositionName))
+                                    {
+                                        <span> • @Employee.PositionName</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Employee.UserId))
+                    {
+                        <div class="tf-alert tf-alert-warning tf-mb-4" style="font-size:13px; line-height:1.5;">
+                            <div><strong>Bảo mật &amp; Quản trị tài khoản:</strong></div>
+                            <div>Nhân viên này đang liên kết với tài khoản <strong>@(Employee.UserName ?? Employee.UserId)</strong>. Khi hoàn tất thôi việc, hệ thống sẽ tự động:</div>
+                            <ul style="margin:6px 0 0 16px; padding:0;">
+                                <li>Vô hiệu hóa tài khoản đăng nhập TradeFlow.</li>
+                                <li>Hủy toàn bộ phiên đăng nhập (Security Stamp refresh).</li>
+                                <li>Thu hồi chứng thư chữ ký số nội bộ và vô hiệu hóa mã kích hoạt.</li>
+                            </ul>
+                        </div>
+                    }
+
+                    <div class="tf-form-group tf-mb-4">
+                        <label class="tf-label">Ngày thôi việc <span class="tf-text-danger">*</span></label>
+                        <InputDate class="tf-input" @bind-Value="_model.TerminationDate" />
+                    </div>
+
+                    <div class="tf-form-group">
+                        <label class="tf-label">Lý do thôi việc <span class="tf-text-danger">*</span></label>
+                        <InputTextArea class="tf-input" rows="3" @bind-Value="_model.TerminationReason" placeholder="Ví dụ: Nghỉ việc theo nguyện vọng cá nhân, hết hạn hợp đồng, chuyển công tác..." />
+                        <ValidationMessage For="@(() => _model.TerminationReason)" class="tf-field-error" />
+                    </div>
+                </div>
+
+                <div class="tf-modal-footer">
+                    <button type="button" class="tf-btn tf-btn-ghost" @onclick="Close" disabled="@_isSubmitting">Hủy</button>
+                    <button type="submit" class="tf-btn tf-btn-danger" disabled="@_isSubmitting">
+                        @if (_isSubmitting)
+                        {
+                            <span class="tf-spinner-sm tf-mr-2"></span>
+                            <span>Đang xử lý...</span>
+                        }
+                        else
+                        {
+                            <span>Xác nhận thôi việc</span>
+                        }
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public EmployeeDto? Employee { get; set; }
+    [Parameter] public EventCallback<bool> OnEmployeeRetired { get; set; }
+
+    private RetireModel _model = new();
+    private bool _isSubmitting;
+    private string? _errorMessage;
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen && Employee != null)
+        {
+            _model = new RetireModel
+            {
+                Id = Employee.Id,
+                TerminationDate = DateTime.Today,
+                TerminationReason = string.Empty
+            };
+            _errorMessage = null;
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        if (!_isSubmitting)
+        {
+            await Close();
+        }
+    }
+
+    private async Task Close()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (Employee == null) return;
+
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var username = authState.User.Identity?.Name ?? "Admin";
+
+            var command = new RetireEmployeeCommand
+            {
+                Id = Employee.Id,
+                TerminationDate = _model.TerminationDate,
+                TerminationReason = _model.TerminationReason.Trim()
+            };
+
+            var success = await EmployeeService.RetireEmployeeAsync(command, username);
+            if (success)
+            {
+                await OnEmployeeRetired.InvokeAsync(true);
+                await Close();
+            }
+            else
+            {
+                _errorMessage = "Không thể cập nhật thôi việc cho nhân viên này.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private string GetInitials(string fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName)) return "NV";
+        var parts = fullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0][0].ToString().ToUpperInvariant();
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+    }
+
+    private class RetireModel
+    {
+        public int Id { get; set; }
+        public DateTime TerminationDate { get; set; } = DateTime.Today;
+
+        [Required(ErrorMessage = "Vui lòng nhập lý do thôi việc")]
+        [MaxLength(500, ErrorMessage = "Lý do tối đa 500 ký tự")]
+        public string TerminationReason { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,377 @@
+@page "/cai-dat/thuong-hieu"
+@page "/cai-dat/thuong-hieu-giao-dien"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Settings
+@attribute [Authorize(Policy = "Permission:CompanySettings:Edit")]
+
+@inject ICompanyBrandingService BrandingService
+@inject ILoadingService LoadingService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Thương hiệu &amp; Màn hình tải — TradeFlow</PageTitle>
+
+<div class="tf-page-header">
+    <div class="tf-page-header-left">
+        <h1 class="tf-page-title">Thương hiệu &amp; Màn hình tải</h1>
+        <p class="tf-page-subtitle">Cấu hình logo công ty, tên nhận diện và tùy biến màn hình tải toàn cục (Global Loading Screen)</p>
+    </div>
+    <div class="tf-page-actions">
+        <button type="button" class="tf-btn tf-btn-outline" @onclick="TestLiveGlobalLoader" disabled="@_isSaving" title="Chạy thử nghiệm màn hình tải thực tế">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+            Chạy thử toàn màn hình
+        </button>
+        <button type="button" class="tf-btn tf-btn-primary" @onclick="SaveBrandingAsync" disabled="@_isSaving">
+            @if (_isSaving)
+            {
+                <span class="tf-spinner-sm tf-mr-2"></span>
+                <span>Đang lưu...</span>
+            }
+            else
+            {
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;">
+                    <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+                    <polyline points="17 21 17 13 7 13 7 21"/>
+                    <polyline points="7 3 7 8 15 8"/>
+                </svg>
+                <span>Lưu thay đổi</span>
+            }
+        </button>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(_statusMessage))
+{
+    <div class="tf-alert @(_statusIsSuccess ? "tf-alert-success" : "tf-alert-error") tf-mb-4" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>@_statusMessage</span>
+        <button type="button" class="tf-btn-icon" @onclick="() => _statusMessage = null" style="background:none; border:none; cursor:pointer;">✕</button>
+    </div>
+}
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: flex-start;">
+    @* Left Side: Configuration Form *@
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+        @* Card 1: Logo & Tên công ty *@
+        <div class="tf-card">
+            <div class="tf-card-header" style="border-bottom: 1px solid var(--tf-border); padding: 14px 18px;">
+                <h3 style="margin:0; font-size:15px; font-weight:600; color:#1e293b; display:flex; align-items:center; gap:8px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tf-primary);">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    Logo &amp; Tên công ty
+                </h3>
+            </div>
+            <div class="tf-card-body" style="padding: 18px;">
+                @* Logo display & action buttons *@
+                <div class="tf-field tf-mb-4">
+                    <label class="tf-label">Logo công ty</label>
+                    <div style="display: flex; gap: 16px; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+                        <div style="width: 140px; height: 80px; border: 1px dashed #cbd5e1; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: transparent; overflow: hidden; padding: 6px;">
+                            @if (!string.IsNullOrEmpty(_model.LogoPath))
+                            {
+                                <img src="@_model.LogoPath" alt="Company Logo" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+                            }
+                            else
+                            {
+                                <span style="font-size: 12px; color: #94a3b8; text-align: center;">Chưa có logo</span>
+                            }
+                        </div>
+
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                            <div style="font-size: 12px; color: #64748b; line-height: 1.4;">
+                                Hỗ trợ định dạng <strong>PNG, SVG, WebP, JPG</strong> (khuyến khích PNG trong suốt), tối đa 5MB.
+                            </div>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <label class="tf-btn tf-btn-sm tf-btn-outline" style="cursor: pointer; margin: 0; display: inline-flex; align-items: center; gap: 6px;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                                    </svg>
+                                    @(!string.IsNullOrEmpty(_model.LogoPath) ? "Thay logo" : "Tải logo lên")
+                                    <InputFile OnChange="HandleLogoUploadAsync" accept=".png,.svg,.webp,.jpg,.jpeg" style="display: none;" />
+                                </label>
+
+                                @if (!string.IsNullOrEmpty(_model.LogoPath))
+                                {
+                                    <button type="button" class="tf-btn tf-btn-sm tf-btn-outline-danger" @onclick="RemoveLogoAsync" style="color: #dc2626; border-color: #fca5a5;">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+                                            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                        </svg>
+                                        Xóa logo
+                                    </button>
+                                }
+                            </div>
+                            @if (!string.IsNullOrEmpty(_uploadError))
+                            {
+                                <div style="color: #dc2626; font-size: 12px; font-weight: 500;">@_uploadError</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @* Company Name Input *@
+                <div class="tf-field tf-mb-4">
+                    <label class="tf-label">Tên công ty *</label>
+                    <input type="text" class="tf-input" @bind="_model.CompanyName" @bind:event="oninput" placeholder="Ví dụ: TỔNG KHO THIẾT BỊ VỆ SINH LACASA" />
+                </div>
+
+                @* Toggles *@
+                <div style="display: flex; flex-direction: column; gap: 12px; padding-top: 6px;">
+                    <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 8px 12px; background: #f8fafc; border-radius: 6px;">
+                        <div>
+                            <div style="font-weight: 500; font-size: 13px; color: #1e293b;">Hiển thị tên công ty trên màn hình tải</div>
+                            <div style="font-size: 12px; color: #64748b;">Hiển thị tên công ty bên dưới vòng xoay logo</div>
+                        </div>
+                        <input type="checkbox" style="width: 18px; height: 18px; accent-color: var(--tf-primary); cursor: pointer;" @bind="_model.ShowCompanyNameOnLoading" />
+                    </label>
+
+                    <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 8px 12px; background: #f8fafc; border-radius: 6px;">
+                        <div>
+                            <div style="font-weight: 500; font-size: 13px; color: #1e293b;">Bật màn hình tải toàn cục</div>
+                            <div style="font-size: 12px; color: #64748b;">Kích hoạt màn hình tải có thương hiệu khi khởi chạy và tải dữ liệu</div>
+                        </div>
+                        <input type="checkbox" style="width: 18px; height: 18px; accent-color: var(--tf-primary); cursor: pointer;" @bind="_model.ShowLoadingScreen" />
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        @* Card 2: Spinner Settings *@
+        <div class="tf-card">
+            <div class="tf-card-header" style="border-bottom: 1px solid var(--tf-border); padding: 14px 18px;">
+                <h3 style="margin:0; font-size:15px; font-weight:600; color:#1e293b; display:flex; align-items:center; gap:8px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tf-primary);">
+                        <circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6z"/>
+                    </svg>
+                    Tùy biến Vòng xoay (Spinner Settings)
+                </h3>
+            </div>
+            <div class="tf-card-body" style="padding: 18px;">
+                @* Màu vòng xoay *@
+                <div class="tf-field tf-mb-4">
+                    <label class="tf-label">Màu vòng xoay</label>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <input type="color"
+                               value="@_model.SpinnerColor"
+                               @onchange="e => _model.SpinnerColor = e.Value?.ToString() ?? _model.SpinnerColor"
+                               style="width: 44px; height: 38px; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; padding: 2px;" />
+                        <input type="text"
+                               class="tf-input"
+                               style="font-family: monospace; font-weight: 600; width: 120px;"
+                               @bind="_model.SpinnerColor"
+                               @bind:event="oninput" />
+                        
+                        @* Color Presets *@
+                        <div style="display: flex; gap: 6px; align-items: center; margin-left: auto;">
+                            @foreach (var c in _colorPresets)
+                            {
+                                <button type="button"
+                                        style="width: 24px; height: 24px; border-radius: 50%; background-color: @c; border: 2px solid @(_model.SpinnerColor == c ? "#0f172a" : "#fff"); box-shadow: 0 1px 2px rgba(0,0,0,0.15); cursor: pointer;"
+                                        title="@c"
+                                        @onclick="() => _model.SpinnerColor = c">
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @* Độ trong suốt vòng xoay *@
+                <div class="tf-field tf-mb-4">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <label class="tf-label" style="margin: 0;">Độ trong suốt vòng xoay</label>
+                        <span style="font-size: 13px; font-weight: 600; color: #0f766e; font-variant-numeric: tabular-nums;">
+                            @((int)(_model.SpinnerOpacity * 100))%
+                        </span>
+                    </div>
+                    <input type="range"
+                           min="0.1"
+                           max="1.0"
+                           step="0.05"
+                           value="@_model.SpinnerOpacity"
+                           @oninput="HandleOpacityChanged"
+                           style="width: 100%; accent-color: var(--tf-primary); cursor: pointer;" />
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; margin-top: 2px;">
+                        <span>10% (Rất mờ)</span>
+                        <span>80% (Khuyến nghị)</span>
+                        <span>100% (Đậm)</span>
+                    </div>
+                </div>
+
+                @* Tốc độ xoay *@
+                <div class="tf-field">
+                    <label class="tf-label">Tốc độ xoay</label>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                        <button type="button"
+                                class="tf-btn @(_model.SpinnerSpeed == "slow" ? "tf-btn-primary" : "tf-btn-outline")"
+                                style="font-size: 13px;"
+                                @onclick='() => SetSpeed("slow")'>
+                            Chậm (2.4s)
+                        </button>
+                        <button type="button"
+                                class="tf-btn @(_model.SpinnerSpeed == "normal" ? "tf-btn-primary" : "tf-btn-outline")"
+                                style="font-size: 13px;"
+                                @onclick='() => SetSpeed("normal")'>
+                            Bình thường (1.4s)
+                        </button>
+                        <button type="button"
+                                class="tf-btn @(_model.SpinnerSpeed == "fast" ? "tf-btn-primary" : "tf-btn-outline")"
+                                style="font-size: 13px;"
+                                @onclick='() => SetSpeed("fast")'>
+                            Nhanh (0.8s)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Right Side: Live Interactive Preview *@
+    <div style="position: sticky; top: 20px;">
+        <div class="tf-card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+            <div class="tf-card-header" style="border-bottom: 1px solid var(--tf-border); padding: 14px 18px; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin:0; font-size:15px; font-weight:600; color:#1e293b; display:flex; align-items:center; gap:8px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#0284c7;">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    Xem trước trực tiếp (Live Preview)
+                </h3>
+                <span class="tf-badge tf-badge-info" style="font-size:11px;">Thời gian thực</span>
+            </div>
+            
+            <div class="tf-card-body" style="padding: 16px;">
+                <div style="position: relative; width: 100%; height: 380px; border-radius: 8px; border: 1px solid #cbd5e1; overflow: hidden; background: #f8fafc;">
+                    @* Simulated ERP Background Page *@
+                    <div style="padding: 16px; opacity: 0.35; filter: blur(0.5px); pointer-events: none;">
+                        <div style="height: 20px; width: 40%; background: #94a3b8; border-radius: 4px; margin-bottom: 16px;"></div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
+                            <div style="height: 60px; background: #cbd5e1; border-radius: 6px;"></div>
+                            <div style="height: 60px; background: #cbd5e1; border-radius: 6px;"></div>
+                            <div style="height: 60px; background: #cbd5e1; border-radius: 6px;"></div>
+                        </div>
+                        <div style="height: 120px; background: #cbd5e1; border-radius: 6px;"></div>
+                    </div>
+
+                    @* Live Loading Screen Overlay Component *@
+                    <GlobalLoadingScreen IsPreview="true" PreviewBranding="_model" />
+                </div>
+
+                <div style="margin-top: 12px; font-size: 12px; color: #64748b; line-height: 1.5; text-align: center;">
+                    💡 Bản xem trước phản ánh chính xác 100% tỷ lệ logo, độ trong suốt và tốc độ xoay khi người dùng thao tác trong hệ thống TradeFlow.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private CompanyBrandingDto _model = new();
+    private bool _isSaving;
+    private string? _statusMessage;
+    private bool _statusIsSuccess = true;
+    private string? _uploadError;
+
+    private readonly string[] _colorPresets = new[]
+    {
+        "#10b981", // Emerald (Mặc định chuẩn)
+        "#0f766e", // Deep Teal
+        "#2563eb", // Royal Blue
+        "#6366f1", // Indigo
+        "#8b5cf6", // Purple
+        "#f97316"  // Coral Orange
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _model = await BrandingService.GetBrandingAsync();
+    }
+
+    private void HandleOpacityChanged(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var val))
+        {
+            _model.SpinnerOpacity = val;
+        }
+    }
+
+    private void SetSpeed(string speed)
+    {
+        _model.SpinnerSpeed = speed;
+    }
+
+    private async Task HandleLogoUploadAsync(InputFileChangeEventArgs e)
+    {
+        _uploadError = null;
+        var file = e.File;
+        if (file == null) return;
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var username = authState.User.Identity?.Name ?? "Admin";
+
+            await using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            var relativePath = await BrandingService.UploadLogoAsync(stream, file.Name, file.ContentType, username);
+
+            _model.LogoPath = relativePath;
+            _statusMessage = "Đã tải lên logo công ty thành công!";
+            _statusIsSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            _uploadError = ex.Message;
+        }
+    }
+
+    private async Task RemoveLogoAsync()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var username = authState.User.Identity?.Name ?? "Admin";
+
+            await BrandingService.RemoveLogoAsync(username);
+            _model.LogoPath = null;
+            _statusMessage = "Đã xóa logo công ty, hệ thống sẽ sử dụng biểu tượng mặc định.";
+            _statusIsSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"Lỗi khi xóa logo: {ex.Message}";
+            _statusIsSuccess = false;
+        }
+    }
+
+    private async Task SaveBrandingAsync()
+    {
+        _isSaving = true;
+        _statusMessage = null;
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var username = authState.User.Identity?.Name ?? "Admin";
+
+            _model = await BrandingService.UpdateBrandingAsync(_model, username);
+            _statusMessage = "Đã lưu thành công cấu hình thương hiệu và màn hình tải!";
+            _statusIsSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"Lưu thất bại: {ex.Message}";
+            _statusIsSuccess = false;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task TestLiveGlobalLoader()
+    {
+        LoadingService.Show("Đang tải dữ liệu kiểm thử hệ thống...");
+        await Task.Delay(2000);
+        LoadingService.Hide();
+    }
+}

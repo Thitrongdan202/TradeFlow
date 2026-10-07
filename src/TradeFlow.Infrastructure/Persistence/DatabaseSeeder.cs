@@ -6,6 +6,7 @@ using TradeFlow.Domain.Entities.MasterData;
 using TradeFlow.Domain.Entities.Settings;
 using TradeFlow.Domain.Entities.Users;
 using TradeFlow.Domain.Entities.Documents;
+using TradeFlow.Domain.Entities.Employees;
 using TradeFlow.Domain.Enums;
 
 namespace TradeFlow.Infrastructure.Persistence;
@@ -74,6 +75,8 @@ public class DatabaseSeeder
             await SeedDocumentCategoriesAsync();
             await SeedSecuritySettingsAsync();
             await SeedPreProvisionedSignersAsync();
+            await SeedEmployeeMasterDataAsync();
+            await SeedSampleEmployeesAsync();
         }
         catch (Exception ex)
         {
@@ -265,6 +268,12 @@ public class DatabaseSeeder
                 BankAccount = "4987.9177",
                 BankName = "NGÂN HÀNG Á CHÂU (ACB)",
                 OrderQrCodePath = "/images/lacasa_qr.png",
+                LogoPath = "/uploads/branding/lacasa_logo.png",
+                ShowLoadingScreen = true,
+                ShowCompanyNameOnLoading = true,
+                SpinnerColor = "#10b981",
+                SpinnerOpacity = 0.8,
+                SpinnerSpeed = "normal",
                 DefaultVatNote = "Đơn giá trên chưa bao gồm thuế GTGT (8%).",
                 OrderHotline = "0369.074.789 - Hotline",
                 OrderFooterNote1 = "Quý khách kiểm tra hàng hóa đúng số lượng trên hóa đơn và kiểm hàng trước khi rời khỏi kho Lacasa, bể vỡ Lacasa không chịu trách nhiệm.",
@@ -275,6 +284,21 @@ public class DatabaseSeeder
         else
         {
             bool modified = false;
+            if (string.IsNullOrEmpty(company.LogoPath))
+            {
+                company.LogoPath = "/uploads/branding/lacasa_logo.png";
+                modified = true;
+            }
+            if (string.IsNullOrEmpty(company.SpinnerColor))
+            {
+                company.SpinnerColor = "#10b981";
+                modified = true;
+            }
+            if (string.IsNullOrEmpty(company.SpinnerSpeed))
+            {
+                company.SpinnerSpeed = "normal";
+                modified = true;
+            }
             if (string.IsNullOrEmpty(company.BankAccountHolder))
             {
                 company.BankAccountHolder = "TRẦN VĂN TUẤN";
@@ -340,13 +364,15 @@ public class DatabaseSeeder
 
         foreach (var (key, (prefix, description)) in SystemCodeConstants.Defaults)
         {
-            if (string.Equals(key, "Quotation", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(key, "Quotation", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(key, "Employee", StringComparison.OrdinalIgnoreCase))
                 continue;
 
             sequenceDefinitions.Add((key, prefix, "{Prefix}{Number:D6}", description, 0));
         }
 
         // Document sequences with custom formats
+        sequenceDefinitions.Add(("Employee", "NV", "{Prefix}{Number:D5}", "Mã nhân viên hệ thống", 6));
         sequenceDefinitions.Add(("Quotation", "BG-", "{Prefix}{Year}-{Number:D4}", "Mã báo giá hệ thống", 1));
         sequenceDefinitions.Add(("SalesOrder", "SO-", "{Prefix}{Year}-{Number:D4}", "Mã đơn hàng bán", 1));
         sequenceDefinitions.Add(("Invoice", "INV-", "{Prefix}{Year}-{Number:D4}", "Mã hóa đơn nội bộ", 1));
@@ -562,5 +588,291 @@ public class DatabaseSeeder
         }
 
         await _context.SaveChangesAsync();
+    }
+
+    private async Task SeedEmployeeMasterDataAsync()
+    {
+        _logger.LogInformation("Seeding employee departments and positions...");
+        var now = DateTime.UtcNow;
+
+        var departments = new (string Code, string Name, string Description)[]
+        {
+            ("KHO",        "Kho vận",             "Bộ phận quản lý và vận hành kho bãi, xuất nhập hàng"),
+            ("KINHDOANH",  "Kinh doanh",          "Bộ phận phát triển kinh doanh, bán hàng và chăm sóc khách hàng"),
+            ("KETOAN",     "Kế toán",             "Bộ phận tài chính kế toán, thu chi và công nợ"),
+            ("XNK",        "Xuất nhập khẩu",      "Bộ phận điều phối logistics, chứng từ xuất nhập khẩu"),
+            ("IT",         "Công nghệ thông tin", "Bộ phận quản trị hệ thống kỹ thuật và phần mềm")
+        };
+
+        foreach (var d in departments)
+        {
+            if (!await _context.Departments.AnyAsync(dept => dept.Code == d.Code))
+            {
+                _context.Departments.Add(new Department
+                {
+                    Code = d.Code,
+                    Name = d.Name,
+                    Description = d.Description,
+                    IsActive = true,
+                    CreatedAt = now,
+                    CreatedBy = "System"
+                });
+            }
+        }
+
+        var positions = new (string Code, string Name, string Description)[]
+        {
+            ("GIAMDOC",     "Giám đốc",      "Điều hành chung hoạt động công ty"),
+            ("TRUONGPHONG", "Trưởng phòng",  "Quản lý điều hành các bộ phận nghiệp vụ"),
+            ("TRUONGNHOM",  "Trưởng nhóm",   "Quản lý tổ nhóm chuyên môn"),
+            ("NHANVIEN",    "Nhân viên",     "Chuyên viên tác nghiệp thực tế"),
+            ("THUCTAP",     "Thực tập sinh", "Học việc và hỗ trợ dự án")
+        };
+
+        foreach (var p in positions)
+        {
+            if (!await _context.Positions.AnyAsync(pos => pos.Code == p.Code))
+            {
+                _context.Positions.Add(new Position
+                {
+                    Code = p.Code,
+                    Name = p.Name,
+                    Description = p.Description,
+                    IsActive = true,
+                    CreatedAt = now,
+                    CreatedBy = "System"
+                });
+            }
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task SeedSampleEmployeesAsync()
+    {
+        _logger.LogInformation("Seeding synthetic sample employees and requests...");
+        var now = DateTime.UtcNow;
+
+        var deptKho = await _context.Departments.FirstOrDefaultAsync(d => d.Code == "KHO");
+        var deptKd = await _context.Departments.FirstOrDefaultAsync(d => d.Code == "KINHDOANH");
+        var deptKt = await _context.Departments.FirstOrDefaultAsync(d => d.Code == "KETOAN");
+        var deptXnk = await _context.Departments.FirstOrDefaultAsync(d => d.Code == "XNK");
+
+        var posTp = await _context.Positions.FirstOrDefaultAsync(p => p.Code == "TRUONGPHONG");
+        var posTn = await _context.Positions.FirstOrDefaultAsync(p => p.Code == "TRUONGNHOM");
+        var posNv = await _context.Positions.FirstOrDefaultAsync(p => p.Code == "NHANVIEN");
+
+        var userKd = await _userManager.FindByNameAsync("kinhdoanh01");
+        var userKho = await _userManager.FindByNameAsync("kho01");
+        var userXnk = await _userManager.FindByNameAsync("xnk01");
+
+        // 1. NV00001 - Active, linked to user kinhdoanh01
+        if (!await _context.Employees.AnyAsync(e => e.Code == "NV00001"))
+        {
+            _context.Employees.Add(new Employee
+            {
+                Code = "NV00001",
+                AttendanceCode = "CC001",
+                FullName = "Nguyễn Văn An",
+                NationalId = "001090012345",
+                Phone = "0901112233",
+                Email = "an.nguyen@tradeflow.local",
+                DateOfBirth = new DateTime(1990, 5, 15, 0, 0, 0, DateTimeKind.Utc),
+                Gender = "Nam",
+                Address = "Số 12, Phố Tràng Tiền, Quận Hoàn Kiếm, Hà Nội",
+                DepartmentId = deptKd?.Id,
+                PositionId = posTp?.Id,
+                WorkingBranch = "Chi nhánh trung tâm",
+                PayrollBranch = "Chi nhánh trung tâm",
+                StartDate = new DateTime(2024, 1, 10, 0, 0, 0, DateTimeKind.Utc),
+                Status = EmployeeStatus.Active,
+                BankInformation = "1903456789012, Techcombank, NGUYEN VAN AN",
+                DebtAndAdvance = 0,
+                Notes = "Phụ trách đội kinh doanh dự án B2B",
+                UserId = userKd?.Id,
+                CreatedAt = now,
+                CreatedBy = "System"
+            });
+        }
+
+        // 2. NV00002 - Active, no user account
+        if (!await _context.Employees.AnyAsync(e => e.Code == "NV00002"))
+        {
+            _context.Employees.Add(new Employee
+            {
+                Code = "NV00002",
+                AttendanceCode = "CC002",
+                FullName = "Trần Thị Mai",
+                NationalId = "001192023456",
+                Phone = "0912223344",
+                Email = "mai.tran@tradeflow.local",
+                DateOfBirth = new DateTime(1994, 8, 20, 0, 0, 0, DateTimeKind.Utc),
+                Gender = "Nữ",
+                Address = "Số 45, Đường Lê Duẩn, Quận Hải Châu, TP Đà Nẵng",
+                DepartmentId = deptKt?.Id,
+                PositionId = posTn?.Id,
+                WorkingBranch = "Chi nhánh trung tâm",
+                PayrollBranch = "Chi nhánh trung tâm",
+                StartDate = new DateTime(2024, 3, 1, 0, 0, 0, DateTimeKind.Utc),
+                Status = EmployeeStatus.Active,
+                BankInformation = "0071001234567, Vietcombank, TRAN THI MAI",
+                DebtAndAdvance = 0,
+                Notes = "Kế toán thanh toán & ngân hàng",
+                UserId = null,
+                CreatedAt = now,
+                CreatedBy = "System"
+            });
+        }
+
+        // 3. NV00003 - Active, linked to user kho01
+        if (!await _context.Employees.AnyAsync(e => e.Code == "NV00003"))
+        {
+            _context.Employees.Add(new Employee
+            {
+                Code = "NV00003",
+                AttendanceCode = "CC003",
+                FullName = "Lê Hoàng Khoa",
+                NationalId = "079088034567",
+                Phone = "0983334455",
+                Email = "khoa.le@tradeflow.local",
+                DateOfBirth = new DateTime(1988, 11, 12, 0, 0, 0, DateTimeKind.Utc),
+                Gender = "Nam",
+                Address = "Khu công nghiệp Tân Bình, Quận Tân Phú, TP Hồ Chí Minh",
+                DepartmentId = deptKho?.Id,
+                PositionId = posTn?.Id,
+                WorkingBranch = "Kho tổng phía Nam",
+                PayrollBranch = "Chi nhánh trung tâm",
+                StartDate = new DateTime(2023, 8, 15, 0, 0, 0, DateTimeKind.Utc),
+                Status = EmployeeStatus.Active,
+                BankInformation = "10287654321, VietinBank, LE HOANG KHOA",
+                DebtAndAdvance = 0,
+                Notes = "Điều phối kho và xuất nhập hàng hóa",
+                UserId = userKho?.Id,
+                CreatedAt = now,
+                CreatedBy = "System"
+            });
+        }
+
+        // 4. NV00004 - Active, linked to user xnk01
+        if (!await _context.Employees.AnyAsync(e => e.Code == "NV00004"))
+        {
+            _context.Employees.Add(new Employee
+            {
+                Code = "NV00004",
+                AttendanceCode = "CC004",
+                FullName = "Phạm Quốc Dũng",
+                NationalId = "001095045678",
+                Phone = "0974445566",
+                Email = "dung.pham@tradeflow.local",
+                DateOfBirth = new DateTime(1995, 2, 28, 0, 0, 0, DateTimeKind.Utc),
+                Gender = "Nam",
+                Address = "Tòa nhà Keangnam, Mễ Trì, Quận Nam Từ Liêm, Hà Nội",
+                DepartmentId = deptXnk?.Id,
+                PositionId = posNv?.Id,
+                WorkingBranch = "Chi nhánh trung tâm",
+                PayrollBranch = "Chi nhánh trung tâm",
+                StartDate = new DateTime(2024, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+                Status = EmployeeStatus.Active,
+                BankInformation = "21510001234567, BIDV, PHAM QUOC DUNG",
+                DebtAndAdvance = 0,
+                Notes = "Phụ trách chứng từ hải quan và vận đơn",
+                UserId = userXnk?.Id,
+                CreatedAt = now,
+                CreatedBy = "System"
+            });
+        }
+
+        // 5. NV00005 - Retired / Đã nghỉ
+        if (!await _context.Employees.AnyAsync(e => e.Code == "NV00005"))
+        {
+            _context.Employees.Add(new Employee
+            {
+                Code = "NV00005",
+                AttendanceCode = "CC005",
+                FullName = "Vũ Đình Tuấn",
+                NationalId = "031093056789",
+                Phone = "0965556677",
+                Email = "tuan.vu@tradeflow.local",
+                DateOfBirth = new DateTime(1993, 7, 4, 0, 0, 0, DateTimeKind.Utc),
+                Gender = "Nam",
+                Address = "Số 88, Đường Láng, Quận Đống Đa, Hà Nội",
+                DepartmentId = deptKd?.Id,
+                PositionId = posNv?.Id,
+                WorkingBranch = "Chi nhánh trung tâm",
+                PayrollBranch = "Chi nhánh trung tâm",
+                StartDate = new DateTime(2023, 1, 15, 0, 0, 0, DateTimeKind.Utc),
+                Status = EmployeeStatus.Retired,
+                TerminationDate = new DateTime(2025, 12, 31, 0, 0, 0, DateTimeKind.Utc),
+                TerminationReason = "Chuyển công tác theo nguyện vọng cá nhân",
+                BankInformation = "1902998877665, Techcombank, VU DINH TUAN",
+                DebtAndAdvance = 0,
+                Notes = "Đã bàn giao đầy đủ hồ sơ và thiết bị",
+                UserId = null,
+                CreatedAt = now,
+                CreatedBy = "System"
+            });
+        }
+
+        // 6. NV00006 - Retired / Đã nghỉ
+        if (!await _context.Employees.AnyAsync(e => e.Code == "NV00006"))
+        {
+            _context.Employees.Add(new Employee
+            {
+                Code = "NV00006",
+                AttendanceCode = "CC006",
+                FullName = "Hoàng Ngọc Bích",
+                NationalId = "036196067890",
+                Phone = "0936667788",
+                Email = "bich.hoang@tradeflow.local",
+                DateOfBirth = new DateTime(1996, 9, 18, 0, 0, 0, DateTimeKind.Utc),
+                Gender = "Nữ",
+                Address = "Số 25, Phố Huế, Quận Hai Bà Trưng, Hà Nội",
+                DepartmentId = deptKt?.Id,
+                PositionId = posNv?.Id,
+                WorkingBranch = "Chi nhánh trung tâm",
+                PayrollBranch = "Chi nhánh trung tâm",
+                StartDate = new DateTime(2023, 5, 20, 0, 0, 0, DateTimeKind.Utc),
+                Status = EmployeeStatus.Retired,
+                TerminationDate = new DateTime(2026, 3, 31, 0, 0, 0, DateTimeKind.Utc),
+                TerminationReason = "Hết hạn hợp đồng lao động",
+                BankInformation = "0451000987654, Vietcombank, HOANG NGOC BICH",
+                DebtAndAdvance = 0,
+                Notes = "Đã tất toán công nợ và sổ bảo hiểm",
+                UserId = null,
+                CreatedAt = now,
+                CreatedBy = "System"
+            });
+        }
+
+        await _context.SaveChangesAsync();
+
+        // Seed Sample Employee Request (Pending)
+        if (!await _context.EmployeeRequests.AnyAsync(r => r.FullName == "Đỗ Minh Khang" && r.Status == EmployeeRequestStatus.Pending))
+        {
+            _context.EmployeeRequests.Add(new EmployeeRequest
+            {
+                FullName = "Đỗ Minh Khang",
+                Code = "NV00007",
+                AttendanceCode = "CC007",
+                Phone = "0947778899",
+                Email = "khang.do@tradeflow.local",
+                NationalId = "001099078901",
+                DateOfBirth = new DateTime(1998, 4, 12, 0, 0, 0, DateTimeKind.Utc),
+                Gender = "Nam",
+                Address = "Số 15, Ngõ 91, Đường Nguyễn Chí Thanh, Quận Đống Đa, Hà Nội",
+                DepartmentId = deptKho?.Id,
+                PositionId = posNv?.Id,
+                WorkingBranch = "Chi nhánh trung tâm",
+                PayrollBranch = "Chi nhánh trung tâm",
+                StartDate = new DateTime(2026, 10, 15, 0, 0, 0, DateTimeKind.Utc),
+                BankInformation = "10199887766, VietinBank, DO MINH KHANG",
+                Notes = "Tuyển bổ sung nhân viên bốc xếp và kiểm đếm kho",
+                Status = EmployeeRequestStatus.Pending,
+                RequestedBy = "quanly01",
+                CreatedAt = now,
+                CreatedBy = "quanly01"
+            });
+            await _context.SaveChangesAsync();
+        }
     }
 }

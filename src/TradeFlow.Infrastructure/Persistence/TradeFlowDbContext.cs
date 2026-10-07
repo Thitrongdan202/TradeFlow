@@ -9,6 +9,7 @@ using TradeFlow.Domain.Entities.Users;
 using TradeFlow.Domain.Entities.Sales;
 using TradeFlow.Domain.Entities.Documents;
 using TradeFlow.Domain.Entities.Security;
+using TradeFlow.Domain.Entities.Employees;
 
 namespace TradeFlow.Infrastructure.Persistence;
 
@@ -64,6 +65,12 @@ public class TradeFlowDbContext
     public DbSet<SignerEnrollmentCode> SignerEnrollmentCodes => Set<SignerEnrollmentCode>();
     public DbSet<DocumentSignatureAudit> DocumentSignatureAudits => Set<DocumentSignatureAudit>();
     public DbSet<CompanySecuritySettings> CompanySecuritySettings => Set<CompanySecuritySettings>();
+
+    // === Phase 8 - Nhân sự & Quản lý nhân viên ===
+    public DbSet<Department> Departments => Set<Department>();
+    public DbSet<Position> Positions => Set<Position>();
+    public DbSet<Employee> Employees => Set<Employee>();
+    public DbSet<EmployeeRequest> EmployeeRequests => Set<EmployeeRequest>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

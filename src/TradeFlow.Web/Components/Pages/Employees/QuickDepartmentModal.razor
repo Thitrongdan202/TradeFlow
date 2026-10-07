@@ -1,0 +1,155 @@
+@using System.ComponentModel.DataAnnotations
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Employees
+@inject IEmployeeService EmployeeService
+@inject AuthenticationStateProvider AuthStateProvider
+
+@if (IsOpen)
+{
+    <div class="tf-modal-overlay" @onclick="HandleBackdropClick">
+        <div class="tf-modal tf-modal-md" @onclick:stopPropagation="true">
+            <div class="tf-modal-header">
+                <h3 class="tf-modal-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;vertical-align:text-bottom;color:var(--tf-primary);">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    Thêm phòng ban mới
+                </h3>
+                <button type="button" class="tf-btn-icon" @onclick="Close">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+
+            <EditForm Model="_model" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+
+                <div class="tf-modal-body">
+                    @if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <div class="tf-alert tf-alert-error tf-mb-4">
+                            @_errorMessage
+                        </div>
+                    }
+
+                    <div class="tf-form-group tf-mb-4">
+                        <label class="tf-label">Mã phòng ban</label>
+                        <InputText class="tf-input" @bind-Value="_model.Code" placeholder="Ví dụ: KINHDOANH, KHO, KETOAN..." />
+                        <span class="tf-text-muted" style="font-size:12px;">Để trống để hệ thống tự động sinh mã từ tên phòng ban.</span>
+                    </div>
+
+                    <div class="tf-form-group tf-mb-4">
+                        <label class="tf-label">Tên phòng ban <span class="tf-text-danger">*</span></label>
+                        <InputText class="tf-input" @bind-Value="_model.Name" placeholder="Ví dụ: Phòng Marketing &amp; Truyền thông" />
+                        <ValidationMessage For="@(() => _model.Name)" class="tf-field-error" />
+                    </div>
+
+                    <div class="tf-form-group">
+                        <label class="tf-label">Mô tả</label>
+                        <InputTextArea class="tf-input" rows="3" @bind-Value="_model.Description" placeholder="Mô tả chức năng, nhiệm vụ của phòng ban..." />
+                    </div>
+                </div>
+
+                <div class="tf-modal-footer">
+                    <button type="button" class="tf-btn tf-btn-ghost" @onclick="Close" disabled="@_isSubmitting">Hủy</button>
+                    <button type="submit" class="tf-btn tf-btn-primary" disabled="@_isSubmitting">
+                        @if (_isSubmitting)
+                        {
+                            <span class="tf-spinner-sm tf-mr-2"></span>
+                            <span>Đang lưu...</span>
+                        }
+                        else
+                        {
+                            <span>Lưu phòng ban</span>
+                        }
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public EventCallback<DepartmentDto> OnDepartmentCreated { get; set; }
+
+    private FormModel _model = new();
+    private bool _isSubmitting;
+    private string? _errorMessage;
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen)
+        {
+            _model = new();
+            _errorMessage = null;
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        if (!_isSubmitting)
+        {
+            await Close();
+        }
+    }
+
+    private async Task Close()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private async Task HandleSubmit()
+    {
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var username = authState.User.Identity?.Name ?? "Admin";
+
+            string code = string.IsNullOrWhiteSpace(_model.Code)
+                ? GenerateCodeFromName(_model.Name)
+                : _model.Code.Trim().ToUpperInvariant();
+
+            var dept = await EmployeeService.CreateDepartmentAsync(code, _model.Name.Trim(), _model.Description?.Trim(), username);
+            await OnDepartmentCreated.InvokeAsync(dept);
+            await Close();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private string GenerateCodeFromName(string name)
+    {
+        var words = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length == 1) return words[0].ToUpperInvariant();
+        return string.Concat(words.Select(w => char.ToUpperInvariant(w[0])));
+    }
+
+    private class FormModel
+    {
+        public string? Code { get; set; }
+
+        [Required(ErrorMessage = "Vui lòng nhập tên phòng ban")]
+        [MaxLength(200, ErrorMessage = "Tên phòng ban tối đa 200 ký tự")]
+        public string Name { get; set; } = string.Empty;
+
+        public string? Description { get; set; }
+    }
+}

@@ -1,0 +1,403 @@
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Employees
+@using TradeFlow.Domain.Enums
+@inject IEmployeeService EmployeeService
+@inject AuthenticationStateProvider AuthStateProvider
+
+@if (IsOpen)
+{
+    <div class="tf-modal-overlay" @onclick="HandleBackdropClick">
+        <div class="tf-modal tf-modal-lg" style="max-width: 900px; max-height: 85vh;" @onclick:stopPropagation="true">
+            <div class="tf-modal-header">
+                <div>
+                    <h3 class="tf-modal-title" style="display:flex; align-items:center; gap:8px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tf-primary);">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <path d="M9 15l2 2 4-4"/>
+                        </svg>
+                        Duyệt yêu cầu thêm nhân viên
+                    </h3>
+                    <p style="margin:2px 0 0 0; font-size:13px; color:var(--tf-text-muted);">
+                        Xem xét, phê duyệt hoặc từ chối các đề xuất tạo mới hồ sơ nhân sự từ các bộ phận
+                    </p>
+                </div>
+                <button type="button" class="tf-btn-icon" @onclick="Close">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+
+            @* Filter tabs *@
+            <div style="padding: 12px 20px 0 20px; border-bottom: 1px solid var(--tf-border); display:flex; gap:16px;">
+                <button type="button" class="tf-tab-btn @(_selectedStatus == EmployeeRequestStatus.Pending ? "active" : "")" @onclick="() => FilterByStatus(EmployeeRequestStatus.Pending)">
+                    Chờ duyệt
+                    @if (_pendingCount > 0)
+                    {
+                        <span class="tf-badge tf-badge-warning" style="margin-left:6px; font-size:11px; padding:2px 6px;">@_pendingCount</span>
+                    }
+                </button>
+                <button type="button" class="tf-tab-btn @(_selectedStatus == EmployeeRequestStatus.Approved ? "active" : "")" @onclick="() => FilterByStatus(EmployeeRequestStatus.Approved)">
+                    Đã duyệt
+                </button>
+                <button type="button" class="tf-tab-btn @(_selectedStatus == EmployeeRequestStatus.Rejected ? "active" : "")" @onclick="() => FilterByStatus(EmployeeRequestStatus.Rejected)">
+                    Từ chối
+                </button>
+                <button type="button" class="tf-tab-btn @(_selectedStatus == null ? "active" : "")" @onclick="() => FilterByStatus(null)">
+                    Tất cả (@_allRequests.Count)
+                </button>
+            </div>
+
+            <div class="tf-modal-body" style="padding:16px 20px; background-color:#f8fafc;">
+                @if (!string.IsNullOrEmpty(_alertMessage))
+                {
+                    <div class="tf-alert @(_alertIsSuccess ? "tf-alert-success" : "tf-alert-error") tf-mb-4">
+                        @_alertMessage
+                    </div>
+                }
+
+                @if (_isLoading)
+                {
+                    <div style="padding:40px; text-align:center; color:var(--tf-text-muted);">
+                        <span class="tf-spinner-sm"></span> Đang tải danh sách yêu cầu...
+                    </div>
+                }
+                else if (!_filteredRequests.Any())
+                {
+                    <div class="tf-empty" style="padding:48px 24px; background:#fff; border-radius:8px; border:1px solid #e2e8f0;">
+                        <div class="tf-empty-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="m9 12 2 2 4-4"/>
+                            </svg>
+                        </div>
+                        <div class="tf-empty-title">Không có yêu cầu nào</div>
+                        <div class="tf-empty-desc">
+                            @(_selectedStatus == EmployeeRequestStatus.Pending
+                                ? "Hiện không có yêu cầu thêm nhân viên nào đang chờ duyệt."
+                                : "Không tìm thấy yêu cầu phù hợp với bộ lọc hiện tại.")
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div style="display:flex; flex-direction:column; gap:12px;">
+                        @foreach (var req in _filteredRequests)
+                        {
+                            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:16px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        <div style="width:40px; height:40px; border-radius:50%; background:#e0e7ff; color:#4338ca; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px;">
+                                            @GetInitials(req.FullName)
+                                        </div>
+                                        <div>
+                                            <div style="font-weight:700; font-size:15px; color:#1e293b;">
+                                                @req.FullName
+                                                @if (!string.IsNullOrEmpty(req.Code))
+                                                {
+                                                    <span style="font-size:13px; font-family:monospace; color:#0f766e; margin-left:6px;">[@req.Code]</span>
+                                                }
+                                            </div>
+                                            <div style="font-size:12px; color:#64748b;">
+                                                Đề xuất bởi: <strong>@req.RequestedBy</strong> • @req.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        @switch (req.Status)
+                                        {
+                                            case EmployeeRequestStatus.Pending:
+                                                <span class="tf-badge tf-badge-warning" style="display:flex; align-items:center; gap:4px;">
+                                                    <span style="width:6px; height:6px; border-radius:50%; background:#d97706;"></span>
+                                                    Chờ duyệt
+                                                </span>
+                                                break;
+                                            case EmployeeRequestStatus.Approved:
+                                                <span class="tf-badge tf-badge-success" style="display:flex; align-items:center; gap:4px;">
+                                                    <span style="width:6px; height:6px; border-radius:50%; background:#16a34a;"></span>
+                                                    Đã duyệt
+                                                </span>
+                                                break;
+                                            case EmployeeRequestStatus.Rejected:
+                                                <span class="tf-badge tf-badge-danger" style="display:flex; align-items:center; gap:4px;">
+                                                    <span style="width:6px; height:6px; border-radius:50%; background:#dc2626;"></span>
+                                                    Đã từ chối
+                                                </span>
+                                                break;
+                                            default:
+                                                <span class="tf-badge">@req.Status</span>
+                                                break;
+                                        }
+                                    </div>
+                                </div>
+
+                                <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; font-size:13px; padding:10px 12px; background:#f8fafc; border-radius:6px; margin-bottom:12px;">
+                                    <div>
+                                        <span style="color:#64748b;">Phòng ban:</span>
+                                        <strong>@(req.DepartmentName ?? "—")</strong>
+                                    </div>
+                                    <div>
+                                        <span style="color:#64748b;">Chức danh:</span>
+                                        <strong>@(req.PositionName ?? "—")</strong>
+                                    </div>
+                                    <div>
+                                        <span style="color:#64748b;">Điện thoại:</span>
+                                        <strong>@(req.Phone ?? "—")</strong>
+                                    </div>
+                                    <div>
+                                        <span style="color:#64748b;">Email:</span>
+                                        <strong>@(req.Email ?? "—")</strong>
+                                    </div>
+                                    <div>
+                                        <span style="color:#64748b;">CMND/CCCD:</span>
+                                        <strong>@(req.NationalId ?? "—")</strong>
+                                    </div>
+                                    <div>
+                                        <span style="color:#64748b;">Ngày bắt đầu:</span>
+                                        <strong>@(req.StartDate?.ToString("dd/MM/yyyy") ?? "—")</strong>
+                                    </div>
+                                </div>
+
+                                @if (!string.IsNullOrEmpty(req.Notes))
+                                {
+                                    <div style="font-size:13px; color:#475569; margin-bottom:12px;">
+                                        <span style="color:#64748b;">Lý do / Ghi chú:</span> @req.Notes
+                                    </div>
+                                }
+
+                                @if (req.Status == EmployeeRequestStatus.Approved)
+                                {
+                                    <div style="font-size:12px; color:#15803d; background:#f0fdf4; padding:8px 12px; border-radius:6px;">
+                                        Duyệt bởi <strong>@req.ApprovedBy</strong> vào @req.ApprovedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                        @if (!string.IsNullOrEmpty(req.ReviewNotes))
+                                        {
+                                            <span> — Ý kiến: @req.ReviewNotes</span>
+                                        }
+                                    </div>
+                                }
+                                else if (req.Status == EmployeeRequestStatus.Rejected)
+                                {
+                                    <div style="font-size:12px; color:#b91c1c; background:#fef2f2; padding:8px 12px; border-radius:6px;">
+                                        Từ chối bởi <strong>@req.ApprovedBy</strong> vào @req.ApprovedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                        @if (!string.IsNullOrEmpty(req.ReviewNotes))
+                                        {
+                                            <span> — Lý do từ chối: <strong>@req.ReviewNotes</strong></span>
+                                        }
+                                    </div>
+                                }
+                                else if (req.Status == EmployeeRequestStatus.Pending)
+                                {
+                                    <AuthorizeView Policy="Permission:EmployeeRequests:Approve">
+                                        <div style="display:flex; justify-content:flex-end; gap:8px; border-top:1px solid #f1f5f9; padding-top:12px;">
+                                            @if (_processingRequestId == req.Id)
+                                            {
+                                                <div style="display:flex; align-items:center; gap:8px; width:100%;">
+                                                    <input type="text" class="tf-input" placeholder="Lý do từ chối hoặc ghi chú phê duyệt..." @bind="_reviewNotes" style="flex:1; height:34px; font-size:13px;" />
+                                                    <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="CancelReview">Hủy</button>
+                                                    <button type="button" class="tf-btn tf-btn-danger tf-btn-sm" @onclick="() => ConfirmReview(req.Id, false)" disabled="@_isSubmittingAction">
+                                                        Xác nhận từ chối
+                                                    </button>
+                                                    <button type="button" class="tf-btn tf-btn-primary tf-btn-sm" @onclick="() => ConfirmReview(req.Id, true)" disabled="@_isSubmittingAction">
+                                                        Xác nhận duyệt
+                                                    </button>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <button type="button" class="tf-btn tf-btn-outline-danger tf-btn-sm" @onclick="() => StartReview(req.Id)" style="color:#dc2626; border-color:#fca5a5;">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;">
+                                                        <line x1="18" y1="6" x2="6" y2="18"/>
+                                                        <line x1="6" y1="6" x2="18" y2="18"/>
+                                                    </svg>
+                                                    Từ chối
+                                                </button>
+                                                <button type="button" class="tf-btn tf-btn-primary tf-btn-sm" @onclick="() => StartReview(req.Id)">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;">
+                                                        <polyline points="20 6 9 17 4 12"/>
+                                                    </svg>
+                                                    Phê duyệt
+                                                </button>
+                                            }
+                                        </div>
+                                    </AuthorizeView>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="tf-modal-footer">
+                <button type="button" class="tf-btn tf-btn-ghost" @onclick="Close">Đóng</button>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .tf-tab-btn {
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        padding: 8px 12px;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--tf-text-secondary);
+        cursor: pointer;
+        transition: all 0.15s ease;
+        display: flex;
+        align-items: center;
+    }
+    .tf-tab-btn:hover {
+        color: var(--tf-text-primary);
+    }
+    .tf-tab-btn.active {
+        color: var(--tf-primary);
+        border-bottom-color: var(--tf-primary);
+        font-weight: 600;
+    }
+</style>
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public EventCallback OnRequestsChanged { get; set; }
+
+    private List<EmployeeRequestDto> _allRequests = new();
+    private List<EmployeeRequestDto> _filteredRequests = new();
+    private EmployeeRequestStatus? _selectedStatus = EmployeeRequestStatus.Pending;
+    private int _pendingCount;
+    private bool _isLoading;
+
+    private int? _processingRequestId;
+    private string _reviewNotes = string.Empty;
+    private bool _isSubmittingAction;
+    private string? _alertMessage;
+    private bool _alertIsSuccess;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen)
+        {
+            await LoadRequestsAsync();
+        }
+    }
+
+    private async Task LoadRequestsAsync()
+    {
+        _isLoading = true;
+        _alertMessage = null;
+        try
+        {
+            _allRequests = await EmployeeService.GetEmployeeRequestsAsync();
+            _pendingCount = _allRequests.Count(r => r.Status == EmployeeRequestStatus.Pending);
+            ApplyFilter();
+        }
+        catch (Exception ex)
+        {
+            _alertMessage = $"Lỗi tải danh sách: {ex.Message}";
+            _alertIsSuccess = false;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void FilterByStatus(EmployeeRequestStatus? status)
+    {
+        _selectedStatus = status;
+        _processingRequestId = null;
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        if (_selectedStatus == null)
+        {
+            _filteredRequests = _allRequests.OrderByDescending(r => r.CreatedAt).ToList();
+        }
+        else
+        {
+            _filteredRequests = _allRequests
+                .Where(r => r.Status == _selectedStatus.Value)
+                .OrderByDescending(r => r.CreatedAt)
+                .ToList();
+        }
+    }
+
+    private void StartReview(int requestId)
+    {
+        _processingRequestId = requestId;
+        _reviewNotes = string.Empty;
+    }
+
+    private void CancelReview()
+    {
+        _processingRequestId = null;
+        _reviewNotes = string.Empty;
+    }
+
+    private async Task ConfirmReview(int requestId, bool approve)
+    {
+        _isSubmittingAction = true;
+        _alertMessage = null;
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var username = authState.User.Identity?.Name ?? "Admin";
+
+            var command = new ReviewEmployeeRequestCommand
+            {
+                RequestId = requestId,
+                Approve = approve,
+                ReviewNotes = string.IsNullOrWhiteSpace(_reviewNotes) ? null : _reviewNotes.Trim()
+            };
+
+            var result = await EmployeeService.ReviewEmployeeRequestAsync(command, username);
+            _alertMessage = approve
+                ? $"Đã phê duyệt thành công yêu cầu và tạo hồ sơ nhân viên {(result?.FullName ?? "")}!"
+                : "Đã từ chối yêu cầu thêm nhân viên.";
+            _alertIsSuccess = true;
+            _processingRequestId = null;
+            _reviewNotes = string.Empty;
+
+            await LoadRequestsAsync();
+            await OnRequestsChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _alertMessage = $"Thao tác thất bại: {ex.Message}";
+            _alertIsSuccess = false;
+        }
+        finally
+        {
+            _isSubmittingAction = false;
+        }
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        if (!_isSubmittingAction)
+        {
+            await Close();
+        }
+    }
+
+    private async Task Close()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private string GetInitials(string fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName)) return "NV";
+        var parts = fullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0][0].ToString().ToUpperInvariant();
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+    }
+}

@@ -1,4 +1,4 @@
-﻿@page "/bang-gia/lich-su"
+@page "/bang-gia/lich-su"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @using TradeFlow.Application.Common.Interfaces
@@ -38,20 +38,22 @@
                    @oninput="OnQueryInput"
                    @onkeydown="OnKeyDown" />
         </div>
-        <button type="button" class="tf-btn tf-btn-primary" style="padding: 9px 24px;" @onclick="ExecuteSearch" disabled="@_isSearching">
-            @if (_isSearching)
-            {
-                <span>Đang tìm...</span>
-            }
-            else
-            {
-                <span>Tra cứu</span>
-            }
-        </button>
+        <LoadingButton Type="primary"
+                       Style="padding: 9px 24px;"
+                       OnClick="ExecuteSearch"
+                       IsLoading="_isSearching"
+                       LoadingText="Đang tìm...">
+            Tra cứu
+        </LoadingButton>
     </div>
 </div>
 
-@if (_hasSearched)
+@if (_isSearching)
+{
+    <Skeleton Type="card" Height="100px" />
+    <Skeleton Type="table" Rows="5" Columns="7" Style="margin-top:16px;" />
+}
+else if (_hasSearched)
 {
     @if (!_historyItems.Any())
     {

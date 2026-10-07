@@ -19,7 +19,17 @@
 
 @if (_isLoading)
 {
-    <div class="tf-loading">Đang tải dữ liệu...</div>
+    <div class="tf-card tf-mb-4" style="padding: 24px;">
+        <Skeleton Type="title" Width="30%" Class="tf-mb-3" />
+        <Skeleton Type="text" Width="20%" Class="tf-mb-4" />
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <Skeleton Type="card" Height="100px" />
+            <Skeleton Type="card" Height="100px" />
+        </div>
+    </div>
+    <div class="tf-card" style="padding: 24px;">
+        <Skeleton Type="table" Rows="4" Columns="7" />
+    </div>
 }
 else if (_invoice == null)
 {
@@ -144,9 +154,11 @@ else
 
     <div class="tf-form-actions" style="margin-bottom: 40px; display:flex; gap:12px;">
         <button type="button" class="tf-btn tf-btn-secondary" @onclick='() => Nav.NavigateTo($"/hoa-don/chi-tiet/{Id}")'>Hủy</button>
-        <button type="button" class="tf-btn tf-btn-primary" @onclick="SaveInvoice" disabled="@_isSaving">
-            @if (_isSaving) { <span>Đang lưu...</span> } else { <span>Lưu thay đổi</span> }
-        </button>
+        <LoadingButton Variant="primary"
+                       IsLoading="@_isSaving"
+                       LoadingText="Đang lưu..."
+                       Text="Lưu thay đổi"
+                       OnClick="SaveInvoice" />
     </div>
 }
 

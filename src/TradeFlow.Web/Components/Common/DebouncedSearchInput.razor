@@ -1,0 +1,105 @@
+@* Search input with debouncing and inline spinner to eliminate flicker and redundant queries *@
+@namespace TradeFlow.Web.Components.Common
+@implements IDisposable
+
+<div class="tf-search-wrapper @Class" style="@Style">
+    <input type="text"
+           class="tf-input tf-search-input"
+           placeholder="@Placeholder"
+           value="@_currentValue"
+           @oninput="HandleInput"
+           @attributes="AdditionalAttributes" />
+
+    @if (IsSearching || _isDebouncing)
+    {
+        <span class="tf-search-spinner" title="Đang tìm kiếm...">
+            <span class="tf-spinner-xs"></span>
+        </span>
+    }
+    else if (!string.IsNullOrEmpty(_currentValue))
+    {
+        <button type="button" 
+                class="tf-search-spinner" 
+                style="background:none; border:none; cursor:pointer; color:var(--tf-gray-400); font-size:14px; line-height:1; padding:0;"
+                @onclick="HandleClear"
+                title="Xóa tìm kiếm">
+            ✕
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public EventCallback<string> OnSearch { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Tìm kiếm...";
+    [Parameter] public int DebounceMs { get; set; } = 280;
+    [Parameter] public bool IsSearching { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string _currentValue = string.Empty;
+    private System.Timers.Timer? _debounceTimer;
+    private bool _isDebouncing = false;
+
+    protected override void OnParametersSet()
+    {
+        if (!_isDebouncing && _currentValue != Value)
+        {
+            _currentValue = Value;
+        }
+    }
+
+    private void HandleInput(ChangeEventArgs e)
+    {
+        _currentValue = e.Value?.ToString() ?? string.Empty;
+        _isDebouncing = true;
+
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+
+        _debounceTimer = new System.Timers.Timer(DebounceMs);
+        _debounceTimer.AutoReset = false;
+        _debounceTimer.Elapsed += async (sender, args) =>
+        {
+            _isDebouncing = false;
+            await InvokeAsync(async () =>
+            {
+                if (ValueChanged.HasDelegate)
+                {
+                    await ValueChanged.InvokeAsync(_currentValue);
+                }
+                if (OnSearch.HasDelegate)
+                {
+                    await OnSearch.InvokeAsync(_currentValue);
+                }
+                StateHasChanged();
+            });
+        };
+        _debounceTimer.Start();
+    }
+
+    private async Task HandleClear()
+    {
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+        _isDebouncing = false;
+        _currentValue = string.Empty;
+
+        if (ValueChanged.HasDelegate)
+        {
+            await ValueChanged.InvokeAsync(string.Empty);
+        }
+        if (OnSearch.HasDelegate)
+        {
+            await OnSearch.InvokeAsync(string.Empty);
+        }
+    }
+
+    public void Dispose()
+    {
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+    }
+}

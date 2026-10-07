@@ -29,23 +29,11 @@
     </div>
 
     <div class="tf-page-actions">
-        <div class="tf-search-wrap" style="position:relative; width:260px;">
-            <input type="text"
-                   class="tf-input"
-                   placeholder="Theo mã, tên, SĐT..."
-                   value="@_searchTerm"
-                   @oninput="HandleSearchInput"
-                   style="padding-left:34px; height:36px; font-size:13px;" />
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--tf-text-muted);">
-                <circle cx="11" cy="11" r="8"/>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            @if (!string.IsNullOrEmpty(_searchTerm))
-            {
-                <button type="button" @onclick="ClearSearch" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:var(--tf-text-muted); padding:2px;">
-                    ✕
-                </button>
-            }
+        <div style="width:260px;">
+            <DebouncedSearchInput Placeholder="Theo mã, tên, SĐT..."
+                                  Value="@_searchTerm"
+                                  ValueChanged="HandleSearchChanged"
+                                  IsSearching="@_isLoading" />
         </div>
 
         <AuthorizeView Policy="Permission:EmployeeRequests:View">
@@ -172,10 +160,10 @@
     <div class="tf-employee-main">
         <div class="tf-card" style="margin-bottom:0; overflow:hidden;">
             <div class="tf-card-body" style="padding:0; overflow-x:auto;">
-                @if (_isLoading)
+                @if (_isLoading && _employees.Count == 0)
                 {
-                    <div style="padding:60px 20px; text-align:center; color:var(--tf-text-muted);">
-                        <span class="tf-spinner-sm"></span> Đang tải danh sách nhân viên...
+                    <div style="padding:16px;">
+                        <Skeleton Type="table" Rows="8" Columns="10" />
                     </div>
                 }
                 else if (!_employees.Any())
@@ -195,6 +183,7 @@
                 }
                 else
                 {
+                    <TableLoadingOverlay IsLoading="@_isLoading" LoadingText="Đang cập nhật danh sách nhân viên...">
                     <table class="tf-table tf-employee-table">
                         <thead>
                             <tr>
@@ -314,20 +303,15 @@
                                                             <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="CancelInlineEdit" disabled="@_isSavingInline">
                                                                 Hủy
                                                             </button>
-                                                            <button type="button" class="tf-btn tf-btn-primary tf-btn-sm" @onclick="SaveInlineEdit" disabled="@_isSavingInline">
-                                                                @if (_isSavingInline)
-                                                                {
-                                                                    <span class="tf-spinner-sm tf-mr-1"></span>
-                                                                    <span>Đang lưu...</span>
-                                                                }
-                                                                else
-                                                                {
-                                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;">
-                                                                        <polyline points="20 6 9 17 4 12"/>
-                                                                    </svg>
-                                                                    <span>Lưu thay đổi</span>
-                                                                }
-                                                            </button>
+                                                            <LoadingButton Class="tf-btn tf-btn-primary tf-btn-sm"
+                                                                           IsLoading="@_isSavingInline"
+                                                                           LoadingText="Đang lưu..."
+                                                                           OnClick="SaveInlineEdit">
+                                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;">
+                                                                    <polyline points="20 6 9 17 4 12"/>
+                                                                </svg>
+                                                                <span>Lưu thay đổi</span>
+                                                            </LoadingButton>
                                                         }
                                                         else
                                                         {
@@ -597,6 +581,7 @@
                             }
                         </tbody>
                     </table>
+                    </TableLoadingOverlay>
                 }
             </div>
         </div>
@@ -745,6 +730,12 @@
             _selectedPositionId = posId;
             await LoadEmployeesAsync();
         }
+    }
+
+    private async Task HandleSearchChanged(string val)
+    {
+        _searchTerm = val;
+        await LoadEmployeesAsync();
     }
 
     private async Task HandleSearchInput(ChangeEventArgs e)

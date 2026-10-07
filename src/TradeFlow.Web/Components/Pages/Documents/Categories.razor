@@ -45,7 +45,9 @@
 
 @if (_isLoading)
 {
-    <div class="tf-loading">Đang tải danh mục chứng từ...</div>
+    <div class="tf-card" style="padding: 24px;">
+        <Skeleton Type="table" Rows="6" Columns="6" />
+    </div>
 }
 else
 {
@@ -181,16 +183,11 @@ else
 
             <div style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid #e2e8f0; padding-top:16px;">
                 <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="() => _showModal = false" disabled="@_isSaving">Hủy</button>
-                <button type="button" class="tf-btn tf-btn-primary" @onclick="SaveCategory" disabled="@_isSaving">
-                    @if (_isSaving)
-                    {
-                        <span>Đang lưu...</span>
-                    }
-                    else
-                    {
-                        <span>Lưu thông tin</span>
-                    }
-                </button>
+                <LoadingButton Variant="primary"
+                               IsLoading="@_isSaving"
+                               LoadingText="Đang lưu..."
+                               Text="Lưu thông tin"
+                               OnClick="SaveCategory" />
             </div>
         </div>
     </div>

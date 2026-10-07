@@ -28,9 +28,13 @@
     </div>
 </div>
 
-@if (_isLoading)
+@if (_isLoading && _orders.Count == 0)
 {
-    <div class="tf-loading">Đang tải dữ liệu...</div>
+    <div class="tf-card">
+        <div style="padding: 16px;">
+            <Skeleton Type="table" Rows="6" Columns="6" />
+        </div>
+    </div>
 }
 else if (!_orders.Any())
 {
@@ -43,8 +47,9 @@ else if (!_orders.Any())
 else
 {
     <div class="tf-card">
-        <div class="tf-table-responsive">
-            <table class="tf-table">
+        <TableLoadingOverlay IsLoading="@_isLoading" LoadingText="Đang tải danh sách đơn hàng...">
+            <div class="tf-table-responsive">
+                <table class="tf-table">
                 <thead>
                     <tr>
                         <th>Mã đơn</th>
@@ -95,6 +100,7 @@ else
                 </tbody>
             </table>
         </div>
+        </TableLoadingOverlay>
     </div>
 }
 
@@ -112,28 +118,10 @@ else
                 </div>
             }
             <div style="display: flex; justify-content: flex-end; gap: 12px;">
-                <button class="tf-btn tf-btn-outline-secondary" @onclick="CancelDelete">Hủy</button>
-                <button class="tf-btn tf-btn-danger" @onclick="ExecuteDelete">Xóa</button>
-            </div>
-        </div>
-    </div>
-}
-
-@if (_itemToDeleteId != null)
-{
-    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 24px; border-radius: 8px; width: 400px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
-            <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 18px; color: var(--tf-danger);">Xóa dữ liệu?</h3>
-            <p style="margin-bottom: 24px;">Bạn có chắc chắn muốn xóa @_itemToDeleteName?</p>
-            @if (!string.IsNullOrEmpty(_deleteError))
-            {
-                <div class="tf-alert tf-alert-danger" style="margin-bottom: 16px;">
-                    @_deleteError
-                </div>
-            }
-            <div style="display: flex; justify-content: flex-end; gap: 12px;">
                 <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="CancelDelete">Hủy</button>
-                <button type="button" class="tf-btn tf-btn-danger" @onclick="ExecuteDelete">Xóa</button>
+                <LoadingButton Class="tf-btn tf-btn-danger" IsLoading="@_isDeleting" LoadingText="Đang xóa..." OnClick="ExecuteDelete">
+                    Xóa
+                </LoadingButton>
             </div>
         </div>
     </div>
@@ -143,6 +131,7 @@ else
     private int? _itemToDeleteId;
     private string _itemToDeleteName = "";
     private string? _deleteError;
+    private bool _isDeleting = false;
 
     private List<SalesOrderDto> _orders = new();
     private bool _isLoading = true;
@@ -172,7 +161,37 @@ else
         _deleteError = null;
     }
 
-    private void CancelDelete() { _itemToDeleteId = null; _deleteError = null; }
-    private async Task ExecuteDelete() { if (_itemToDeleteId == null) return; var authState = await AuthStateProvider.GetAuthenticationStateAsync(); if (!(await AuthService.AuthorizeAsync(authState.User, "Permission:SalesOrders:Delete")).Succeeded) { _deleteError = "Bạn không có quyền."; return; } try { int id = _itemToDeleteId.Value; await SalesService.DeleteOrderAsync(id); CancelDelete(); await OnInitializedAsync(); } catch (Exception ex) { _deleteError = "Đã xảy ra lỗi: " + ex.Message; } }
+    private void CancelDelete()
+    {
+        _itemToDeleteId = null;
+        _deleteError = null;
+    }
 
+    private async Task ExecuteDelete()
+    {
+        if (_itemToDeleteId == null) return;
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (!(await AuthService.AuthorizeAsync(authState.User, "Permission:SalesOrders:Delete")).Succeeded)
+        {
+            _deleteError = "Bạn không có quyền.";
+            return;
+        }
+
+        try
+        {
+            _isDeleting = true;
+            int id = _itemToDeleteId.Value;
+            await SalesService.DeleteOrderAsync(id);
+            CancelDelete();
+            await OnInitializedAsync();
+        }
+        catch (Exception ex)
+        {
+            _deleteError = "Đã xảy ra lỗi: " + ex.Message;
+        }
+        finally
+        {
+            _isDeleting = false;
+        }
+    }
 }

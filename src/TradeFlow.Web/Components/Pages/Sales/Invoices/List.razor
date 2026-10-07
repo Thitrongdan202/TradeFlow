@@ -24,9 +24,13 @@
     </div>
 </div>
 
-@if (_isLoading)
+@if (_isLoading && _invoices.Count == 0)
 {
-    <div class="tf-loading">Đang tải dữ liệu...</div>
+    <div class="tf-card">
+        <div style="padding: 16px;">
+            <Skeleton Type="table" Rows="6" Columns="6" />
+        </div>
+    </div>
 }
 else if (!_invoices.Any())
 {
@@ -42,8 +46,9 @@ else if (!_invoices.Any())
 else
 {
     <div class="tf-card">
-        <div class="tf-table-responsive">
-            <table class="tf-table">
+        <TableLoadingOverlay IsLoading="@_isLoading" LoadingText="Đang tải danh sách hóa đơn...">
+            <div class="tf-table-responsive">
+                <table class="tf-table">
                 <thead>
                     <tr>
                         <th>Số hóa đơn</th>
@@ -90,6 +95,7 @@ else
                 </tbody>
             </table>
         </div>
+        </TableLoadingOverlay>
     </div>
 }
 @code {

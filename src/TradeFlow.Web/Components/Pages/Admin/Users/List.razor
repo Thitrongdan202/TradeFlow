@@ -54,28 +54,30 @@
 
 <div class="tf-card">
     <div class="tf-card-body" style="padding:0;">
-        <table class="tf-table">
-            <thead>
-                <tr>
-                    <th>Tên đăng nhập</th>
-                    <th>Họ và tên</th>
-                    <th>Vai trò</th>
-                    <th style="text-align:center;">Trạng thái</th>
-                    <th>Đăng nhập cuối</th>
-                    <th style="text-align:right;">Thao tác</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (_users == null)
-                {
-                    <tr><td colspan="6" style="text-align:center;">Đang tải dữ liệu...</td></tr>
-                }
-                else if (!_users.Any())
-                {
-                    <tr><td colspan="6"><div class="tf-empty"><div class="tf-empty-title">Chưa có người dùng</div></div></td></tr>
-                }
-                else
-                {
+        @if (_users == null)
+        {
+            <Skeleton Type="table" Rows="5" Columns="6" />
+        }
+        else
+        {
+            <table class="tf-table">
+                <thead>
+                    <tr>
+                        <th>Tên đăng nhập</th>
+                        <th>Họ và tên</th>
+                        <th>Vai trò</th>
+                        <th style="text-align:center;">Trạng thái</th>
+                        <th>Đăng nhập cuối</th>
+                        <th style="text-align:right;">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!_users.Any())
+                    {
+                        <tr><td colspan="6"><div class="tf-empty"><div class="tf-empty-title">Chưa có người dùng</div></div></td></tr>
+                    }
+                    else
+                    {
                     foreach (var entry in _users)
                     {
                         <tr>
@@ -175,6 +177,7 @@
                 }
             </tbody>
         </table>
+        }
     </div>
 </div>
 
@@ -214,9 +217,11 @@
 
             <div style="display:flex; justify-content:flex-end; gap:8px;">
                 <button type="button" class="tf-btn tf-btn-secondary" @onclick="CancelOffboard" disabled="@_isOffboarding">Hủy</button>
-                <button type="button" class="tf-btn tf-btn-primary" style="background:#dc2626; border-color:#dc2626;" @onclick="ExecuteOffboard" disabled="@_isOffboarding">
-                    @(_isOffboarding ? "Đang xử lý..." : "Xác nhận thôi việc")
-                </button>
+                <LoadingButton Variant="danger"
+                               IsLoading="@_isOffboarding"
+                               LoadingText="Đang xử lý..."
+                               Text="Xác nhận thôi việc"
+                               OnClick="ExecuteOffboard" />
             </div>
         </div>
     </div>

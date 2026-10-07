@@ -1,0 +1,42 @@
+@* Progress bar component for batch/large data processing operations *@
+@namespace TradeFlow.Web.Components.Common
+
+<div class="tf-progress-container @Class" style="@Style" @attributes="AdditionalAttributes">
+    @if (!string.IsNullOrEmpty(EffectiveStatus) || ShowPercent)
+    {
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:12px; color:var(--tf-gray-600);">
+            <span>@EffectiveStatus</span>
+            @if (ShowPercent && !IsIndeterminate)
+            {
+                <span style="font-weight:600;">@Math.Clamp(Value, 0, 100)%</span>
+            }
+        </div>
+    }
+    <div class="tf-progress-track">
+        @if (IsIndeterminate)
+        {
+            <div class="tf-progress-fill tf-progress-indeterminate"></div>
+        }
+        else
+        {
+            <div class="tf-progress-fill" style="width: @Math.Clamp(Value, 0, 100)%;"></div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public int Value { get; set; } = 0;
+    [Parameter] public string? StatusText { get; set; }
+    [Parameter] public string? Label 
+    { 
+        get => StatusText; 
+        set => StatusText = value; 
+    }
+    [Parameter] public bool ShowPercent { get; set; } = true;
+    [Parameter] public bool IsIndeterminate { get; set; } = false;
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string? EffectiveStatus => !string.IsNullOrEmpty(Label) ? Label : StatusText;
+}

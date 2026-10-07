@@ -1,4 +1,4 @@
-﻿@page "/danh-muc/don-vi-tinh"
+@page "/danh-muc/don-vi-tinh"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
@@ -33,11 +33,9 @@
 </div>
 
 <div class="tf-card tf-mb-4" style="padding: 12px 16px;">
-    <input type="text"
-           class="tf-input"
-           placeholder="Tìm theo mã, tên đơn vị tính, ký hiệu..."
-           value="@_searchTerm"
-           @oninput="OnSearchInput" />
+    <DebouncedSearchInput Placeholder="Tìm theo mã, tên đơn vị tính, ký hiệu..."
+                          Value="@_searchTerm"
+                          ValueChanged="OnSearchChanged" />
 </div>
 
 <div class="tf-card">
@@ -72,15 +70,25 @@
             }
             <div style="display: flex; justify-content: flex-end; gap: 12px;">
                 <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="CancelBulkDelete">Hủy</button>
-                <button type="button" class="tf-btn tf-btn-danger" @onclick="ExecuteBulkDelete" disabled="@_isBulkDeleting">
-                    @(_isBulkDeleting ? "Đang xử lý..." : "Xóa tất cả")
-                </button>
+                <LoadingButton Variant="danger"
+                               IsLoading="@_isBulkDeleting"
+                               LoadingText="Đang xử lý..."
+                               Text="Xóa tất cả"
+                               OnClick="ExecuteBulkDelete" />
             </div>
         </div>
     </div>
 }
 
-<table class="tf-table">
+@if (_items == null)
+{
+    <Skeleton Type="table" Rows="6" Columns="6" />
+}
+else
+{
+    <div class="tf-table-loading-container">
+        <TableLoadingOverlay Visible="@_isRefreshing" Message="Đang cập nhật..." />
+        <table class="tf-table">
             <thead>
                   <tr>
                       <th style="width: 40px; text-align: center;"><input type="checkbox" @onchange="ToggleSelectAll" checked="@(FilteredItems.Any() && _selectedItems.Count == FilteredItems.Count())" /></th>
@@ -92,11 +100,7 @@
                 </tr>
             </thead>
             <tbody>
-                @if (_items == null)
-                {
-                    <tr><td colspan="6" style="text-align:center; padding: 24px;">Đang tải dữ liệu...</td></tr>
-                }
-                else if (!FilteredItems.Any())
+                @if (!FilteredItems.Any())
                 {
                     <tr><td colspan="6"><div class="tf-empty"><div class="tf-empty-title">Chưa có đơn vị tính phù hợp</div></div></td></tr>
                 }
@@ -125,12 +129,17 @@
                                 <AuthorizeView Policy="Permission:UnitOfMeasures:Edit">
                                     <a href="/danh-muc/don-vi-tinh/sua/@item.Id" class="tf-btn tf-btn-ghost tf-btn-sm">Sửa</a>
                                 </AuthorizeView>
+                                <AuthorizeView Policy="Permission:UnitOfMeasures:Delete">
+                                    <button class="tf-btn tf-btn-ghost tf-btn-sm" style="color:var(--tf-danger);" @onclick="() => ConfirmDelete(item.Id, item.Name ?? string.Empty)">Xóa</button>
+                                </AuthorizeView>
                             </td>
                         </tr>
                     }
                 }
             </tbody>
         </table>
+    </div>
+}
     </div>
 </div>
 
@@ -149,27 +158,11 @@
             }
             <div style="display: flex; justify-content: flex-end; gap: 12px;">
                 <button class="tf-btn tf-btn-outline-secondary" @onclick="CancelDelete">Hủy</button>
-                <button class="tf-btn tf-btn-danger" @onclick="ExecuteDelete">Xóa</button>
-            </div>
-        </div>
-    </div>
-}
-
-@if (_itemToDeleteId != null)
-{
-    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 24px; border-radius: 8px; width: 400px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
-            <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 18px; color: var(--tf-danger);">Xóa dữ liệu?</h3>
-            <p style="margin-bottom: 24px;">Bạn có chắc chắn muốn xóa @_itemToDeleteName?</p>
-            @if (!string.IsNullOrEmpty(_deleteError))
-            {
-                <div class="tf-alert tf-alert-danger" style="margin-bottom: 16px;">
-                    @_deleteError
-                </div>
-            }
-            <div style="display: flex; justify-content: flex-end; gap: 12px;">
-                <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="CancelDelete">Hủy</button>
-                <button type="button" class="tf-btn tf-btn-danger" @onclick="ExecuteDelete">Xóa</button>
+                <LoadingButton Variant="danger"
+                               IsLoading="@_isDeleting"
+                               LoadingText="Đang xóa..."
+                               Text="Xóa"
+                               OnClick="ExecuteDelete" />
             </div>
         </div>
     </div>
@@ -182,6 +175,8 @@
 
     private List<UnitOfMeasure>? _items;
     private string _searchTerm = string.Empty;
+    private bool _isRefreshing = false;
+    private bool _isDeleting = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -190,9 +185,9 @@
             .ToListAsync();
     }
 
-    private void OnSearchInput(ChangeEventArgs e)
+    private void OnSearchChanged(string val)
     {
-        _searchTerm = e.Value?.ToString() ?? string.Empty;
+        _searchTerm = val;
     }
 
     private IEnumerable<UnitOfMeasure> FilteredItems
@@ -222,7 +217,59 @@
     }
 
     private void CancelDelete() { _itemToDeleteId = null; _deleteError = null; }
-    private async Task ExecuteDelete() { if (_itemToDeleteId == null) return; var authState = await AuthStateProvider.GetAuthenticationStateAsync(); if (!(await AuthService.AuthorizeAsync(authState.User, "Permission:UnitOfMeasures:Delete")).Succeeded) { _deleteError = "Bạn không có quyền."; return; } try { int id = _itemToDeleteId.Value; var entity = await DbContext.UnitOfMeasures.FindAsync(id); if (entity == null) { CancelDelete(); return; } bool isReferenced = await DbContext.Products.AnyAsync(x => x.UnitId == id); if (isReferenced) { _deleteError = "Không thể xóa vì dữ liệu này đang được sử dụng."; return; } else { DbContext.Remove(entity); } await DbContext.SaveChangesAsync(); await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.UnitDeleted, authState.User.Identity?.Name ?? "System", "Unit", id.ToString(), "Xóa đơn vị tính", authState.User.Identity?.Name); CancelDelete(); await OnInitializedAsync(); } catch (Exception ex) { _deleteError = "Đã xảy ra lỗi: " + ex.Message; } }
+
+    private async Task ExecuteDelete()
+    {
+        if (_itemToDeleteId == null) return;
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (!(await AuthService.AuthorizeAsync(authState.User, "Permission:UnitOfMeasures:Delete")).Succeeded)
+        {
+            _deleteError = "Bạn không có quyền.";
+            return;
+        }
+
+        _isDeleting = true;
+        try
+        {
+            int id = _itemToDeleteId.Value;
+            var entity = await DbContext.UnitOfMeasures.FindAsync(id);
+            if (entity == null)
+            {
+                CancelDelete();
+                return;
+            }
+
+            bool isReferenced = await DbContext.Products.AnyAsync(x => x.UnitId == id);
+            if (isReferenced)
+            {
+                _deleteError = "Không thể xóa vì dữ liệu này đang được sử dụng.";
+                return;
+            }
+
+            DbContext.Remove(entity);
+            await DbContext.SaveChangesAsync();
+            await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.UnitDeleted, authState.User.Identity?.Name ?? "System", "Unit", id.ToString(), "Xóa đơn vị tính", authState.User.Identity?.Name);
+            CancelDelete();
+
+            _isRefreshing = true;
+            try
+            {
+                await OnInitializedAsync();
+            }
+            finally
+            {
+                _isRefreshing = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _deleteError = "Đã xảy ra lỗi: " + ex.Message;
+        }
+        finally
+        {
+            _isDeleting = false;
+        }
+    }
 
 
     private HashSet<int> _selectedItems = new();
@@ -303,7 +350,15 @@
 
             if (successCount > 0)
             {
-                await OnInitializedAsync();
+                _isRefreshing = true;
+                try
+                {
+                    await OnInitializedAsync();
+                }
+                finally
+                {
+                    _isRefreshing = false;
+                }
             }
             
             if (_selectedItems.Count == 0)

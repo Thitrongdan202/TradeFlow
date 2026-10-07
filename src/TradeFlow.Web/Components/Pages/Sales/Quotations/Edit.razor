@@ -16,7 +16,17 @@
 
 @if (_isLoading)
 {
-    <div class="tf-loading">Đang tải thông tin báo giá...</div>
+    <div class="tf-card tf-mb-4" style="padding: 24px;">
+        <Skeleton Type="title" Width="30%" Class="tf-mb-3" />
+        <Skeleton Type="text" Width="20%" Class="tf-mb-4" />
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <Skeleton Type="card" Height="100px" />
+            <Skeleton Type="card" Height="100px" />
+        </div>
+    </div>
+    <div class="tf-card" style="padding: 24px;">
+        <Skeleton Type="table" Rows="4" Columns="7" />
+    </div>
 }
 else if (_quotation == null)
 {
@@ -264,16 +274,11 @@ else
     @* Action Buttons *@
     <div style="display:flex; justify-content:flex-end; gap:12px; margin-bottom:40px;">
         <a href="/ban-hang/bao-gia/chi-tiet/@Id" class="tf-btn tf-btn-outline-secondary">Hủy bỏ</a>
-        <button type="button" class="tf-btn tf-btn-primary" @onclick="SaveUpdates" disabled="@_isSaving">
-            @if (_isSaving)
-            {
-                <span>Đang lưu cập nhật...</span>
-            }
-            else
-            {
-                <span>Lưu thay đổi</span>
-            }
-        </button>
+        <LoadingButton Variant="primary"
+                       IsLoading="@_isSaving"
+                       LoadingText="Đang lưu cập nhật..."
+                       Text="Lưu thay đổi"
+                       OnClick="SaveUpdates" />
     </div>
 }
 

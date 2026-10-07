@@ -1,0 +1,59 @@
+@* Wraps tabular or container content with a localized non-blocking overlay to prevent layout collapsing during refresh/filter/search *@
+@namespace TradeFlow.Web.Components.Common
+
+@if (ChildContent != null)
+{
+    <div class="tf-table-loading-container @Class" style="@Style" @attributes="AdditionalAttributes">
+        <div style="@(Active ? "opacity: 0.55; pointer-events: none; transition: opacity 0.15s ease;" : "transition: opacity 0.15s ease;")">
+            @ChildContent
+        </div>
+
+        <div class="tf-table-loading-overlay @(Active ? "is-active" : "")" aria-hidden="@(!Active)">
+            @if (Active)
+            {
+                <div class="tf-table-loading-badge">
+                    <span class="tf-spinner-sm"></span>
+                    <span>@EffectiveText</span>
+                </div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <div class="tf-table-loading-overlay @(Active ? "is-active" : "") @Class" style="@Style" aria-hidden="@(!Active)" @attributes="AdditionalAttributes">
+        @if (Active)
+        {
+            <div class="tf-table-loading-badge">
+                <span class="tf-spinner-sm"></span>
+                <span>@EffectiveText</span>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public bool IsLoading 
+    { 
+        get => Visible; 
+        set => Visible = value; 
+    }
+
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public string? LoadingText 
+    { 
+        get => Message; 
+        set => Message = value; 
+    }
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool Active => Visible || IsLoading;
+    private string EffectiveText => !string.IsNullOrWhiteSpace(Message) 
+        ? Message 
+        : (!string.IsNullOrWhiteSpace(LoadingText) ? LoadingText : "Đang cập nhật...");
+}

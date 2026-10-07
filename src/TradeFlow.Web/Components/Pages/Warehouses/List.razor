@@ -1,4 +1,4 @@
-﻿@page "/kho/kho-hang"
+@page "/kho/kho-hang"
 @page "/kho-hang"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
@@ -34,11 +34,9 @@
 </div>
 
 <div class="tf-card tf-mb-4" style="padding: 12px 16px;">
-    <input type="text"
-           class="tf-input"
-           placeholder="Tìm theo mã kho, mã nội bộ, tên kho, địa chỉ, người phụ trách..."
-           value="@_searchTerm"
-           @oninput="OnSearchInput" />
+    <DebouncedSearchInput Placeholder="Tìm theo mã kho, mã nội bộ, tên kho, địa chỉ, người phụ trách..."
+                          Value="@_searchTerm"
+                          ValueChanged="OnSearchChanged" />
 </div>
 
 <div class="tf-card">
@@ -73,15 +71,25 @@
             }
             <div style="display: flex; justify-content: flex-end; gap: 12px;">
                 <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="CancelBulkDelete">Hủy</button>
-                <button type="button" class="tf-btn tf-btn-danger" @onclick="ExecuteBulkDelete" disabled="@_isBulkDeleting">
-                    @(_isBulkDeleting ? "Đang xử lý..." : "Xóa tất cả")
-                </button>
+                <LoadingButton Variant="danger"
+                               IsLoading="@_isBulkDeleting"
+                               LoadingText="Đang xử lý..."
+                               Text="Xóa tất cả"
+                               OnClick="ExecuteBulkDelete" />
             </div>
         </div>
     </div>
 }
 
-<table class="tf-table">
+@if (_items == null)
+{
+    <Skeleton Type="table" Rows="6" Columns="9" />
+}
+else
+{
+    <div class="tf-table-loading-container">
+        <TableLoadingOverlay Visible="@_isRefreshing" Message="Đang cập nhật..." />
+        <table class="tf-table">
             <thead>
                   <tr>
                       <th style="width: 40px; text-align: center;"><input type="checkbox" @onchange="ToggleSelectAll" checked="@(FilteredItems.Any() && _selectedItems.Count == FilteredItems.Count())" /></th>
@@ -96,11 +104,7 @@
                 </tr>
             </thead>
             <tbody>
-                @if (_items == null)
-                {
-                    <tr><td colspan="9" style="text-align:center; padding: 24px;">Đang tải dữ liệu...</td></tr>
-                }
-                else if (!FilteredItems.Any())
+                @if (!FilteredItems.Any())
                 {
                     <tr><td colspan="9"><div class="tf-empty"><div class="tf-empty-title">Chưa có kho hàng phù hợp</div></div></td></tr>
                 }
@@ -151,6 +155,8 @@
             </tbody>
         </table>
     </div>
+}
+    </div>
 </div>
 
 
@@ -168,7 +174,11 @@
             }
             <div style="display: flex; justify-content: flex-end; gap: 12px;">
                 <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="CancelDelete">Hủy</button>
-                <button type="button" class="tf-btn tf-btn-danger" @onclick="ExecuteDelete">Xóa</button>
+                <LoadingButton Variant="danger"
+                               IsLoading="@_isDeleting"
+                               LoadingText="Đang xóa..."
+                               Text="Xóa"
+                               OnClick="ExecuteDelete" />
             </div>
         </div>
     </div>
@@ -181,6 +191,8 @@
 
     private List<Warehouse>? _items;
     private string _searchTerm = string.Empty;
+    private bool _isRefreshing = false;
+    private bool _isDeleting = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -189,9 +201,9 @@
             .ToListAsync();
     }
 
-    private void OnSearchInput(ChangeEventArgs e)
+    private void OnSearchChanged(string val)
     {
-        _searchTerm = e.Value?.ToString() ?? string.Empty;
+        _searchTerm = val;
     }
 
     private IEnumerable<Warehouse> FilteredItems
@@ -240,6 +252,7 @@
             return;
         }
 
+        _isDeleting = true;
         try
         {
             int id = _itemToDeleteId.Value;
@@ -265,11 +278,23 @@
             await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.WarehouseDeleted, authState.User.Identity?.Name ?? "System", "Warehouse", id.ToString(), "Xóa kho hàng", authState.User.Identity?.Name);
             CancelDelete();
             
-            await OnInitializedAsync();
+            _isRefreshing = true;
+            try
+            {
+                await OnInitializedAsync();
+            }
+            finally
+            {
+                _isRefreshing = false;
+            }
         }
         catch (Exception ex)
         {
             _deleteError = "Đã xảy ra lỗi: " + ex.Message;
+        }
+        finally
+        {
+            _isDeleting = false;
         }
     }
 
@@ -351,7 +376,15 @@
 
             if (successCount > 0)
             {
-                await OnInitializedAsync();
+                _isRefreshing = true;
+                try
+                {
+                    await OnInitializedAsync();
+                }
+                finally
+                {
+                    _isRefreshing = false;
+                }
             }
             
             if (_selectedItems.Count == 0)

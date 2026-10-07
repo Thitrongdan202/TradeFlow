@@ -125,6 +125,7 @@ else if (_analysisResult == null)
             <button type="button" class="tf-btn tf-btn-primary" style="padding: 10px 24px; font-size: 15px;" disabled="@_isAnalyzing">
                 @if (_isAnalyzing)
                 {
+                    <span class="tf-spinner tf-spinner-sm tf-spinner-white" style="margin-right: 6px;"></span>
                     <span>@(_progressMessage ?? "Đang phân tích dữ liệu...")</span>
                 }
                 else
@@ -133,6 +134,12 @@ else if (_analysisResult == null)
                 }
             </button>
         </div>
+        @if (_isAnalyzing)
+        {
+            <div style="margin-top: 16px; max-width: 420px; margin-left: auto; margin-right: auto;">
+                <ProgressBar IsIndeterminate="true" Label="@(_progressMessage ?? "Đang đọc cấu trúc bảng tính...")" />
+            </div>
+        }
         <div style="margin-top: 12px; font-size: 12px; color: var(--tf-text-muted);">
             Dung lượng tối đa 200MB. Đảm bảo file có định dạng .xlsx
         </div>
@@ -253,16 +260,13 @@ else
                 <button type="button" class="tf-btn tf-btn-secondary" @onclick="CancelAndCleanupAsync" disabled="@_isCommitting">
                     Hủy bỏ
                 </button>
-                <button type="button" class="tf-btn tf-btn-primary" style="background:#059669; padding: 8px 20px;" @onclick="CommitImport" disabled="@_isCommitting">
-                    @if (_isCommitting)
-                    {
-                        <span>Đang lưu bảng giá vào CSDL...</span>
-                    }
-                    else
-                    {
-                        <span>Xác nhận nhập @_analysisResult.Items.Count mặt hàng</span>
-                    }
-                </button>
+                <LoadingButton Type="primary"
+                               Style="background:#059669; padding: 8px 20px;"
+                               OnClick="CommitImport"
+                               IsLoading="_isCommitting"
+                               LoadingText="Đang lưu bảng giá vào CSDL...">
+                    Xác nhận nhập @_analysisResult.Items.Count mặt hàng
+                </LoadingButton>
             </div>
         </div>
     </div>

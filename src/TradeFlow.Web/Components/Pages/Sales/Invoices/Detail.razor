@@ -42,10 +42,10 @@
                 }
                 @if (_invoice.SignatureStatus != DigitalSignatureStatus.Unsigned)
                 {
-                    <button class="tf-btn tf-btn-outline-primary" @onclick="VerifySignature" disabled="@_isProcessing">🔍 Kiểm tra chữ ký</button>
+                    <LoadingButton Class="tf-btn tf-btn-outline-primary" IsLoading="@_isVerifying" LoadingText="Đang kiểm tra..." OnClick="VerifySignature">🔍 Kiểm tra chữ ký</LoadingButton>
                 }
-                <button class="tf-btn tf-btn-outline-primary" @onclick="ExportPdf" disabled="@_isProcessing">⬇ Tải PDF</button>
-                <button class="tf-btn tf-btn-outline-secondary" @onclick="ExportXml" disabled="@_isProcessing">📄 Tải XML</button>
+                <LoadingButton Class="tf-btn tf-btn-outline-primary" IsLoading="@_isExportingPdf" LoadingText="Đang tạo PDF..." OnClick="ExportPdf">⬇ Tải PDF</LoadingButton>
+                <LoadingButton Class="tf-btn tf-btn-outline-secondary" IsLoading="@_isExportingXml" LoadingText="Đang tạo XML..." OnClick="ExportXml">📄 Tải XML</LoadingButton>
             }
         }
         else
@@ -53,7 +53,7 @@
             @if (_orderDoc != null)
             {
                 <span class="tf-badge tf-badge-secondary" style="margin-right:4px;">Chứng từ nội bộ</span>
-                <button class="tf-btn tf-btn-outline-primary" @onclick="ExportOrderPdf" disabled="@_isProcessing">⬇ Tải PDF Đơn đặt hàng</button>
+                <LoadingButton Class="tf-btn tf-btn-outline-primary" IsLoading="@_isExportingOrderPdf" LoadingText="Đang tạo PDF..." OnClick="ExportOrderPdf">⬇ Tải PDF Đơn đặt hàng</LoadingButton>
             }
         }
     </div>
@@ -61,7 +61,11 @@
 
 @if (_isLoading)
 {
-    <div class="tf-loading">Đang tải dữ liệu...</div>
+    <div class="tf-card" style="padding: 28px;">
+        <Skeleton Type="title" Width="30%" Height="24px" />
+        <div style="margin: 20px 0;"><Skeleton Type="text" Rows="4" /></div>
+        <Skeleton Type="table" Rows="5" Columns="5" />
+    </div>
 }
 else if (_invoice == null)
 {
@@ -716,9 +720,13 @@ else
 
                 <div style="display:flex; justify-content:flex-end; gap:12px;">
                     <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="() => _showSignModal = false">Hủy</button>
-                    <button type="button" class="tf-btn tf-btn-success" @onclick="ExecuteSigning" disabled="@(_isProcessing || _selectedSignerId <= 0)">
-                        @(_isProcessing ? "Đang xử lý ký..." : "Xác nhận ký điện tử")
-                    </button>
+                    <LoadingButton Class="tf-btn tf-btn-success"
+                                   IsLoading="@_isSigning"
+                                   Disabled="@(_selectedSignerId <= 0)"
+                                   LoadingText="Đang xử lý ký..."
+                                   OnClick="ExecuteSigning">
+                        Xác nhận ký điện tử
+                    </LoadingButton>
                 </div>
             }
         </div>
@@ -841,6 +849,7 @@ else
     private async Task ExportOrderPdf()
     {
         if (string.IsNullOrEmpty(_orderPdfBase64) || _orderDoc == null) return;
+        _isExportingOrderPdf = true;
         _isProcessing = true;
         try
         {
@@ -854,7 +863,11 @@ else
             ");
         }
         catch (Exception ex) { _errorMessage = ex.Message; }
-        finally { _isProcessing = false; }
+        finally
+        {
+            _isProcessing = false;
+            _isExportingOrderPdf = false;
+        }
     }
 
     private RenderFragment InfoRowHtml(string label, string? value, bool boldValue = false) => __builder =>
@@ -932,6 +945,12 @@ else
     private string? _signModalError;
     private SignatureVerificationResult? _verifyResult;
 
+    private bool _isVerifying = false;
+    private bool _isExportingPdf = false;
+    private bool _isExportingXml = false;
+    private bool _isExportingOrderPdf = false;
+    private bool _isSigning = false;
+
     private async Task OpenSignModal()
     {
         _signModalError = null;
@@ -976,6 +995,7 @@ else
         }
 
         _isProcessing = true;
+        _isSigning = true;
         try
         {
             var res = await InvoiceService.SignInvoiceWithKeyAsync(Id, _selectedSignerId, _signerPin);
@@ -997,12 +1017,14 @@ else
         finally
         {
             _isProcessing = false;
+            _isSigning = false;
         }
     }
 
     private async Task VerifySignature()
     {
         _isProcessing = true;
+        _isVerifying = true;
         _errorMessage = null;
         try
         {
@@ -1017,6 +1039,7 @@ else
         finally
         {
             _isProcessing = false;
+            _isVerifying = false;
         }
     }
 
@@ -1029,6 +1052,7 @@ else
     {
         if (string.IsNullOrEmpty(_pdfBase64) || _invoice == null) return;
         _isProcessing = true;
+        _isExportingPdf = true;
         try
         {
             await JS.InvokeVoidAsync("eval", $@"
@@ -1041,13 +1065,18 @@ else
             ");
         }
         catch (Exception ex) { _errorMessage = ex.Message; }
-        finally { _isProcessing = false; }
+        finally
+        {
+            _isProcessing = false;
+            _isExportingPdf = false;
+        }
     }
 
     private async Task ExportXml()
     {
         if (string.IsNullOrEmpty(_xmlContent) || _invoice == null) return;
         _isProcessing = true;
+        _isExportingXml = true;
         try
         {
             var base64Xml = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(_xmlContent));
@@ -1061,7 +1090,11 @@ else
             ");
         }
         catch (Exception ex) { _errorMessage = ex.Message; }
-        finally { _isProcessing = false; }
+        finally
+        {
+            _isProcessing = false;
+            _isExportingXml = false;
+        }
     }
 
     private bool _showDeleteModal = false;

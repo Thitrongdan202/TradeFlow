@@ -87,9 +87,7 @@
 
     @if (_isLoadingMulti)
     {
-        <div class="tf-card" style="padding: 40px; text-align: center; color: var(--tf-text-muted);">
-            Đang tải dữ liệu so sánh đa kỳ từ CSDL...
-        </div>
+        <Skeleton Type="table" Rows="6" Columns="8" />
     }
     else if (_multiPeriodResult == null || !_multiPeriodResult.Periods.Any())
     {
@@ -228,16 +226,13 @@ else
                 </select>
             </div>
             <div>
-                <button type="button" class="tf-btn tf-btn-primary" style="padding: 9px 24px;" @onclick="ExecuteCompare" disabled="@(_baseId <= 0 || _targetId <= 0 || _baseId == _targetId || _isComparing)">
-                    @if (_isComparing)
-                    {
-                        <span>Đang so sánh...</span>
-                    }
-                    else
-                    {
-                        <span>So sánh giá</span>
-                    }
-                </button>
+                <LoadingButton Type="primary"
+                               OnClick="ExecuteCompare"
+                               IsLoading="_isComparing"
+                               LoadingText="Đang so sánh..."
+                               Disabled="@(_baseId <= 0 || _targetId <= 0 || _baseId == _targetId)">
+                    So sánh giá
+                </LoadingButton>
             </div>
         </div>
         @if (_baseId > 0 && _targetId > 0 && _baseId == _targetId)
@@ -248,7 +243,12 @@ else
         }
     </div>
 
-    @if (_comparisonResult != null)
+    @if (_isComparing)
+    {
+        <Skeleton Type="stats" Count="5" />
+        <Skeleton Type="table" Rows="6" Columns="11" />
+    }
+    else if (_comparisonResult != null)
     {
         @* Summary Cards *@
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin-bottom: 20px;">

@@ -17,9 +17,14 @@
 
 @if (_isLoading)
 {
-    <div class="tf-card" style="padding: 40px; text-align: center;">
-        <p>Đang tải thông tin bảng giá...</p>
+    <div class="tf-page-header">
+        <Skeleton Type="title" Width="260px" Height="28px" />
+        <Skeleton Type="text" Width="400px" Height="14px" Style="margin-top:8px;" />
     </div>
+    <div style="margin-bottom:20px;">
+        <Skeleton Type="stats" Count="4" />
+    </div>
+    <Skeleton Type="table" Rows="6" Columns="8" />
 }
 else if (_priceList == null)
 {
@@ -377,8 +382,10 @@ else
             <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 18px; color: #ea580c;">Xác nhận hủy bảng giá</h3>
             <p style="margin-bottom: 24px;">Bạn có chắc chắn muốn hủy bảng giá này?</p>
             <div style="display: flex; justify-content: flex-end; gap: 12px;">
-                <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="CancelCancel">Đóng</button>
-                <button type="button" class="tf-btn tf-btn-primary" style="background:#ea580c;" @onclick="ExecuteCancel">Xác nhận hủy</button>
+                <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="CancelCancel" disabled="@_isCancelling">Đóng</button>
+                <LoadingButton Type="primary" Style="background:#ea580c;" OnClick="ExecuteCancel" IsLoading="_isCancelling" LoadingText="Đang hủy...">
+                    Xác nhận hủy
+                </LoadingButton>
             </div>
         </div>
     </div>
@@ -397,8 +404,10 @@ else
                 </div>
             }
             <div style="display: flex; justify-content: flex-end; gap: 12px;">
-                <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="CancelPermanentDelete">Hủy bỏ</button>
-                <button type="button" class="tf-btn tf-btn-danger" @onclick="ExecutePermanentDelete">Xác nhận xóa</button>
+                <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="CancelPermanentDelete" disabled="@_isDeleting">Hủy bỏ</button>
+                <LoadingButton Type="danger" OnClick="ExecutePermanentDelete" IsLoading="_isDeleting" LoadingText="Đang xóa...">
+                    Xác nhận xóa
+                </LoadingButton>
             </div>
         </div>
     </div>
@@ -443,9 +452,9 @@ else
 
             <div style="display: flex; justify-content: flex-end; gap: 10px;">
                 <button type="button" class="tf-btn tf-btn-secondary" @onclick="CloseEditPriceModal" disabled="@_isSavingPrice">Hủy</button>
-                <button type="button" class="tf-btn tf-btn-primary" style="background: #059669;" @onclick="ExecuteEditPrice" disabled="@_isSavingPrice">
-                    @(_isSavingPrice ? "Đang lưu..." : "Xác nhận lưu giá")
-                </button>
+                <LoadingButton Type="primary" Style="background: #059669;" OnClick="ExecuteEditPrice" IsLoading="_isSavingPrice" LoadingText="Đang lưu...">
+                    Xác nhận lưu giá
+                </LoadingButton>
             </div>
         </div>
     </div>
@@ -587,13 +596,22 @@ else
         _showCancelModal = false;
     }
 
+    private bool _isCancelling = false;
     private async Task ExecuteCancel()
     {
-        var ok = await PriceListService.CancelPriceListAsync(Id);
-        if (ok)
+        _isCancelling = true;
+        try
         {
-            _showCancelModal = false;
-            await LoadDetail();
+            var ok = await PriceListService.CancelPriceListAsync(Id);
+            if (ok)
+            {
+                _showCancelModal = false;
+                await LoadDetail();
+            }
+        }
+        finally
+        {
+            _isCancelling = false;
         }
     }
 
@@ -609,6 +627,7 @@ else
         _deleteError = null;
     }
 
+    private bool _isDeleting = false;
     private async Task ExecutePermanentDelete()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -618,6 +637,7 @@ else
             return;
         }
 
+        _isDeleting = true;
         try
         {
             var ok = await PriceListService.DeletePriceListAsync(Id); 
@@ -626,6 +646,10 @@ else
         catch (Exception ex)
         {
             _deleteError = ex.Message;
+        }
+        finally
+        {
+            _isDeleting = false;
         }
     }
 

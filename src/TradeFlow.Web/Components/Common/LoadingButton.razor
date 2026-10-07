@@ -1,0 +1,106 @@
+@* Reusable button with integrated loading spinner, double-click guard, and dimension preservation *@
+@namespace TradeFlow.Web.Components.Common
+
+<button type="@ResolvedHtmlType"
+        class="@ComputedClass"
+        style="@Style"
+        disabled="@(Disabled || IsLoading)"
+        @onclick="HandleClickAsync"
+        @attributes="AdditionalAttributes">
+    @if (IsLoading)
+    {
+        <span class="tf-btn-loading-content">
+            <span class="tf-spinner-sm @SpinnerClass"></span>
+            <span>@(string.IsNullOrWhiteSpace(LoadingText) ? "Đang xử lý..." : LoadingText)</span>
+        </span>
+    }
+    else
+    {
+        @if (ChildContent != null)
+        {
+            @ChildContent
+        }
+        else if (!string.IsNullOrEmpty(Text))
+        {
+            @Text
+        }
+    }
+</button>
+
+@code {
+    [Parameter] public string Type { get; set; } = "button";
+    [Parameter] public string? Variant { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? LoadingText { get; set; }
+    [Parameter] public string? SpinnerClass { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool _isInternalProcessing = false;
+
+    private string ResolvedHtmlType => (Type?.ToLowerInvariant()) switch
+    {
+        "submit" => "submit",
+        "reset" => "reset",
+        _ => "button"
+    };
+
+    private string ComputedClass
+    {
+        get
+        {
+            var baseCls = Class;
+            if (string.IsNullOrWhiteSpace(baseCls))
+            {
+                var v = Variant;
+                if (string.IsNullOrWhiteSpace(v) && !string.IsNullOrWhiteSpace(Type) && Type != "button" && Type != "submit" && Type != "reset")
+                {
+                    v = Type;
+                }
+
+                baseCls = (v?.ToLowerInvariant()) switch
+                {
+                    "danger" => "tf-btn tf-btn-danger",
+                    "success" => "tf-btn tf-btn-success",
+                    "secondary" => "tf-btn tf-btn-secondary",
+                    "outline-primary" => "tf-btn tf-btn-outline-primary",
+                    "outline-secondary" => "tf-btn tf-btn-outline-secondary",
+                    "ghost" => "tf-btn tf-btn-ghost",
+                    _ => "tf-btn tf-btn-primary"
+                };
+            }
+
+            if (IsLoading || _isInternalProcessing)
+            {
+                baseCls += " is-loading loading";
+            }
+            return baseCls;
+        }
+    }
+
+    private async Task HandleClickAsync(MouseEventArgs e)
+    {
+        if (Disabled || IsLoading || _isInternalProcessing)
+        {
+            return;
+        }
+
+        try
+        {
+            _isInternalProcessing = true;
+            if (OnClick.HasDelegate)
+            {
+                await OnClick.InvokeAsync(e);
+            }
+        }
+        finally
+        {
+            _isInternalProcessing = false;
+        }
+    }
+}

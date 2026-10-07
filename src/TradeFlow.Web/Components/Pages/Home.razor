@@ -26,13 +26,23 @@
 
         @* Stats *@
         <div class="tf-stats-grid">
-            @foreach (var stat in _stats)
+            @if (_isLoading)
             {
-                <div class="tf-stat-card">
-                    <div class="tf-stat-label">@stat.Label</div>
-                    <div class="tf-stat-value tf-text-@stat.Color">@stat.Value</div>
-                    <div class="tf-stat-meta">@stat.Meta</div>
-                </div>
+                for (int i = 0; i < 4; i++)
+                {
+                    <Skeleton Type="stats" />
+                }
+            }
+            else
+            {
+                @foreach (var stat in _stats)
+                {
+                    <div class="tf-stat-card">
+                        <div class="tf-stat-label">@stat.Label</div>
+                        <div class="tf-stat-value tf-text-@stat.Color">@stat.Value</div>
+                        <div class="tf-stat-meta">@stat.Meta</div>
+                    </div>
+                }
             }
         </div>
 
@@ -44,19 +54,28 @@
                     <h2 class="tf-card-title">Hoạt động gần đây</h2>
                 </div>
                 <div class="tf-card-body">
-                    <div class="tf-empty">
-                        <div class="tf-empty-icon">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <line x1="16" y1="13" x2="8" y2="13"/>
-                                <line x1="16" y1="17" x2="8" y2="17"/>
-                                <polyline points="10 9 9 9 8 9"/>
-                            </svg>
+                    @if (_isLoading)
+                    {
+                        <div style="padding: 12px 0;">
+                            <Skeleton Type="text" Rows="4" />
                         </div>
-                        <div class="tf-empty-title">Chưa có dữ liệu</div>
-                        <div class="tf-empty-desc">Các giao dịch sẽ xuất hiện ở đây sau khi hệ thống đi vào hoạt động.</div>
-                    </div>
+                    }
+                    else
+                    {
+                        <div class="tf-empty">
+                            <div class="tf-empty-icon">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="16" y1="13" x2="8" y2="13"/>
+                                    <line x1="16" y1="17" x2="8" y2="17"/>
+                                    <polyline points="10 9 9 9 8 9"/>
+                                </svg>
+                            </div>
+                            <div class="tf-empty-title">Chưa có dữ liệu</div>
+                            <div class="tf-empty-desc">Các giao dịch sẽ xuất hiện ở đây sau khi hệ thống đi vào hoạt động.</div>
+                        </div>
+                    }
                 </div>
             </div>
 
@@ -125,6 +144,7 @@
 </AuthorizeView>
 
 @code {
+    private bool _isLoading = false;
     private record StatItem(string Label, string Value, string Meta, string Color);
     private record QuickAction(string Label, string Href, string Color, string Icon);
 

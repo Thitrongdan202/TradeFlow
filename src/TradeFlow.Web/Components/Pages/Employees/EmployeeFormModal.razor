@@ -245,17 +245,12 @@
 
                 <div class="tf-modal-footer">
                     <button type="button" class="tf-btn tf-btn-ghost" @onclick="Close" disabled="@_isSubmitting">Hủy</button>
-                    <button type="submit" class="tf-btn tf-btn-primary" disabled="@_isSubmitting">
-                        @if (_isSubmitting)
-                        {
-                            <span class="tf-spinner-sm tf-mr-2"></span>
-                            <span>Đang xử lý...</span>
-                        }
-                        else
-                        {
-                            <span>@(_isDirectCreate ? "Lưu nhân viên" : "Gửi yêu cầu phê duyệt")</span>
-                        }
-                    </button>
+                    <LoadingButton Type="submit"
+                                   Class="tf-btn tf-btn-primary"
+                                   IsLoading="@_isSubmitting"
+                                   LoadingText="Đang xử lý...">
+                        <span>@(_isDirectCreate ? "Lưu nhân viên" : "Gửi yêu cầu phê duyệt")</span>
+                    </LoadingButton>
                 </div>
             </EditForm>
         </div>

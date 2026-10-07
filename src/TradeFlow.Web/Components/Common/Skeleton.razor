@@ -1,0 +1,137 @@
+@* Skeleton loading component providing layout-matching shimmer placeholders *@
+@namespace TradeFlow.Web.Components.Common
+
+@if (Type == "text")
+{
+    var repeat = Math.Max(Rows, Count);
+    @for (int i = 0; i < repeat; i++)
+    {
+        var rowWidth = i == repeat - 1 && repeat > 1 ? "75%" : (Width ?? "100%");
+        <span class="tf-skeleton tf-skeleton-text @Class" 
+              style="width: @rowWidth; @(Height != null ? $"height:{Height};" : "") @Style" 
+              aria-hidden="true"
+              @attributes="AdditionalAttributes"></span>
+    }
+}
+else if (Type == "title")
+{
+    <span class="tf-skeleton tf-skeleton-title @Class" 
+          style="@(Width != null ? $"width:{Width};" : "") @(Height != null ? $"height:{Height};" : "") @Style" 
+          aria-hidden="true"
+          @attributes="AdditionalAttributes"></span>
+}
+else if (Type == "avatar")
+{
+    <span class="tf-skeleton tf-skeleton-avatar @Class" 
+          style="@(Width != null ? $"width:{Width}; height:{Width};" : "") @(Height != null ? $"height:{Height}; width:{Height};" : "") @Style" 
+          aria-hidden="true"
+          @attributes="AdditionalAttributes"></span>
+}
+else if (Type == "badge")
+{
+    <span class="tf-skeleton tf-skeleton-badge @Class" 
+          style="@(Width != null ? $"width:{Width};" : "") @(Height != null ? $"height:{Height};" : "") @Style" 
+          aria-hidden="true"
+          @attributes="AdditionalAttributes"></span>
+}
+else if (Type == "button")
+{
+    <span class="tf-skeleton tf-skeleton-button @Class" 
+          style="@(Width != null ? $"width:{Width};" : "") @(Height != null ? $"height:{Height};" : "") @Style" 
+          aria-hidden="true"
+          @attributes="AdditionalAttributes"></span>
+}
+else if (Type == "card")
+{
+    var repeat = Math.Max(Rows, Count);
+    @if (repeat > 1)
+    {
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">
+            @for (int c = 0; c < repeat; c++)
+            {
+                <div class="tf-skeleton-card @Class" style="@Style" aria-hidden="true" @attributes="AdditionalAttributes">
+                    <span class="tf-skeleton tf-skeleton-title" style="width: 40%; margin-bottom: 16px;"></span>
+                    <span class="tf-skeleton tf-skeleton-text" style="width: 100%;"></span>
+                    <span class="tf-skeleton tf-skeleton-text" style="width: 85%;"></span>
+                    <span class="tf-skeleton tf-skeleton-text" style="width: 60%;"></span>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="tf-skeleton-card @Class" style="@Style" aria-hidden="true" @attributes="AdditionalAttributes">
+            <span class="tf-skeleton tf-skeleton-title" style="width: 40%; margin-bottom: 16px;"></span>
+            <span class="tf-skeleton tf-skeleton-text" style="width: 100%;"></span>
+            <span class="tf-skeleton tf-skeleton-text" style="width: 85%;"></span>
+            <span class="tf-skeleton tf-skeleton-text" style="width: 60%;"></span>
+        </div>
+    }
+}
+else if (Type == "stats")
+{
+    var repeat = Math.Max(Rows, Count);
+    @if (repeat > 1)
+    {
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px;">
+            @for (int s = 0; s < repeat; s++)
+            {
+                <div class="tf-skeleton-stat-card @Class" style="@Style" aria-hidden="true" @attributes="AdditionalAttributes">
+                    <span class="tf-skeleton tf-skeleton-text" style="width: 50%; height: 12px; margin-bottom: 12px;"></span>
+                    <span class="tf-skeleton tf-skeleton-title" style="width: 70%; height: 26px; margin-bottom: 8px;"></span>
+                    <span class="tf-skeleton tf-skeleton-text" style="width: 40%; height: 11px;"></span>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="tf-skeleton-stat-card @Class" style="@Style" aria-hidden="true" @attributes="AdditionalAttributes">
+            <span class="tf-skeleton tf-skeleton-text" style="width: 50%; height: 12px; margin-bottom: 12px;"></span>
+            <span class="tf-skeleton tf-skeleton-title" style="width: 70%; height: 26px; margin-bottom: 8px;"></span>
+            <span class="tf-skeleton tf-skeleton-text" style="width: 40%; height: 11px;"></span>
+        </div>
+    }
+}
+else if (Type == "table")
+{
+    <div class="tf-skeleton-table-wrapper @Class" style="@Style" aria-hidden="true" @attributes="AdditionalAttributes">
+        <div class="tf-skeleton-table-header">
+            @for (int col = 0; col < Columns; col++)
+            {
+                <span class="tf-skeleton tf-skeleton-text" style="flex: 1; height: 14px; margin-bottom: 0;"></span>
+            }
+        </div>
+        @for (int row = 0; row < Rows; row++)
+        {
+            <div class="tf-skeleton-table-row">
+                @for (int col = 0; col < Columns; col++)
+                {
+                    var colWidth = col == 0 ? "70%" : (col == Columns - 1 ? "40%" : "90%");
+                    <div style="flex: 1;">
+                        <span class="tf-skeleton tf-skeleton-text" style="width: @colWidth; height: 13px; margin-bottom: 0;"></span>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+else
+{
+    <span class="tf-skeleton @Class" 
+          style="@(Width != null ? $"width:{Width};" : "width:100%;") @(Height != null ? $"height:{Height};" : "height:20px;") @Style" 
+          aria-hidden="true"
+          @attributes="AdditionalAttributes"></span>
+}
+
+@code {
+    [Parameter] public string Type { get; set; } = "text";
+    [Parameter] public int Rows { get; set; } = 1;
+    [Parameter] public int Columns { get; set; } = 4;
+    [Parameter] public int Count { get; set; } = 1;
+    [Parameter] public string? Width { get; set; }
+    [Parameter] public string? Height { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

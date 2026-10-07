@@ -16,7 +16,17 @@
 
 @if (_isLoading)
 {
-    <div class="tf-loading">Đang tải dữ liệu...</div>
+    <div class="tf-card tf-mb-4" style="padding: 24px;">
+        <Skeleton Type="title" Width="30%" Class="tf-mb-3" />
+        <Skeleton Type="text" Width="20%" Class="tf-mb-4" />
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <Skeleton Type="card" Height="100px" />
+            <Skeleton Type="card" Height="100px" />
+        </div>
+    </div>
+    <div class="tf-card" style="padding: 24px;">
+        <Skeleton Type="table" Rows="4" Columns="7" />
+    </div>
 }
 else if (_order == null)
 {
@@ -52,7 +62,11 @@ else
             @if (_order.Status == SalesOrderStatus.Draft)
             {
                 <AuthorizeView Policy="Permission:SalesOrders:Approve">
-                    <button class="tf-btn tf-btn-success" @onclick="ConfirmOrder" disabled="@_isProcessing">Xác nhận đơn</button>
+                    <LoadingButton Variant="success"
+                                   IsLoading="@_isProcessing"
+                                   LoadingText="Đang xác nhận..."
+                                   Text="Xác nhận đơn"
+                                   OnClick="ConfirmOrder" />
                 </AuthorizeView>
             }
             @if (_order.Status == SalesOrderStatus.Confirmed || _order.Status == SalesOrderStatus.Invoiced)
@@ -268,9 +282,11 @@ else
 
             <div style="display:flex; justify-content:flex-end; gap:12px; border-top:1px solid #e5e7eb; padding-top:16px;">
                 <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="() => _showInvoiceModal = false">Hủy</button>
-                <button type="button" class="tf-btn tf-btn-primary" @onclick="ExecuteCreateInvoice" disabled="@_isProcessing">
-                    @if (_isProcessing) { <span>Đang xử lý...</span> } else { <span>Xác nhận & Tạo hóa đơn</span> }
-                </button>
+                <LoadingButton Variant="primary"
+                               IsLoading="@_isProcessing"
+                               LoadingText="Đang tạo hóa đơn..."
+                               Text="Xác nhận & Tạo hóa đơn"
+                               OnClick="ExecuteCreateInvoice" />
             </div>
         </div>
     </div>
@@ -291,7 +307,11 @@ else
             }
             <div style="display: flex; justify-content: flex-end; gap: 12px;">
                 <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="CancelDelete">Hủy</button>
-                <button type="button" class="tf-btn tf-btn-danger" @onclick="ExecuteDelete">Xóa</button>
+                <LoadingButton Variant="danger"
+                               IsLoading="@_isProcessing"
+                               LoadingText="Đang xóa..."
+                               Text="Xóa"
+                               OnClick="ExecuteDelete" />
             </div>
         </div>
     </div>

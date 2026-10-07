@@ -83,9 +83,13 @@
     </div>
 }
 
-@if (_isLoading)
+@if (_isLoading && _quotations.Count == 0)
 {
-    <div class="tf-loading">Đang tải dữ liệu báo giá...</div>
+    <div class="tf-card">
+        <div style="padding: 16px;">
+            <Skeleton Type="table" Rows="6" Columns="7" />
+        </div>
+    </div>
 }
 else if (!_quotations.Any())
 {
@@ -101,8 +105,9 @@ else if (!_quotations.Any())
 else
 {
     <div class="tf-card">
-        <div class="tf-table-responsive">
-            <table class="tf-table">
+        <TableLoadingOverlay IsLoading="@_isLoading" LoadingText="Đang tải danh sách báo giá...">
+            <div class="tf-table-responsive">
+                <table class="tf-table">
                 <thead>
                     <tr>
                         <th style="width:130px;">Mã báo giá</th>
@@ -173,6 +178,7 @@ else
                 </tbody>
             </table>
         </div>
+        </TableLoadingOverlay>
     </div>
 }
 
@@ -190,16 +196,12 @@ else
             </div>
             <div style="display:flex; justify-content:flex-end; gap:10px;">
                 <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="() => _convertingQuotation = null" disabled="@_isConverting">Hủy</button>
-                <button type="button" class="tf-btn tf-btn-primary" @onclick="ExecuteConvert" disabled="@_isConverting">
-                    @if (_isConverting)
-                    {
-                        <span>Đang xử lý...</span>
-                    }
-                    else
-                    {
-                        <span>Xác nhận chuyển đổi</span>
-                    }
-                </button>
+                <LoadingButton Class="tf-btn tf-btn-primary"
+                               IsLoading="@_isConverting"
+                               LoadingText="Đang xử lý..."
+                               OnClick="ExecuteConvert">
+                    <span>Xác nhận chuyển đổi</span>
+                </LoadingButton>
             </div>
         </div>
     </div>

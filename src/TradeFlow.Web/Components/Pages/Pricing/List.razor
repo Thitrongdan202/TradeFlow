@@ -47,53 +47,61 @@
 
 @* Summary metrics cards *@
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px;">
-    <div class="tf-card" style="padding: 16px; display: flex; align-items: center; gap: 16px;">
-        <div style="width: 44px; height: 44px; border-radius: 8px; background: rgba(59, 130, 246, 0.1); color: #2563eb; display: flex; align-items: center; justify-content: center;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    @if (_isLoading && _priceLists.Count == 0)
+    {
+        <Skeleton Type="stats" />
+        <Skeleton Type="stats" />
+        <Skeleton Type="stats" />
+        <Skeleton Type="stats" />
+    }
+    else
+    {
+        <div class="tf-card" style="padding: 16px; display: flex; align-items: center; gap: 16px;">
+            <div style="width: 44px; height: 44px; border-radius: 8px; background: rgba(59, 130, 246, 0.1); color: #2563eb; display: flex; align-items: center; justify-content: center;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <div>
+                <div style="font-size: 12px; color: var(--tf-text-muted); font-weight: 500;">TỔNG SỐ BẢNG GIÁ</div>
+                <div style="font-size: 22px; font-weight: 700; color: var(--tf-text-main);">@_priceLists.Count</div>
+            </div>
         </div>
-        <div>
-            <div style="font-size: 12px; color: var(--tf-text-muted); font-weight: 500;">TỔNG SỐ BẢNG GIÁ</div>
-            <div style="font-size: 22px; font-weight: 700; color: var(--tf-text-main);">@_priceLists.Count</div>
+        <div class="tf-card" style="padding: 16px; display: flex; align-items: center; gap: 16px;">
+            <div style="width: 44px; height: 44px; border-radius: 8px; background: rgba(16, 185, 129, 0.1); color: #059669; display: flex; align-items: center; justify-content: center;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <div>
+                <div style="font-size: 12px; color: var(--tf-text-muted); font-weight: 500;">ĐANG ÁP DỤNG</div>
+                <div style="font-size: 22px; font-weight: 700; color: #059669;">@_priceLists.Count(p => p.Status == PriceListStatus.Active)</div>
+            </div>
         </div>
-    </div>
-    <div class="tf-card" style="padding: 16px; display: flex; align-items: center; gap: 16px;">
-        <div style="width: 44px; height: 44px; border-radius: 8px; background: rgba(16, 185, 129, 0.1); color: #059669; display: flex; align-items: center; justify-content: center;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <div class="tf-card" style="padding: 16px; display: flex; align-items: center; gap: 16px;">
+            <div style="width: 44px; height: 44px; border-radius: 8px; background: rgba(245, 158, 11, 0.1); color: #d97706; display: flex; align-items: center; justify-content: center;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div>
+                <div style="font-size: 12px; color: var(--tf-text-muted); font-weight: 500;">BẢN NHÁP / CHỜ DUYỆT</div>
+                <div style="font-size: 22px; font-weight: 700; color: #d97706;">@_priceLists.Count(p => p.Status == PriceListStatus.Draft)</div>
+            </div>
         </div>
-        <div>
-            <div style="font-size: 12px; color: var(--tf-text-muted); font-weight: 500;">ĐANG ÁP DỤNG</div>
-            <div style="font-size: 22px; font-weight: 700; color: #059669;">@_priceLists.Count(p => p.Status == PriceListStatus.Active)</div>
+        <div class="tf-card" style="padding: 16px; display: flex; align-items: center; gap: 16px;">
+            <div style="width: 44px; height: 44px; border-radius: 8px; background: rgba(99, 102, 241, 0.1); color: #4f46e5; display: flex; align-items: center; justify-content: center;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            </div>
+            <div>
+                <div style="font-size: 12px; color: var(--tf-text-muted); font-weight: 500;">TỔNG MẶT HÀNG ĐỊNH GIÁ</div>
+                <div style="font-size: 22px; font-weight: 700; color: #4f46e5;">@_priceLists.Sum(p => p.TotalItems).ToString("N0")</div>
+            </div>
         </div>
-    </div>
-    <div class="tf-card" style="padding: 16px; display: flex; align-items: center; gap: 16px;">
-        <div style="width: 44px; height: 44px; border-radius: 8px; background: rgba(245, 158, 11, 0.1); color: #d97706; display: flex; align-items: center; justify-content: center;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        </div>
-        <div>
-            <div style="font-size: 12px; color: var(--tf-text-muted); font-weight: 500;">BẢN NHÁP / CHỜ DUYỆT</div>
-            <div style="font-size: 22px; font-weight: 700; color: #d97706;">@_priceLists.Count(p => p.Status == PriceListStatus.Draft)</div>
-        </div>
-    </div>
-    <div class="tf-card" style="padding: 16px; display: flex; align-items: center; gap: 16px;">
-        <div style="width: 44px; height: 44px; border-radius: 8px; background: rgba(99, 102, 241, 0.1); color: #4f46e5; display: flex; align-items: center; justify-content: center;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-        </div>
-        <div>
-            <div style="font-size: 12px; color: var(--tf-text-muted); font-weight: 500;">TỔNG MẶT HÀNG ĐỊNH GIÁ</div>
-            <div style="font-size: 22px; font-weight: 700; color: #4f46e5;">@_priceLists.Sum(p => p.TotalItems).ToString("N0")</div>
-        </div>
-    </div>
+    }
 </div>
 
 @* Filter controls *@
 <div class="tf-card tf-mb-4" style="padding: 16px;">
     <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 12px; align-items: center;">
         <div>
-            <input type="text"
-                   class="tf-input"
-                   placeholder="Tìm theo mã bảng giá, tên, số báo giá..."
-                   value="@_searchTerm"
-                   @oninput="OnSearchChanged" />
+            <DebouncedSearchInput Placeholder="Tìm theo mã bảng giá, tên, số báo giá..."
+                                  Value="@_searchTerm"
+                                  ValueChanged="OnDebouncedSearchChanged" />
         </div>
         <div>
             <select class="tf-input" value="@_filterYear" @onchange="OnYearChanged">
@@ -145,7 +153,16 @@
 @* Table of price lists *@
 <div class="tf-card">
     <div class="tf-card-body" style="padding:0; overflow-x: auto;">
-        <table class="tf-table">
+        @if (_isLoading && _priceLists.Count == 0)
+        {
+            <div style="padding: 16px;">
+                <Skeleton Type="table" Rows="6" Columns="8" />
+            </div>
+        }
+        else
+        {
+            <TableLoadingOverlay IsLoading="@_isLoading" LoadingText="Đang tải danh sách bảng giá...">
+                <table class="tf-table">
             <thead>
                 <tr>
                     <th style="min-width: 110px;">Mã bảng giá</th>
@@ -159,11 +176,7 @@
                 </tr>
             </thead>
             <tbody>
-                @if (_isLoading)
-                {
-                    <tr><td colspan="8" style="text-align:center; padding: 28px;">Đang tải danh sách bảng giá...</td></tr>
-                }
-                else if (!FilteredList.Any())
+                @if (!FilteredList.Any())
                 {
                     <tr>
                         <td colspan="8">
@@ -282,6 +295,8 @@
                 }
             </tbody>
         </table>
+        </TableLoadingOverlay>
+    }
     </div>
 </div>
 
@@ -295,7 +310,13 @@
             </p>
             <div style="display:flex; justify-content: flex-end; gap: 8px;">
                 <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showCancelModal = false">Đóng</button>
-                <button type="button" class="tf-btn tf-btn-primary" style="background:#ea580c;" @onclick="ExecuteCancel">Xác nhận hủy</button>
+                <LoadingButton Class="tf-btn tf-btn-primary"
+                               Style="background:#ea580c;"
+                               IsLoading="@_isCancelling"
+                               LoadingText="Đang xử lý..."
+                               OnClick="ExecuteCancel">
+                    Xác nhận hủy
+                </LoadingButton>
             </div>
         </div>
     </div>
@@ -317,7 +338,13 @@
             }
             <div style="display:flex; justify-content: flex-end; gap: 8px;">
                 <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showPermanentDeleteModal = false">Hủy bỏ</button>
-                <button type="button" class="tf-btn tf-btn-primary" style="background:#dc2626;" @onclick="ExecutePermanentDelete">Xác nhận xóa</button>
+                <LoadingButton Class="tf-btn tf-btn-primary"
+                               Style="background:#dc2626;"
+                               IsLoading="@_isDeleting"
+                               LoadingText="Đang xóa..."
+                               OnClick="ExecutePermanentDelete">
+                    Xác nhận xóa
+                </LoadingButton>
             </div>
         </div>
     </div>
@@ -327,6 +354,8 @@
 
     private List<PriceListDto> _priceLists = new();
     private bool _isLoading = true;
+    private bool _isCancelling = false;
+    private bool _isDeleting = false;
     private string _searchTerm = "";
     private int _filterYear = 0;
     private int _filterQuarter = 0;
@@ -336,6 +365,11 @@
 
     private bool _showCancelModal = false;
     private bool _showPermanentDeleteModal = false;
+
+    private void OnDebouncedSearchChanged(string val)
+    {
+        _searchTerm = val;
+    }
     private string? _deleteError;
     private PriceListDto? _selectedPriceList;
 
@@ -429,13 +463,21 @@
     {
         if (_selectedPriceList != null)
         {
-            var ok = await PriceListService.CancelPriceListAsync(_selectedPriceList.Id);
-            if (ok)
+            try
             {
-                _toastMessage = $"Đã hủy bảng giá {_selectedPriceList.Code} thành công.";
-                _showCancelModal = false;
-                _selectedPriceList = null;
-                await LoadData();
+                _isCancelling = true;
+                var ok = await PriceListService.CancelPriceListAsync(_selectedPriceList.Id);
+                if (ok)
+                {
+                    _toastMessage = $"Đã hủy bảng giá {_selectedPriceList.Code} thành công.";
+                    _showCancelModal = false;
+                    _selectedPriceList = null;
+                    await LoadData();
+                }
+            }
+            finally
+            {
+                _isCancelling = false;
             }
         }
     }
@@ -453,6 +495,7 @@
         {
             try
             {
+                _isDeleting = true;
                 var ok = await PriceListService.DeletePriceListAsync(_selectedPriceList.Id);
                 if (ok)
                 {
@@ -465,6 +508,10 @@
             catch (Exception ex)
             {
                 _deleteError = ex.Message;
+            }
+            finally
+            {
+                _isDeleting = false;
             }
         }
     }

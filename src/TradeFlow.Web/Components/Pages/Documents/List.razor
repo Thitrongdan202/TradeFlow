@@ -102,7 +102,9 @@
 
 @if (_isLoading)
 {
-    <div class="tf-loading">Đang tải danh sách tài liệu...</div>
+    <div class="tf-card" style="padding: 24px;">
+        <Skeleton Type="table" Rows="6" Columns="9" />
+    </div>
 }
 else if (!_documents.Any())
 {
@@ -253,16 +255,12 @@ else
 
             <div style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid #e2e8f0; padding-top:16px;">
                 <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="CloseUploadModal" disabled="@_isUploading">Hủy</button>
-                <button type="button" class="tf-btn tf-btn-primary" @onclick="SubmitUpload" disabled="@(_isUploading || _selectedFile == null)">
-                    @if (_isUploading)
-                    {
-                        <span>Đang tải lên...</span>
-                    }
-                    else
-                    {
-                        <span>Tải lên ngay</span>
-                    }
-                </button>
+                <LoadingButton Variant="primary"
+                               IsLoading="@_isUploading"
+                               LoadingText="Đang tải lên..."
+                               Text="Tải lên ngay"
+                               OnClick="SubmitUpload"
+                               Disabled="@(_selectedFile == null)" />
             </div>
         </div>
     </div>
@@ -278,8 +276,12 @@ else
                 Bạn có chắc chắn muốn xóa tệp <strong>@_deletingFileName</strong> không? Thao tác này không thể hoàn tác.
             </p>
             <div style="display:flex; justify-content:flex-end; gap:10px;">
-                <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="() => _showDeleteModal = false">Hủy</button>
-                <button type="button" class="tf-btn tf-btn-danger" @onclick="ExecuteDelete">Xóa</button>
+                <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="() => _showDeleteModal = false" disabled="@_isDeleting">Hủy</button>
+                <LoadingButton Variant="danger"
+                               IsLoading="@_isDeleting"
+                               LoadingText="Đang xóa..."
+                               Text="Xóa"
+                               OnClick="ExecuteDelete" />
             </div>
         </div>
     </div>
@@ -306,6 +308,7 @@ else
 
     // Delete state
     private bool _showDeleteModal = false;
+    private bool _isDeleting = false;
     private int _deletingId;
     private string _deletingFileName = "";
 
@@ -441,6 +444,7 @@ else
 
     private async Task ExecuteDelete()
     {
+        _isDeleting = true;
         try
         {
             var ok = await DocumentService.DeleteDocumentAsync(_deletingId);
@@ -454,6 +458,10 @@ else
         catch (Exception ex)
         {
             _errorMessage = "Lỗi khi xóa: " + ex.Message;
+        }
+        finally
+        {
+            _isDeleting = false;
         }
     }
 

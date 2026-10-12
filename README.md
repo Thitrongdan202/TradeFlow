@@ -185,3 +185,44 @@ Tính năng tùy biến thương hiệu và màn hình tải ứng dụng mang �
     * Tích hợp `IMemoryCache` lưu đệm cấu hình thương hiệu (10 phút) để tối ưu hiệu năng trang web, tự động xóa cache khi có cập nhật mới.
     * Tự động ghi nhận mọi thao tác tải lên, cập nhật, xóa logo vào hệ thống Nhật ký hoạt động (`AuditLog`).
 
+---
+
+## Nâng cấp Giao diện & Trải nghiệm Người dùng (UI/UX Upgrade — Responsive Navigation, Product Management, Excel Import & Filters)
+
+Bản nâng cấp toàn diện giao diện và trải nghiệm tương tác lấy cảm hứng từ các chuẩn mực ERP/POS thương mại hiện đại (KiotViet):
+
+1. **Thanh điều hướng Đa nền tảng & Co giãn thông minh (Responsive & Collapsible Navigation)**:
+   - **Chế độ Mở rộng (Expanded)**: Hiển thị đầy đủ logo, nhận diện thương hiệu, tên phân hệ tiếng Việt, biểu tượng SVG đồng bộ và menu con dạng fly-out hoặc accordion.
+   - **Chế độ Thu gọn (Compact Collapsed - 68px)**: Nút bật/tắt (toggle) rõ ràng ở thanh trên cùng (Topbar) và chân sidebar (Bottom dock), tự động căn giữa các icon phân hệ, hỗ trợ tooltip tiếng Việt và hiển thị fly-out menu nổi bên cạnh khi rê chuột.
+   - **Lưu trữ tùy chọn người dùng (User Preference Persistence)**: Tự động ghi nhớ trạng thái thu gọn/mở rộng trong `localStorage` qua JavaScript helper (`window.tradeflow`).
+   - **Trải nghiệm trên màn hình di động/tablet (Mobile Drawer)**: Tự động thu gọn thanh menu thành drawer ẩn, trượt ra mượt mà với lớp phủ mờ tinh tế (`.tf-sidebar-backdrop`), nút đóng `✕`, và lắng nghe phím `Escape` để đóng menu nhanh chóng.
+
+2. **Đơn giản hóa Quản lý Sản phẩm (Streamlined Product Management)**:
+   - Loại bỏ tính bắt buộc của Đơn vị tính (`UnitOfMeasure`) và Tiền tệ (`Currency`) trong tạo/sửa sản phẩm. Nếu người dùng không chỉ định, hệ thống tự động gán đơn vị mặc định ("Cái").
+   - Tích hợp trực tiếp trường nhập **Đơn giá trước VAT** ngay trên form tạo và chỉnh sửa sản phẩm; tự động liên kết và lưu trữ vào Bảng giá hiện hành (`PriceList` / `PriceListItem`) trong cơ sở dữ liệu.
+   - Tinh gọn thanh menu: loại bỏ mục "Bảng giá" độc lập khỏi menu thông thường nhằm tập trung trải nghiệm tại phân hệ Sản phẩm, trong khi bảo toàn 100% mô hình dữ liệu và logic tính giá của hệ thống.
+
+3. **Màn hình Danh sách Sản phẩm chuẩn POS/ERP (KiotViet-style Product List)**:
+   - **Bố cục 2 cột linh hoạt**: Cột trái là Bộ lọc (`FilterSidebar`), cột phải là bảng dữ liệu chính.
+   - **Ô tìm kiếm nhanh**: Bố trí ngay cạnh tiêu đề trang, hỗ trợ tìm tức thì theo tên sản phẩm, mã hệ thống, mã mới, mã cũ và quy cách kỹ thuật.
+   - **Thanh công cụ gọn gàng**: Các nút hành động chính "+ Thêm mới", "Import Excel", cùng thanh thao tác hàng loạt khi chọn nhiều sản phẩm.
+   - **Bảng dữ liệu cô đọng & Ảnh thu nhỏ (Thumbnails)**: Hiển thị ảnh đại diện sản phẩm (40x40px) trích xuất từ kho ảnh hoặc Excel, mã hàng mới nổi bật, đơn giá trước VAT màu xanh rõ nét, phân trang tiện lợi (20 dòng/trang).
+
+4. **Vùng Chi tiết Sản phẩm Mở rộng Trực tiếp (Expandable Product Details)**:
+   - Cho phép nhấp vào dòng sản phẩm để mở rộng bảng thông tin chi tiết ngay bên dưới (tương tự trải nghiệm tại phân hệ Nhân sự).
+   - **Chế độ Xem (View)**: Hiển thị ảnh độ phân giải cao hoặc bộ sưu tập ảnh phụ, lưới thông tin 3 cột (Thông tin định danh, Chính sách giá & thuế VAT, Quy cách kỹ thuật & mô tả).
+   - **Chế độ Sửa trực tiếp (Inline Edit)**: Nút "Chỉnh sửa" chuyển đổi các trường sang ô nhập liệu ngay tại chỗ (Tên, Mã mới, Mã cũ, Loại hàng, ĐVT, Đơn giá chưa VAT, Quy cách, Thay ảnh mới) và lưu trực tiếp với nút "Lưu thay đổi" mà không phải chuyển trang.
+   - **Ngừng sử dụng / Kích hoạt lại**: Thao tác an toàn với 1 chạm trực tiếp trên dòng sản phẩm.
+
+5. **Cửa sổ Nhập dữ liệu & Bảng giá từ Excel (Modal Excel Import Window)**:
+   - Thực hiện qua Modal thứ cấp trực tiếp từ trang Sản phẩm mà không rời khỏi ngữ cảnh làm việc.
+   - Hỗ trợ tệp `.xlsx` dung lượng lên đến **200MB**.
+   - Tự động trích xuất hình ảnh vẽ nhúng trong ô Excel qua OpenXML drawings và lưu trữ an toàn.
+   - **Đối soát & Xem trước thay đổi (Diff & Review)**: Thống kê số lượng hàng mới, hàng trùng khớp, hàng có thay đổi; bảng đối soát trực quan cho phép người dùng chọn "Cập nhật mới" hoặc "Giữ giá cũ" cho từng sản phẩm (hoặc áp dụng hàng loạt).
+   - Đảm bảo đơn giá nhập khẩu là **Đơn giá đại lý CHƯA VAT**; tự động tính thuế VAT dự kiến để đối soát; tự động làm mới danh sách sản phẩm sau khi hoàn tất.
+
+6. **Mẫu Thành phần Bộ lọc Tái sử dụng (Reusable Filter Component)**:
+   - Thành phần dùng chung `FilterSidebar.razor` được áp dụng đồng bộ cho các phân hệ: **Sản phẩm**, **Khách hàng**, **Nhà cung cấp**, **Kho hàng**.
+   - Hỗ trợ co giãn linh hoạt trên thiết bị di động, đếm số lượng bản ghi theo từng trạng thái/danh mục, và nút bấm "Xóa bộ lọc" khi có điều kiện lọc đang kích hoạt.
+
+

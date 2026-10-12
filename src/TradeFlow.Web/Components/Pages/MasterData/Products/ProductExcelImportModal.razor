@@ -1,0 +1,563 @@
+@namespace TradeFlow.Web.Components.Pages.MasterData.Products
+@using Microsoft.AspNetCore.Components.Forms
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Pricing
+@using TradeFlow.Domain.Enums
+
+@inject IExcelPricingService ExcelPricingService
+@inject IFileStorageService FileStorage
+@inject ICurrentUserService CurrentUserService
+
+@if (IsVisible)
+{
+    <div class="tf-excel-modal" @onclick="HandleBackdropClick">
+        <div class="tf-excel-modal-card" @onclick:stopPropagation="true">
+            @* Modal Header *@
+            <div style="padding: 18px 24px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; background: #ffffff;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 36px; height: 36px; border-radius: 8px; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="8" y1="13" x2="16" y2="13"></line>
+                            <line x1="8" y1="17" x2="16" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; margin: 0;">Nhập danh mục &amp; Bảng giá từ Excel</h3>
+                        <p style="font-size: 12px; color: #64748b; margin: 2px 0 0;">Hỗ trợ file .xlsx dung lượng đến 200MB, trích xuất hình ảnh nhúng và giá chưa VAT</p>
+                    </div>
+                </div>
+                <button type="button" class="tf-btn-icon" @onclick="CloseModal" style="background:none; border:none; font-size: 18px; color:#64748b; cursor:pointer; padding:4px;" title="Đóng">
+                    ✕
+                </button>
+            </div>
+
+            @* Modal Body *@
+            <div style="padding: 20px 24px; overflow-y: auto; flex: 1; max-height: calc(88vh - 140px);">
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="tf-alert tf-alert-error tf-mb-3" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>@_errorMessage</span>
+                        <button type="button" style="background:none; border:none; cursor:pointer;" @onclick="() => _errorMessage = null">✕</button>
+                    </div>
+                }
+
+                @* STEP 1: UPLOAD FILE *@
+                @if (_analysisResult == null && _committedPriceList == null)
+                {
+                    <div class="tf-excel-dropzone" style="margin: 20px 0;">
+                        <div style="width: 56px; height: 56px; margin: 0 auto 14px; border-radius: 50%; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center;">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                        </div>
+                        <h4 style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">
+                            Chọn hoặc kéo thả file Excel bảng giá (.xlsx)
+                        </h4>
+                        <p style="color: #64748b; font-size: 13px; max-width: 520px; margin: 0 auto 18px;">
+                            Hệ thống tự động đọc cấu trúc bảng tính, mã hàng mới, mã cũ, quy cách kỹ thuật, hình ảnh sản phẩm trong ô và đơn giá đại lý chưa VAT.
+                        </p>
+
+                        <div style="display:inline-block; position:relative;">
+                            <InputFile OnChange="HandleFileSelected" accept=".xlsx" style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer;" disabled="@_isAnalyzing" />
+                            <button type="button" class="tf-btn tf-btn-primary" style="padding: 9px 22px; font-size: 14px;" disabled="@_isAnalyzing">
+                                @if (_isAnalyzing)
+                                {
+                                    <span class="tf-spinner tf-spinner-sm tf-spinner-white" style="margin-right: 6px;"></span>
+                                    <span>@(_progressMessage ?? "Đang phân tích...")</span>
+                                }
+                                else
+                                {
+                                    <span>Chọn file Excel từ máy tính</span>
+                                }
+                            </button>
+                        </div>
+
+                        @if (_isAnalyzing)
+                        {
+                            <div style="margin-top: 16px; max-width: 440px; margin-left: auto; margin-right: auto;">
+                                <ProgressBar IsIndeterminate="true" Label="@(_progressMessage ?? "Đang phân tích dữ liệu...")" />
+                            </div>
+                        }
+
+                        <div style="margin-top: 14px; font-size: 12px; color: #94a3b8;">
+                            Dung lượng tối đa hỗ trợ: <strong>200MB</strong>. Định dạng file: <strong>.xlsx</strong>
+                        </div>
+                    </div>
+                }
+
+                @* STEP 2: PREVIEW & REVIEW PRICE CHANGES *@
+                else if (_analysisResult != null && _committedPriceList == null)
+                {
+                    @* Stat Summary Cards *@
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 18px;">
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
+                            <div style="font-size: 11px; color: #64748b; font-weight: 600;">TỔNG SỐ HÀNG</div>
+                            <div style="font-size: 18px; font-weight: 700; color: #0f172a;">@_analysisResult.Items.Count</div>
+                        </div>
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
+                            <div style="font-size: 11px; color: #64748b; font-weight: 600;">ĐÃ CÓ (KHỚP)</div>
+                            <div style="font-size: 18px; font-weight: 700; color: #16a34a;">@_analysisResult.Items.Count(i => i.MatchStatus == PriceMatchStatus.Matched)</div>
+                        </div>
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
+                            <div style="font-size: 11px; color: #64748b; font-weight: 600;">CÓ THAY ĐỔI</div>
+                            <div style="font-size: 18px; font-weight: 700; color: #d97706;">@_analysisResult.Items.Count(i => i.MatchStatus == PriceMatchStatus.ReviewRequired || i.HasChanges)</div>
+                        </div>
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
+                            <div style="font-size: 11px; color: #64748b; font-weight: 600;">SẢN PHẨM MỚI</div>
+                            <div style="font-size: 18px; font-weight: 700; color: #2563eb;">@_analysisResult.Items.Count(i => i.MatchStatus == PriceMatchStatus.NewProduct)</div>
+                        </div>
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
+                            <div style="font-size: 11px; color: #64748b; font-weight: 600;">ẢNH TRÍCH XUẤT</div>
+                            <div style="font-size: 18px; font-weight: 700; color: #ea580c;">@_analysisResult.ImagesFound</div>
+                        </div>
+                    </div>
+
+                    @* Import Settings Bar *@
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+                        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; align-items: flex-end;">
+                            <div>
+                                <label style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">Tên bảng giá / Đợt nhập *</label>
+                                <input type="text" class="tf-input" style="height: 36px; font-size: 13px;" @bind="_importRequest.Name" placeholder="vd: BẢNG GIÁ ĐẠI LÝ KM 2026" />
+                            </div>
+                            <div>
+                                <label style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">Năm áp dụng</label>
+                                <input type="number" class="tf-input" style="height: 36px; font-size: 13px;" @bind="_importRequest.Year" min="2020" max="2035" />
+                            </div>
+                            <div>
+                                <label style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">Trạng thái bảng giá</label>
+                                <select class="tf-input" style="height: 36px; font-size: 13px;" @bind="_importRequest.InitialStatus">
+                                    <option value="@PriceListStatus.Active">Áp dụng ngay</option>
+                                    <option value="@PriceListStatus.Draft">Bản nháp</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                            <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #334155; cursor: pointer; margin: 0;">
+                                <input type="checkbox" @bind="_importRequest.AutoCreateProducts" />
+                                <span>Tự động tạo sản phẩm mới vào danh mục nếu chưa có trong hệ thống</span>
+                            </label>
+
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="tf-btn tf-btn-sm tf-btn-outline-secondary" @onclick="() => SetAllMasterDataUpdate(true)" title="Cập nhật tất cả thay đổi vào danh mục sản phẩm">
+                                    ✓ Cập nhật tất cả giá mới
+                                </button>
+                                <button type="button" class="tf-btn tf-btn-sm tf-btn-outline-secondary" @onclick="() => SetAllMasterDataUpdate(false)" title="Giữ nguyên giá hiện tại của danh mục">
+                                    ✕ Giữ giá hiện tại
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Diff Table Toolbar *@
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                        <div style="font-size: 13px; font-weight: 600; color: #0f172a;">
+                            Danh sách đối soát chi tiết (@FilteredItems.Count() mặt hàng)
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="text" class="tf-input" style="height: 32px; width: 220px; font-size: 12px;" placeholder="Lọc theo mã, tên SP..." @bind="_tableSearchFilter" @bind:event="oninput" />
+                            <select class="tf-input" style="height: 32px; width: 140px; font-size: 12px;" @bind="_tableStatusFilter">
+                                <option value="">Tất cả trạng thái</option>
+                                <option value="Changed">Có thay đổi</option>
+                                <option value="New">Sản phẩm mới</option>
+                                <option value="Matched">Đã khớp</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    @* Diff Table *@
+                    <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow-x: auto; max-height: 320px;">
+                        <table class="tf-excel-table" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="position: sticky; top: 0; z-index: 5;">
+                                    <th style="width: 40px; text-align: center;">STT</th>
+                                    <th style="width: 50px; text-align: center;">Ảnh</th>
+                                    <th style="min-width: 110px;">Mã mới / cũ</th>
+                                    <th style="min-width: 200px;">Tên &amp; Quy cách</th>
+                                    <th style="text-align: right; min-width: 120px;">Giá mới (Chưa VAT)</th>
+                                    <th style="min-width: 110px; text-align: center;">Trạng thái</th>
+                                    <th style="min-width: 180px; text-align: center;">Lựa chọn áp dụng</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!FilteredItems.Any())
+                                {
+                                    <tr>
+                                        <td colspan="7" style="text-align: center; padding: 20px; color: #94a3b8;">
+                                            Không có dòng nào phù hợp bộ lọc
+                                        </td>
+                                    </tr>
+                                }
+                                else
+                                {
+                                    @foreach (var item in FilteredItems)
+                                    {
+                                        <tr style="border-bottom: 1px solid #f1f5f9; background: @(item.HasChanges ? "#fffbeb" : "#ffffff");">
+                                            <td style="text-align: center; color: #64748b; font-size: 11px;">@item.SortOrder</td>
+                                            <td style="text-align: center;">
+                                                @if (!string.IsNullOrEmpty(item.ImageStorageRef))
+                                                {
+                                                    <img src="@FileStorage.GetPublicUrl(item.ImageStorageRef)" alt="" style="width: 32px; height: 32px; object-fit: contain; border-radius: 4px; border: 1px solid #e2e8f0;" />
+                                                }
+                                                else
+                                                {
+                                                    <div style="width: 32px; height: 32px; border-radius: 4px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; color: #cbd5e1; font-size: 11px;">—</div>
+                                                }
+                                            </td>
+                                            <td>
+                                                <div style="font-weight: 600; color: #0f766e; font-family: monospace;">@item.NewCode</div>
+                                                @if (!string.IsNullOrEmpty(item.LegacyCode))
+                                                {
+                                                    <div style="font-size: 11px; color: #64748b; font-family: monospace;">@item.LegacyCode</div>
+                                                }
+                                            </td>
+                                            <td>
+                                                <div style="font-weight: 500; color: #0f172a; font-size: 12.5px;">@(item.MatchedProductName ?? item.ProductInfo ?? item.NewCode)</div>
+                                                @if (!string.IsNullOrEmpty(item.ProductInfo) && item.ProductInfo != item.MatchedProductName)
+                                                {
+                                                    <div style="font-size: 11px; color: #64748b; max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="@item.ProductInfo">
+                                                        @item.ProductInfo
+                                                    </div>
+                                                }
+                                            </td>
+                                            <td style="text-align: right;">
+                                                <div style="font-weight: 700; color: #0f172a;">@item.UnitPrice.ToString("N0") ₫</div>
+                                                @if (item.VatRate.HasValue)
+                                                {
+                                                    <div style="font-size: 10px; color: #64748b;">(VAT @item.VatRate%: @(item.PriceWithVat?.ToString("N0") ?? "-") ₫)</div>
+                                                }
+                                            </td>
+                                            <td style="text-align: center;">
+                                                @if (item.MatchStatus == PriceMatchStatus.NewProduct)
+                                                {
+                                                    <span class="tf-diff-badge-new">Tạo mới</span>
+                                                }
+                                                else if (item.HasChanges)
+                                                {
+                                                    <span class="tf-diff-badge-changed">Có thay đổi</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="tf-diff-badge-match">Đã khớp</span>
+                                                }
+                                            </td>
+                                            <td style="text-align: center;">
+                                                @if (item.MatchStatus == PriceMatchStatus.NewProduct)
+                                                {
+                                                    <span style="font-size: 12px; color: #2563eb; font-weight: 500;">Sẽ thêm vào danh mục</span>
+                                                }
+                                                else
+                                                {
+                                                    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px;">
+                                                        <label style="display: inline-flex; align-items: center; gap: 4px; cursor: pointer; color: @(item.ApplyMasterDataUpdate ? "#1d4ed8" : "#64748b"); font-weight: @(item.ApplyMasterDataUpdate ? "600" : "normal");">
+                                                            <input type="radio" name="action_@item.RowIndex" checked="@item.ApplyMasterDataUpdate" @onchange="() => item.ApplyMasterDataUpdate = true" />
+                                                            Cập nhật mới
+                                                        </label>
+                                                        <label style="display: inline-flex; align-items: center; gap: 4px; cursor: pointer; color: @(!item.ApplyMasterDataUpdate ? "#047857" : "#64748b"); font-weight: @(!item.ApplyMasterDataUpdate ? "600" : "normal");">
+                                                            <input type="radio" name="action_@item.RowIndex" checked="@(!item.ApplyMasterDataUpdate)" @onchange="() => item.ApplyMasterDataUpdate = false" />
+                                                            Giữ giá cũ
+                                                        </label>
+                                                    </div>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                @* STEP 3: SUCCESS CONFIRMATION *@
+                else if (_committedPriceList != null)
+                {
+                    <div style="text-align: center; padding: 24px 16px;">
+                        <div style="width: 56px; height: 56px; background: #ecfdf5; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; color: #059669;">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </div>
+                        <h3 style="font-size: 20px; font-weight: 800; color: #065f46; margin-bottom: 6px;">
+                            Nhập dữ liệu thành công!
+                        </h3>
+                        <p style="color: #64748b; font-size: 13.5px; max-width: 500px; margin: 0 auto 20px;">
+                            Dữ liệu bảng giá và các sản phẩm đã được cập nhật thành công vào cơ sở dữ liệu.
+                        </p>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; max-width: 600px; margin: 0 auto 24px; text-align: left;">
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+                                <div style="font-size: 11px; color: #64748b; font-weight: 600;">MÃ BẢNG GIÁ</div>
+                                <div style="font-size: 15px; font-weight: 700; color: #2563eb; font-family: monospace;">@_committedPriceList.Code</div>
+                            </div>
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+                                <div style="font-size: 11px; color: #64748b; font-weight: 600;">TỔNG MẶT HÀNG</div>
+                                <div style="font-size: 18px; font-weight: 700; color: #0f172a;">@_committedPriceList.TotalItems</div>
+                            </div>
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+                                <div style="font-size: 11px; color: #64748b; font-weight: 600;">SẢN PHẨM MỚI</div>
+                                <div style="font-size: 18px; font-weight: 700; color: #16a34a;">@_committedPriceList.NewProductsCount</div>
+                            </div>
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+                                <div style="font-size: 11px; color: #64748b; font-weight: 600;">ẢNH ĐÃ LƯU</div>
+                                <div style="font-size: 18px; font-weight: 700; color: #ea580c;">@_committedPriceList.ImagesCount</div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @* Modal Footer *@
+            <div style="padding: 14px 24px; border-top: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: flex-end; gap: 12px; background: #f8fafc;">
+                @if (_committedPriceList != null)
+                {
+                    <button type="button" class="tf-btn tf-btn-primary" @onclick="FinishAndRefresh">
+                        Hoàn tất &amp; Làm mới danh sách
+                    </button>
+                }
+                else if (_analysisResult != null)
+                {
+                    <button type="button" class="tf-btn tf-btn-secondary" @onclick="ResetAnalysis" disabled="@_isCommitting">
+                        Chọn file khác
+                    </button>
+                    <button type="button" class="tf-btn tf-btn-primary" @onclick="CommitImportAsync" disabled="@_isCommitting">
+                        @if (_isCommitting)
+                        {
+                            <span class="tf-spinner tf-spinner-sm tf-spinner-white" style="margin-right: 6px;"></span>
+                            <span>@(_progressMessage ?? "Đang lưu...")</span>
+                        }
+                        else
+                        {
+                            <span>Xác nhận &amp; Cập nhật vào hệ thống</span>
+                        }
+                    </button>
+                }
+                else
+                {
+                    <button type="button" class="tf-btn tf-btn-secondary" @onclick="CloseModal">
+                        Đóng
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnImportCompleted { get; set; }
+
+    private bool _isAnalyzing;
+    private bool _isCommitting;
+    private string? _progressMessage;
+    private string? _errorMessage;
+
+    private ExcelAnalysisResultDto? _analysisResult;
+    private ExcelImportCommitRequest _importRequest = new();
+    private PriceListDto? _committedPriceList;
+
+    private string _tableSearchFilter = "";
+    private string _tableStatusFilter = "";
+
+    private IEnumerable<ExcelParsedItemDto> FilteredItems
+    {
+        get
+        {
+            if (_analysisResult == null) return Enumerable.Empty<ExcelParsedItemDto>();
+
+            var items = _analysisResult.Items.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(_tableSearchFilter))
+            {
+                var term = _tableSearchFilter.Trim().ToLowerInvariant();
+                items = items.Where(i =>
+                    i.NewCode.ToLowerInvariant().Contains(term) ||
+                    (i.LegacyCode != null && i.LegacyCode.ToLowerInvariant().Contains(term)) ||
+                    (i.ProductInfo != null && i.ProductInfo.ToLowerInvariant().Contains(term)) ||
+                    (i.MatchedProductName != null && i.MatchedProductName.ToLowerInvariant().Contains(term)));
+            }
+
+            if (!string.IsNullOrEmpty(_tableStatusFilter))
+            {
+                if (_tableStatusFilter == "Changed")
+                    items = items.Where(i => i.MatchStatus == PriceMatchStatus.ReviewRequired || i.HasChanges);
+                else if (_tableStatusFilter == "New")
+                    items = items.Where(i => i.MatchStatus == PriceMatchStatus.NewProduct);
+                else if (_tableStatusFilter == "Matched")
+                    items = items.Where(i => i.MatchStatus == PriceMatchStatus.Matched && !i.HasChanges);
+            }
+
+            return items;
+        }
+    }
+
+    private async Task CloseModal()
+    {
+        ResetAll();
+        if (OnClose.HasDelegate)
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        if (!_isAnalyzing && !_isCommitting)
+        {
+            await CloseModal();
+        }
+    }
+
+    private async Task FinishAndRefresh()
+    {
+        ResetAll();
+        if (OnImportCompleted.HasDelegate)
+        {
+            await OnImportCompleted.InvokeAsync();
+        }
+    }
+
+    private void ResetAnalysis()
+    {
+        _analysisResult = null;
+        _committedPriceList = null;
+        _errorMessage = null;
+        _progressMessage = null;
+    }
+
+    private void ResetAll()
+    {
+        _analysisResult = null;
+        _committedPriceList = null;
+        _errorMessage = null;
+        _progressMessage = null;
+        _isAnalyzing = false;
+        _isCommitting = false;
+        _importRequest = new();
+        _tableSearchFilter = "";
+        _tableStatusFilter = "";
+    }
+
+    private void SetAllMasterDataUpdate(bool apply)
+    {
+        if (_analysisResult?.Items == null) return;
+        foreach (var item in _analysisResult.Items)
+        {
+            item.ApplyMasterDataUpdate = apply;
+        }
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        _errorMessage = null;
+        _analysisResult = null;
+
+        var file = e.File;
+        if (file == null) return;
+
+        if (!file.Name.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+        {
+            _errorMessage = "Vui lòng chọn file Excel có định dạng .xlsx";
+            return;
+        }
+
+        try
+        {
+            _isAnalyzing = true;
+            _progressMessage = "Đang đọc dữ liệu từ file...";
+
+            // Maximum allowed size 200MB as specified
+            using var stream = file.OpenReadStream(maxAllowedSize: 200 * 1024 * 1024);
+
+            _analysisResult = await ExcelPricingService.AnalyzeAndDryRunAsync(
+                stream,
+                file.Name,
+                progress =>
+                {
+                    _progressMessage = progress;
+                    InvokeAsync(StateHasChanged);
+                });
+
+            if (_analysisResult.Errors.Any())
+            {
+                _errorMessage = string.Join("; ", _analysisResult.Errors);
+                _analysisResult = null;
+                return;
+            }
+
+            // Populate default import request
+            _importRequest = new ExcelImportCommitRequest
+            {
+                TempFileReference = _analysisResult.TempFileReference,
+                OriginalFileName = _analysisResult.FileName,
+                Name = _analysisResult.ProgramTitle ?? _analysisResult.QuotationTitle ?? $"BẢNG GIÁ {_analysisResult.QuotationDate?.Year ?? DateTime.UtcNow.Year}",
+                QuotationNumber = _analysisResult.QuotationNumber,
+                QuotationDate = _analysisResult.QuotationDate,
+                EffectiveFrom = _analysisResult.EffectiveFrom,
+                EffectiveTo = _analysisResult.EffectiveTo,
+                Year = _analysisResult.QuotationDate?.Year ?? DateTime.UtcNow.Year,
+                PriceCondition = _analysisResult.PriceCondition,
+                VatNote = _analysisResult.VatNote,
+                InitialStatus = PriceListStatus.Active,
+                AutoCreateProducts = true,
+                Items = _analysisResult.Items
+            };
+
+            // By default, if item has changes, default to applying the new price
+            foreach (var item in _analysisResult.Items)
+            {
+                item.ApplyMasterDataUpdate = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi khi phân tích file: " + ex.Message;
+        }
+        finally
+        {
+            _isAnalyzing = false;
+            _progressMessage = null;
+        }
+    }
+
+    private async Task CommitImportAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_importRequest.Name))
+        {
+            _errorMessage = "Vui lòng nhập tên bảng giá.";
+            return;
+        }
+
+        try
+        {
+            _isCommitting = true;
+            _errorMessage = null;
+            _progressMessage = "Đang lưu dữ liệu vào hệ thống...";
+
+            _importRequest.Items = _analysisResult?.Items ?? new List<ExcelParsedItemDto>();
+
+            _committedPriceList = await ExcelPricingService.CommitImportAsync(
+                _importRequest,
+                CurrentUserService.UserName ?? "Admin",
+                progress =>
+                {
+                    _progressMessage = progress;
+                    InvokeAsync(StateHasChanged);
+                });
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Có lỗi xảy ra khi lưu bảng giá: " + ex.Message;
+        }
+        finally
+        {
+            _isCommitting = false;
+            _progressMessage = null;
+        }
+    }
+}

@@ -15,31 +15,61 @@
 
 <PageTitle>Khách hàng - TradeFlow</PageTitle>
 
-<div class="tf-page-header">
-    <div class="tf-page-header-left">
-        <h1 class="tf-page-title">Khách hàng</h1>
-        <p class="tf-page-subtitle">Quản lý danh sách đối tác khách hàng và thông tin liên hệ</p>
+<div class="tf-page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+    <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+        <div>
+            <h1 class="tf-page-title" style="margin: 0; font-size: 20px;">Khách hàng</h1>
+            <p class="tf-page-subtitle" style="margin: 2px 0 0; font-size: 12px;">Quản lý danh sách đối tác khách hàng và thông tin liên hệ</p>
+        </div>
+        <div style="width: 340px; max-width: 100%;">
+            <DebouncedSearchInput Placeholder="Tìm theo tên, mã KH, MST, SĐT, email..."
+                                  Value="@_searchTerm"
+                                  ValueChanged="OnSearchChanged" />
+        </div>
     </div>
     <div class="tf-page-actions">
         <AuthorizeView Policy="Permission:Customers:Create">
-            <a href="/doi-tac/khach-hang/them-moi" class="tf-btn tf-btn-primary">
+            <a href="/doi-tac/khach-hang/them-moi" class="tf-btn tf-btn-primary" style="display: inline-flex; align-items: center; gap: 6px; height: 36px;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                 </svg>
-                Thêm khách hàng
+                <span>+ Thêm khách hàng</span>
             </a>
         </AuthorizeView>
     </div>
 </div>
 
-<div class="tf-card tf-mb-4" style="padding: 12px 16px;">
-    <DebouncedSearchInput Placeholder="Tìm theo mã KH, mã nội bộ, tên khách hàng, tên công ty, MST, SĐT, email..."
-                          Value="@_searchTerm"
-                          ValueChanged="OnSearchChanged" />
-</div>
+<div class="tf-product-layout">
+    <div class="tf-product-sidebar">
+        <FilterSidebar Title="Bộ lọc khách hàng" HasActiveFilters="@HasActiveFilters" OnClearFilters="ClearAllFilters">
+            <div class="tf-filter-card tf-mb-3">
+                <div class="tf-filter-header">
+                    <span class="tf-filter-title">Trạng thái</span>
+                </div>
+                <div class="tf-filter-body">
+                    <label class="tf-filter-option @(_statusFilter == null ? "selected" : "")" @onclick="() => SetStatusFilter(null)">
+                        <input type="radio" name="custStatus" checked="@(_statusFilter == null)" />
+                        <span>Tất cả</span>
+                        <span class="tf-filter-count">@(_items?.Count ?? 0)</span>
+                    </label>
+                    <label class="tf-filter-option @(_statusFilter == true ? "selected" : "")" @onclick="() => SetStatusFilter(true)">
+                        <input type="radio" name="custStatus" checked="@(_statusFilter == true)" />
+                        <span>Đang hoạt động</span>
+                        <span class="tf-filter-count">@(_items?.Count(p => p.IsActive) ?? 0)</span>
+                    </label>
+                    <label class="tf-filter-option @(_statusFilter == false ? "selected" : "")" @onclick="() => SetStatusFilter(false)">
+                        <input type="radio" name="custStatus" checked="@(_statusFilter == false)" />
+                        <span>Ngừng hoạt động</span>
+                        <span class="tf-filter-count">@(_items?.Count(p => !p.IsActive) ?? 0)</span>
+                    </label>
+                </div>
+            </div>
+        </FilterSidebar>
+    </div>
 
-<div class="tf-card">
-    <div class="tf-card-body" style="padding:0; overflow-x: auto;">
+    <div class="tf-product-main">
+        <div class="tf-card">
+            <div class="tf-card-body" style="padding:0; overflow-x: auto;">
         
 @if (_selectedItems.Count > 0)
 {
@@ -158,7 +188,8 @@ else
 }
     </div>
 </div>
-
+    </div>
+</div>
 
 @if (_itemToDeleteId != null)
 {
@@ -191,6 +222,12 @@ else
 
     private List<Customer>? _items;
     private string _searchTerm = string.Empty;
+    private bool? _statusFilter;
+
+    private bool HasActiveFilters => !string.IsNullOrEmpty(_searchTerm) || _statusFilter.HasValue;
+
+    private void SetStatusFilter(bool? status) => _statusFilter = status;
+    private void ClearAllFilters() { _searchTerm = string.Empty; _statusFilter = null; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -215,20 +252,27 @@ else
         {
             if (_items == null) return Enumerable.Empty<Customer>();
 
-            if (string.IsNullOrWhiteSpace(_searchTerm))
+            var q = _items.AsEnumerable();
+
+            if (_statusFilter.HasValue)
             {
-                return _items;
+                q = q.Where(x => x.IsActive == _statusFilter.Value);
             }
 
-            var term = _searchTerm.Trim().ToLower();
-            return _items.Where(x =>
-                (x.Code != null && x.Code.ToLower().Contains(term)) ||
-                (x.BusinessCode != null && x.BusinessCode.ToLower().Contains(term)) ||
-                (x.Name != null && x.Name.ToLower().Contains(term)) ||
-                (x.CompanyName != null && x.CompanyName.ToLower().Contains(term)) ||
-                (x.TaxCode != null && x.TaxCode.ToLower().Contains(term)) ||
-                (x.Phone != null && x.Phone.ToLower().Contains(term)) ||
-                (x.Email != null && x.Email.ToLower().Contains(term)));
+            if (!string.IsNullOrWhiteSpace(_searchTerm))
+            {
+                var term = _searchTerm.Trim().ToLower();
+                q = q.Where(x =>
+                    (x.Code != null && x.Code.ToLower().Contains(term)) ||
+                    (x.BusinessCode != null && x.BusinessCode.ToLower().Contains(term)) ||
+                    (x.Name != null && x.Name.ToLower().Contains(term)) ||
+                    (x.CompanyName != null && x.CompanyName.ToLower().Contains(term)) ||
+                    (x.TaxCode != null && x.TaxCode.ToLower().Contains(term)) ||
+                    (x.Phone != null && x.Phone.ToLower().Contains(term)) ||
+                    (x.Email != null && x.Email.ToLower().Contains(term)));
+            }
+
+            return q;
         }
     }
 

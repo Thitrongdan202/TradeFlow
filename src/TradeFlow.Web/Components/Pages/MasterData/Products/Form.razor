@@ -8,6 +8,7 @@
 @using TradeFlow.Domain.Entities.MasterData
 @using TradeFlow.Infrastructure.Persistence
 @using TradeFlow.Domain.Enums
+@using TradeFlow.Domain.Entities.Pricing
 @attribute [Authorize]
 
 @inject TradeFlowDbContext DbContext
@@ -79,9 +80,9 @@ else
                         </InputSelect>
                     </div>
                     <div class="tf-form-group">
-                        <label class="tf-label">Đơn vị tính <span style="color:var(--tf-error);">*</span></label>
+                        <label class="tf-label">Đơn vị tính</label>
                         <InputSelect @bind-Value="_model.UnitId" class="tf-select">
-                            <option value="">-- Chọn đơn vị tính --</option>
+                            <option value="">-- Mặc định (@(_defaultUnitName ?? "Cái")) --</option>
                             @foreach (var u in _units)
                             {
                                 <option value="@u.Id">@u.Name (@u.Symbol)</option>
@@ -137,24 +138,16 @@ else
                         </div>
                     </div>
 
-                    @if (IsEdit)
-                    {
-                        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:white;border-radius:6px;border:1px solid #e2e8f0;">
-                            <div>
-                                <span style="font-size:13px;color:var(--tf-text-secondary);margin-right:8px;">Giá hiện tại (Chưa VAT):</span>
-                                @if (_currentPrice.HasValue && _currentPrice.Value > 0)
-                                {
-                                    <strong style="color:#047857;font-size:15px;">@_currentPrice.Value.ToString("N0") ₫</strong>
-                                    <span style="font-size:11px;color:var(--tf-text-muted);margin-left:4px;">(Chưa VAT)</span>
-                                }
-                                else
-                                {
-                                    <span style="color:var(--tf-text-muted);font-weight:500;">Chưa có giá</span>
-                                }
-                            </div>
-                            <a href="/bang-gia" style="font-size:12px;color:var(--tf-primary);text-decoration:none;">Quản lý bảng giá &rarr;</a>
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #e2e8f0;">
+                        <label class="tf-label">Đơn giá bán đại lý (Chưa VAT)</label>
+                        <div style="display:flex; align-items:center; gap: 8px; margin-top: 4px;">
+                            <input type="number" class="tf-input" style="max-width: 280px; font-weight:600; font-size:15px; color:#047857;" @bind="_inputPrice" placeholder="0" min="0" step="1000" />
+                            <span style="font-size:13px; font-weight:600; color:var(--tf-text-secondary);">VNĐ</span>
                         </div>
-                    }
+                        <div style="font-size:11.5px; color:var(--tf-text-muted); margin-top:4px;">
+                            Đơn giá trước VAT được tự động liên kết và lưu trữ trong Bảng giá hiện hành của hệ thống.
+                        </div>
+                    </div>
                 </div>
 
                 <div style="background:var(--tf-surface-variant, #f8fafc);border:1px solid var(--tf-border, #e2e8f0);border-radius:8px;padding:16px;margin-bottom:16px;">
@@ -268,11 +261,15 @@ else
     private string _displaySystemCode = string.Empty;
     private string? _errorMessage;
     private decimal? _currentPrice;
+    private decimal? _inputPrice;
+    private string? _defaultUnitName;
 
     protected override async Task OnInitializedAsync()
     {
         _categories = await DbContext.ProductCategories.Where(c => c.IsActive).OrderBy(c => c.Name).ToListAsync();
         _units = await DbContext.UnitOfMeasures.Where(u => u.IsActive).OrderBy(u => u.Name).ToListAsync();
+        var defaultUnit = _units?.FirstOrDefault(u => u.Code == "CAI") ?? _units?.FirstOrDefault();
+        _defaultUnitName = defaultUnit?.Name ?? "Cái";
 
         if (IsEdit)
         {
@@ -291,6 +288,7 @@ else
             }
             _displaySystemCode = _model.Code;
             _currentPrice = await PriceListService.GetProductCurrentPriceAsync(_model.Id, DateTime.UtcNow);
+            _inputPrice = _currentPrice;
         }
         else
         {
@@ -299,7 +297,7 @@ else
                 Nav.NavigateTo("/Account/AccessDenied");
                 return;
             }
-            _model = new Product { IsActive = true };
+            _model = new Product { IsActive = true, UnitId = defaultUnit?.Id };
             _displaySystemCode = await CodeGenerator.PeekNextCodeAsync(SystemCodeConstants.Product) + " (Tự sinh)";
         }
     }
@@ -405,10 +403,10 @@ else
                 return;
             }
 
+            // Đơn vị tính: Tự động gán đơn vị mặc định nếu người dùng không chọn
             if (!_model.UnitId.HasValue || _model.UnitId.Value <= 0)
             {
-                _errorMessage = "Vui lòng chọn đơn vị tính.";
-                return;
+                _model.UnitId = _units?.FirstOrDefault(u => u.Code == "CAI")?.Id ?? _units?.FirstOrDefault()?.Id;
             }
 
             if (IsEdit)
@@ -428,6 +426,60 @@ else
             }
 
             await DbContext.SaveChangesAsync();
+
+            // Lưu hoặc cập nhật đơn giá trước VAT vào Bảng giá hiện hành nếu có nhập giá
+            if (_inputPrice.HasValue && _inputPrice.Value > 0)
+            {
+                var activePriceList = await DbContext.PriceLists
+                    .OrderByDescending(p => p.Year)
+                    .ThenByDescending(p => p.CreatedAt)
+                    .FirstOrDefaultAsync(p => p.Status == PriceListStatus.Active);
+
+                if (activePriceList == null)
+                {
+                    activePriceList = new PriceList
+                    {
+                        Code = await CodeGenerator.GenerateCodeAsync("PL"),
+                        Name = $"BẢNG GIÁ HIỆN HÀNH {DateTime.UtcNow.Year}",
+                        Year = DateTime.UtcNow.Year,
+                        Status = PriceListStatus.Active,
+                        CreatedAt = DateTime.UtcNow,
+                        CreatedBy = CurrentUser.UserName
+                    };
+                    DbContext.PriceLists.Add(activePriceList);
+                    await DbContext.SaveChangesAsync();
+                }
+
+                var priceItem = await DbContext.PriceListItems.FirstOrDefaultAsync(i => i.PriceListId == activePriceList.Id && i.ProductId == _model.Id);
+                if (priceItem == null)
+                {
+                    priceItem = new PriceListItem
+                    {
+                        PriceListId = activePriceList.Id,
+                        ProductId = _model.Id,
+                        NewCode = !string.IsNullOrWhiteSpace(_model.NewCode) ? _model.NewCode : _model.Code,
+                        LegacyCode = _model.LegacyCode,
+                        ProductInfo = _model.Name,
+                        UnitPrice = _inputPrice.Value,
+                        VatRate = _model.TaxTreatment == TaxTreatment.Standard10 ? (_model.IsTaxReductionEligible ? 8 : 10) : 0,
+                        MatchStatus = PriceMatchStatus.Matched,
+                        CreatedAt = DateTime.UtcNow,
+                        CreatedBy = CurrentUser.UserName
+                    };
+                    DbContext.PriceListItems.Add(priceItem);
+                }
+                else
+                {
+                    priceItem.UnitPrice = _inputPrice.Value;
+                    priceItem.NewCode = !string.IsNullOrWhiteSpace(_model.NewCode) ? _model.NewCode : _model.Code;
+                    priceItem.LegacyCode = _model.LegacyCode;
+                    priceItem.ProductInfo = _model.Name;
+                    priceItem.UpdatedAt = DateTime.UtcNow;
+                    priceItem.UpdatedBy = CurrentUser.UserName;
+                }
+                await DbContext.SaveChangesAsync();
+            }
+
             Nav.NavigateTo("/danh-muc/san-pham");
         }
         catch (Exception ex)

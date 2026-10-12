@@ -1,0 +1,57 @@
+@namespace TradeFlow.Web.Components.Common
+
+<div class="tf-filter-sidebar-wrapper">
+    @* Mobile filter toggle bar *@
+    <div class="tf-filter-mobile-bar d-md-none" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+        <button type="button" class="tf-btn tf-btn-secondary tf-btn-sm" @onclick="ToggleMobileOpen" style="display: flex; align-items: center; gap: 6px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+            </svg>
+            <span>@Title @(_isMobileOpen ? "▲" : "▼")</span>
+        </button>
+
+        @if (HasActiveFilters)
+        {
+            <button type="button" class="tf-link-action" @onclick="HandleClear" style="font-size: 12px; color: #dc2626;">
+                ✕ Bỏ lọc
+            </button>
+        }
+    </div>
+
+    @* Desktop / Expanded Filter Container *@
+    <div class="tf-filter-content @(_isMobileOpen ? "is-open" : "d-none d-md-block")">
+        @if (HasActiveFilters)
+        {
+            <div class="tf-filter-reset-bar tf-mb-3" style="display: flex; justify-content: space-between; align-items: center; padding: 4px 6px;">
+                <span style="font-size: 12px; font-weight: 600; color: #475569;">Đang lọc kết quả</span>
+                <button type="button" class="tf-link-action" @onclick="HandleClear" style="font-size: 12px; color: #dc2626; font-weight: 500;">
+                    ✕ Xóa tất cả lọc
+                </button>
+            </div>
+        }
+
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Bộ lọc";
+    [Parameter] public bool HasActiveFilters { get; set; }
+    [Parameter] public EventCallback OnClearFilters { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool _isMobileOpen;
+
+    private void ToggleMobileOpen()
+    {
+        _isMobileOpen = !_isMobileOpen;
+    }
+
+    private async Task HandleClear()
+    {
+        if (OnClearFilters.HasDelegate)
+        {
+            await OnClearFilters.InvokeAsync();
+        }
+    }
+}

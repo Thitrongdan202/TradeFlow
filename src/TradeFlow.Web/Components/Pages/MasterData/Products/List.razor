@@ -3,31 +3,61 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
 @using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Constants
 @using TradeFlow.Domain.Entities.MasterData
+@using TradeFlow.Domain.Entities.Pricing
+@using TradeFlow.Domain.Enums
 @using TradeFlow.Infrastructure.Persistence
 @attribute [Authorize(Policy = "Permission:Products:View")]
 
 @inject TradeFlowDbContext DbContext
 @inject IPriceListService PriceListService
+@inject IFileStorageService FileStorage
+@inject ISystemCodeGenerator CodeGenerator
+@inject IAuditService AuditService
+@inject ICurrentUserService CurrentUser
 @inject NavigationManager Nav
 @inject IAuthorizationService AuthService
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
-@inject IAuditService AuditService
 
 <PageTitle>Sản phẩm - TradeFlow</PageTitle>
 
-<div class="tf-page-header">
-    <div class="tf-page-header-left">
-        <h1 class="tf-page-title">Sản phẩm</h1>
-        <p class="tf-page-subtitle">Danh mục sản phẩm, quy cách và đơn vị tính</p>
+@* Top Page Header with Search & Toolbar (KiotViet Style) *@
+<div class="tf-page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+    <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+        <div>
+            <h1 class="tf-page-title" style="margin: 0; font-size: 20px;">Sản phẩm</h1>
+            <p class="tf-page-subtitle" style="margin: 2px 0 0; font-size: 12px;">Quản lý danh mục hàng hóa, đơn giá và hình ảnh</p>
+        </div>
+
+        @* Quick search bar near title *@
+        <div style="width: 340px; max-width: 100%;">
+            <DebouncedSearchInput Placeholder="Tìm kiếm theo tên, mã mới, mã cũ, mã SP..."
+                                  Value="@_searchTerm"
+                                  ValueChanged="OnSearchChanged" />
+        </div>
     </div>
-    <div class="tf-page-actions">
+
+    @* Right Toolbar Actions *@
+    <div class="tf-page-actions" style="display: flex; align-items: center; gap: 8px;">
+        <AuthorizeView Policy="Permission:PriceLists:Create">
+            <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showExcelImportModal = true" style="display: inline-flex; align-items: center; gap: 6px; height: 36px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="12" y1="18" x2="12" y2="12"></line>
+                    <line x1="9" y1="15" x2="15" y2="15"></line>
+                </svg>
+                <span>Import Excel</span>
+            </button>
+        </AuthorizeView>
+
         <AuthorizeView Policy="Permission:Products:Create">
-            <a href="/danh-muc/san-pham/them-moi" class="tf-btn tf-btn-primary">
+            <a href="/danh-muc/san-pham/them-moi" class="tf-btn tf-btn-primary" style="display: inline-flex; align-items: center; gap: 6px; height: 36px;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                 </svg>
-                Thêm sản phẩm
+                <span>+ Thêm mới</span>
             </a>
         </AuthorizeView>
     </div>
@@ -35,65 +65,617 @@
 
 @if (!string.IsNullOrEmpty(_toastMessage))
 {
-    <div class="tf-alert tf-alert-info tf-mb-4" style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; display:flex; justify-content:space-between; align-items:center; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px;">
+    <div class="tf-alert tf-alert-info tf-mb-3" style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; display:flex; justify-content:space-between; align-items:center; padding: 10px 14px; border-radius: 6px;">
         <span>@_toastMessage</span>
         <button type="button" style="background:none; border:none; color:#1e40af; cursor:pointer; font-weight:bold;" @onclick="() => _toastMessage = null">✕</button>
     </div>
 }
 
-<div class="tf-card tf-mb-4" style="padding: 12px 16px;">
-    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 260px;">
-            <DebouncedSearchInput Placeholder="Tìm theo mã hệ thống, mã mới, mã cũ, tên sản phẩm..."
-                                  Value="@_searchTerm"
-                                  ValueChanged="OnSearchChanged" />
-        </div>
-        <div style="width: 200px;">
-            <select class="tf-select" @onchange="OnCategoryFilterChanged">
-                <option value="">-- Tất cả danh mục --</option>
-                @if (_categories != null)
-                {
-                    @foreach (var c in _categories)
+@* Main Layout: Left Filter Sidebar + Right Table (KiotViet Pattern) *@
+<div class="tf-product-layout">
+    @* Left Filter Sidebar *@
+    <div class="tf-product-sidebar">
+        <FilterSidebar Title="Bộ lọc sản phẩm" HasActiveFilters="@HasActiveFilters" OnClearFilters="ClearAllFilters">
+            @* 1. Filter by Category *@
+            <div class="tf-filter-card tf-mb-3">
+                <div class="tf-filter-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="tf-filter-title">Loại hàng</span>
+                    <a href="/danh-muc/danh-muc-san-pham" class="tf-link-action" style="font-size: 11px;">Quản lý</a>
+                </div>
+                <div style="padding: 6px 10px 4px;">
+                    <input type="text" class="tf-input" style="height: 30px; font-size: 12px; padding: 0 8px;" placeholder="Tìm loại hàng..." @bind="_categorySearchTerm" @bind:event="oninput" />
+                </div>
+                <div class="tf-filter-body" style="max-height: 220px; overflow-y: auto;">
+                    <div class="tf-filter-option @(_selectedCategoryId == null ? "selected" : "")" @onclick="() => SetCategoryFilter(null)">
+                        <span>Tất cả loại hàng</span>
+                        <span class="tf-filter-count">@(_items?.Count ?? 0)</span>
+                    </div>
+                    @if (_categories != null)
                     {
-                        <option value="@c.Id">@c.Name</option>
+                        @foreach (var cat in FilteredCategoryOptions)
+                        {
+                            int count = _items?.Count(p => p.CategoryId == cat.Id) ?? 0;
+                            <div class="tf-filter-option @(_selectedCategoryId == cat.Id ? "selected" : "")" @onclick="() => SetCategoryFilter(cat.Id)">
+                                <span class="tf-truncate" title="@cat.Name">@cat.Name</span>
+                                <span class="tf-filter-count">@count</span>
+                            </div>
+                        }
                     }
+                </div>
+            </div>
+
+            @* 2. Filter by Status *@
+            <div class="tf-filter-card tf-mb-3">
+                <div class="tf-filter-header">
+                    <span class="tf-filter-title">Trạng thái</span>
+                </div>
+                <div class="tf-filter-body">
+                    <label class="tf-filter-option @(_statusFilter == null ? "selected" : "")" @onclick="() => SetStatusFilter(null)">
+                        <input type="radio" name="prodStatus" checked="@(_statusFilter == null)" />
+                        <span>Tất cả</span>
+                        <span class="tf-filter-count">@(_items?.Count ?? 0)</span>
+                    </label>
+                    <label class="tf-filter-option @(_statusFilter == true ? "selected" : "")" @onclick="() => SetStatusFilter(true)">
+                        <input type="radio" name="prodStatus" checked="@(_statusFilter == true)" />
+                        <span>Đang hoạt động</span>
+                        <span class="tf-filter-count">@(_items?.Count(p => p.IsActive) ?? 0)</span>
+                    </label>
+                    <label class="tf-filter-option @(_statusFilter == false ? "selected" : "")" @onclick="() => SetStatusFilter(false)">
+                        <input type="radio" name="prodStatus" checked="@(_statusFilter == false)" />
+                        <span>Đã ngừng sử dụng</span>
+                        <span class="tf-filter-count">@(_items?.Count(p => !p.IsActive) ?? 0)</span>
+                    </label>
+                </div>
+            </div>
+        </FilterSidebar>
+    </div>
+
+    @* Right Main Table Container *@
+    <div class="tf-product-main">
+        <div class="tf-card">
+            <div class="tf-card-body" style="padding: 0;">
+                @* Bulk Action Bar *@
+                @if (_selectedItems.Count > 0)
+                {
+                    <div style="background: #f1f5f9; padding: 8px 16px; border-bottom: 1px solid var(--tf-border); display: flex; align-items: center; justify-content: space-between;">
+                        <span style="font-size: 13px; font-weight: 600; color: #1e293b;">
+                            Đã chọn <strong>@_selectedItems.Count</strong> sản phẩm
+                        </span>
+                        <div style="display: flex; gap: 8px;">
+                            <AuthorizeView Policy="Permission:Products:Delete">
+                                <button type="button" class="tf-btn tf-btn-sm tf-btn-danger" @onclick="ConfirmBulkDelete">
+                                    Xóa các mục đã chọn
+                                </button>
+                            </AuthorizeView>
+                        </div>
+                    </div>
                 }
-            </select>
-        </div>
-        <div style="width: 170px;">
-            <select class="tf-select" @onchange="OnStatusFilterChanged">
-                <option value="">-- Tất cả trạng thái --</option>
-                <option value="true">Đang hoạt động</option>
-                <option value="false">Tạm dừng</option>
-            </select>
+
+                @if (_items == null)
+                {
+                    <div style="padding: 20px;">
+                        <Skeleton Type="table" Rows="6" Columns="8" />
+                    </div>
+                }
+                else
+                {
+                    <TableLoadingOverlay IsLoading="@_isRefreshing" LoadingText="Đang cập nhật danh sách...">
+                        <div style="overflow-x: auto;">
+                            <table class="tf-table tf-product-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 36px; text-align: center;">
+                                            <input type="checkbox" @onchange="ToggleSelectAll" checked="@(PaginatedItems.Any() && _selectedItems.Count >= PaginatedItems.Count())" />
+                                        </th>
+                                        <th style="width: 52px; text-align: center;">Ảnh</th>
+                                        <th style="min-width: 110px;">Mã hệ thống</th>
+                                        <th style="min-width: 120px;">Mã mới</th>
+                                        <th style="min-width: 100px;">Mã cũ</th>
+                                        <th style="min-width: 220px;">Tên sản phẩm</th>
+                                        <th style="min-width: 110px;">Loại hàng</th>
+                                        <th style="width: 70px;">ĐVT</th>
+                                        <th style="text-align: right; min-width: 130px;">Giá trước VAT</th>
+                                        <th style="text-align: center; width: 110px;">Trạng thái</th>
+                                        <th style="width: 50px; text-align: center;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (!FilteredItems.Any())
+                                    {
+                                        <tr>
+                                            <td colspan="11">
+                                                <div class="tf-empty" style="padding: 40px 16px; text-align: center;">
+                                                    <div class="tf-empty-title" style="color: #64748b; font-size: 14px;">Không tìm thấy sản phẩm nào phù hợp</div>
+                                                    <button type="button" class="tf-link-action" style="margin-top: 8px;" @onclick="ClearAllFilters">Bỏ bộ lọc</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var item in PaginatedItems)
+                                        {
+                                            bool isExpanded = _expandedProductId == item.Id;
+                                            bool isEditing = _editingProductId == item.Id;
+                                            var primaryImg = item.Images?.FirstOrDefault(i => i.IsActive && i.IsPrimary) 
+                                                          ?? item.Images?.FirstOrDefault(i => i.IsActive);
+
+                                            <tr class="tf-product-row @(isExpanded ? "is-expanded" : "")" @onclick="() => ToggleExpand(item.Id)">
+                                                <td style="text-align: center;" @onclick:stopPropagation="true">
+                                                    <input type="checkbox" @onchange="@(e => ToggleSelect(item.Id, e))" checked="@(_selectedItems.Contains(item.Id))" />
+                                                </td>
+
+                                                @* Product Thumbnail *@
+                                                <td style="text-align: center; padding: 6px 8px;">
+                                                    <div class="tf-product-thumb">
+                                                        @if (primaryImg != null && !string.IsNullOrEmpty(primaryImg.StorageReference))
+                                                        {
+                                                            <img src="@FileStorage.GetPublicUrl(primaryImg.StorageReference)" alt="@item.Name" loading="lazy" />
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="tf-product-thumb-placeholder">
+                                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                                                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                                                                    <polyline points="21 15 16 10 5 21"/>
+                                                                </svg>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </td>
+
+                                                @* System Code *@
+                                                <td>
+                                                    <span class="tf-product-code">@item.Code</span>
+                                                </td>
+
+                                                @* New Code *@
+                                                <td>
+                                                    @if (!string.IsNullOrEmpty(item.NewCode))
+                                                    {
+                                                        <span class="tf-badge tf-badge-info" style="font-weight: 600; font-family: monospace;">@item.NewCode</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span style="color: #94a3b8;">—</span>
+                                                    }
+                                                </td>
+
+                                                @* Legacy Code *@
+                                                <td>
+                                                    @if (!string.IsNullOrEmpty(item.LegacyCode))
+                                                    {
+                                                        <span style="color: #64748b; font-family: monospace; font-size: 12px;">@item.LegacyCode</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span style="color: #94a3b8;">—</span>
+                                                    }
+                                                </td>
+
+                                                @* Product Name & Specs Summary *@
+                                                <td>
+                                                    <div style="font-weight: 600; color: #1e293b;">@item.Name</div>
+                                                    @if (!string.IsNullOrWhiteSpace(item.Specifications))
+                                                    {
+                                                        <div style="font-size: 11px; color: #64748b; margin-top: 2px; max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="@item.Specifications">
+                                                            • @item.Specifications.Replace("\r\n", " • ").Replace("\n", " • ")
+                                                        </div>
+                                                    }
+                                                </td>
+
+                                                @* Category *@
+                                                <td>
+                                                    <span style="font-size: 12.5px; color: #334155;">@(item.Category?.Name ?? "—")</span>
+                                                </td>
+
+                                                @* Unit *@
+                                                <td>
+                                                    <span style="font-size: 12px; color: #64748b;">@(item.Unit?.Name ?? "Cái")</span>
+                                                </td>
+
+                                                @* Pre-VAT Price *@
+                                                <td style="text-align: right;">
+                                                    @if (_currentPrices.TryGetValue(item.Id, out var cp) && cp.HasValue && cp.Value > 0)
+                                                    {
+                                                        <div style="font-weight: 700; color: #047857; font-size: 13.5px;">@cp.Value.ToString("N0") ₫</div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span style="color: #94a3b8; font-size: 12px;">Chưa có giá</span>
+                                                    }
+                                                </td>
+
+                                                @* Status *@
+                                                <td style="text-align: center;">
+                                                    @if (item.IsActive)
+                                                    {
+                                                        <span class="tf-badge tf-badge-success" style="font-size: 11px; padding: 2px 8px;">Hoạt động</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="tf-badge tf-badge-secondary" style="font-size: 11px; padding: 2px 8px;">Ngừng dùng</span>
+                                                    }
+                                                </td>
+
+                                                @* Toggle Arrow Icon *@
+                                                <td style="text-align: center;" @onclick:stopPropagation="true">
+                                                    <button type="button" class="tf-btn-icon" style="background: none; border: none; cursor: pointer; color: #64748b; padding: 4px;" title="Chi tiết sản phẩm" @onclick="() => ToggleExpand(item.Id)">
+                                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:@(isExpanded ? "rotate(180deg)" : "rotate(0deg)"); transition:transform 0.2s;">
+                                                            <polyline points="6 9 12 15 18 9"/>
+                                                        </svg>
+                                                    </button>
+                                                </td>
+                                            </tr>
+
+                                            @* INLINE EXPANDED ROW (KiotViet & Employee Experience Unified) *@
+                                            @if (isExpanded)
+                                            {
+                                                <tr class="tf-product-detail-tr">
+                                                    <td colspan="11" style="padding: 0; background-color: #f8fafc; border-bottom: 2px solid #3b82f6;">
+                                                        <div class="tf-product-expanded-box">
+                                                            @* Expanded Header Bar *@
+                                                            <div class="tf-product-expanded-header">
+                                                                <div style="display: flex; align-items: center; gap: 14px;">
+                                                                    <div style="width: 48px; height: 48px; border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
+                                                                        @if (primaryImg != null && !string.IsNullOrEmpty(primaryImg.StorageReference))
+                                                                        {
+                                                                            <img src="@FileStorage.GetPublicUrl(primaryImg.StorageReference)" alt="" style="width: 100%; height: 100%; object-fit: contain;" />
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.8">
+                                                                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                                                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                                                                <polyline points="21 15 16 10 5 21"/>
+                                                                            </svg>
+                                                                        }
+                                                                    </div>
+                                                                    <div>
+                                                                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                                                            <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: #0f172a;">@item.Name</h3>
+                                                                            <span class="tf-product-code" style="font-size: 13px; background: #e0f2fe; padding: 2px 8px; border-radius: 4px;">@item.Code</span>
+                                                                            @if (!string.IsNullOrEmpty(item.NewCode))
+                                                                            {
+                                                                                <span class="tf-badge tf-badge-info" style="font-size: 12px;">Mã mới: @item.NewCode</span>
+                                                                            }
+                                                                            @if (item.IsActive)
+                                                                            {
+                                                                                <span class="tf-badge tf-badge-success" style="font-size: 11px;">Đang hoạt động</span>
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <span class="tf-badge tf-badge-neutral" style="font-size: 11px;">Đã ngừng sử dụng</span>
+                                                                            }
+                                                                        </div>
+                                                                        <div style="font-size: 12.5px; color: #64748b; margin-top: 3px;">
+                                                                            Danh mục: <strong>@(item.Category?.Name ?? "Chưa phân loại")</strong> • Đơn vị tính: <strong>@(item.Unit?.Name ?? "Cái")</strong>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                @* Expanded Header Action Buttons *@
+                                                                <div style="display: flex; align-items: center; gap: 8px;">
+                                                                    @if (isEditing)
+                                                                    {
+                                                                        <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="CancelInlineEdit" disabled="@_isSavingInline">
+                                                                            Hủy
+                                                                        </button>
+                                                                        <LoadingButton Class="tf-btn tf-btn-primary tf-btn-sm" IsLoading="@_isSavingInline" LoadingText="Đang lưu..." OnClick="() => SaveInlineEditAsync(item)">
+                                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
+                                                                                <polyline points="20 6 9 17 4 12"/>
+                                                                            </svg>
+                                                                            <span>Lưu thay đổi</span>
+                                                                        </LoadingButton>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <AuthorizeView Policy="Permission:Products:Edit">
+                                                                            <button type="button" class="tf-btn tf-btn-outline-secondary tf-btn-sm" @onclick="() => StartInlineEdit(item)" style="display: inline-flex; align-items: center; gap: 4px;">
+                                                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                                                    <path d="M12 20h9"/>
+                                                                                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                                                                                </svg>
+                                                                                <span>Chỉnh sửa</span>
+                                                                            </button>
+                                                                        </AuthorizeView>
+
+                                                                        <AuthorizeView Policy="Permission:Products:Edit">
+                                                                            <button type="button" class="tf-btn @(item.IsActive ? "tf-btn-outline-danger" : "tf-btn-outline-success") tf-btn-sm" @onclick="() => ToggleProductStatusAsync(item)" style="display: inline-flex; align-items: center; gap: 4px;">
+                                                                                @if (item.IsActive)
+                                                                                {
+                                                                                    <span>Ngừng dùng</span>
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    <span>Kích hoạt lại</span>
+                                                                                }
+                                                                            </button>
+                                                                        </AuthorizeView>
+
+                                                                        <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => ToggleExpand(item.Id)">
+                                                                            Đóng
+                                                                        </button>
+                                                                    }
+                                                                </div>
+                                                            </div>
+
+                                                            @* INLINE VIEW VS EDIT SWITCH *@
+                                                            @if (isEditing && _inlineEditModel != null)
+                                                            {
+                                                                @* INLINE EDIT FORM (3 COLUMNS) *@
+                                                                <div class="tf-product-detail-grid">
+                                                                    @* Col 1: Image & Upload *@
+                                                                    <div class="tf-product-img-box">
+                                                                        <div class="tf-product-img-main">
+                                                                            @if (_inlineEditImages != null && _inlineEditImages.Any(i => i.IsActive && i.IsPrimary))
+                                                                            {
+                                                                                var curImg = _inlineEditImages.First(i => i.IsActive && i.IsPrimary);
+                                                                                <img src="@FileStorage.GetPublicUrl(curImg.StorageReference)" alt="" />
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <div style="color: #94a3b8; font-size: 13px; text-align: center; padding: 12px;">Chưa có ảnh</div>
+                                                                            }
+                                                                        </div>
+
+                                                                        <label class="tf-btn tf-btn-sm tf-btn-outline-secondary" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                                                                <polyline points="17 8 12 3 7 8"/>
+                                                                                <line x1="12" y1="3" x2="12" y2="15"/>
+                                                                            </svg>
+                                                                            <span>Thay ảnh mới...</span>
+                                                                            <InputFile OnChange="e => HandleInlineImageUpload(item.Id, e)" accept="image/*" style="display:none;" />
+                                                                        </label>
+                                                                        @if (_isUploadingInlineImage)
+                                                                        {
+                                                                            <span style="font-size: 11px; color: #2563eb;">Đang tải ảnh...</span>
+                                                                        }
+                                                                    </div>
+
+                                                                    @* Col 2: Identification & Category Edit *@
+                                                                    <div style="background: #ffffff; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 10px;">
+                                                                        <div style="font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
+                                                                            Thông tin sản phẩm &amp; Mã
+                                                                        </div>
+                                                                        <div>
+                                                                            <label class="tf-label" style="font-size: 12px;">Tên sản phẩm *</label>
+                                                                            <input type="text" class="tf-input" style="height: 34px; font-size: 13px;" @bind="_inlineEditModel.Name" />
+                                                                        </div>
+                                                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                                                            <div>
+                                                                                <label class="tf-label" style="font-size: 12px;">Mã hàng mới</label>
+                                                                                <input type="text" class="tf-input" style="height: 34px; font-size: 13px;" @bind="_inlineEditModel.NewCode" placeholder="vd: TL2138" />
+                                                                            </div>
+                                                                            <div>
+                                                                                <label class="tf-label" style="font-size: 12px;">Mã hàng cũ</label>
+                                                                                <input type="text" class="tf-input" style="height: 34px; font-size: 13px;" @bind="_inlineEditModel.LegacyCode" placeholder="vd: TL2138" />
+                                                                            </div>
+                                                                        </div>
+                                                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                                                            <div>
+                                                                                <label class="tf-label" style="font-size: 12px;">Loại hàng</label>
+                                                                                <select class="tf-input" style="height: 34px; font-size: 13px;" @bind="_inlineEditModel.CategoryId">
+                                                                                    <option value="">-- Chọn danh mục --</option>
+                                                                                    @if (_categories != null)
+                                                                                    {
+                                                                                        @foreach (var c in _categories)
+                                                                                        {
+                                                                                            <option value="@c.Id">@c.Name</option>
+                                                                                        }
+                                                                                    }
+                                                                                </select>
+                                                                            </div>
+                                                                            <div>
+                                                                                <label class="tf-label" style="font-size: 12px;">Đơn vị tính</label>
+                                                                                <select class="tf-input" style="height: 34px; font-size: 13px;" @bind="_inlineEditModel.UnitId">
+                                                                                    @if (_units != null)
+                                                                                    {
+                                                                                        @foreach (var u in _units)
+                                                                                        {
+                                                                                            <option value="@u.Id">@u.Name</option>
+                                                                                        }
+                                                                                    }
+                                                                                </select>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    @* Col 3: Price & Specs Edit *@
+                                                                    <div style="background: #ffffff; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 10px;">
+                                                                        <div style="font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
+                                                                            Đơn giá (Chưa VAT) &amp; Quy cách
+                                                                        </div>
+                                                                        <div>
+                                                                            <label class="tf-label" style="font-size: 12px;">Đơn giá đại lý (Chưa VAT)</label>
+                                                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                                                <input type="number" class="tf-input" style="height: 34px; font-size: 14px; font-weight: 700; color: #047857;" @bind="_inlineEditModel.UnitPrice" step="1000" />
+                                                                                <span style="font-weight: 600; font-size: 13px; color: #64748b;">₫</span>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div>
+                                                                            <label class="tf-label" style="font-size: 12px;">Thông số kỹ thuật / Quy cách</label>
+                                                                            <textarea class="tf-input" rows="3" style="font-size: 12.5px;" @bind="_inlineEditModel.Specifications" placeholder="Kích thước, chất liệu, phụ kiện kèm theo..."></textarea>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            }
+                                                            else
+                                                            {
+                                                                @* INLINE VIEW MODE (3 COLUMNS) *@
+                                                                <div class="tf-product-detail-grid">
+                                                                    @* Col 1: High-Res Image Gallery *@
+                                                                    <div class="tf-product-img-box">
+                                                                        <div class="tf-product-img-main">
+                                                                            @if (primaryImg != null && !string.IsNullOrEmpty(primaryImg.StorageReference))
+                                                                            {
+                                                                                <img src="@FileStorage.GetPublicUrl(primaryImg.StorageReference)" alt="@item.Name" />
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <div style="text-align: center; color: #94a3b8; font-size: 13px;">
+                                                                                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 6px;">
+                                                                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                                                                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                                                                                        <polyline points="21 15 16 10 5 21"/>
+                                                                                    </svg>
+                                                                                    <div>Chưa có hình ảnh</div>
+                                                                                </div>
+                                                                            }
+                                                                        </div>
+                                                                        @if (item.Images != null && item.Images.Count(i => i.IsActive) > 1)
+                                                                        {
+                                                                            <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;">
+                                                                                @foreach (var subImg in item.Images.Where(i => i.IsActive))
+                                                                                {
+                                                                                    <div style="width: 38px; height: 38px; border-radius: 4px; border: 1px solid @(subImg.IsPrimary ? "#2563eb" : "#e2e8f0"); overflow: hidden; padding: 2px; background: #fff;">
+                                                                                        <img src="@FileStorage.GetPublicUrl(subImg.StorageReference)" alt="" style="width: 100%; height: 100%; object-fit: cover;" />
+                                                                                    </div>
+                                                                                }
+                                                                            </div>
+                                                                        }
+                                                                    </div>
+
+                                                                    @* Col 2: Identification & Classification *@
+                                                                    <div style="background: #ffffff; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 12px;">
+                                                                        <div style="font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
+                                                                            Thông tin cơ bản
+                                                                        </div>
+                                                                        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+                                                                            <div>
+                                                                                <span style="color: #64748b;">Mã hệ thống:</span>
+                                                                                <span style="font-weight: 600; color: #0f766e; font-family: monospace; margin-left: 6px;">@item.Code</span>
+                                                                            </div>
+                                                                            <div>
+                                                                                <span style="color: #64748b;">Mã hàng mới:</span>
+                                                                                <span style="font-weight: 600; color: #1e293b; margin-left: 6px;">@(item.NewCode ?? "—")</span>
+                                                                            </div>
+                                                                            <div>
+                                                                                <span style="color: #64748b;">Mã hàng cũ:</span>
+                                                                                <span style="font-family: monospace; color: #475569; margin-left: 6px;">@(item.LegacyCode ?? "—")</span>
+                                                                            </div>
+                                                                            <div>
+                                                                                <span style="color: #64748b;">Loại hàng:</span>
+                                                                                <span style="font-weight: 500; color: #1e293b; margin-left: 6px;">@(item.Category?.Name ?? "—")</span>
+                                                                            </div>
+                                                                            <div>
+                                                                                <span style="color: #64748b;">Đơn vị tính:</span>
+                                                                                <span style="font-weight: 500; color: #1e293b; margin-left: 6px;">@(item.Unit?.Name ?? "Cái")</span>
+                                                                            </div>
+                                                                            @if (!string.IsNullOrEmpty(item.ShortName))
+                                                                            {
+                                                                                <div>
+                                                                                    <span style="color: #64748b;">Tên viết tắt:</span>
+                                                                                    <span style="margin-left: 6px;">@item.ShortName</span>
+                                                                                </div>
+                                                                            }
+                                                                        </div>
+                                                                    </div>
+
+                                                                    @* Col 3: Pricing, VAT & Specifications *@
+                                                                    <div style="background: #ffffff; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 12px;">
+                                                                        <div style="font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
+                                                                            Chính sách giá &amp; Quy cách
+                                                                        </div>
+                                                                        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+                                                                            <div>
+                                                                                <span style="color: #64748b;">Đơn giá trước VAT:</span>
+                                                                                @if (_currentPrices.TryGetValue(item.Id, out var p) && p.HasValue && p.Value > 0)
+                                                                                {
+                                                                                    <span style="font-weight: 700; color: #047857; font-size: 16px; margin-left: 6px;">@p.Value.ToString("N0") ₫</span>
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    <span style="color: #94a3b8; margin-left: 6px;">Chưa thiết lập giá</span>
+                                                                                }
+                                                                            </div>
+                                                                            <div>
+                                                                                <span style="color: #64748b;">Thuế suất GTGT:</span>
+                                                                                <span style="font-weight: 500; color: #1e293b; margin-left: 6px;">
+                                                                                    @(item.TaxTreatment == TaxTreatment.Standard10 ? (item.IsTaxReductionEligible ? "8% (Giảm từ 10%)" : "10%") : item.TaxTreatment.ToString())
+                                                                                </span>
+                                                                            </div>
+                                                                            @if (!string.IsNullOrWhiteSpace(item.Specifications))
+                                                                            {
+                                                                                <div>
+                                                                                    <div style="color: #64748b; margin-bottom: 2px;">Quy cách kỹ thuật:</div>
+                                                                                    <div style="background: #f8fafc; padding: 8px; border-radius: 6px; font-size: 12px; color: #334155; line-height: 1.4; white-space: pre-line;">
+                                                                                        @item.Specifications
+                                                                                    </div>
+                                                                                </div>
+                                                                            }
+                                                                            @if (!string.IsNullOrWhiteSpace(item.Description))
+                                                                            {
+                                                                                <div>
+                                                                                    <div style="color: #64748b; margin-bottom: 2px;">Mô tả chi tiết:</div>
+                                                                                    <div style="font-size: 12px; color: #475569;">@item.Description</div>
+                                                                                </div>
+                                                                            }
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        @* Pagination Bar *@
+                        @if (TotalPages > 1)
+                        {
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-top: 1px solid var(--tf-border); flex-wrap: wrap; gap: 8px;">
+                                <div style="font-size: 12.5px; color: #64748b;">
+                                    Hiển thị <strong>@((_currentPage - 1) * _pageSize + 1)</strong> – <strong>@(Math.Min(_currentPage * _pageSize, TotalFilteredCount))</strong> trong tổng số <strong>@TotalFilteredCount</strong> sản phẩm
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <button type="button" class="tf-btn tf-btn-sm tf-btn-secondary" disabled="@(_currentPage <= 1)" @onclick="() => SetPage(_currentPage - 1)">
+                                        ‹ Trước
+                                    </button>
+                                    @for (int p = Math.Max(1, _currentPage - 2); p <= Math.Min(TotalPages, _currentPage + 2); p++)
+                                    {
+                                        int pageNum = p;
+                                        <button type="button" class="tf-btn tf-btn-sm @(pageNum == _currentPage ? "tf-btn-primary" : "tf-btn-secondary")" @onclick="() => SetPage(pageNum)">
+                                            @pageNum
+                                        </button>
+                                    }
+                                    <button type="button" class="tf-btn tf-btn-sm tf-btn-secondary" disabled="@(_currentPage >= TotalPages)" @onclick="() => SetPage(_currentPage + 1)">
+                                        Sau ›
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </TableLoadingOverlay>
+                }
+            </div>
         </div>
     </div>
 </div>
 
-<div class="tf-card">
-    <div class="tf-card-body" style="padding: 0;">
-        @if (_selectedItems.Count > 0)
-        {
-            <div style="background: var(--tf-gray-50); padding: 10px 16px; border-bottom: 1px solid var(--tf-border); display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-size: 13px; font-weight: 500;">Đã chọn <strong>@_selectedItems.Count</strong> sản phẩm</span>
-                <AuthorizeView Policy="Permission:Products:Delete">
-                    <button type="button" class="tf-btn tf-btn-sm tf-btn-danger" @onclick="ConfirmBulkDelete">
-                        Xóa các mục đã chọn
-                    </button>
-                </AuthorizeView>
-            </div>
-        }
+@* Modal: Secondary Excel Import Modal *@
+<ProductExcelImportModal IsVisible="@_showExcelImportModal"
+                         OnClose="() => _showExcelImportModal = false"
+                         OnImportCompleted="HandleImportCompleted" />
 
+@* Modal: Bulk Delete Confirmation *@
 @if (_showBulkDeleteModal)
 {
-    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 24px; border-radius: 8px; width: 440px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
-            <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 18px; color: var(--tf-danger);">Xóa sản phẩm đã chọn?</h3>
-            <p style="margin-bottom: 16px;">Bạn có chắc chắn muốn xóa <strong>@_selectedItems.Count</strong> sản phẩm đã chọn?</p>
+    <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1050; display: flex; align-items: center; justify-content: center; padding: 16px;">
+        <div style="background: white; padding: 24px; border-radius: 10px; width: 440px; max-width: 95%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+            <h3 style="margin: 0 0 14px; font-size: 18px; color: var(--tf-danger);">Xóa sản phẩm đã chọn?</h3>
+            <p style="margin-bottom: 16px; font-size: 13.5px; color: #334155;">
+                Bạn có chắc chắn muốn xóa <strong>@_selectedItems.Count</strong> sản phẩm đã chọn?
+            </p>
             @if (_bulkDeleteErrors.Any())
             {
-                <div class="tf-alert tf-alert-danger" style="margin-bottom: 16px; max-height: 150px; overflow-y: auto;">
-                    <ul style="margin: 0; padding-left: 20px;">
+                <div class="tf-alert tf-alert-error" style="margin-bottom: 16px; max-height: 140px; overflow-y: auto; font-size: 12px;">
+                    <ul style="margin: 0; padding-left: 18px;">
                         @foreach (var err in _bulkDeleteErrors)
                         {
                             <li>@err</li>
@@ -101,8 +683,8 @@
                     </ul>
                 </div>
             }
-            <div style="display: flex; justify-content: flex-end; gap: 12px;">
-                <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="CancelBulkDelete">Hủy</button>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="CancelBulkDelete">Hủy</button>
                 <LoadingButton Class="tf-btn tf-btn-danger" IsLoading="@_isBulkDeleting" LoadingText="Đang xử lý..." OnClick="ExecuteBulkDelete">
                     Xóa tất cả
                 </LoadingButton>
@@ -111,164 +693,56 @@
     </div>
 }
 
-@if (_items == null)
-{
-    <div style="padding: 16px;">
-        <Skeleton Type="table" Rows="7" Columns="8" />
-    </div>
-}
-else
-{
-    <TableLoadingOverlay IsLoading="@_isRefreshing" LoadingText="Đang cập nhật danh sách...">
-        <table class="tf-table">
-            <thead>
-                  <tr>
-                      <th style="width: 40px; text-align: center;"><input type="checkbox" @onchange="ToggleSelectAll" checked="@(FilteredItems.Any() && _selectedItems.Count == FilteredItems.Count())" /></th>
-                    <th style="min-width: 120px;">Mã hệ thống</th>
-                    <th style="min-width: 110px;">Mã hàng mới</th>
-                    <th style="min-width: 110px;">Mã hàng cũ</th>
-                    <th style="min-width: 220px;">Tên sản phẩm</th>
-                    <th>Danh mục</th>
-                    <th>Đơn vị tính</th>
-                    <th style="text-align:right; min-width: 130px;">
-                        <div>Giá trước VAT</div>
-                        <div style="font-size:10px; color:var(--tf-text-muted); font-weight:normal;">Giá hiện tại</div>
-                    </th>
-                    <th style="text-align:center;">Trạng thái</th>
-                    <th style="text-align:right;">Thao tác</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (!FilteredItems.Any())
-                {
-                    <tr><td colspan="10"><div class="tf-empty"><div class="tf-empty-title">Chưa có sản phẩm phù hợp</div></div></td></tr>
-                }
-                else
-                {
-                    foreach (var item in FilteredItems)
-                    {
-                        <tr>
-                              <td style="text-align: center;"><input type="checkbox" @onchange="@(e => ToggleSelect(item.Id, e))" checked="@(_selectedItems.Contains(item.Id))" /></td>
-                            <td>
-                                <span style="font-family: monospace; font-weight: 600; color: var(--tf-primary);">@item.Code</span>
-                            </td>
-                            <td>
-                                @if (!string.IsNullOrEmpty(item.NewCode))
-                                {
-                                    <span class="tf-badge tf-badge-info" style="font-weight: 600;">@item.NewCode</span>
-                                }
-                                else
-                                {
-                                    <span style="color:var(--tf-text-muted);">-</span>
-                                }
-                            </td>
-                            <td>
-                                @if (!string.IsNullOrEmpty(item.LegacyCode))
-                                {
-                                    <span style="color:var(--tf-text-secondary); font-family: monospace;">@item.LegacyCode</span>
-                                }
-                                else
-                                {
-                                    <span style="color:var(--tf-text-muted);">-</span>
-                                }
-                            </td>
-                            <td style="font-weight: 500;">
-                                <div>@item.Name</div>
-                                @if (!string.IsNullOrWhiteSpace(item.Specifications))
-                                {
-                                    <div style="font-size: 11px; color: var(--tf-text-muted); margin-top: 2px; line-height: 1.3; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="@item.Specifications">
-                                        • @item.Specifications.Replace("\r\n", " • ").Replace("\n", " • ")
-                                    </div>
-                                }
-                                else if (!string.IsNullOrWhiteSpace(item.Description))
-                                {
-                                    <div style="font-size: 11px; color: var(--tf-text-muted); margin-top: 2px; line-height: 1.3; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="@item.Description">
-                                        • @item.Description.Replace("\r\n", " • ").Replace("\n", " • ")
-                                    </div>
-                                }
-                            </td>
-                            <td>@(item.Category?.Name ?? "-")</td>
-                            <td>@(item.Unit?.Name ?? "-")</td>
-                            <td style="text-align:right;">
-                                @if (_currentPrices.TryGetValue(item.Id, out var cp) && cp.HasValue && cp.Value > 0)
-                                {
-                                    <div style="font-weight: 700; color: #047857;">@cp.Value.ToString("N0") ₫</div>
-                                    <div style="font-size:10px; color:var(--tf-text-muted);">Giá trước VAT</div>
-                                }
-                                else
-                                {
-                                    <span style="color:var(--tf-text-muted); font-size:12px;">Chưa có giá</span>
-                                }
-                            </td>
-                            <td style="text-align:center;">
-                                @if (item.IsActive)
-                                {
-                                    <span class="tf-badge tf-badge-success">Hoạt động</span>
-                                }
-                                else
-                                {
-                                    <span class="tf-badge tf-badge-neutral">Đã ngừng sử dụng</span>
-                                }
-                            </td>
-                            <td style="text-align:right;">
-                                <AuthorizeView Policy="Permission:Products:Edit">
-                                    <a href="/danh-muc/san-pham/sua/@item.Id" class="tf-btn tf-btn-ghost tf-btn-sm">Sửa</a>
-                                </AuthorizeView>
-                                <AuthorizeView Policy="Permission:Products:Delete">
-                                    <button class="tf-btn tf-btn-ghost tf-btn-sm" style="color:var(--tf-danger);" @onclick="() => ConfirmDelete(item.Id, item.Name ?? string.Empty)">Xóa</button>
-                                </AuthorizeView>
-                            </td>
-                        </tr>
-                    }
-                }
-            </tbody>
-        </table>
-    </TableLoadingOverlay>
-}
-    </div>
-</div>
-
-
-@if (_itemToDeleteId != null)
-{
-    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 24px; border-radius: 8px; width: 400px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
-            <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 18px; color: var(--tf-danger);">Xóa dữ liệu?</h3>
-            <p style="margin-bottom: 24px;">Bạn có chắc chắn muốn xóa @_itemToDeleteName?</p>
-            @if (!string.IsNullOrEmpty(_deleteError))
-            {
-                <div class="tf-alert tf-alert-danger" style="margin-bottom: 16px;">
-                    @_deleteError
-                </div>
-            }
-            <div style="display: flex; justify-content: flex-end; gap: 12px;">
-                <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="CancelDelete">Hủy</button>
-                <LoadingButton Class="tf-btn tf-btn-danger" IsLoading="@_isDeleting" LoadingText="Đang xóa..." OnClick="ExecuteDelete">
-                    Xóa
-                </LoadingButton>
-            </div>
-        </div>
-    </div>
-}
-
 @code {
-    private int? _itemToDeleteId;
-    private string _itemToDeleteName = "";
-    private string? _deleteError;
-    private string? _toastMessage;
-    private bool _isDeleting = false;
-    private bool _isRefreshing = false;
-
     private List<Product>? _items;
     private Dictionary<int, decimal?> _currentPrices = new();
     private List<ProductCategory>? _categories;
+    private List<UnitOfMeasure>? _units;
+
     private string _searchTerm = string.Empty;
+    private string _categorySearchTerm = string.Empty;
     private int? _selectedCategoryId;
     private bool? _statusFilter;
+
+    private int _pageSize = 20;
+    private int _currentPage = 1;
+
+    private int? _expandedProductId;
+    private int? _editingProductId;
+    private ProductInlineEditModel? _inlineEditModel;
+    private List<ProductImage>? _inlineEditImages;
+    private bool _isSavingInline;
+    private bool _isUploadingInlineImage;
+
+    private bool _isRefreshing;
+    private string? _toastMessage;
+
+    // Excel import modal state
+    private bool _showExcelImportModal;
+
+    // Bulk selection
+    private HashSet<int> _selectedItems = new();
+    private bool _showBulkDeleteModal;
+    private bool _isBulkDeleting;
+    private List<string> _bulkDeleteErrors = new();
+
+    private bool HasActiveFilters => !string.IsNullOrEmpty(_searchTerm) || _selectedCategoryId.HasValue || _statusFilter.HasValue;
+
+    private IEnumerable<ProductCategory> FilteredCategoryOptions
+    {
+        get
+        {
+            if (_categories == null) return Enumerable.Empty<ProductCategory>();
+            if (string.IsNullOrWhiteSpace(_categorySearchTerm)) return _categories;
+            var term = _categorySearchTerm.Trim().ToLowerInvariant();
+            return _categories.Where(c => c.Name.ToLowerInvariant().Contains(term));
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
         _categories = await DbContext.ProductCategories.Where(c => c.IsActive).OrderBy(c => c.Name).ToListAsync();
+        _units = await DbContext.UnitOfMeasures.Where(u => u.IsActive).OrderBy(u => u.Name).ToListAsync();
         await LoadProductsAsync();
     }
 
@@ -280,6 +754,7 @@ else
             _items = await DbContext.Products
                 .Include(p => p.Category)
                 .Include(p => p.Unit)
+                .Include(p => p.Images)
                 .OrderBy(x => x.Code)
                 .ToListAsync();
 
@@ -301,36 +776,28 @@ else
     private void OnSearchChanged(string val)
     {
         _searchTerm = val;
+        _currentPage = 1;
     }
 
-    private void OnSearchInput(ChangeEventArgs e)
+    private void SetCategoryFilter(int? catId)
     {
-        _searchTerm = e.Value?.ToString() ?? string.Empty;
+        _selectedCategoryId = catId;
+        _currentPage = 1;
     }
 
-    private void OnCategoryFilterChanged(ChangeEventArgs e)
+    private void SetStatusFilter(bool? status)
     {
-        if (int.TryParse(e.Value?.ToString(), out var catId))
-        {
-            _selectedCategoryId = catId;
-        }
-        else
-        {
-            _selectedCategoryId = null;
-        }
+        _statusFilter = status;
+        _currentPage = 1;
     }
 
-    private void OnStatusFilterChanged(ChangeEventArgs e)
+    private void ClearAllFilters()
     {
-        var val = e.Value?.ToString();
-        if (bool.TryParse(val, out var status))
-        {
-            _statusFilter = status;
-        }
-        else
-        {
-            _statusFilter = null;
-        }
+        _searchTerm = string.Empty;
+        _categorySearchTerm = string.Empty;
+        _selectedCategoryId = null;
+        _statusFilter = null;
+        _currentPage = 1;
     }
 
     private IEnumerable<Product> FilteredItems
@@ -353,104 +820,276 @@ else
 
             if (!string.IsNullOrWhiteSpace(_searchTerm))
             {
-                var term = _searchTerm.Trim().ToLower();
+                var term = _searchTerm.Trim().ToLowerInvariant();
                 q = q.Where(x =>
-                    (x.Code != null && x.Code.ToLower().Contains(term)) ||
-                    (x.NewCode != null && x.NewCode.ToLower().Contains(term)) ||
-                    (x.LegacyCode != null && x.LegacyCode.ToLower().Contains(term)) ||
-                    (x.Name != null && x.Name.ToLower().Contains(term)) ||
-                    (x.ShortName != null && x.ShortName.ToLower().Contains(term)));
+                    (x.Code != null && x.Code.ToLowerInvariant().Contains(term)) ||
+                    (x.NewCode != null && x.NewCode.ToLowerInvariant().Contains(term)) ||
+                    (x.LegacyCode != null && x.LegacyCode.ToLowerInvariant().Contains(term)) ||
+                    (x.Name != null && x.Name.ToLowerInvariant().Contains(term)) ||
+                    (x.ShortName != null && x.ShortName.ToLowerInvariant().Contains(term)) ||
+                    (x.Specifications != null && x.Specifications.ToLowerInvariant().Contains(term)));
             }
 
             return q;
         }
     }
 
-    private void ConfirmDelete(int id, string name)
-    {
-        _itemToDeleteId = id;
-        _itemToDeleteName = name;
-        _deleteError = null;
-    }
+    private int TotalFilteredCount => FilteredItems.Count();
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling((double)TotalFilteredCount / _pageSize));
 
-    private void CancelDelete()
+    private IEnumerable<Product> PaginatedItems
     {
-        _itemToDeleteId = null;
-        _deleteError = null;
-    }
-
-    private async Task ExecuteDelete()
-    {
-        if (_itemToDeleteId == null) return;
-        
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        if (!(await AuthService.AuthorizeAsync(authState.User, "Permission:Products:Delete")).Succeeded)
+        get
         {
-            _deleteError = "Bạn không có quyền thực hiện thao tác này.";
+            return FilteredItems.Skip((_currentPage - 1) * _pageSize).Take(_pageSize);
+        }
+    }
+
+    private void SetPage(int page)
+    {
+        if (page >= 1 && page <= TotalPages)
+        {
+            _currentPage = page;
+        }
+    }
+
+    private void ToggleExpand(int productId)
+    {
+        if (_expandedProductId == productId)
+        {
+            _expandedProductId = null;
+            _editingProductId = null;
+            _inlineEditModel = null;
+        }
+        else
+        {
+            _expandedProductId = productId;
+            _editingProductId = null;
+            _inlineEditModel = null;
+        }
+    }
+
+    private void StartInlineEdit(Product product)
+    {
+        _editingProductId = product.Id;
+        _currentPrices.TryGetValue(product.Id, out var curPrice);
+
+        _inlineEditModel = new ProductInlineEditModel
+        {
+            Id = product.Id,
+            Name = product.Name,
+            NewCode = product.NewCode,
+            LegacyCode = product.LegacyCode,
+            ShortName = product.ShortName,
+            CategoryId = product.CategoryId,
+            UnitId = product.UnitId,
+            UnitPrice = curPrice,
+            Specifications = product.Specifications,
+            Description = product.Description,
+            TaxTreatment = product.TaxTreatment,
+            IsTaxReductionEligible = product.IsTaxReductionEligible,
+            IsActive = product.IsActive
+        };
+
+        _inlineEditImages = product.Images?.ToList() ?? new List<ProductImage>();
+    }
+
+    private void CancelInlineEdit()
+    {
+        _editingProductId = null;
+        _inlineEditModel = null;
+    }
+
+    private async Task SaveInlineEditAsync(Product originalProduct)
+    {
+        if (_inlineEditModel == null) return;
+        if (string.IsNullOrWhiteSpace(_inlineEditModel.Name))
+        {
+            _toastMessage = "Tên sản phẩm không được để trống.";
             return;
         }
 
         try
         {
-            _isDeleting = true;
-            int id = _itemToDeleteId.Value;
-            var entity = await DbContext.Products.FindAsync(id);
-            if (entity == null)
-            {
-                CancelDelete();
-                return;
-            }
+            _isSavingInline = true;
 
-            bool isUsedInBusiness = await DbContext.SalesOrderItems.AnyAsync(x => x.ProductId == id) 
-                                 || await DbContext.InvoiceItems.AnyAsync(x => x.ProductId == id);
-
-            if (isUsedInBusiness)
+            var productToUpdate = await DbContext.Products.FirstOrDefaultAsync(p => p.Id == originalProduct.Id);
+            if (productToUpdate != null)
             {
-                entity.IsActive = false;
-                entity.UpdatedAt = DateTime.UtcNow;
-                entity.UpdatedBy = authState.User.Identity?.Name;
-                DbContext.Products.Update(entity);
+                productToUpdate.Name = _inlineEditModel.Name;
+                productToUpdate.NewCode = _inlineEditModel.NewCode;
+                productToUpdate.LegacyCode = _inlineEditModel.LegacyCode;
+                productToUpdate.ShortName = _inlineEditModel.ShortName;
+                productToUpdate.CategoryId = _inlineEditModel.CategoryId;
+                productToUpdate.UnitId = _inlineEditModel.UnitId;
+                productToUpdate.Specifications = _inlineEditModel.Specifications;
+                productToUpdate.Description = _inlineEditModel.Description;
+                productToUpdate.UpdatedAt = DateTime.UtcNow;
+                productToUpdate.UpdatedBy = CurrentUser.UserName;
+
                 await DbContext.SaveChangesAsync();
-                await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.ProductUpdated, authState.User.Identity?.Name ?? "System", "Product", id.ToString(), "Ngừng sử dụng sản phẩm do đã phát sinh chứng từ nghiệp vụ", authState.User.Identity?.Name);
-                _toastMessage = "Sản phẩm đã được sử dụng trong dữ liệu nghiệp vụ nên không thể xóa vật lý. Sản phẩm đã được ngừng sử dụng.";
-            }
-            else
-            {
-                var priceListItems = await DbContext.PriceListItems.Where(x => x.ProductId == id).ToListAsync();
-                foreach (var pli in priceListItems)
+                await AuditService.LogAsync(AuditEventType.ProductUpdated, CurrentUser.UserName, "Product", productToUpdate.Id.ToString());
+
+                // Update Price in active PriceList if entered
+                if (_inlineEditModel.UnitPrice.HasValue && _inlineEditModel.UnitPrice.Value > 0)
                 {
-                    pli.ProductId = null;
+                    var activePriceList = await DbContext.PriceLists
+                        .OrderByDescending(p => p.Year)
+                        .ThenByDescending(p => p.CreatedAt)
+                        .FirstOrDefaultAsync(p => p.Status == PriceListStatus.Active);
+
+                    if (activePriceList == null)
+                    {
+                        activePriceList = new PriceList
+                        {
+                            Code = await CodeGenerator.GenerateCodeAsync("PL"),
+                            Name = $"BẢNG GIÁ HIỆN HÀNH {DateTime.UtcNow.Year}",
+                            Year = DateTime.UtcNow.Year,
+                            Status = PriceListStatus.Active,
+                            CreatedAt = DateTime.UtcNow,
+                            CreatedBy = CurrentUser.UserName
+                        };
+                        DbContext.PriceLists.Add(activePriceList);
+                        await DbContext.SaveChangesAsync();
+                    }
+
+                    var priceItem = await DbContext.PriceListItems.FirstOrDefaultAsync(i => i.PriceListId == activePriceList.Id && i.ProductId == productToUpdate.Id);
+                    if (priceItem == null)
+                    {
+                        priceItem = new PriceListItem
+                        {
+                            PriceListId = activePriceList.Id,
+                            ProductId = productToUpdate.Id,
+                            NewCode = !string.IsNullOrWhiteSpace(productToUpdate.NewCode) ? productToUpdate.NewCode : productToUpdate.Code,
+                            LegacyCode = productToUpdate.LegacyCode,
+                            ProductInfo = productToUpdate.Name,
+                            UnitPrice = _inlineEditModel.UnitPrice.Value,
+                            VatRate = productToUpdate.TaxTreatment == TaxTreatment.Standard10 ? (productToUpdate.IsTaxReductionEligible ? 8 : 10) : 0,
+                            MatchStatus = PriceMatchStatus.Matched,
+                            CreatedAt = DateTime.UtcNow,
+                            CreatedBy = CurrentUser.UserName
+                        };
+                        DbContext.PriceListItems.Add(priceItem);
+                    }
+                    else
+                    {
+                        priceItem.UnitPrice = _inlineEditModel.UnitPrice.Value;
+                        priceItem.NewCode = !string.IsNullOrWhiteSpace(productToUpdate.NewCode) ? productToUpdate.NewCode : productToUpdate.Code;
+                        priceItem.LegacyCode = productToUpdate.LegacyCode;
+                        priceItem.ProductInfo = productToUpdate.Name;
+                        priceItem.UpdatedAt = DateTime.UtcNow;
+                        priceItem.UpdatedBy = CurrentUser.UserName;
+                    }
+                    await DbContext.SaveChangesAsync();
+                    _currentPrices[productToUpdate.Id] = _inlineEditModel.UnitPrice.Value;
                 }
 
-                DbContext.Products.Remove(entity);
-                await DbContext.SaveChangesAsync();
-                await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.ProductDeleted, authState.User.Identity?.Name ?? "System", "Product", id.ToString(), "Xóa vật lý sản phẩm", authState.User.Identity?.Name);
-                _toastMessage = "Đã xóa sản phẩm thành công.";
-            }
+                _editingProductId = null;
+                _inlineEditModel = null;
+                _toastMessage = "Đã lưu thay đổi sản phẩm thành công.";
 
-            CancelDelete();
-            await OnInitializedAsync();
+                // Reload without resetting state
+                await LoadProductsAsync();
+            }
         }
         catch (Exception ex)
         {
-            _deleteError = "Đã xảy ra lỗi: " + ex.Message;
+            _toastMessage = "Có lỗi xảy ra: " + ex.Message;
         }
         finally
         {
-            _isDeleting = false;
+            _isSavingInline = false;
         }
     }
 
-    private HashSet<int> _selectedItems = new();
-    private bool _showBulkDeleteModal = false;
-    private List<string> _bulkDeleteErrors = new();
-    private bool _isBulkDeleting = false;
+    private async Task ToggleProductStatusAsync(Product product)
+    {
+        try
+        {
+            var p = await DbContext.Products.FirstOrDefaultAsync(x => x.Id == product.Id);
+            if (p != null)
+            {
+                p.IsActive = !p.IsActive;
+                p.UpdatedAt = DateTime.UtcNow;
+                p.UpdatedBy = CurrentUser.UserName;
+                await DbContext.SaveChangesAsync();
+                await AuditService.LogAsync(AuditEventType.ProductUpdated, CurrentUser.UserName, "Product", p.Id.ToString(), p.IsActive ? "Kích hoạt lại sản phẩm" : "Ngừng sử dụng sản phẩm");
+                
+                product.IsActive = p.IsActive;
+                _toastMessage = p.IsActive ? "Đã kích hoạt lại sản phẩm." : "Đã ngừng sử dụng sản phẩm.";
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            _toastMessage = "Lỗi khi cập nhật trạng thái: " + ex.Message;
+        }
+    }
+
+    private async Task HandleInlineImageUpload(int productId, InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        try
+        {
+            _isUploadingInlineImage = true;
+            using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            var storageRef = await FileStorage.SaveFileAsync(stream, file.Name, file.ContentType ?? "image/jpeg", "products");
+
+            // Deactivate old primary images
+            var existingImages = await DbContext.ProductImages.Where(i => i.ProductId == productId).ToListAsync();
+            foreach (var img in existingImages)
+            {
+                img.IsPrimary = false;
+            }
+
+            var newImage = new ProductImage
+            {
+                ProductId = productId,
+                FileName = file.Name,
+                StorageReference = storageRef,
+                ContentType = file.ContentType,
+                FileSizeBytes = file.Size,
+                IsPrimary = true,
+                SortOrder = 1,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = CurrentUser.UserName
+            };
+
+            DbContext.ProductImages.Add(newImage);
+            await DbContext.SaveChangesAsync();
+
+            await LoadProductsAsync();
+            _inlineEditImages = existingImages.Concat(new[] { newImage }).ToList();
+            _toastMessage = "Đã cập nhật hình ảnh thành công.";
+        }
+        catch (Exception ex)
+        {
+            _toastMessage = "Lỗi khi tải ảnh: " + ex.Message;
+        }
+        finally
+        {
+            _isUploadingInlineImage = false;
+        }
+    }
+
+    private async Task HandleImportCompleted()
+    {
+        _showExcelImportModal = false;
+        _toastMessage = "Đã nhập dữ liệu từ Excel thành công. Danh mục sản phẩm đã được làm mới.";
+        await LoadProductsAsync();
+    }
 
     private void ToggleSelectAll(ChangeEventArgs e)
     {
-        if (e.Value is bool isChecked && isChecked)
+        if ((bool)(e.Value ?? false))
         {
-            _selectedItems = new HashSet<int>(FilteredItems.Select(x => x.Id));
+            foreach (var item in PaginatedItems)
+            {
+                _selectedItems.Add(item.Id);
+            }
         }
         else
         {
@@ -460,14 +1099,10 @@ else
 
     private void ToggleSelect(int id, ChangeEventArgs e)
     {
-        if (e.Value is bool isChecked && isChecked)
-        {
+        if ((bool)(e.Value ?? false))
             _selectedItems.Add(id);
-        }
         else
-        {
             _selectedItems.Remove(id);
-        }
     }
 
     private void ConfirmBulkDelete()
@@ -479,93 +1114,86 @@ else
     private void CancelBulkDelete()
     {
         _showBulkDeleteModal = false;
-        _isBulkDeleting = false;
+        _bulkDeleteErrors.Clear();
     }
 
     private async Task ExecuteBulkDelete()
     {
-        if (_selectedItems.Count == 0) return;
         _isBulkDeleting = true;
         _bulkDeleteErrors.Clear();
-        StateHasChanged();
-
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        if (!(await AuthService.AuthorizeAsync(authState.User, "Permission:Products:Delete")).Succeeded)
-        {
-            _bulkDeleteErrors.Add("Bạn không có quyền thực hiện thao tác này.");
-            _isBulkDeleting = false;
-            return;
-        }
 
         try
         {
-            int successCount = 0;
-            var idsToProcess = _selectedItems.ToList();
-            
-            foreach (var id in idsToProcess)
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (!(await AuthService.AuthorizeAsync(authState.User, "Permission:Products:Delete")).Succeeded)
             {
-                _itemToDeleteId = id; // reuse the id for the logic block
-                try 
-                {
-                    await ProcessSingleDelete(id);
-                    _selectedItems.Remove(id);
-                    successCount++;
-                } 
-                catch (Exception ex)
-                {
-                    _bulkDeleteErrors.Add($"Bản ghi ID {id}: {ex.Message}");
-                }
+                _bulkDeleteErrors.Add("Bạn không có quyền thực hiện thao tác xóa.");
+                return;
             }
 
-            if (successCount > 0)
+            int successCount = 0;
+            var idsToDelete = _selectedItems.ToList();
+
+            foreach (var id in idsToDelete)
             {
-                await OnInitializedAsync();
+                var product = await DbContext.Products.FindAsync(id);
+                if (product == null) continue;
+
+                bool isUsed = await DbContext.SalesOrderItems.AnyAsync(x => x.ProductId == id) ||
+                              await DbContext.InvoiceItems.AnyAsync(x => x.ProductId == id);
+
+                if (isUsed)
+                {
+                    product.IsActive = false;
+                    product.UpdatedAt = DateTime.UtcNow;
+                    product.UpdatedBy = CurrentUser.UserName;
+                    DbContext.Products.Update(product);
+                    await AuditService.LogAsync(AuditEventType.ProductUpdated, CurrentUser.UserName, "Product", id.ToString(), "Ngừng sử dụng do đã phát sinh chứng từ nghiệp vụ");
+                }
+                else
+                {
+                    var priceListItems = await DbContext.PriceListItems.Where(x => x.ProductId == id).ToListAsync();
+                    foreach (var pli in priceListItems)
+                    {
+                        pli.ProductId = null;
+                    }
+
+                    DbContext.Products.Remove(product);
+                    await AuditService.LogAsync(AuditEventType.ProductDeleted, CurrentUser.UserName, "Product", id.ToString(), "Xóa vật lý sản phẩm");
+                }
+                successCount++;
             }
-            
-            if (_selectedItems.Count == 0)
-            {
-                CancelBulkDelete();
-            }
+
+            await DbContext.SaveChangesAsync();
+            _selectedItems.Clear();
+            _showBulkDeleteModal = false;
+            _toastMessage = $"Đã xử lý {successCount} sản phẩm thành công.";
+            await LoadProductsAsync();
+        }
+        catch (Exception ex)
+        {
+            _bulkDeleteErrors.Add("Lỗi khi xóa: " + ex.Message);
         }
         finally
         {
             _isBulkDeleting = false;
-            _itemToDeleteId = null;
-            StateHasChanged();
         }
     }
 
-    private async Task ProcessSingleDelete(int currentId)
+    public class ProductInlineEditModel
     {
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        int id = currentId;
-        var entity = await DbContext.Products.FindAsync(id);
-        if (entity == null) return;
-
-        bool isUsedInBusiness = await DbContext.SalesOrderItems.AnyAsync(x => x.ProductId == id) 
-                             || await DbContext.InvoiceItems.AnyAsync(x => x.ProductId == id);
-
-        if (isUsedInBusiness)
-        {
-            entity.IsActive = false;
-            entity.UpdatedAt = DateTime.UtcNow;
-            entity.UpdatedBy = authState.User.Identity?.Name;
-            DbContext.Products.Update(entity);
-            await DbContext.SaveChangesAsync();
-            await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.ProductUpdated, authState.User.Identity?.Name ?? "System", "Product", id.ToString(), "Ngừng sử dụng sản phẩm do đã phát sinh chứng từ nghiệp vụ", authState.User.Identity?.Name);
-            _toastMessage = "Sản phẩm đã được sử dụng trong dữ liệu nghiệp vụ nên không thể xóa vật lý. Sản phẩm đã được ngừng sử dụng.";
-        }
-        else
-        {
-            var priceListItems = await DbContext.PriceListItems.Where(x => x.ProductId == id).ToListAsync();
-            foreach (var pli in priceListItems)
-            {
-                pli.ProductId = null;
-            }
-
-            DbContext.Products.Remove(entity);
-            await DbContext.SaveChangesAsync();
-            await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.ProductDeleted, authState.User.Identity?.Name ?? "System", "Product", id.ToString(), "Xóa vật lý sản phẩm", authState.User.Identity?.Name);
-        }
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? NewCode { get; set; }
+        public string? LegacyCode { get; set; }
+        public string? ShortName { get; set; }
+        public int? CategoryId { get; set; }
+        public int? UnitId { get; set; }
+        public decimal? UnitPrice { get; set; }
+        public string? Specifications { get; set; }
+        public string? Description { get; set; }
+        public TaxTreatment TaxTreatment { get; set; }
+        public bool IsTaxReductionEligible { get; set; }
+        public bool IsActive { get; set; }
     }
 }

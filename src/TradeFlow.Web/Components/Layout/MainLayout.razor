@@ -1,8 +1,10 @@
 @inherits LayoutComponentBase
+@implements IDisposable
+@inject IJSRuntime JSRuntime
 
-<div class="tf-app">
-    <aside class="tf-sidebar @(_sidebarOpen ? "open" : "")">
-        <NavMenu />
+<div class="tf-app @(_sidebarCollapsed ? "is-sidebar-collapsed" : "")">
+    <aside class="tf-sidebar @(_sidebarOpen ? "open" : "") @(_sidebarCollapsed ? "is-collapsed" : "")">
+        <NavMenu IsCollapsed="@_sidebarCollapsed" OnToggleCollapse="ToggleSidebarCollapse" OnCloseMobile="CloseSidebar" />
     </aside>
 
     @* Mobile overlay *@
@@ -11,10 +13,10 @@
         <div class="tf-sidebar-backdrop" @onclick="CloseSidebar"></div>
     }
 
-    <div class="tf-main-wrapper">
+    <div class="tf-main-wrapper @(_sidebarCollapsed ? "is-collapsed" : "")">
         <header class="tf-topbar">
-            @* Mobile menu toggle *@
-            <button class="tf-topbar-btn tf-sidebar-toggle" @onclick="ToggleSidebar" title="Mở menu" aria-label="Mở menu">
+            @* Sidebar toggle (Desktop: collapses/expands, Mobile: opens/closes drawer) *@
+            <button class="tf-topbar-btn tf-sidebar-toggle" @onclick="HandleToggleClick" title="@(_sidebarCollapsed ? "Mở rộng thanh menu (Ctrl+B)" : "Thu gọn thanh menu (Ctrl+B)")" aria-label="Menu">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="3" y1="6" x2="21" y2="6"/>
                     <line x1="3" y1="12" x2="21" y2="12"/>
@@ -89,13 +91,60 @@
     <span class="dismiss">✕</span>
 </div>
 
-@inject IJSRuntime JSRuntime
-
 @code {
     private bool _sidebarOpen;
+    private bool _sidebarCollapsed;
+    private DotNetObjectReference<MainLayout>? _dotNetRef;
 
-    private void ToggleSidebar() => _sidebarOpen = !_sidebarOpen;
-    private void CloseSidebar() => _sidebarOpen = false;
+    private async Task HandleToggleClick()
+    {
+        bool isMobile = await CheckIsMobileAsync();
+        if (isMobile)
+        {
+            _sidebarOpen = !_sidebarOpen;
+        }
+        else
+        {
+            await ToggleSidebarCollapse();
+        }
+    }
+
+    private async Task ToggleSidebarCollapse()
+    {
+        _sidebarCollapsed = !_sidebarCollapsed;
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("tradeflow.setSidebarCollapsed", _sidebarCollapsed);
+        }
+        catch { }
+    }
+
+    private void CloseSidebar()
+    {
+        _sidebarOpen = false;
+    }
+
+    [JSInvokable]
+    public void OnEscapePressed()
+    {
+        if (_sidebarOpen)
+        {
+            _sidebarOpen = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<bool> CheckIsMobileAsync()
+    {
+        try
+        {
+            return await JSRuntime.InvokeAsync<bool>("eval", "window.innerWidth < 1024");
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -105,10 +154,21 @@
             {
                 await JSRuntime.InvokeVoidAsync("tfDismissStartupLoader");
             }
-            catch
+            catch { }
+
+            try
             {
-                // Ignore JS interop errors if circuit disconnected
+                _dotNetRef = DotNetObjectReference.Create(this);
+                await JSRuntime.InvokeVoidAsync("tradeflow.setupEscapeHandler", _dotNetRef);
+                _sidebarCollapsed = await JSRuntime.InvokeAsync<bool>("tradeflow.getSidebarCollapsed");
+                StateHasChanged();
             }
+            catch { }
         }
+    }
+
+    public void Dispose()
+    {
+        _dotNetRef?.Dispose();
     }
 }

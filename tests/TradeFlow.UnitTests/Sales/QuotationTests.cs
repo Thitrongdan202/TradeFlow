@@ -48,7 +48,7 @@ public class QuotationTests
         var customer = new Customer
         {
             Code = "KH-0001",
-            Name = "Công ty TNHH Khách Hàng Thử Nghiệm",
+            Name = "Công ty TNHH Khách Hàng Thử Nghiệm 1",
             TaxCode = "0102030405",
             Address = "123 Phố Huế, Hai Bà Trưng, Hà Nội",
             Phone = "0987654321",

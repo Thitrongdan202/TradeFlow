@@ -263,6 +263,9 @@
         })();
 
         window.tradeflow = {
+            isMobile: function () {
+                return window.innerWidth < 1024;
+            },
             getSidebarCollapsed: function () {
                 try {
                     return localStorage.getItem('tf_sidebar_collapsed') === 'true';
@@ -274,18 +277,190 @@
                 try {
                     localStorage.setItem('tf_sidebar_collapsed', val ? 'true' : 'false');
                 } catch (e) { }
+                var sidebar = document.querySelector('.tf-sidebar');
+                if (sidebar) {
+                    sidebar.classList.add('is-animating-horizontal');
+                    setTimeout(function () {
+                        sidebar.classList.remove('is-animating-horizontal');
+                    }, 260);
+                }
+            },
+            toggleSidebar: function () {
+                var isMob = window.innerWidth < 1024;
+                var sidebar = document.querySelector('.tf-sidebar');
+                var wrapper = document.querySelector('.tf-main-wrapper');
+                var app = document.querySelector('.tf-app');
+                var hamburgerBtn = document.querySelector('.tf-sidebar-toggle');
+                var bottomBtn = document.querySelector('.tf-nav-collapse-btn');
+                var backdrop = document.querySelector('.tf-sidebar-backdrop');
+
+                if (isMob) {
+                    if (!sidebar) return;
+                    var isOpen = sidebar.classList.toggle('open');
+                    if (backdrop) {
+                        if (isOpen) {
+                            backdrop.classList.add('active');
+                        } else {
+                            backdrop.classList.remove('active');
+                        }
+                    }
+                    if (hamburgerBtn) {
+                        hamburgerBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                    }
+                } else {
+                    if (!sidebar) return;
+                    var isCurrentlyCollapsed = sidebar.classList.contains('is-collapsed');
+                    var willBeCollapsed = !isCurrentlyCollapsed;
+
+                    if (willBeCollapsed) {
+                        sidebar.classList.add('is-collapsed');
+                        if (wrapper) wrapper.classList.add('is-collapsed');
+                        if (app) app.classList.add('is-sidebar-collapsed');
+                    } else {
+                        sidebar.classList.remove('is-collapsed');
+                        if (wrapper) wrapper.classList.remove('is-collapsed');
+                        if (app) app.classList.remove('is-sidebar-collapsed');
+                    }
+
+                    sidebar.classList.add('is-animating-horizontal');
+                    setTimeout(function () {
+                        sidebar.classList.remove('is-animating-horizontal');
+                    }, 260);
+
+                    try {
+                        localStorage.setItem('tf_sidebar_collapsed', willBeCollapsed ? 'true' : 'false');
+                    } catch (e) { }
+
+                    var titleText = willBeCollapsed ? 'Mở rộng thanh menu (Ctrl+B)' : 'Thu gọn thanh menu (Ctrl+B)';
+                    var labelText = willBeCollapsed ? 'Mở rộng thanh menu' : 'Thu gọn thanh menu';
+
+                    if (hamburgerBtn) {
+                        hamburgerBtn.setAttribute('aria-expanded', willBeCollapsed ? 'false' : 'true');
+                        hamburgerBtn.setAttribute('title', titleText);
+                    }
+                    if (bottomBtn) {
+                        bottomBtn.setAttribute('aria-expanded', willBeCollapsed ? 'false' : 'true');
+                        bottomBtn.setAttribute('title', titleText);
+                        bottomBtn.setAttribute('aria-label', labelText);
+                        var svg = bottomBtn.querySelector('svg');
+                        if (svg) {
+                            svg.style.transform = willBeCollapsed ? 'rotate(180deg)' : 'rotate(0deg)';
+                        }
+                        var labelSpan = bottomBtn.querySelector('.tf-nav-label');
+                        if (labelSpan) {
+                            labelSpan.textContent = willBeCollapsed ? 'Mở rộng' : 'Thu gọn';
+                        }
+                    }
+                }
+            },
+            closeMobileSidebar: function () {
+                var sidebar = document.querySelector('.tf-sidebar');
+                if (sidebar) sidebar.classList.remove('open');
+                var backdrop = document.querySelector('.tf-sidebar-backdrop');
+                if (backdrop) backdrop.classList.remove('active');
+                var hamburgerBtn = document.querySelector('.tf-sidebar-toggle');
+                if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded', 'false');
+            },
+            initSidebar: function () {
+                var isMob = window.innerWidth < 1024;
+                if (isMob) return;
+
+                var isCollapsed = false;
+                try {
+                    isCollapsed = localStorage.getItem('tf_sidebar_collapsed') === 'true';
+                } catch (e) { }
+
+                var sidebar = document.querySelector('.tf-sidebar');
+                var wrapper = document.querySelector('.tf-main-wrapper');
+                var app = document.querySelector('.tf-app');
+                var hamburgerBtn = document.querySelector('.tf-sidebar-toggle');
+                var bottomBtn = document.querySelector('.tf-nav-collapse-btn');
+
+                if (sidebar) {
+                    if (isCollapsed) {
+                        sidebar.classList.add('is-collapsed');
+                        if (wrapper) wrapper.classList.add('is-collapsed');
+                        if (app) app.classList.add('is-sidebar-collapsed');
+                    } else {
+                        sidebar.classList.remove('is-collapsed');
+                        if (wrapper) wrapper.classList.remove('is-collapsed');
+                        if (app) app.classList.remove('is-sidebar-collapsed');
+                    }
+                }
+
+                var titleText = isCollapsed ? 'Mở rộng thanh menu (Ctrl+B)' : 'Thu gọn thanh menu (Ctrl+B)';
+                var labelText = isCollapsed ? 'Mở rộng thanh menu' : 'Thu gọn thanh menu';
+
+                if (hamburgerBtn) {
+                    hamburgerBtn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+                    hamburgerBtn.setAttribute('title', titleText);
+                }
+                if (bottomBtn) {
+                    bottomBtn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+                    bottomBtn.setAttribute('title', titleText);
+                    bottomBtn.setAttribute('aria-label', labelText);
+                    var svg = bottomBtn.querySelector('svg');
+                    if (svg) {
+                        svg.style.transform = isCollapsed ? 'rotate(180deg)' : 'rotate(0deg)';
+                    }
+                    var labelSpan = bottomBtn.querySelector('.tf-nav-label');
+                    if (labelSpan) {
+                        labelSpan.textContent = isCollapsed ? 'Mở rộng' : 'Thu gọn';
+                    }
+                }
             },
             setupEscapeHandler: function (dotNetHelper) {
-                document.addEventListener('keydown', function (e) {
-                    if (e.key === 'Escape' || e.keyCode === 27) {
-                        dotNetHelper.invokeMethodAsync('OnEscapePressed');
-                    } else if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
-                        e.preventDefault();
-                        dotNetHelper.invokeMethodAsync('ToggleSidebarFromKeyboard');
-                    }
-                });
+                // Retained for backward compatibility
             }
         };
+
+        // Attach global keyboard shortcuts (Ctrl+B, Escape)
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' || e.keyCode === 27) {
+                window.tradeflow.closeMobileSidebar();
+            } else if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+                e.preventDefault();
+                window.tradeflow.toggleSidebar();
+            }
+        });
+
+        // Window resize handler
+        window.addEventListener('resize', function () {
+            if (window.innerWidth >= 1024) {
+                window.tradeflow.closeMobileSidebar();
+                window.tradeflow.initSidebar();
+            }
+        });
+
+        // Event delegation for sidebar toggling, mobile drawer, and flyouts
+        document.addEventListener('click', function (e) {
+            var toggleBtn = e.target.closest('.tf-sidebar-toggle, .tf-nav-collapse-btn');
+            if (toggleBtn) {
+                window.tradeflow.toggleSidebar();
+                return;
+            }
+            var closeBtn = e.target.closest('.tf-mobile-close-btn, .tf-sidebar-backdrop');
+            if (closeBtn) {
+                window.tradeflow.closeMobileSidebar();
+                return;
+            }
+            var flyoutLink = e.target.closest('.tf-flyout-link');
+            if (flyoutLink) {
+                var flyout = flyoutLink.closest('.tf-nav-flyout');
+                if (flyout) {
+                    flyout.style.display = 'none';
+                    setTimeout(function () {
+                        flyout.style.display = '';
+                    }, 350);
+                }
+            }
+        });
+
+        // Early and DOMContentLoaded initialization
+        window.tradeflow.initSidebar();
+        document.addEventListener('DOMContentLoaded', function () {
+            window.tradeflow.initSidebar();
+        });
     </script>
 </body>
 

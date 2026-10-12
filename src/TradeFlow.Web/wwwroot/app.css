@@ -216,7 +216,8 @@ h1:focus { outline: none; }
   left: 0;
   bottom: 0;
   z-index: var(--tf-z-sticky);
-  transition: width 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: width;
 }
 
 .tf-sidebar.is-collapsed {
@@ -231,7 +232,8 @@ h1:focus { outline: none; }
   flex-direction: column;
   min-height: 100vh;
   min-width: 0;
-  transition: margin-left 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: margin-left 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: margin-left;
 }
 
 .tf-main-wrapper.is-collapsed {
@@ -266,16 +268,32 @@ h1:focus { outline: none; }
 /* ============================================================
    SIDEBAR — Brand Header (Clean Modern POS/ERP Style)
    ============================================================ */
-.tf-brand {
+.tf-brand-wrapper {
+  position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 20px 16px 14px;
-  text-decoration: none;
+  width: 100%;
+  height: var(--tf-topbar-height);
   border-bottom: 1px solid var(--tf-sidebar-border);
   background: var(--tf-sidebar-bg);
-  transition: background-color 0.15s ease;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.tf-brand-wrapper .tf-brand {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  height: 100%;
+  width: 100%;
+  text-decoration: none;
+  background: transparent;
+  border-bottom: none;
+  box-sizing: border-box;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .tf-brand:hover {
@@ -283,8 +301,10 @@ h1:focus { outline: none; }
 }
 
 .tf-brand-logo {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
   background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
   border-radius: 50%;
   display: flex;
@@ -292,7 +312,7 @@ h1:focus { outline: none; }
   justify-content: center;
   flex-shrink: 0;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.22);
-  margin-bottom: 8px;
+  margin-bottom: 0;
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
 }
 
@@ -302,16 +322,19 @@ h1:focus { outline: none; }
 }
 
 .tf-brand-logo svg {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   fill: white;
 }
 
 .tf-brand-text {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
+  align-items: flex-start;
+  text-align: left;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: opacity 0.15s ease;
 }
 
 .tf-brand-name {
@@ -327,26 +350,15 @@ h1:focus { outline: none; }
   font-weight: 500;
   color: #64748b;
   letter-spacing: 0.02em;
-  margin-top: 2px;
-}
-
-.tf-brand-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: 100%;
-}
-
-.tf-brand-wrapper .tf-brand {
-  flex: 1;
-  width: 100%;
+  margin-top: 1px;
+  line-height: 1.2;
 }
 
 .tf-mobile-close-btn {
   display: none;
   position: absolute;
-  top: 14px;
-  right: 14px;
+  top: 12px;
+  right: 12px;
   width: 32px;
   height: 32px;
   border-radius: 6px;
@@ -367,12 +379,18 @@ h1:focus { outline: none; }
 }
 
 /* --- Collapsed Sidebar Rules --- */
-.tf-sidebar.is-collapsed .tf-brand {
-  padding: 14px 8px 12px;
+.tf-sidebar.is-collapsed .tf-brand-wrapper {
+  height: var(--tf-topbar-height);
+}
+
+.tf-sidebar.is-collapsed .tf-brand-wrapper .tf-brand {
+  padding: 0;
+  justify-content: center;
+  gap: 0;
 }
 
 .tf-sidebar.is-collapsed .tf-brand-logo {
-  margin-bottom: 0;
+  margin: 0 auto;
   width: 36px;
   height: 36px;
 }
@@ -388,13 +406,15 @@ h1:focus { outline: none; }
 }
 
 .tf-sidebar.is-collapsed .tf-nav-item {
-  margin: 3px 6px;
+  margin: 2px 8px;
 }
 
 .tf-sidebar.is-collapsed .tf-nav-link {
-  padding: 10px 0;
+  padding: 0;
   justify-content: center;
   gap: 0;
+  height: 40px;
+  min-height: 40px;
   border-radius: 8px;
 }
 
@@ -405,8 +425,10 @@ h1:focus { outline: none; }
 
 .tf-sidebar.is-collapsed .tf-nav-bottom-item {
   justify-content: center;
-  padding: 10px 0;
+  padding: 0;
   gap: 0;
+  height: 38px;
+  min-height: 38px;
 }
 
 .tf-sidebar.is-collapsed .tf-nav-bottom-item .tf-nav-label {
@@ -462,7 +484,9 @@ h1:focus { outline: none; }
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 12px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 12px;
   border-radius: 8px;
   color: #334155;
   font-size: 13.5px;
@@ -476,6 +500,8 @@ h1:focus { outline: none; }
   text-align: left;
   white-space: nowrap;
   user-select: none;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .tf-nav-link:hover {
@@ -575,67 +601,84 @@ h1:focus { outline: none; }
 }
 
 /* ============================================================
-   FLY-OUT SUBMENU (Desktop Hover Interaction & Positioning)
+   FLY-OUT SUBMENU (Desktop Horizontal Fly-Out & Hover Interaction)
    ============================================================ */
 @media (min-width: 1024px) {
-  /* Expanded sidebar: vertical scroll, no flyouts, inline accordion active */
-  .tf-sidebar:not(.is-collapsed) .tf-nav-scroll {
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  .tf-sidebar:not(.is-collapsed) .tf-nav-flyout {
+  /* Suppress vertical accordion on desktop - parent items only use horizontal flyouts */
+  .tf-nav-sub {
     display: none !important;
+    max-height: 0 !important;
+    transition: none !important;
   }
 
-  /* Collapsed sidebar: overflow visible for flyouts, inline accordion hidden */
-  .tf-sidebar.is-collapsed,
-  .tf-sidebar.is-collapsed .tf-sidebar-inner,
-  .tf-sidebar.is-collapsed .tf-nav-scroll {
+  /* Chevron on desktop points right to indicate horizontal fly-out, gently translates right on hover */
+  .tf-nav-chevron {
+    transform: none !important;
+    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), color 0.15s ease !important;
+  }
+
+  .tf-nav-item:hover .tf-nav-chevron {
+    transform: translateX(2px) !important;
+    color: var(--tf-primary) !important;
+    opacity: 1 !important;
+  }
+
+  /* Desktop sidebar and scroll container: overflow visible so horizontal flyouts float outside */
+  .tf-sidebar,
+  .tf-sidebar-inner,
+  .tf-nav-scroll {
     overflow: visible !important;
   }
 
-  .tf-sidebar.is-collapsed .tf-nav-item {
+  .tf-nav-item {
     position: relative;
   }
 
-  .tf-sidebar.is-collapsed .tf-nav-sub {
+  .tf-sidebar-backdrop {
     display: none !important;
   }
 
+  /* Horizontal fly-out panel */
   .tf-nav-flyout {
     display: none;
     position: absolute;
-    left: calc(100% + 12px);
+    left: calc(100% + 8px);
     top: 0;
-    z-index: 1050;
-    min-width: 215px;
+    z-index: 1060;
+    min-width: 220px;
     background: #ffffff;
-    border: 1px solid var(--tf-sidebar-border);
+    border: 1px solid #eaecf0;
     border-radius: 10px;
-    box-shadow: 0 10px 25px -5px rgba(16, 24, 40, 0.12), 0 8px 10px -6px rgba(16, 24, 40, 0.04);
+    box-shadow: 0 10px 25px -5px rgba(16, 24, 40, 0.14), 0 8px 10px -6px rgba(16, 24, 40, 0.05);
     padding: 6px;
     pointer-events: auto;
   }
 
-  /* Seamless invisible hover bridge between sidebar item and flyout */
+  /* Single item tooltip/flyout (for items without submenus like Tổng quan): only show in collapsed mode */
+  .tf-sidebar:not(.is-collapsed) .tf-nav-flyout.tf-nav-flyout-single {
+    display: none !important;
+  }
+
+  /* Seamless invisible hover bridge between parent item and floating flyout panel */
   .tf-nav-flyout::before {
     content: '';
     position: absolute;
-    top: -6px;
-    bottom: -6px;
-    left: -16px;
-    width: 20px;
+    top: -8px;
+    bottom: -8px;
+    left: -20px;
+    width: 28px;
     background: transparent;
+    pointer-events: auto;
   }
 
-  /* Reveal flyout when hovering the parent nav item in collapsed mode */
-  .tf-sidebar.is-collapsed .tf-nav-item:hover > .tf-nav-flyout {
-    display: block;
+  /* Reveal horizontal flyout when pointer hovers over parent nav item (in BOTH expanded and collapsed states) */
+  .tf-nav-item:hover > .tf-nav-flyout,
+  .tf-nav-item.is-flyout-open > .tf-nav-flyout {
+    display: block !important;
     animation: tfFlyoutFadeIn 0.16s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
-  /* Smart positioning for bottom items to avoid bottom viewport cutoff */
+  /* Smart bottom alignment for bottom parent items to prevent bottom viewport overflow */
   .tf-nav-item.align-bottom > .tf-nav-flyout {
     top: auto;
     bottom: 0;
@@ -1865,13 +1908,14 @@ h1:focus { outline: none; }
    RESPONSIVE & MOBILE DRAWER
    ============================================================ */
 .tf-sidebar-backdrop {
+  display: none;
   position: fixed;
   inset: 0;
   background-color: rgba(15, 23, 42, 0.45);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
   z-index: 1040;
-  animation: tfFadeIn 0.2s ease forwards;
+  cursor: pointer;
 }
 
 @keyframes tfFadeIn {
@@ -1880,6 +1924,11 @@ h1:focus { outline: none; }
 }
 
 @media (max-width: 1023px) {
+  .tf-sidebar-backdrop.active,
+  .tf-sidebar.open ~ .tf-sidebar-backdrop {
+    display: block !important;
+    animation: tfFadeIn 0.2s ease forwards;
+  }
   .tf-sidebar {
     width: 260px !important;
     max-width: 82vw;
@@ -1898,6 +1947,16 @@ h1:focus { outline: none; }
     width: 260px !important;
   }
 
+  .tf-sidebar.is-collapsed .tf-brand-wrapper .tf-brand {
+    padding: 0 16px !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .tf-sidebar.is-collapsed .tf-brand-logo {
+    margin: 0 !important;
+  }
+
   .tf-sidebar.is-collapsed .tf-brand-text {
     display: flex !important;
   }
@@ -1909,9 +1968,13 @@ h1:focus { outline: none; }
   }
 
   .tf-sidebar.is-collapsed .tf-nav-link {
-    justify-content: flex-start;
-    padding: 9px 12px;
-    gap: 10px;
+    justify-content: flex-start !important;
+    padding: 0 12px !important;
+    gap: 10px !important;
+  }
+
+  .tf-sidebar.is-collapsed .tf-nav-sub {
+    display: block !important;
   }
 
   .tf-nav-bottom {

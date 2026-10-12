@@ -37,6 +37,9 @@
                 </span>
                 <span class="tf-nav-label">Tổng quan</span>
             </NavLink>
+            <div class="tf-nav-flyout tf-nav-flyout-single">
+                <div class="tf-nav-flyout-header" style="border-bottom:none; margin-bottom:0; padding:6px 12px; font-size:12px; font-weight:600; color:#1e293b; text-transform:none;">Tổng quan</div>
+            </div>
         </div>
 
         @* 2. BÁN HÀNG *@
@@ -133,8 +136,8 @@
         </div>
 
         @* 4. SẢN PHẨM & DANH MỤC *@
-        <div class="tf-nav-item @(IsSectionActive("danh-muc") ? "is-active" : "")">
-            <button type="button" class="tf-nav-link @(IsSectionActive("danh-muc") ? "active" : "")" @onclick="ToggleCatalog" title="Sản phẩm &amp; Danh mục">
+        <div class="tf-nav-item @(IsSectionActive("danh-muc") || IsSectionActive("bang-gia") ? "is-active" : "")">
+            <button type="button" class="tf-nav-link @(IsSectionActive("danh-muc") || IsSectionActive("bang-gia") ? "active" : "")" @onclick="ToggleCatalog" title="Sản phẩm &amp; Danh mục">
                 <span class="tf-nav-icon">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
@@ -166,6 +169,12 @@
                             <span>Danh mục sản phẩm</span>
                         </NavLink>
                     </AuthorizeView>
+                    <AuthorizeView Policy="Permission:PriceLists:View">
+                        <NavLink class="tf-flyout-link" href="/bang-gia" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Bảng giá sản phẩm</span>
+                        </NavLink>
+                    </AuthorizeView>
                 </div>
             </div>
 
@@ -182,6 +191,13 @@
                     <div class="tf-nav-sub-item">
                         <NavLink class="tf-nav-sub-link" href="/danh-muc/danh-muc-san-pham" ActiveClass="active" @onclick="HandleLinkClick">
                             <span class="tf-nav-sub-dot"></span>Danh mục sản phẩm
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+                <AuthorizeView Policy="Permission:PriceLists:View">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/bang-gia" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-nav-sub-dot"></span>Bảng giá sản phẩm
                         </NavLink>
                     </div>
                 </AuthorizeView>
@@ -515,7 +531,7 @@
 
     @* Bottom Pinned Dock — Collapse Toggle Button *@
     <div class="tf-nav-bottom">
-        <button type="button" class="tf-nav-bottom-item tf-nav-collapse-btn" @onclick="OnToggleCollapse" title="@(IsCollapsed ? "Mở rộng thanh menu" : "Thu gọn thanh menu")" style="width: 100%; border: none; background: transparent; cursor: pointer;">
+        <button type="button" class="tf-nav-bottom-item tf-nav-collapse-btn" @onclick="OnToggleCollapse" title="@(IsCollapsed ? "Mở rộng thanh menu (Ctrl+B)" : "Thu gọn thanh menu (Ctrl+B)")" aria-label="@(IsCollapsed ? "Mở rộng thanh menu" : "Thu gọn thanh menu")" aria-expanded="@(!IsCollapsed)" style="width: 100%; border: none; background: transparent; cursor: pointer;">
             <span class="tf-nav-icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transform:@(IsCollapsed ? "rotate(180deg)" : "rotate(0deg)"); transition: transform 0.2s;">
                     <polyline points="11 19 4 12 11 5"/>
@@ -572,7 +588,7 @@
     {
         if (url.StartsWith("ban-hang", StringComparison.OrdinalIgnoreCase)) IsSalesOpen = true;
         if (url.StartsWith("hoa-don", StringComparison.OrdinalIgnoreCase)) IsInvoiceOpen = true;
-        if (url.StartsWith("danh-muc", StringComparison.OrdinalIgnoreCase)) IsCatalogOpen = true;
+        if (url.StartsWith("danh-muc", StringComparison.OrdinalIgnoreCase) || url.StartsWith("bang-gia", StringComparison.OrdinalIgnoreCase)) IsCatalogOpen = true;
         if (url.StartsWith("kho", StringComparison.OrdinalIgnoreCase)) IsWarehouseOpen = true;
         if (url.StartsWith("doi-tac", StringComparison.OrdinalIgnoreCase)) IsPartnersOpen = true;
         if (url.StartsWith("tai-lieu", StringComparison.OrdinalIgnoreCase)) IsDocumentsOpen = true;

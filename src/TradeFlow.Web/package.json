@@ -1,0 +1,13 @@
+{
+  "name": "tradeflow-web",
+  "version": "1.0.0",
+  "description": "TradeFlow Web ERP Tailwind CSS build pipeline",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i ./Styles/tailwind.input.css -o ./wwwroot/css/tailwind.min.css --minify",
+    "watch:css": "tailwindcss -i ./Styles/tailwind.input.css -o ./wwwroot/css/tailwind.min.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}

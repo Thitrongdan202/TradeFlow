@@ -190,19 +190,19 @@
                 }
                 else
                 {
-                    @foreach (var item in FilteredList)
+                    @foreach (var item in PagedList)
                     {
                         <tr>
                             <td>
-                                <a href="/bang-gia/chi-tiet/@item.Id" style="font-family: monospace; font-weight: 700; color: var(--tf-primary); text-decoration:none;">
+                                <a href="/bang-gia/chi-tiet/@item.Id" class="tw-font-mono tw-font-bold tw-text-indigo-700 hover:tw-underline">
                                     @item.Code
                                 </a>
                             </td>
                             <td>
-                                <div style="font-weight: 600; color: var(--tf-text-main);">@item.Name</div>
+                                <div class="tw-font-medium tw-text-slate-900">@item.Name</div>
                                 @if (!string.IsNullOrEmpty(item.ProgramTitle))
                                 {
-                                    <div style="font-size: 12px; color: var(--tf-text-muted); max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <div class="tw-text-xs tw-text-slate-500 tw-truncate tw-max-w-xs">
                                         @item.ProgramTitle
                                     </div>
                                 }
@@ -211,26 +211,22 @@
                                 <div>@(item.QuotationNumber ?? "-")</div>
                                 @if (item.QuotationDate.HasValue)
                                 {
-                                    <div style="font-size: 12px; color: var(--tf-text-muted);">@item.QuotationDate.Value.ToString("dd/MM/yyyy")</div>
+                                    <div class="tw-text-xs tw-text-slate-500">@item.QuotationDate.Value.ToString("dd/MM/yyyy")</div>
                                 }
                             </td>
                             <td>
-                                <span class="tf-badge tf-badge-info">
-                                    Năm @item.Year
-                                    @if (item.Quarter.HasValue) { <span> - Q@item.Quarter</span> }
-                                    @if (item.Month.HasValue) { <span> (T@(item.Month))</span> }
-                                </span>
+                                <TfBadge Variant="info" Text="@($"Năm {item.Year}{(item.Quarter.HasValue ? $" - Q{item.Quarter}" : "")}{(item.Month.HasValue ? $" (T{item.Month})" : "")}")" />
                             </td>
                             <td>
                                 @if (item.EffectiveFrom.HasValue || item.EffectiveTo.HasValue)
                                 {
-                                    <div style="font-size: 13px;">
+                                    <div class="tw-text-xs tw-text-slate-600">
                                         @(item.EffectiveFrom?.ToString("dd/MM/yyyy") ?? "...") - @(item.EffectiveTo?.ToString("dd/MM/yyyy") ?? "áp dụng tiếp")
                                     </div>
                                 }
                                 else
                                 {
-                                    <span style="color: var(--tf-text-muted); font-size: 13px;">Chưa đặt</span>
+                                    <span class="tw-text-slate-400 tw-text-xs">Chưa đặt</span>
                                 }
                             </td>
                             <td style="text-align: right; font-weight: 600;">
@@ -240,37 +236,37 @@
                                 @switch (item.Status)
                                 {
                                     case PriceListStatus.Active:
-                                        <span class="tf-badge tf-badge-success" style="background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;">Đang áp dụng</span>
+                                        <TfBadge Variant="success" Dot="true" Text="Đang áp dụng" />
                                         break;
                                     case PriceListStatus.Draft:
-                                        <span class="tf-badge tf-badge-warning" style="background:#fffbeb; color:#92400e; border:1px solid #fde68a;">Bản nháp</span>
+                                        <TfBadge Variant="warning" Dot="true" Text="Bản nháp" />
                                         break;
                                     case PriceListStatus.Expired:
-                                        <span class="tf-badge" style="background:#f3f4f6; color:#4b5563; border:1px solid #e5e7eb;">Hết hiệu lực</span>
+                                        <TfBadge Variant="gray" Dot="true" Text="Hết hiệu lực" />
                                         break;
                                     case PriceListStatus.Cancelled:
-                                        <span class="tf-badge tf-badge-danger" style="background:#fef2f2; color:#991b1b; border:1px solid #fecaca;">Đã hủy</span>
+                                        <TfBadge Variant="danger" Dot="true" Text="Đã hủy" />
                                         break;
                                 }
                             </td>
                             <td style="text-align: right;">
-                                <div style="display:inline-flex; gap: 4px;">
-                                    <a href="/bang-gia/chi-tiet/@item.Id" class="tf-btn tf-btn-secondary" style="padding: 4px 8px; font-size: 12px;" title="Xem chi tiết">
+                                <div class="tw-inline-flex tw-gap-1 tw-justify-end">
+                                    <a href="/bang-gia/chi-tiet/@item.Id" class="tf-btn tf-btn-ghost tf-btn-sm" title="Xem chi tiết">
                                         Xem
                                     </a>
-                                    <a href="/api/pricing/@item.Id/export-excel" class="tf-btn tf-btn-secondary" style="padding: 4px 8px; font-size: 12px;" title="Xuất file Excel chuẩn" target="_blank">
+                                    <a href="/api/pricing/@item.Id/export-excel" class="tf-btn tf-btn-ghost tf-btn-sm" title="Xuất file Excel chuẩn" target="_blank">
                                         Xuất
                                     </a>
                                     @if (!string.IsNullOrEmpty(item.OriginalFileStorageRef))
                                     {
-                                        <a href="/api/pricing/@item.Id/download-original" class="tf-btn tf-btn-secondary" style="padding: 4px 8px; font-size: 12px;" title="Tải file Excel gốc" target="_blank">
+                                        <a href="/api/pricing/@item.Id/download-original" class="tf-btn tf-btn-ghost tf-btn-sm" title="Tải file Excel gốc" target="_blank">
                                             File gốc
                                         </a>
                                     }
                                     @if (item.Status == PriceListStatus.Draft)
                                     {
                                         <AuthorizeView Policy="Permission:PriceLists:Edit">
-                                            <button type="button" class="tf-btn tf-btn-primary" style="padding: 4px 8px; font-size: 12px; background:#059669;" @onclick="() => ApprovePriceList(item.Id)">
+                                            <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm tw-text-emerald-600 hover:tw-bg-emerald-50" @onclick="() => ApprovePriceList(item.Id)">
                                                 Duyệt
                                             </button>
                                         </AuthorizeView>
@@ -278,14 +274,14 @@
                                     @if (item.Status != PriceListStatus.Cancelled)
                                     {
                                         <AuthorizeView Policy="Permission:PriceLists:Edit">
-                                            <button type="button" class="tf-btn tf-btn-secondary" style="padding: 4px 8px; font-size: 12px; color: #ea580c;" @onclick="() => ConfirmCancel(item)">
+                                            <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm tw-text-amber-600 hover:tw-bg-amber-50" @onclick="() => ConfirmCancel(item)">
                                                 Hủy
                                             </button>
                                         </AuthorizeView>
                                     }
                                     <AuthorizeView Policy="Permission:PriceLists:Delete">
-                                        <button type="button" class="tf-btn tf-btn-secondary" style="padding: 4px 8px; font-size: 12px; color: #dc2626;" @onclick="() => ConfirmPermanentDelete(item)">
-                                            Xóa vĩnh viễn
+                                        <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm tw-text-red-600 hover:tw-bg-red-50" @onclick="() => ConfirmPermanentDelete(item)">
+                                            Xóa
                                         </button>
                                     </AuthorizeView>
                                 </div>
@@ -295,60 +291,69 @@
                 }
             </tbody>
         </table>
+
+        @if (FilteredList.Any())
+        {
+            <TfPagination CurrentPage="@_currentPage"
+                          PageSize="@_pageSize"
+                          TotalCount="@FilteredList.Count()"
+                          ItemName="bảng giá"
+                          CurrentPageChanged="@(p => _currentPage = p)"
+                          PageSizeChanged="@(s => { _pageSize = s; _currentPage = 1; })" />
+        }
         </TableLoadingOverlay>
     }
     </div>
 </div>
 
-@if (_showCancelModal && _selectedPriceList != null)
-{
-    <div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; display:flex; align-items:center; justify-content:center;">
-        <div class="tf-card" style="width: 450px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);">
-            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px; color: #ea580c;">Xác nhận hủy bảng giá</h3>
-            <p style="color: var(--tf-text-main); margin-bottom: 16px;">
+<TfModal IsOpen="@(_showCancelModal && _selectedPriceList != null)"
+         Title="Xác nhận hủy bảng giá"
+         Size="md"
+         OnClose="() => _showCancelModal = false">
+    <BodyContent>
+        @if (_selectedPriceList != null)
+        {
+            <p class="tw-text-slate-700 tw-mb-4">
                 Bạn có chắc chắn muốn hủy bảng giá <strong>@_selectedPriceList.Code - @_selectedPriceList.Name</strong>?
             </p>
-            <div style="display:flex; justify-content: flex-end; gap: 8px;">
-                <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showCancelModal = false">Đóng</button>
-                <LoadingButton Class="tf-btn tf-btn-primary"
-                               Style="background:#ea580c;"
-                               IsLoading="@_isCancelling"
-                               LoadingText="Đang xử lý..."
-                               OnClick="ExecuteCancel">
-                    Xác nhận hủy
-                </LoadingButton>
-            </div>
-        </div>
-    </div>
-}
+        }
+    </BodyContent>
+    <FooterContent>
+        <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showCancelModal = false">Đóng</button>
+        <LoadingButton Class="tf-btn tf-btn-danger"
+                       IsLoading="@_isCancelling"
+                       LoadingText="Đang xử lý..."
+                       OnClick="ExecuteCancel">
+            Xác nhận hủy
+        </LoadingButton>
+    </FooterContent>
+</TfModal>
 
-@if (_showPermanentDeleteModal && _selectedPriceList != null)
-{
-    <div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; display:flex; align-items:center; justify-content:center;">
-        <div class="tf-card" style="width: 450px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);">
-            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px; color: #dc2626;">Xóa vĩnh viễn bảng giá?</h3>
-            <p style="color: var(--tf-text-main); margin-bottom: 16px;">
-                Toàn bộ dữ liệu của bảng giá này sẽ bị xóa khỏi hệ thống và không thể khôi phục.
-            </p>
-            @if (!string.IsNullOrEmpty(_deleteError))
-            {
-                <div class="tf-alert tf-alert-danger" style="margin-bottom: 16px;">
-                    @_deleteError
-                </div>
-            }
-            <div style="display:flex; justify-content: flex-end; gap: 8px;">
-                <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showPermanentDeleteModal = false">Hủy bỏ</button>
-                <LoadingButton Class="tf-btn tf-btn-primary"
-                               Style="background:#dc2626;"
-                               IsLoading="@_isDeleting"
-                               LoadingText="Đang xóa..."
-                               OnClick="ExecutePermanentDelete">
-                    Xác nhận xóa
-                </LoadingButton>
+<TfModal IsOpen="@(_showPermanentDeleteModal && _selectedPriceList != null)"
+         Title="Xóa vĩnh viễn bảng giá?"
+         Size="md"
+         OnClose="() => _showPermanentDeleteModal = false">
+    <BodyContent>
+        <p class="tw-text-slate-700 tw-mb-4">
+            Toàn bộ dữ liệu của bảng giá này sẽ bị xóa khỏi hệ thống và không thể khôi phục.
+        </p>
+        @if (!string.IsNullOrEmpty(_deleteError))
+        {
+            <div class="tf-alert tf-alert-error tw-mb-3">
+                @_deleteError
             </div>
-        </div>
-    </div>
-}
+        }
+    </BodyContent>
+    <FooterContent>
+        <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showPermanentDeleteModal = false">Hủy bỏ</button>
+        <LoadingButton Class="tf-btn tf-btn-danger"
+                       IsLoading="@_isDeleting"
+                       LoadingText="Đang xóa..."
+                       OnClick="ExecutePermanentDelete">
+            Xác nhận xóa
+        </LoadingButton>
+    </FooterContent>
+</TfModal>
 
 @code {
 
@@ -365,10 +370,16 @@
 
     private bool _showCancelModal = false;
     private bool _showPermanentDeleteModal = false;
+    private int _currentPage = 1;
+    private int _pageSize = 20;
+
+    private IEnumerable<PriceListDto> PagedList =>
+        FilteredList.Skip((_currentPage - 1) * _pageSize).Take(_pageSize);
 
     private void OnDebouncedSearchChanged(string val)
     {
         _searchTerm = val;
+        _currentPage = 1;
     }
     private string? _deleteError;
     private PriceListDto? _selectedPriceList;
@@ -417,29 +428,34 @@
     private async Task OnSearchChanged(ChangeEventArgs e)
     {
         _searchTerm = e.Value?.ToString() ?? string.Empty;
+        _currentPage = 1;
     }
 
     private async Task OnYearChanged(ChangeEventArgs e)
     {
         _filterYear = int.TryParse(e.Value?.ToString(), out var y) ? y : 0;
+        _currentPage = 1;
         await LoadData();
     }
 
     private async Task OnQuarterChanged(ChangeEventArgs e)
     {
         _filterQuarter = int.TryParse(e.Value?.ToString(), out var q) ? q : 0;
+        _currentPage = 1;
         await LoadData();
     }
 
     private async Task OnMonthChanged(ChangeEventArgs e)
     {
         _filterMonth = int.TryParse(e.Value?.ToString(), out var m) ? m : 0;
+        _currentPage = 1;
         await LoadData();
     }
 
     private async Task OnStatusChanged(ChangeEventArgs e)
     {
         _filterStatus = e.Value?.ToString() ?? string.Empty;
+        _currentPage = 1;
         await LoadData();
     }
 

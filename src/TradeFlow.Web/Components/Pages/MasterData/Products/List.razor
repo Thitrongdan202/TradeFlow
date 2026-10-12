@@ -630,45 +630,12 @@
                         @* Pagination Bar *@
                         @if (_items != null && _items.Any())
                         {
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-top: 1px solid var(--tf-border); flex-wrap: wrap; gap: 12px;">
-                                <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-                                    <div style="font-size: 12.5px; color: #64748b;">
-                                        @if (TotalFilteredCount > 0)
-                                        {
-                                            <span>Hiển thị <strong>@((_currentPage - 1) * _pageSize + 1)</strong> – <strong>@(Math.Min(_currentPage * _pageSize, TotalFilteredCount))</strong> trong tổng số <strong>@TotalFilteredCount</strong> sản phẩm</span>
-                                        }
-                                        else
-                                        {
-                                            <span>Hiển thị <strong>0</strong> trong tổng số <strong>0</strong> sản phẩm</span>
-                                        }
-                                    </div>
-                                    <div style="display: flex; align-items: center; gap: 6px;">
-                                        <select class="tf-input" style="height: 30px; font-size: 12px; padding: 0 8px; width: auto; cursor: pointer; border-radius: 6px;" value="@_pageSize" @onchange="OnPageSizeChanged">
-                                            <option value="20">20 dòng / trang</option>
-                                            <option value="50">50 dòng / trang</option>
-                                            <option value="100">100 dòng / trang</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                @if (TotalPages > 1)
-                                {
-                                    <div style="display: flex; align-items: center; gap: 6px;">
-                                        <button type="button" class="tf-btn tf-btn-sm tf-btn-secondary" disabled="@(_currentPage <= 1)" @onclick="() => SetPage(_currentPage - 1)">
-                                            ‹ Trước
-                                        </button>
-                                        @for (int p = Math.Max(1, _currentPage - 2); p <= Math.Min(TotalPages, _currentPage + 2); p++)
-                                        {
-                                            int pageNum = p;
-                                            <button type="button" class="tf-btn tf-btn-sm @(pageNum == _currentPage ? "tf-btn-primary" : "tf-btn-secondary")" @onclick="() => SetPage(pageNum)">
-                                                @pageNum
-                                            </button>
-                                        }
-                                        <button type="button" class="tf-btn tf-btn-sm tf-btn-secondary" disabled="@(_currentPage >= TotalPages)" @onclick="() => SetPage(_currentPage + 1)">
-                                            Sau ›
-                                        </button>
-                                    </div>
-                                }
-                            </div>
+                            <TfPagination CurrentPage="@_currentPage"
+                                          PageSize="@_pageSize"
+                                          TotalCount="@TotalFilteredCount"
+                                          ItemName="sản phẩm"
+                                          CurrentPageChanged="@SetPage"
+                                          PageSizeChanged="@OnNewPageSize" />
                         }
                     </TableLoadingOverlay>
                 }
@@ -875,6 +842,14 @@
     private void OnPageSizeChanged(ChangeEventArgs e)
     {
         if (int.TryParse(e.Value?.ToString(), out int newSize) && newSize > 0)
+        {
+            OnNewPageSize(newSize);
+        }
+    }
+
+    private void OnNewPageSize(int newSize)
+    {
+        if (newSize > 0)
         {
             _pageSize = newSize;
             int maxPages = TotalPages;

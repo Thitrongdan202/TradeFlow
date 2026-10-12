@@ -76,49 +76,43 @@
                         {
                             <tr>
                                 <td class="tf-font-medium">
-                                    @entry.Role.Name
+                                    <span class="tw-font-medium tw-text-slate-900">@entry.Role.Name</span>
                                     @if (entry.Role.IsSystem)
                                     {
-                                        <span class="tf-badge tf-badge-primary" style="margin-left:6px;font-size:10px;">Hệ thống</span>
+                                        <TfBadge Variant="primary" Text="Hệ thống" Class="tw-ml-1.5 tw-text-[10px]" />
                                     }
                                 </td>
-                                <td style="color:var(--tf-text-muted);">@entry.Role.Description</td>
+                                <td class="tw-text-slate-600">@entry.Role.Description</td>
                                 <td style="text-align:center;">
                                     @if (entry.UserCount > 0)
                                     {
-                                        <a href="#" style="color:var(--tf-primary);">@entry.UserCount người dùng</a>
+                                        <span class="tw-text-indigo-600 tw-font-medium">@entry.UserCount người dùng</span>
                                     }
                                     else
                                     {
-                                        <span style="color:var(--tf-text-muted);">—</span>
+                                        <span class="tw-text-slate-400">—</span>
                                     }
                                 </td>
                                 <td style="text-align:center;">
                                     @if (entry.Role.IsSystem)
                                     {
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tf-primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="tw-text-indigo-600 tw-inline-block" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                             <polyline points="20 6 9 17 4 12"/>
                                         </svg>
                                     }
                                 </td>
                                 <td style="text-align:center;">
-                                    @if (entry.Role.IsActive)
-                                    {
-                                        <span class="tf-badge tf-badge-success">Hoạt động</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="tf-badge tf-badge-gray">Vô hiệu hóa</span>
-                                    }
+                                    <TfBadge Variant="@(entry.Role.IsActive ? "success" : "gray")"
+                                             Dot="true"
+                                             Text="@(entry.Role.IsActive ? "Hoạt động" : "Vô hiệu hóa")" />
                                 </td>
                                 <td style="text-align:right;">
-                                    <div style="display:flex;gap:4px;justify-content:flex-end;">
+                                    <div class="tw-inline-flex tw-gap-1 tw-justify-end">
                                         <AuthorizeView Policy="Permission:Roles:Edit">
                                             <a href="/cai-dat/vai-tro/sua/@entry.Role.Id" class="tf-btn tf-btn-ghost tf-btn-sm">Sửa</a>
                                             @if (!entry.Role.IsSystem && entry.UserCount == 0)
                                             {
-                                                <button class="tf-btn tf-btn-ghost tf-btn-sm"
-                                                        style="color:var(--tf-error);"
+                                                <button class="tf-btn tf-btn-ghost tf-btn-sm tw-text-red-600 hover:tw-bg-red-50"
                                                         disabled="@(_deletingRoleId == entry.Role.Id)"
                                                         @onclick="() => DeleteRole(entry.Role)"
                                                         title="Xóa vai trò (chỉ khi không có người dùng)">
@@ -135,7 +129,7 @@
                                             }
                                             else if (!entry.Role.IsSystem && entry.UserCount > 0)
                                             {
-                                                <span style="font-size:12px;color:var(--tf-text-muted);padding:0 8px;align-self:center;"
+                                                <span class="tw-text-xs tw-text-slate-400 tw-px-2 tw-self-center"
                                                       title="Không thể xóa khi còn người dùng">
                                                     Không thể xóa
                                                 </span>

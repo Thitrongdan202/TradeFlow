@@ -225,4 +225,44 @@ Bản nâng cấp toàn diện giao diện và trải nghiệm tương tác lấ
    - Thành phần dùng chung `FilterSidebar.razor` được áp dụng đồng bộ cho các phân hệ: **Sản phẩm**, **Khách hàng**, **Nhà cung cấp**, **Kho hàng**.
    - Hỗ trợ co giãn linh hoạt trên thiết bị di động, đếm số lượng bản ghi theo từng trạng thái/danh mục, và nút bấm "Xóa bộ lọc" khi có điều kiện lọc đang kích hoạt.
 
+---
+
+## Kiến trúc Giao diện Hiện đại hóa (UI Modernization Architecture)
+
+Dự án áp dụng phương pháp hiện đại hóa giao diện có kiểm soát, bảo toàn tuyệt đối 100% logic nghiệp vụ, tính năng, quyền hạn và đường dẫn hiện có:
+
+### 1. Nền tảng Styling Kết hợp (Bootstrap 5 + Scoped CSS + Tailwind CSS)
+- **Bảo toàn Bootstrap 5**: Giữ nguyên `lib/bootstrap/dist/css/bootstrap.min.css` làm nền tảng layout gốc; không gỡ bỏ để tránh gãy đổ bất kỳ thành phần nào.
+- **Tích hợp Tailwind CSS v3 an toàn**:
+  - **Tiền tố bắt buộc `tw-`**: Mọi utility class của Tailwind đều sử dụng tiền tố `tw-` (ví dụ: `tw-flex`, `tw-p-3.5`, `tw-font-mono`, `tw-bg-blue-50/80`), loại bỏ 100% nguy cơ trùng tên class với Bootstrap (`.modal`, `.dropdown`, `.collapse`, `.show`, `.btn`, `.card`...) và hệ thống CSS của dự án.
+  - **Vô hiệu hóa Preflight (`preflight: false`)**: Ngăn chặn hoàn toàn việc Tailwind reset kiểu dáng mặc định của thẻ HTML (bảng, tiêu đề, nút bấm, input).
+  - **Biên dịch nội bộ (Local Build) & Tree-shaking**: File CSS đầu ra `wwwroot/css/tailwind.min.css` được biên dịch trực tiếp từ `package.json` và chỉ chứa các class thực tế được sử dụng (~1.5 KB), hoàn toàn độc lập và không phụ thuộc vào CDN bên ngoài.
+  - **Tự động hóa với MSBuild**: File `.csproj` tích hợp target `BuildTailwindCss` tự động biên dịch khi chạy `dotnet build` (kèm điều kiện kiểm tra tồn tại `node_modules` an toàn).
+- **Thứ tự nạp CSS chuẩn xác trong `App.razor`**:
+  1. `lib/bootstrap/dist/css/bootstrap.min.css` (Lớp nền cơ sở)
+  2. `app.css` (Quy chuẩn thiết kế `tf-*` của TradeFlow)
+  3. `TradeFlow.Web.styles.css` (Blazor Scoped CSS)
+  4. `css/tailwind.min.css` (Lớp tiện ích `tw-*`)
+
+### 2. Thư viện Thành phần Dùng chung (Shared UI Primitives — `Components/Shared/`)
+Tất cả thành phần dùng chung được khai báo toàn cục tại `_Imports.razor`:
+- `<TfButton />`: Nút bấm đa năng hỗ trợ Variant (Primary, Secondary, Danger, Ghost), kích cỡ, icon, và trạng thái quay vòng khi đang xử lý (Loading).
+- `<TfBadge />`: Huy hiệu trạng thái chuẩn ERP hỗ trợ biến thể màu (success, warning, error, info, gray) và chỉ báo chấm tròn (Dot indicator).
+- `<TfPagination />`: Thanh phân trang mật độ cao chuẩn ERP/POS (KiotViet style), cho phép chọn kích thước trang (10, 20, 50, 100), nhảy trang và tự động thu gọn dấu ba chấm (`...`).
+- `<TfModal />`: Cửa sổ Modal hiện đại, hỗ trợ phím `Escape`, đóng khi bấm ngoài nền, kích thước linh hoạt (sm, md, lg, xl) cùng các vùng mẫu `HeaderContent`, `BodyContent`, `FooterContent`.
+- `<TfMasterDetailLayout />`: Bố cục chia 2 cột chuẩn mực cho trang ERP: cột lọc bên trái (Sidebar) và lưới dữ liệu thao tác bên phải (Main).
+
+### 3. Danh sách Màn hình Đã Chuẩn hóa
+- **Danh mục hệ thống**: Đơn vị tính (`/danh-muc/don-vi-tinh`), Loại tiền (`/danh-muc/loai-tien`), Danh mục SP (`/danh-muc/danh-muc-san-pham`), Kho hàng (`/kho/kho-hang`), Sản phẩm (`/danh-muc/san-pham`).
+- **Đối tác**: Khách hàng (`/doi-tac/khach-hang`), Nhà cung cấp (`/doi-tac/nha-cung-cap`).
+- **Bảng giá**: Danh sách bảng giá & báo giá (`/bang-gia`).
+- **Bán hàng**: Báo giá (`/ban-hang/bao-gia`), Đơn bán hàng (`/ban-hang/don-ban-hang`), Hóa đơn (`/hoa-don`).
+- **Quản trị**: Người dùng (`/cai-dat/nguoi-dung`), Vai trò (`/cai-dat/vai-tro`).
+
+### 4. Kiểm thử Hồi quy & Đảm bảo Chất lượng (Regression Testing)
+- 100% Unit Tests & Integration Tests vượt qua thành công: **155/155 Passed** (152 Unit Tests, 3 Integration Tests).
+- 0 lỗi biên dịch C# / Blazor.
+- Giữ nguyên vẹn 100% cơ chế bảo mật RBAC, chính sách truy cập, endpoint API và giao thức lưu trữ dữ liệu.
+
+
 

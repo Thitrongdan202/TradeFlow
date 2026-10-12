@@ -1,0 +1,85 @@
+@namespace TradeFlow.Web.Components.Shared.Buttons
+
+<button type="@Type"
+        class="@ComputedClass"
+        disabled="@(Disabled || IsLoading)"
+        @onclick="HandleClick"
+        @attributes="AdditionalAttributes">
+    @if (IsLoading)
+    {
+        <span class="tf-spinner tf-spinner-sm @(Variant == "primary" || Variant == "danger" || Variant == "success" ? "tf-spinner-white" : "")" aria-hidden="true"></span>
+        <span class="tf-btn-loading-content">
+            @if (ChildContent != null)
+            {
+                @ChildContent
+            }
+            else
+            {
+                <span>Đang xử lý...</span>
+            }
+        </span>
+    }
+    else
+    {
+        @if (Icon != null)
+        {
+            <span class="tf-btn-icon-wrapper" aria-hidden="true">@Icon</span>
+        }
+        @ChildContent
+    }
+</button>
+
+@code {
+    [Parameter] public string Type { get; set; } = "button";
+    [Parameter] public string Variant { get; set; } = "primary"; // primary, secondary, ghost, danger, success
+    [Parameter] public string Size { get; set; } = "md";       // sm, md, lg, xl
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public RenderFragment? Icon { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ComputedClass
+    {
+        get
+        {
+            var classes = new List<string> { "tf-btn" };
+
+            var variantClean = Variant?.ToLowerInvariant().Trim() switch
+            {
+                "secondary" => "tf-btn-secondary",
+                "ghost" => "tf-btn-ghost",
+                "danger" => "tf-btn-danger",
+                "success" => "tf-btn-success",
+                _ => "tf-btn-primary"
+            };
+            classes.Add(variantClean);
+
+            var sizeClean = Size?.ToLowerInvariant().Trim() switch
+            {
+                "sm" => "tf-btn-sm",
+                "lg" => "tf-btn-lg",
+                "xl" => "tf-btn-xl",
+                _ => ""
+            };
+            if (!string.IsNullOrEmpty(sizeClean)) classes.Add(sizeClean);
+
+            if (IsLoading) classes.Add("is-loading");
+
+            if (!string.IsNullOrWhiteSpace(Class)) classes.Add(Class);
+
+            return string.Join(" ", classes);
+        }
+    }
+
+    private async Task HandleClick(MouseEventArgs e)
+    {
+        if (Disabled || IsLoading) return;
+        if (OnClick.HasDelegate)
+        {
+            await OnClick.InvokeAsync(e);
+        }
+    }
+}

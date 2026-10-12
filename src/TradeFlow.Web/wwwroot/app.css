@@ -1039,7 +1039,8 @@ h1:focus { outline: none; }
   color: var(--tf-error);
 }
 
-.tf-input {
+.tf-input,
+.tf-form-control {
   height: 40px;
   padding: 0 var(--tf-space-3);
   border: 1px solid var(--tf-gray-300);
@@ -1053,24 +1054,29 @@ h1:focus { outline: none; }
   width: 100%;
 }
 
-.tf-input::placeholder { color: var(--tf-gray-400); }
+.tf-input::placeholder,
+.tf-form-control::placeholder { color: var(--tf-gray-400); }
 
-.tf-input:focus {
+.tf-input:focus,
+.tf-form-control:focus {
   border-color: var(--tf-primary);
   box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.1);
 }
 
-.tf-input:disabled {
+.tf-input:disabled,
+.tf-form-control:disabled {
   background-color: var(--tf-gray-50);
   color: var(--tf-gray-400);
   cursor: not-allowed;
 }
 
-.tf-input.tf-input-error {
+.tf-input.tf-input-error,
+.tf-form-control.tf-input-error {
   border-color: var(--tf-error);
 }
 
-.tf-input.tf-input-error:focus {
+.tf-input.tf-input-error:focus,
+.tf-form-control.tf-input-error:focus {
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
 }
 
@@ -1354,6 +1360,59 @@ h1:focus { outline: none; }
 .tf-table-compact th,
 .tf-table-compact td {
   padding: var(--tf-space-2) var(--tf-space-3);
+}
+
+/* ============================================================
+   PAGINATION
+   ============================================================ */
+.tf-pagination-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: #ffffff;
+  border-top: 1px solid var(--tf-border);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tf-pagination-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--tf-text-secondary);
+}
+
+.tf-pagination-select {
+  height: 32px !important;
+  font-size: 12px !important;
+  padding: 0 8px !important;
+  width: auto !important;
+  cursor: pointer;
+  border-radius: var(--tf-radius-sm) !important;
+}
+
+.tf-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.tf-pagination-btn {
+  min-width: 32px;
+  height: 32px !important;
+  padding: 0 8px !important;
+  font-size: 12px !important;
+  font-weight: 500;
+  border-radius: var(--tf-radius-sm) !important;
+}
+
+.tf-pagination-ellipsis {
+  padding: 0 4px;
+  color: var(--tf-text-muted);
+  user-select: none;
 }
 
 /* ============================================================
@@ -2060,6 +2119,37 @@ h1:focus { outline: none; }
 }
 .tf-nav-chevron-btn:hover {
     background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================================
+   MASTER-DETAIL & TWO-COLUMN ERP LAYOUT
+   ============================================================ */
+.tf-master-detail-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.tf-master-detail-sidebar {
+  width: var(--tf-master-detail-sidebar-width, 260px);
+  flex-shrink: 0;
+}
+
+.tf-master-detail-main {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 1024px) {
+  .tf-master-detail-layout {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .tf-master-detail-sidebar {
+    width: 100%;
+  }
 }
 
 /* ============================================================

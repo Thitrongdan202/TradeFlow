@@ -1,0 +1,48 @@
+@namespace TradeFlow.Web.Components.Shared.Display
+
+<span class="@ComputedClass" @attributes="AdditionalAttributes">
+    @if (Dot)
+    {
+        <span class="tf-badge-dot" aria-hidden="true" style="width: 6px; height: 6px; border-radius: 50%; background-color: currentColor; display: inline-block;"></span>
+    }
+    @if (!string.IsNullOrEmpty(Text))
+    {
+        @Text
+    }
+    else
+    {
+        @ChildContent
+    }
+</span>
+
+@code {
+    [Parameter] public string Variant { get; set; } = "gray"; // primary, success, warning, error, info, gray
+    [Parameter] public bool Dot { get; set; }
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ComputedClass
+    {
+        get
+        {
+            var classes = new List<string> { "tf-badge" };
+
+            var variantClean = Variant?.ToLowerInvariant().Trim() switch
+            {
+                "primary" => "tf-badge-primary",
+                "success" => "tf-badge-success",
+                "warning" => "tf-badge-warning",
+                "error" or "danger" => "tf-badge-error",
+                "info" => "tf-badge-info",
+                _ => "tf-badge-gray"
+            };
+            classes.Add(variantClean);
+
+            if (!string.IsNullOrWhiteSpace(Class)) classes.Add(Class);
+
+            return string.Join(" ", classes);
+        }
+    }
+}

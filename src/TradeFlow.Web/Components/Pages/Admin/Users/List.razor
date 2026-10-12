@@ -91,33 +91,33 @@
                                 {
                                     foreach (var role in entry.Roles)
                                     {
-                                        <span class="tf-badge tf-badge-primary" style="margin-right:4px;margin-bottom:2px;">@role</span>
+                                        <TfBadge Variant="primary" Text="@role" Class="tw-mr-1 tw-mb-0.5" />
                                     }
                                 }
                                 else
                                 {
-                                    <span style="color:var(--tf-text-muted);font-size:13px;">—</span>
+                                    <span class="tw-text-slate-400 tw-text-sm">—</span>
                                 }
                             </td>
                             <td style="text-align:center;">
                                 @if (entry.User.Status == UserStatus.Active)
                                 {
-                                    <span class="tf-badge tf-badge-success">Hoạt động</span>
+                                    <TfBadge Variant="success" Dot="true" Text="Hoạt động" />
                                 }
                                 else if (entry.User.Status == UserStatus.Locked)
                                 {
-                                    <span class="tf-badge tf-badge-error">Bị khóa</span>
+                                    <TfBadge Variant="danger" Dot="true" Text="Bị khóa" />
                                 }
                                 else
                                 {
-                                    <span class="tf-badge tf-badge-gray">Vô hiệu hóa</span>
+                                    <TfBadge Variant="gray" Dot="true" Text="Vô hiệu hóa" />
                                 }
                             </td>
-                            <td style="color:var(--tf-text-muted);font-size:13px;">
+                            <td class="tw-text-slate-500 tw-text-xs">
                                 @(entry.User.LastLoginAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Chưa đăng nhập")
                             </td>
                             <td style="text-align:right;">
-                                <div style="display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap;">
+                                <div class="tw-inline-flex tw-gap-1 tw-justify-end tw-flex-wrap">
                                     <AuthorizeView Policy="Permission:Users:Edit">
                                         <a href="/cai-dat/nguoi-dung/sua/@entry.User.Id"
                                            class="tf-btn tf-btn-ghost tf-btn-sm" title="Sửa">
@@ -129,8 +129,7 @@
                                         </a>
                                         @if (entry.User.Status == UserStatus.Locked || entry.User.Status == UserStatus.Disabled)
                                         {
-                                            <button class="tf-btn tf-btn-ghost tf-btn-sm"
-                                                    style="color:var(--tf-success);"
+                                            <button class="tf-btn tf-btn-ghost tf-btn-sm tw-text-emerald-600 hover:tw-bg-emerald-50"
                                                     @onclick="() => UnlockUser(entry.User)"
                                                     title="Mở khóa tài khoản">
                                                 Mở khóa
@@ -138,31 +137,27 @@
                                         }
                                         else if (_currentUsername != entry.User.UserName)
                                         {
-                                            <button class="tf-btn tf-btn-ghost tf-btn-sm"
-                                                    style="color:var(--tf-warning);"
+                                            <button class="tf-btn tf-btn-ghost tf-btn-sm tw-text-amber-600 hover:tw-bg-amber-50"
                                                     @onclick="() => LockUser(entry.User)"
                                                     title="Khóa tài khoản">
                                                 Khóa
                                             </button>
                                         }
-                                        <button class="tf-btn tf-btn-ghost tf-btn-sm"
-                                                style="color:var(--tf-error);"
+                                        <button class="tf-btn tf-btn-ghost tf-btn-sm tw-text-red-600 hover:tw-bg-red-50"
                                                 @onclick="() => ResetPassword(entry.User)"
                                                 title="Đặt lại mật khẩu">
                                             Đặt lại MK
                                         </button>
                                         @if (_currentUsername != entry.User.UserName)
                                         {
-                                            <button class="tf-btn tf-btn-ghost tf-btn-sm"
-                                                    style="color:var(--tf-error);"
+                                            <button class="tf-btn tf-btn-ghost tf-btn-sm tw-text-red-600 hover:tw-bg-red-50"
                                                     @onclick="() => RevokeSessions(entry.User)"
                                                     title="Thu hồi tất cả phiên đăng nhập">
                                                 Thu hồi phiên
                                             </button>
                                             @if (entry.User.Status != UserStatus.Disabled)
                                             {
-                                                <button class="tf-btn tf-btn-ghost tf-btn-sm"
-                                                        style="color:#dc2626;font-weight:600;"
+                                                <button class="tf-btn tf-btn-ghost tf-btn-sm tw-text-rose-700 hover:tw-bg-rose-50 tw-font-semibold"
                                                         @onclick="() => PromptOffboard(entry.User)"
                                                         title="Quy trình thôi việc nhân viên">
                                                     Thôi việc
@@ -181,18 +176,16 @@
     </div>
 </div>
 
-@if (_showOffboardModal && _offboardUser != null)
-{
-    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
-        <div style="background:white; padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                <h3 style="margin:0; font-size:18px; color:#dc2626;">⚠️ Xác nhận quy trình thôi việc</h3>
-                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="CancelOffboard">✕</button>
-            </div>
-
-            <div class="tf-alert tf-alert-warning tf-mb-4" style="font-size:13px; line-height:1.5;">
+<TfModal IsOpen="@(_showOffboardModal && _offboardUser != null)"
+         Title="⚠️ Xác nhận quy trình thôi việc"
+         Size="md"
+         OnClose="CancelOffboard">
+    <BodyContent>
+        @if (_offboardUser != null)
+        {
+            <div class="tf-alert tf-alert-warning tw-mb-4 tw-text-xs tw-leading-relaxed">
                 <strong>Lưu ý quan trọng:</strong> Quy trình thôi việc sẽ thực hiện:
-                <ul style="margin:6px 0 0 18px; padding:0;">
+                <ul class="tw-m-0 tw-pl-4 tw-mt-1">
                     <li>Vô hiệu hóa tài khoản đăng nhập của nhân viên.</li>
                     <li>Thu hồi tức thì mọi phiên làm việc hiện tại (Security Stamp).</li>
                     <li>Thu hồi toàn bộ chứng thư ký số đang hoạt động của nhân viên.</li>
@@ -201,31 +194,30 @@
                 </ul>
             </div>
 
-            <div style="margin-bottom:16px; font-size:14px;">
-                <div>Nhân viên: <strong>@_offboardUser.FullName</strong></div>
-                <div>Tài khoản: <strong>@_offboardUser.UserName</strong> (@_offboardUser.Email)</div>
+            <div class="tw-mb-4 tw-text-sm tw-text-slate-700">
+                <div>Nhân viên: <strong class="tw-text-slate-900">@_offboardUser.FullName</strong></div>
+                <div>Tài khoản: <strong class="tw-text-indigo-700">@_offboardUser.UserName</strong> (@_offboardUser.Email)</div>
             </div>
 
-            <div class="tf-form-group tf-mb-4">
-                <label class="tf-form-label" style="font-weight:600;">Lý do thôi việc <span style="color:var(--tf-error);">*</span></label>
+            <div class="tf-form-group tw-mb-2">
+                <label class="tf-form-label tw-font-semibold">Lý do thôi việc <span class="tw-text-red-500">*</span></label>
                 <textarea class="tf-form-control" rows="3" placeholder="Nhập lý do thôi việc (nghỉ việc, chấm dứt hợp đồng, chuyển công tác...)" @bind="_offboardReason"></textarea>
                 @if (_offboardError != null)
                 {
-                    <div style="color:var(--tf-error); font-size:12px; margin-top:4px;">@_offboardError</div>
+                    <div class="tw-text-red-600 tw-text-xs tw-mt-1">@_offboardError</div>
                 }
             </div>
-
-            <div style="display:flex; justify-content:flex-end; gap:8px;">
-                <button type="button" class="tf-btn tf-btn-secondary" @onclick="CancelOffboard" disabled="@_isOffboarding">Hủy</button>
-                <LoadingButton Variant="danger"
-                               IsLoading="@_isOffboarding"
-                               LoadingText="Đang xử lý..."
-                               Text="Xác nhận thôi việc"
-                               OnClick="ExecuteOffboard" />
-            </div>
-        </div>
-    </div>
-}
+        }
+    </BodyContent>
+    <FooterContent>
+        <button type="button" class="tf-btn tf-btn-secondary" @onclick="CancelOffboard" disabled="@_isOffboarding">Hủy</button>
+        <LoadingButton Variant="danger"
+                       IsLoading="@_isOffboarding"
+                       LoadingText="Đang xử lý..."
+                       Text="Xác nhận thôi việc"
+                       OnClick="ExecuteOffboard" />
+    </FooterContent>
+</TfModal>
 
 @code {
     private record UserEntry(ApplicationUser User, IList<string> Roles);

@@ -92,3 +92,5 @@ exports/
 *.csv
 .user_uploaded/
 .tempmediaStorage/
+node_modules/
+

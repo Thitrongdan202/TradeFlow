@@ -60,47 +60,67 @@ else
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var inv in _invoices)
+                    @foreach (var inv in PagedInvoices)
                     {
                         <tr>
-                            <td><strong>@inv.InvoiceNumber</strong></td>
-                            <td>@inv.InvoiceDate.ToString("dd/MM/yyyy")</td>
                             <td>
-                                <div><strong>@inv.CustomerName</strong></div>
+                                <span class="tw-font-mono tw-font-semibold tw-text-indigo-700 tw-bg-indigo-50/70 tw-px-2 tw-py-0.5 tw-rounded tw-text-xs">@inv.InvoiceNumber</span>
                             </td>
-                            <td><strong style="color:var(--tf-color-danger);">@inv.GrandTotal.ToString("N0")</strong></td>
+                            <td class="tw-text-slate-600">@inv.InvoiceDate.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                <div class="tw-font-medium tw-text-slate-900">@inv.CustomerName</div>
+                            </td>
+                            <td><strong class="tw-text-rose-600 tw-font-semibold">@inv.GrandTotal.ToString("N0") đ</strong></td>
                             <td>
                                 @if (inv.Status == InvoiceStatus.Draft)
                                 {
-                                    <span class="tf-badge tf-badge-secondary">Nháp</span>
+                                    <TfBadge Variant="gray" Dot="true" Text="Nháp" />
                                 }
                                 else if (inv.Status == InvoiceStatus.Issued)
                                 {
-                                    <span class="tf-badge tf-badge-success">Đã phát hành</span>
+                                    <TfBadge Variant="success" Dot="true" Text="Đã phát hành" />
                                 }
                                 else
                                 {
-                                    <span class="tf-badge tf-badge-danger">Đã hủy</span>
+                                    <TfBadge Variant="danger" Dot="true" Text="Đã hủy" />
                                 }
                             </td>
                             <td class="tf-text-right">
-                                @if (inv.Status == InvoiceStatus.Draft)
-                                {
-                                    <a href="/hoa-don/sua/@inv.Id" class="tf-btn tf-btn-sm tf-btn-outline-secondary" style="margin-right:4px;">Sửa</a>
-                                }
-                                <a href="/hoa-don/chi-tiet/@inv.Id" class="tf-btn tf-btn-sm tf-btn-outline-primary">Chi tiết</a>
+                                <div class="tw-inline-flex tw-gap-1">
+                                    @if (inv.Status == InvoiceStatus.Draft)
+                                    {
+                                        <a href="/hoa-don/sua/@inv.Id" class="tf-btn tf-btn-ghost tf-btn-sm">Sửa</a>
+                                    }
+                                    <a href="/hoa-don/chi-tiet/@inv.Id" class="tf-btn tf-btn-ghost tf-btn-sm">Chi tiết</a>
+                                </div>
                             </td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
+
+        @if (_invoices.Any())
+        {
+            <TfPagination CurrentPage="@_currentPage"
+                          PageSize="@_pageSize"
+                          TotalCount="@_invoices.Count"
+                          ItemName="hóa đơn"
+                          CurrentPageChanged="@(p => _currentPage = p)"
+                          PageSizeChanged="@(s => { _pageSize = s; _currentPage = 1; })" />
+        }
         </TableLoadingOverlay>
     </div>
 }
+
 @code {
     private List<InvoiceDto> _invoices = new();
     private bool _isLoading = true;
+    private int _currentPage = 1;
+    private int _pageSize = 20;
+
+    private IEnumerable<InvoiceDto> PagedInvoices =>
+        _invoices.Skip((_currentPage - 1) * _pageSize).Take(_pageSize);
 
     protected override async Task OnInitializedAsync()
     {

@@ -1,0 +1,110 @@
+@namespace TradeFlow.Web.Components.Shared.Forms
+
+@if (IsOpen)
+{
+    <div class="tf-modal-overlay"
+         @onclick="HandleBackdropClick"
+         @onkeydown="HandleKeyDown"
+         tabindex="-1"
+         role="presentation">
+        <div class="@ComputedModalClass"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="@(string.IsNullOrEmpty(Title) ? null : "tf-modal-title-id")"
+             @onclick:stopPropagation="true">
+            <div class="tf-modal-header">
+                @if (HeaderContent != null)
+                {
+                    @HeaderContent
+                }
+                else
+                {
+                    <h3 id="tf-modal-title-id" class="tf-modal-title">@Title</h3>
+                    <button type="button"
+                            class="tf-btn-icon tf-btn-ghost tf-btn-sm"
+                            @onclick="CloseAsync"
+                            aria-label="Đóng"
+                            title="Đóng">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                }
+            </div>
+
+            <div class="tf-modal-body">
+                @if (BodyContent != null)
+                {
+                    @BodyContent
+                }
+                else
+                {
+                    @ChildContent
+                }
+            </div>
+
+            @if (FooterContent != null)
+            {
+                <div class="tf-modal-footer">
+                    @FooterContent
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string Size { get; set; } = "md"; // sm, md, lg
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
+    [Parameter] public RenderFragment? BodyContent { get; set; }
+    [Parameter] public RenderFragment? FooterContent { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public bool CloseOnBackdropClick { get; set; } = true;
+    [Parameter] public bool CloseOnEscape { get; set; } = true;
+    [Parameter] public string? Class { get; set; }
+
+    private string ComputedModalClass
+    {
+        get
+        {
+            var classes = new List<string> { "tf-modal" };
+            var sizeClass = Size?.ToLowerInvariant().Trim() switch
+            {
+                "sm" => "tf-modal-sm",
+                "lg" => "tf-modal-lg",
+                _ => "tf-modal-md"
+            };
+            classes.Add(sizeClass);
+            if (!string.IsNullOrWhiteSpace(Class)) classes.Add(Class);
+            return string.Join(" ", classes);
+        }
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        if (CloseOnBackdropClick)
+        {
+            await CloseAsync();
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (CloseOnEscape && e.Key == "Escape")
+        {
+            await CloseAsync();
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        if (OnClose.HasDelegate)
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+}

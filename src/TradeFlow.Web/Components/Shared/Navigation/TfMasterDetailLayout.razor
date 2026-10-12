@@ -1,0 +1,32 @@
+@namespace TradeFlow.Web.Components.Shared.Navigation
+
+<div class="tf-master-detail-layout @Class"
+     style="@($"--tf-master-detail-sidebar-width: {SidebarWidth};")"
+     @attributes="AdditionalAttributes">
+    @if (SidebarContent != null)
+    {
+        <aside class="tf-master-detail-sidebar" aria-label="Bộ lọc & Danh mục">
+            @SidebarContent
+        </aside>
+    }
+
+    <main class="tf-master-detail-main">
+        @if (MainContent != null)
+        {
+            @MainContent
+        }
+        else
+        {
+            @ChildContent
+        }
+    </main>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? SidebarContent { get; set; }
+    [Parameter] public RenderFragment? MainContent { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string SidebarWidth { get; set; } = "260px";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

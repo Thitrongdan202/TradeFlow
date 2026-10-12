@@ -7,7 +7,7 @@
 
 @if (ShouldRenderOverlay)
 {
-    <div class="tf-loading-overlay @(IsActive ? "is-active" : "") @(IsPreview ? "is-preview-mode" : "") @(_isFadingOut ? "is-fading-out" : "")"
+    <div class="tf-loading-overlay @(IsActive || _isFadingOut ? "is-active" : "") @(IsPreview ? "is-preview-mode" : "") @(_isFadingOut ? "is-fading-out" : "")"
          role="status"
          aria-busy="@(IsActive ? "true" : "false")"
          aria-live="polite"
@@ -99,11 +99,22 @@
 
     private string CurrentLoadingText => IsPreview ? "Đang tải..." : LoadingService.LoadingText;
 
-    protected override void OnInitialized()
+    private bool _brandingLoaded;
+
+    protected override async Task OnInitializedAsync()
     {
         if (!IsPreview)
         {
             LoadingService.OnChange += HandleLoadingChanged;
+            try
+            {
+                _liveBranding = await BrandingService.GetBrandingAsync();
+                _brandingLoaded = true;
+            }
+            catch
+            {
+                // Fallback branding already active
+            }
         }
     }
 
@@ -113,14 +124,18 @@
 
         bool nowActive = LoadingService.IsLoading;
 
-        if (nowActive && string.IsNullOrEmpty(_liveBranding.LogoPath))
+        if (nowActive && !_brandingLoaded)
         {
             _ = Task.Run(async () =>
             {
                 try
                 {
                     _liveBranding = await BrandingService.GetBrandingAsync();
-                    await InvokeAsync(StateHasChanged);
+                    _brandingLoaded = true;
+                    if (!_disposed)
+                    {
+                        await InvokeAsync(StateHasChanged);
+                    }
                 }
                 catch
                 {
@@ -131,14 +146,14 @@
 
         if (_wasActive && !nowActive)
         {
-            // Transition from active -> inactive: start short 200ms fade-out
+            // Transition from active -> inactive: start short 240ms fade-out
             _isFadingOut = true;
             _wasActive = false;
             InvokeAsync(StateHasChanged);
 
             _ = Task.Run(async () =>
             {
-                await Task.Delay(200);
+                await Task.Delay(240);
                 if (!_disposed)
                 {
                     _isFadingOut = false;

@@ -134,10 +134,10 @@
 
         @@keyframes tf-spin-ring {
             0% {
-                transform: rotate(0deg) translate3d(0, 0, 0);
+                transform: rotate(0deg);
             }
             100% {
-                transform: rotate(360deg) translate3d(0, 0, 0);
+                transform: rotate(360deg);
             }
         }
 
@@ -246,21 +246,9 @@
 
             window.tfDismissStartupLoader = dismissStartupLoader;
 
-            // Guaranteed safety fallback: Maximum 2.5 seconds timeout
-            setTimeout(dismissStartupLoader, 2500);
-
-            // Fast startup: dismiss as soon as the application is ready
-            if (document.readyState === 'complete') {
-                setTimeout(dismissStartupLoader, 250);
-            } else {
-                window.addEventListener('load', function () {
-                    setTimeout(dismissStartupLoader, 250);
-                });
-            }
-
-            document.addEventListener('DOMContentLoaded', function () {
-                setTimeout(dismissStartupLoader, 350);
-            });
+            // Primary dismissal is invoked by MainLayout.razor OnAfterRenderAsync (firstRender = true)
+            // Safety fallback: dismiss after 3.5s if Blazor interactive circuit fails to mount
+            setTimeout(dismissStartupLoader, 3500);
         })();
 
         window.tradeflow = {

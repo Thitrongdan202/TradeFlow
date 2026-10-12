@@ -134,6 +134,13 @@
         }
     }
 
+    [JSInvokable]
+    public async Task ToggleSidebarFromKeyboard()
+    {
+        await HandleToggleClick();
+        StateHasChanged();
+    }
+
     private async Task<bool> CheckIsMobileAsync()
     {
         try

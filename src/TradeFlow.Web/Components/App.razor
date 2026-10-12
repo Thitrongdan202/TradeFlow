@@ -279,6 +279,9 @@
                 document.addEventListener('keydown', function (e) {
                     if (e.key === 'Escape' || e.keyCode === 27) {
                         dotNetHelper.invokeMethodAsync('OnEscapePressed');
+                    } else if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+                        e.preventDefault();
+                        dotNetHelper.invokeMethodAsync('ToggleSidebarFromKeyboard');
                     }
                 });
             }

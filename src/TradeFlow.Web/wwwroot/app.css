@@ -578,14 +578,29 @@ h1:focus { outline: none; }
    FLY-OUT SUBMENU (Desktop Hover Interaction & Positioning)
    ============================================================ */
 @media (min-width: 1024px) {
-  .tf-sidebar,
-  .tf-sidebar-inner,
-  .tf-nav-scroll {
+  /* Expanded sidebar: vertical scroll, no flyouts, inline accordion active */
+  .tf-sidebar:not(.is-collapsed) .tf-nav-scroll {
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .tf-sidebar:not(.is-collapsed) .tf-nav-flyout {
+    display: none !important;
+  }
+
+  /* Collapsed sidebar: overflow visible for flyouts, inline accordion hidden */
+  .tf-sidebar.is-collapsed,
+  .tf-sidebar.is-collapsed .tf-sidebar-inner,
+  .tf-sidebar.is-collapsed .tf-nav-scroll {
     overflow: visible !important;
   }
 
-  .tf-nav-item {
+  .tf-sidebar.is-collapsed .tf-nav-item {
     position: relative;
+  }
+
+  .tf-sidebar.is-collapsed .tf-nav-sub {
+    display: none !important;
   }
 
   .tf-nav-flyout {
@@ -614,8 +629,8 @@ h1:focus { outline: none; }
     background: transparent;
   }
 
-  /* Reveal flyout when hovering the parent nav item */
-  .tf-nav-item:hover > .tf-nav-flyout {
+  /* Reveal flyout when hovering the parent nav item in collapsed mode */
+  .tf-sidebar.is-collapsed .tf-nav-item:hover > .tf-nav-flyout {
     display: block;
     animation: tfFlyoutFadeIn 0.16s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
@@ -624,11 +639,6 @@ h1:focus { outline: none; }
   .tf-nav-item.align-bottom > .tf-nav-flyout {
     top: auto;
     bottom: 0;
-  }
-
-  /* Hide inline accordion on desktop so flyout remains the single elegant submenu */
-  .tf-nav-sub {
-    display: none !important;
   }
 
   @keyframes tfFlyoutFadeIn {
@@ -1888,11 +1898,13 @@ h1:focus { outline: none; }
     width: 260px !important;
   }
 
-  .tf-sidebar.is-collapsed .tf-brand-text,
+  .tf-sidebar.is-collapsed .tf-brand-text {
+    display: flex !important;
+  }
+
   .tf-sidebar.is-collapsed .tf-nav-section-label,
   .tf-sidebar.is-collapsed .tf-nav-label,
-  .tf-sidebar.is-collapsed .tf-nav-chevron-wrap,
-  .tf-sidebar.is-collapsed .tf-nav-bottom-item .tf-nav-label {
+  .tf-sidebar.is-collapsed .tf-nav-chevron-wrap {
     display: block !important;
   }
 
@@ -1900,6 +1912,10 @@ h1:focus { outline: none; }
     justify-content: flex-start;
     padding: 9px 12px;
     gap: 10px;
+  }
+
+  .tf-nav-bottom {
+    display: none !important;
   }
 
   .tf-main-wrapper {
@@ -2333,12 +2349,28 @@ h1:focus { outline: none; }
   white-space: nowrap;
 }
 
+.tf-product-table-wrapper {
+  overflow-x: auto;
+  position: relative;
+  container-type: inline-size;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
 .tf-product-expanded-box {
-  padding: 24px;
+  position: sticky;
+  left: 0;
+  width: 100%;
+  width: 100cqw;
+  max-width: 100%;
+  max-width: 100cqw;
+  box-sizing: border-box;
+  padding: 20px;
   background-color: #ffffff;
   border-top: 1px solid #e2e8f0;
   border-bottom: 2px solid #3b82f6;
   animation: tfSlideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
 }
 
 @keyframes tfSlideDown {
@@ -2350,15 +2382,45 @@ h1:focus { outline: none; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 16px;
-  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 14px;
+  margin-bottom: 18px;
   border-bottom: 1px solid #e2e8f0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .tf-product-detail-grid {
   display: grid;
-  grid-template-columns: 240px 1fr 1fr;
-  gap: 24px;
+  grid-template-columns: 220px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.tf-product-detail-grid > div {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+@container (max-width: 960px) {
+  .tf-product-detail-grid {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+  .tf-product-detail-grid > div:nth-child(3) {
+    grid-column: span 2;
+  }
+}
+
+@container (max-width: 640px) {
+  .tf-product-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tf-product-detail-grid > div:nth-child(3) {
+    grid-column: span 1;
+  }
 }
 
 .tf-product-img-box {
@@ -2473,6 +2535,15 @@ h1:focus { outline: none; }
   border-radius: 4px;
 }
 
+@media (max-width: 1280px) {
+  .tf-product-detail-grid {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+  .tf-product-detail-grid > div:nth-child(3) {
+    grid-column: span 2;
+  }
+}
+
 @media (max-width: 1024px) {
   .tf-product-layout {
     flex-direction: column;
@@ -2480,8 +2551,14 @@ h1:focus { outline: none; }
   .tf-product-sidebar {
     width: 100%;
   }
+}
+
+@media (max-width: 768px) {
   .tf-product-detail-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tf-product-detail-grid > div:nth-child(3) {
+    grid-column: span 1;
   }
 }
 

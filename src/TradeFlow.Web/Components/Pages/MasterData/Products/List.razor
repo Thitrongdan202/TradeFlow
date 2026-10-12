@@ -39,9 +39,9 @@
     </div>
 
     @* Right Toolbar Actions *@
-    <div class="tf-page-actions" style="display: flex; align-items: center; gap: 8px;">
+    <div class="tf-page-actions" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
         <AuthorizeView Policy="Permission:PriceLists:Create">
-            <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showExcelImportModal = true" style="display: inline-flex; align-items: center; gap: 6px; height: 36px;">
+            <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showExcelImportModal = true" style="display: inline-flex; align-items: center; gap: 6px; height: 36px; white-space: nowrap;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                     <polyline points="14 2 14 8 20 8"></polyline>
@@ -53,11 +53,11 @@
         </AuthorizeView>
 
         <AuthorizeView Policy="Permission:Products:Create">
-            <a href="/danh-muc/san-pham/them-moi" class="tf-btn tf-btn-primary" style="display: inline-flex; align-items: center; gap: 6px; height: 36px;">
+            <a href="/danh-muc/san-pham/them-moi" class="tf-btn tf-btn-primary" style="display: inline-flex; align-items: center; gap: 6px; height: 36px; white-space: nowrap;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                 </svg>
-                <span>+ Thêm mới</span>
+                <span>Thêm mới</span>
             </a>
         </AuthorizeView>
     </div>
@@ -160,23 +160,23 @@
                 else
                 {
                     <TableLoadingOverlay IsLoading="@_isRefreshing" LoadingText="Đang cập nhật danh sách...">
-                        <div style="overflow-x: auto;">
+                        <div class="tf-product-table-wrapper" style="overflow-x: auto; position: relative;">
                             <table class="tf-table tf-product-table" style="width: 100%; border-collapse: collapse;">
                                 <thead>
                                     <tr>
                                         <th style="width: 36px; text-align: center;">
                                             <input type="checkbox" @onchange="ToggleSelectAll" checked="@(PaginatedItems.Any() && _selectedItems.Count >= PaginatedItems.Count())" />
                                         </th>
-                                        <th style="width: 52px; text-align: center;">Ảnh</th>
-                                        <th style="min-width: 110px;">Mã hệ thống</th>
-                                        <th style="min-width: 120px;">Mã mới</th>
-                                        <th style="min-width: 100px;">Mã cũ</th>
-                                        <th style="min-width: 220px;">Tên sản phẩm</th>
-                                        <th style="min-width: 110px;">Loại hàng</th>
-                                        <th style="width: 70px;">ĐVT</th>
-                                        <th style="text-align: right; min-width: 130px;">Giá trước VAT</th>
-                                        <th style="text-align: center; width: 110px;">Trạng thái</th>
-                                        <th style="width: 50px; text-align: center;"></th>
+                                        <th style="width: 48px; text-align: center;">Ảnh</th>
+                                        <th style="min-width: 95px;">Mã hệ thống</th>
+                                        <th style="min-width: 95px;">Mã mới</th>
+                                        <th style="min-width: 85px;">Mã cũ</th>
+                                        <th style="min-width: 180px;">Tên sản phẩm</th>
+                                        <th style="min-width: 100px;">Loại hàng</th>
+                                        <th style="width: 65px;">ĐVT</th>
+                                        <th style="text-align: right; min-width: 115px;">Giá trước VAT</th>
+                                        <th style="text-align: center; width: 95px;">Trạng thái</th>
+                                        <th style="width: 44px; text-align: center;"></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -317,7 +317,7 @@
                                                         <div class="tf-product-expanded-box">
                                                             @* Expanded Header Bar *@
                                                             <div class="tf-product-expanded-header">
-                                                                <div style="display: flex; align-items: center; gap: 14px;">
+                                                                <div style="display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1;">
                                                                     <div style="width: 48px; height: 48px; border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
                                                                         @if (primaryImg != null && !string.IsNullOrEmpty(primaryImg.StorageReference))
                                                                         {
@@ -356,7 +356,7 @@
                                                                 </div>
 
                                                                 @* Expanded Header Action Buttons *@
-                                                                <div style="display: flex; align-items: center; gap: 8px;">
+                                                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex-shrink: 0;">
                                                                     @if (isEditing)
                                                                     {
                                                                         <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="CancelInlineEdit" disabled="@_isSavingInline">
@@ -444,20 +444,20 @@
                                                                             <label class="tf-label" style="font-size: 12px;">Tên sản phẩm *</label>
                                                                             <input type="text" class="tf-input" style="height: 34px; font-size: 13px;" @bind="_inlineEditModel.Name" />
                                                                         </div>
-                                                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                                                        <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px;">
                                                                             <div>
                                                                                 <label class="tf-label" style="font-size: 12px;">Mã hàng mới</label>
-                                                                                <input type="text" class="tf-input" style="height: 34px; font-size: 13px;" @bind="_inlineEditModel.NewCode" placeholder="vd: TL2138" />
+                                                                                <input type="text" class="tf-input" style="height: 34px; font-size: 13px; width: 100%; box-sizing: border-box;" @bind="_inlineEditModel.NewCode" placeholder="vd: TL2138" />
                                                                             </div>
                                                                             <div>
                                                                                 <label class="tf-label" style="font-size: 12px;">Mã hàng cũ</label>
-                                                                                <input type="text" class="tf-input" style="height: 34px; font-size: 13px;" @bind="_inlineEditModel.LegacyCode" placeholder="vd: TL2138" />
+                                                                                <input type="text" class="tf-input" style="height: 34px; font-size: 13px; width: 100%; box-sizing: border-box;" @bind="_inlineEditModel.LegacyCode" placeholder="vd: TL2138" />
                                                                             </div>
                                                                         </div>
-                                                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                                                        <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px;">
                                                                             <div>
                                                                                 <label class="tf-label" style="font-size: 12px;">Loại hàng</label>
-                                                                                <select class="tf-input" style="height: 34px; font-size: 13px;" @bind="_inlineEditModel.CategoryId">
+                                                                                <select class="tf-input" style="height: 34px; font-size: 13px; width: 100%; box-sizing: border-box;" @bind="_inlineEditModel.CategoryId">
                                                                                     <option value="">-- Chọn danh mục --</option>
                                                                                     @if (_categories != null)
                                                                                     {
@@ -470,7 +470,7 @@
                                                                             </div>
                                                                             <div>
                                                                                 <label class="tf-label" style="font-size: 12px;">Đơn vị tính</label>
-                                                                                <select class="tf-input" style="height: 34px; font-size: 13px;" @bind="_inlineEditModel.UnitId">
+                                                                                <select class="tf-input" style="height: 34px; font-size: 13px; width: 100%; box-sizing: border-box;" @bind="_inlineEditModel.UnitId">
                                                                                     @if (_units != null)
                                                                                     {
                                                                                         @foreach (var u in _units)
@@ -628,27 +628,46 @@
                         </div>
 
                         @* Pagination Bar *@
-                        @if (TotalPages > 1)
+                        @if (_items != null && _items.Any())
                         {
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-top: 1px solid var(--tf-border); flex-wrap: wrap; gap: 8px;">
-                                <div style="font-size: 12.5px; color: #64748b;">
-                                    Hiển thị <strong>@((_currentPage - 1) * _pageSize + 1)</strong> – <strong>@(Math.Min(_currentPage * _pageSize, TotalFilteredCount))</strong> trong tổng số <strong>@TotalFilteredCount</strong> sản phẩm
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-top: 1px solid var(--tf-border); flex-wrap: wrap; gap: 12px;">
+                                <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                                    <div style="font-size: 12.5px; color: #64748b;">
+                                        @if (TotalFilteredCount > 0)
+                                        {
+                                            <span>Hiển thị <strong>@((_currentPage - 1) * _pageSize + 1)</strong> – <strong>@(Math.Min(_currentPage * _pageSize, TotalFilteredCount))</strong> trong tổng số <strong>@TotalFilteredCount</strong> sản phẩm</span>
+                                        }
+                                        else
+                                        {
+                                            <span>Hiển thị <strong>0</strong> trong tổng số <strong>0</strong> sản phẩm</span>
+                                        }
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <select class="tf-input" style="height: 30px; font-size: 12px; padding: 0 8px; width: auto; cursor: pointer; border-radius: 6px;" value="@_pageSize" @onchange="OnPageSizeChanged">
+                                            <option value="20">20 dòng / trang</option>
+                                            <option value="50">50 dòng / trang</option>
+                                            <option value="100">100 dòng / trang</option>
+                                        </select>
+                                    </div>
                                 </div>
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <button type="button" class="tf-btn tf-btn-sm tf-btn-secondary" disabled="@(_currentPage <= 1)" @onclick="() => SetPage(_currentPage - 1)">
-                                        ‹ Trước
-                                    </button>
-                                    @for (int p = Math.Max(1, _currentPage - 2); p <= Math.Min(TotalPages, _currentPage + 2); p++)
-                                    {
-                                        int pageNum = p;
-                                        <button type="button" class="tf-btn tf-btn-sm @(pageNum == _currentPage ? "tf-btn-primary" : "tf-btn-secondary")" @onclick="() => SetPage(pageNum)">
-                                            @pageNum
+                                @if (TotalPages > 1)
+                                {
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <button type="button" class="tf-btn tf-btn-sm tf-btn-secondary" disabled="@(_currentPage <= 1)" @onclick="() => SetPage(_currentPage - 1)">
+                                            ‹ Trước
                                         </button>
-                                    }
-                                    <button type="button" class="tf-btn tf-btn-sm tf-btn-secondary" disabled="@(_currentPage >= TotalPages)" @onclick="() => SetPage(_currentPage + 1)">
-                                        Sau ›
-                                    </button>
-                                </div>
+                                        @for (int p = Math.Max(1, _currentPage - 2); p <= Math.Min(TotalPages, _currentPage + 2); p++)
+                                        {
+                                            int pageNum = p;
+                                            <button type="button" class="tf-btn tf-btn-sm @(pageNum == _currentPage ? "tf-btn-primary" : "tf-btn-secondary")" @onclick="() => SetPage(pageNum)">
+                                                @pageNum
+                                            </button>
+                                        }
+                                        <button type="button" class="tf-btn tf-btn-sm tf-btn-secondary" disabled="@(_currentPage >= TotalPages)" @onclick="() => SetPage(_currentPage + 1)">
+                                            Sau ›
+                                        </button>
+                                    </div>
+                                }
                             </div>
                         }
                     </TableLoadingOverlay>
@@ -850,6 +869,19 @@
         if (page >= 1 && page <= TotalPages)
         {
             _currentPage = page;
+        }
+    }
+
+    private void OnPageSizeChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newSize) && newSize > 0)
+        {
+            _pageSize = newSize;
+            int maxPages = TotalPages;
+            if (_currentPage > maxPages)
+            {
+                _currentPage = Math.Max(1, maxPages);
+            }
         }
     }
 

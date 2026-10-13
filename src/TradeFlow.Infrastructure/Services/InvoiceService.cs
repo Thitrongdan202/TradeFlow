@@ -649,8 +649,8 @@ public class InvoiceService : IInvoiceService
                             // Center: Title + Subtitle
                             r.RelativeItem().AlignCenter().Column(tc =>
                             {
-                                string title = "HÓA ĐƠN GIÁ TRỊ GIA TĂNG";
-                                string subtitle = "(VAT INVOICE)";
+                                string title = isVat ? "HÓA ĐƠN GIÁ TRỊ GIA TĂNG" : "HÓA ĐƠN BÁN HÀNG";
+                                string subtitle = isVat ? "(VAT INVOICE)" : "(SALES INVOICE)";
 
                                 tc.Item().AlignCenter().Text(title)
                                     .FontSize(15).Bold().FontColor(borderBlue);
@@ -1311,7 +1311,9 @@ public class InvoiceService : IInvoiceService
             Email = !string.IsNullOrWhiteSpace(company?.Email) ? company.Email : "tongkhothietbivesinh@gmail.com",
             Hotline = !string.IsNullOrWhiteSpace(company?.OrderHotline) ? company.OrderHotline : (company?.Phone ?? "0369.074.789 - Hotline"),
             CustomerNotes = !string.IsNullOrWhiteSpace(order.Notes) ? order.Notes : company?.DefaultOrderNote,
-            VatNote = !string.IsNullOrWhiteSpace(company?.DefaultVatNote) ? company.DefaultVatNote : "Đơn giá trên chưa bao gồm thuế GTGT (8%).",
+            VatNote = order.TotalTax > 0 
+                ? $"Đã bao gồm thuế GTGT: {order.TotalTax:N0} ₫." 
+                : (!string.IsNullOrWhiteSpace(company?.DefaultVatNote) ? company.DefaultVatNote : "Đơn giá trên chưa bao gồm thuế GTGT."),
             BankAccountHolder = company?.BankAccountHolder ?? "TRẦN VĂN TUẤN",
             BankAccount = company?.BankAccount ?? "4987.9177",
             BankName = company?.BankName ?? "NGÂN HÀNG Á CHÂU (ACB)",
@@ -1330,7 +1332,8 @@ public class InvoiceService : IInvoiceService
             }
 
             string description = oi.Product?.Specifications ?? oi.Product?.Description ?? oi.ProductName;
-            decimal lineTotal = oi.Quantity * oi.UnitPrice;
+            decimal itemDiscount = oi.DiscountAmount;
+            decimal lineTotal = oi.LineTotal > 0 ? oi.LineTotal : (oi.Quantity * oi.UnitPrice - itemDiscount);
 
             doc.Items.Add(new OrderDocumentItemDto
             {
@@ -1340,14 +1343,14 @@ public class InvoiceService : IInvoiceService
                 Description = description,
                 Quantity = oi.Quantity,
                 UnitPrice = oi.UnitPrice,
-                DiscountedPrice = oi.UnitPrice,
+                DiscountedPrice = oi.UnitPrice - (oi.Quantity > 0 ? (itemDiscount / oi.Quantity) : 0),
                 LineTotal = lineTotal
             });
         }
 
         doc.TotalQuantity = doc.Items.Sum(x => x.Quantity);
         doc.TotalAmount = doc.Items.Sum(x => x.LineTotal);
-        doc.GrandTotal = doc.TotalAmount;
+        doc.GrandTotal = order.GrandTotal > 0 ? order.GrandTotal : (order.SubTotal > 0 ? (order.SubTotal - order.TotalDiscount + order.TotalTax) : doc.TotalAmount);
 
         return doc;
     }

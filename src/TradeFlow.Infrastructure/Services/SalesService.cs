@@ -94,19 +94,19 @@ public class SalesService : ISalesService
                 Quantity = itemDto.Quantity,
                 UnitPrice = unitPrice,
                 PriceSource = string.IsNullOrEmpty(itemDto.PriceSource) ? "Bảng giá" : itemDto.PriceSource,
-                DiscountAmount = 0m,
-                TaxRate = 0m,
-                TaxAmount = 0m,
-                LineTotal = lineTotal,
+                DiscountAmount = itemDto.DiscountAmount,
+                TaxRate = itemDto.TaxRate,
+                TaxAmount = itemDto.TaxAmount,
+                LineTotal = itemDto.LineTotal > 0 ? itemDto.LineTotal : lineTotal,
                 Notes = itemDto.Notes
             };
             order.Items.Add(item);
         }
 
         order.SubTotal = order.Items.Sum(x => x.Quantity * x.UnitPrice);
-        order.TotalDiscount = 0m;
-        order.TotalTax = 0m;
-        order.GrandTotal = order.SubTotal;
+        order.TotalDiscount = dto.TotalDiscount > 0 ? dto.TotalDiscount : order.Items.Sum(x => x.DiscountAmount);
+        order.TotalTax = dto.TotalTax > 0 ? dto.TotalTax : order.Items.Sum(x => x.TaxAmount);
+        order.GrandTotal = dto.GrandTotal > 0 ? dto.GrandTotal : (order.SubTotal - order.TotalDiscount + order.TotalTax);
 
         _context.SalesOrders.Add(order);
         await _context.SaveChangesAsync(cancellationToken);
@@ -146,19 +146,19 @@ public class SalesService : ISalesService
                 Quantity = itemDto.Quantity,
                 UnitPrice = unitPrice,
                 PriceSource = string.IsNullOrEmpty(itemDto.PriceSource) ? "Bảng giá" : itemDto.PriceSource,
-                DiscountAmount = 0m,
-                TaxRate = 0m,
-                TaxAmount = 0m,
-                LineTotal = lineTotal,
+                DiscountAmount = itemDto.DiscountAmount,
+                TaxRate = itemDto.TaxRate,
+                TaxAmount = itemDto.TaxAmount,
+                LineTotal = itemDto.LineTotal > 0 ? itemDto.LineTotal : lineTotal,
                 Notes = itemDto.Notes
             };
             order.Items.Add(item);
         }
 
         order.SubTotal = order.Items.Sum(x => x.Quantity * x.UnitPrice);
-        order.TotalDiscount = 0m;
-        order.TotalTax = 0m;
-        order.GrandTotal = order.SubTotal;
+        order.TotalDiscount = dto.TotalDiscount > 0 ? dto.TotalDiscount : order.Items.Sum(x => x.DiscountAmount);
+        order.TotalTax = dto.TotalTax > 0 ? dto.TotalTax : order.Items.Sum(x => x.TaxAmount);
+        order.GrandTotal = dto.GrandTotal > 0 ? dto.GrandTotal : (order.SubTotal - order.TotalDiscount + order.TotalTax);
 
         await _context.SaveChangesAsync(cancellationToken);
         await _auditService.LogAsync(AuditEventType.SalesOrderUpdated, "SalesOrder", order.Id.ToString(), "Draft order updated", _currentUserService.UserId);
@@ -225,6 +225,7 @@ public class SalesService : ISalesService
             var likeTerm = $"%{searchTerm}%";
             query = query.Where(x => EF.Functions.ILike(x.Name, likeTerm) 
                                   || (x.TaxCode != null && EF.Functions.ILike(x.TaxCode, likeTerm))
+                                  || (x.CompanyName != null && EF.Functions.ILike(x.CompanyName, likeTerm))
                                   || (x.Phone != null && EF.Functions.ILike(x.Phone, likeTerm)));
         }
         return await query.OrderBy(x => x.Name).Take(20).ToListAsync(cancellationToken);
@@ -369,9 +370,9 @@ public class SalesService : ISalesService
             Notes = order.Notes,
             Status = order.Status,
             SubTotal = order.SubTotal,
-            TotalDiscount = 0m,
-            TotalTax = 0m,
-            GrandTotal = order.SubTotal,
+            TotalDiscount = order.TotalDiscount,
+            TotalTax = order.TotalTax,
+            GrandTotal = order.GrandTotal > 0 ? order.GrandTotal : (order.SubTotal - order.TotalDiscount + order.TotalTax),
             QuotationId = order.QuotationId,
             QuotationCode = order.Quotation?.Code,
             Items = order.Items.Select(i => new SalesOrderItemDto
@@ -386,10 +387,10 @@ public class SalesService : ISalesService
                 UnitPrice = i.UnitPrice,
                 PriceSource = i.PriceSource,
                 DiscountRate = 0m,
-                DiscountAmount = 0m,
-                TaxRate = 0m,
-                TaxAmount = 0m,
-                LineTotal = i.Quantity * i.UnitPrice,
+                DiscountAmount = i.DiscountAmount,
+                TaxRate = i.TaxRate,
+                TaxAmount = i.TaxAmount,
+                LineTotal = i.LineTotal > 0 ? i.LineTotal : (i.Quantity * i.UnitPrice - i.DiscountAmount + i.TaxAmount),
                 Notes = i.Notes
             }).ToList()
         };

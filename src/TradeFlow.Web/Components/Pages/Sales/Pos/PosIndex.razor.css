@@ -3141,3 +3141,318 @@
     background-color: #16a34a;
     box-shadow: 0 0 5px rgba(22, 163, 74, 0.7);
 }
+
+/* ============================================================
+   CONFIGURABLE VAT CARD & CONTROLS
+   ============================================================ */
+.tf-vat-config-card {
+    background: #f8fafc;
+    border: 1px solid var(--tf-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin: 6px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tf-vat-config-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.tf-vat-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--tf-gray-800, #1e293b);
+}
+
+.tf-vat-rate-select {
+    font-size: 12px;
+    padding: 3px 8px;
+    border: 1px solid var(--tf-border, #cbd5e1);
+    border-radius: 6px;
+    background-color: #ffffff;
+    color: var(--tf-gray-800, #1e293b);
+    font-weight: 500;
+    outline: none;
+    cursor: pointer;
+}
+
+.tf-vat-rate-select:focus {
+    border-color: var(--tf-primary, #0284c7);
+}
+
+.tf-vat-details-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    padding-top: 4px;
+    border-top: 1px dashed var(--tf-border, #e2e8f0);
+}
+
+.tf-vat-base-hint {
+    color: var(--tf-gray-500, #64748b);
+    font-size: 11px;
+}
+
+.tf-vat-amount-val {
+    font-weight: 700;
+    color: var(--tf-gray-800, #1e293b);
+}
+
+/* ============================================================
+   TOOLBAR PROMOTION BUTTON & REPOSITIONING
+   ============================================================ */
+.tf-pos-promo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 6px;
+    border: 1px solid var(--tf-border, #cbd5e1);
+    background: #ffffff;
+    color: var(--tf-gray-700, #334155);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.tf-pos-promo-btn:hover {
+    border-color: #f59e0b;
+    color: #b45309;
+    background: #fffbeb;
+}
+
+.tf-pos-promo-btn.active {
+    border-color: #f59e0b;
+    background: #fef3c7;
+    color: #92400e;
+}
+
+/* Ensure catalog toolbar items never overlap search */
+.tf-catalog-toolbar-pos {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+}
+
+.tf-cat-toolbar-left {
+    min-width: 0 !important;
+    flex-shrink: 1;
+}
+
+.tf-cat-toolbar-right {
+    flex-shrink: 0;
+}
+
+.tf-pos-cat-search {
+    min-width: 170px;
+    width: 180px;
+}
+
+/* ============================================================
+   CUSTOMER TYPE TABS & BADGES
+   ============================================================ */
+.tf-cust-type-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 4px;
+    background: #f1f5f9;
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.tf-cust-type-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: transparent;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--tf-gray-600, #475569);
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+}
+
+.tf-cust-type-tab:hover {
+    color: var(--tf-gray-900, #0f172a);
+}
+
+.tf-cust-type-tab.active {
+    background: #ffffff;
+    color: var(--tf-primary, #0284c7);
+    border-color: #cbd5e1;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.tf-cust-badge-retail {
+    display: inline-block;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 4px;
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.tf-cust-badge-company {
+    display: inline-block;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 4px;
+    background: #ede9fe;
+    color: #6d28d9;
+}
+
+.tf-input-hint {
+    display: block;
+    font-size: 11px;
+    color: var(--tf-gray-500, #64748b);
+    margin-top: 4px;
+}
+
+/* ============================================================
+   PROMOTION MODAL STYLES
+   ============================================================ */
+.tf-promo-modal-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #b45309;
+}
+
+.tf-promo-hint {
+    font-size: 12px;
+    color: var(--tf-gray-600, #475569);
+    margin-bottom: 12px;
+}
+
+.tf-promo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.tf-promo-item {
+    border: 1px solid var(--tf-border, #cbd5e1);
+    border-radius: 8px;
+    padding: 12px;
+    background: #ffffff;
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+}
+
+.tf-promo-item:hover {
+    border-color: #f59e0b;
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.12);
+}
+
+.tf-promo-item.selected {
+    border-color: #f59e0b;
+    background: #fffbeb;
+    box-shadow: 0 0 0 1.5px #f59e0b;
+}
+
+.tf-promo-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.tf-promo-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--tf-gray-800, #1e293b);
+}
+
+.tf-promo-badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.tf-promo-badge.standard {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.tf-promo-badge.promo {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.tf-promo-desc {
+    font-size: 12px;
+    color: var(--tf-gray-600, #475569);
+    margin-bottom: 6px;
+}
+
+.tf-promo-validity {
+    font-size: 11px;
+    color: var(--tf-gray-400, #94a3b8);
+}
+
+/* ============================================================
+   CHECKOUT SUCCESS DIALOG ACTION BUTTONS
+   ============================================================ */
+.tf-data-total {
+    border-top: 1px solid var(--tf-border, #e2e8f0);
+    padding-top: 6px;
+    margin-top: 4px;
+    font-size: 15px;
+    color: var(--tf-primary, #0284c7) !important;
+}
+
+.tf-btn-success-primary {
+    background-color: var(--tf-primary, #0284c7) !important;
+    color: #ffffff !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 700;
+}
+
+.tf-btn-success-secondary {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.tf-btn-success-secondary:hover {
+    background-color: #f1f5f9 !important;
+    border-color: #94a3b8 !important;
+}
+
+.tf-btn-success-tertiary {
+    background: transparent !important;
+    border: 1px dashed #cbd5e1 !important;
+    color: #64748b !important;
+    font-weight: 500;
+}
+
+.tf-btn-success-tertiary:hover {
+    color: #0f172a !important;
+    border-color: #94a3b8 !important;
+    background: #f8fafc !important;
+}
+

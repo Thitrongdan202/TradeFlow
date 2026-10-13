@@ -449,12 +449,21 @@
                                     <div class="tf-cust-dropdown-menu">
                                         @foreach (var c in _custResults)
                                         {
+                                            bool isCompany = !string.IsNullOrEmpty(c.CompanyName) || !string.IsNullOrEmpty(c.TaxCode);
                                             <div class="tf-cust-dropdown-item" @onclick="() => SelectCustomer(c)">
-                                                <div class="tf-cust-item-name">@c.Name</div>
+                                                <div class="tf-cust-item-name">
+                                                    <span>@(isCompany ? (!string.IsNullOrEmpty(c.CompanyName) ? c.CompanyName : c.Name) : c.Name)</span>
+                                                    <span class="@(isCompany ? "tf-cust-badge-company" : "tf-cust-badge-retail")">
+                                                        @(isCompany ? "Doanh nghiệp" : "Khách lẻ")
+                                                    </span>
+                                                </div>
                                                 <div class="tf-cust-item-sub">
                                                     <span>@c.Phone</span>
-                                                    <span>•</span>
-                                                    <span>@c.Code</span>
+                                                    @if (isCompany && !string.IsNullOrEmpty(c.TaxCode))
+                                                    {
+                                                        <span>• MST: @c.TaxCode</span>
+                                                    }
+                                                    <span>• @c.Code</span>
                                                 </div>
                                             </div>
                                         }
@@ -471,6 +480,17 @@
                                     }
                                 </select>
                             </div>
+
+                            <button type="button" 
+                                    class="tf-pos-promo-btn @(!string.IsNullOrEmpty(ActiveTab.SelectedPromotionName) ? "active" : "")"
+                                    title="Chương trình khuyến mãi & Chính sách giá"
+                                    @onclick="() => _showPromotionModal = true">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                                    <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                                </svg>
+                                <span>@(!string.IsNullOrEmpty(ActiveTab.SelectedPromotionName) ? ActiveTab.SelectedPromotionName : "Khuyến mãi")</span>
+                            </button>
                         </div>
 
                         <div class="tf-cat-toolbar-right">
@@ -838,7 +858,7 @@
             <span class="tf-footer-sep">•</span>
             <span class="tf-footer-hint"><strong>F4</strong> Khách hàng</span>
             <span class="tf-footer-sep">•</span>
-            <span class="tf-footer-hint"><strong>F8</strong> Giảm giá</span>
+            <span class="tf-footer-hint"><strong>F8</strong> Chiết khấu</span>
             <span class="tf-footer-sep">•</span>
             <span class="tf-footer-hint"><strong>F9</strong> Thanh toán</span>
             <span class="tf-footer-sep">•</span>
@@ -886,7 +906,7 @@
                             <th style="width: 140px; text-align: right;">Đơn giá</th>
                             @if (showFullColumns)
                             {
-                                <th style="width: 100px; text-align: right;">Giảm giá</th>
+                                <th style="width: 100px; text-align: right;">Chiết khấu</th>
                             }
                             <th style="width: 130px; text-align: right;">Thành tiền</th>
                             <th style="width: 44px; text-align: center;"></th>
@@ -1053,9 +1073,13 @@
                 <div class="tf-cust-input-wrapper">
                     @if (ActiveTab.Customer != null)
                     {
+                        bool isComp = !string.IsNullOrEmpty(ActiveTab.Customer.CompanyName) || !string.IsNullOrEmpty(ActiveTab.Customer.TaxCode);
                         <div class="tf-cust-pill">
                             <div class="tf-cust-info">
-                                <span class="tf-cust-name">@ActiveTab.Customer.Name</span>
+                                <span class="tf-cust-name">@(isComp ? (!string.IsNullOrEmpty(ActiveTab.Customer.CompanyName) ? ActiveTab.Customer.CompanyName : ActiveTab.Customer.Name) : ActiveTab.Customer.Name)</span>
+                                <span class="@(isComp ? "tf-cust-badge-company" : "tf-cust-badge-retail")">
+                                    @(isComp ? "Doanh nghiệp" : "Khách lẻ")
+                                </span>
                                 @if (!string.IsNullOrEmpty(ActiveTab.Customer.Phone))
                                 {
                                     <span class="tf-cust-phone">(@ActiveTab.Customer.Phone)</span>
@@ -1075,7 +1099,7 @@
                             <input @ref="_f4InputRef"
                                    type="text"
                                    class="tf-cust-search-input"
-                                   placeholder="Tìm khách hàng theo tên, SĐT (F4)..."
+                                   placeholder="Tìm khách hàng theo tên, SĐT, MST (F4)..."
                                    value="@_custSearchTerm"
                                    @oninput="OnCustomerSearchInput"
                                    @onfocus="() => _showCustDropdown = true" />
@@ -1089,9 +1113,25 @@
                     <div class="tf-cust-dropdown-menu">
                         @foreach (var c in _custResults)
                         {
+                            bool isCompany = !string.IsNullOrEmpty(c.CompanyName) || !string.IsNullOrEmpty(c.TaxCode);
                             <div class="tf-cust-dropdown-item" @onclick="() => SelectCustomer(c)">
-                                <div class="tf-cust-opt-name">@c.Name</div>
-                                <div class="tf-cust-opt-sub">@c.Phone • @c.Address</div>
+                                <div class="tf-cust-item-name">
+                                    <span>@(isCompany ? (!string.IsNullOrEmpty(c.CompanyName) ? c.CompanyName : c.Name) : c.Name)</span>
+                                    <span class="@(isCompany ? "tf-cust-badge-company" : "tf-cust-badge-retail")">
+                                        @(isCompany ? "Doanh nghiệp" : "Khách lẻ")
+                                    </span>
+                                </div>
+                                <div class="tf-cust-item-sub">
+                                    <span>@c.Phone</span>
+                                    @if (isCompany && !string.IsNullOrEmpty(c.TaxCode))
+                                    {
+                                        <span>• MST: @c.TaxCode</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(c.Address))
+                                    {
+                                        <span>• @c.Address</span>
+                                    }
+                                </div>
                             </div>
                         }
                     </div>
@@ -1106,22 +1146,52 @@
                 </div>
 
                 <div class="tf-calc-row">
-                    <span class="tf-calc-label">Giảm giá / Chiết khấu (F8):</span>
+                    <span class="tf-calc-label">Chiết khấu (F8):</span>
                     <div class="tf-discount-control-wrap">
                         <input @ref="_f8InputRef"
                                type="number"
                                class="tf-discount-input"
                                @bind="ActiveTab.Discount"
-                               @bind:after="StateHasChanged"
+                               @bind:after="OnDiscountChanged"
                                min="0"
                                step="5000" />
                         <span class="tf-currency-unit">₫</span>
                     </div>
                 </div>
 
-                <div class="tf-calc-row">
-                    <span class="tf-calc-label">Thuế GTGT (VAT):</span>
-                    <span class="tf-calc-val">@CalculateTaxTotal().ToString("N0") ₫</span>
+                <div class="tf-vat-config-card">
+                    <div class="tf-vat-config-header">
+                        <label class="tf-checkbox-label">
+                            <input type="checkbox" @bind="ActiveTab.ApplyVat" @bind:after="OnVatConfigChanged" />
+                            <span class="tf-vat-title">Thuế GTGT (VAT)</span>
+                        </label>
+                        @if (ActiveTab.ApplyVat)
+                        {
+                            <div class="tf-vat-rate-picker">
+                                <select class="tf-vat-rate-select" @bind="ActiveTab.VatRateSelection" @bind:after="OnVatConfigChanged">
+                                    <option value="auto">Theo SP (Tự động)</option>
+                                    <option value="0">0% (Không thuế)</option>
+                                    <option value="5">5%</option>
+                                    <option value="8">8% (Ưu đãi)</option>
+                                    <option value="10">10% (Chuẩn)</option>
+                                </select>
+                            </div>
+                        }
+                    </div>
+                    @if (ActiveTab.ApplyVat)
+                    {
+                        <div class="tf-vat-details-row">
+                            <span class="tf-vat-base-hint">Tiền chịu thuế: @CalculateTaxableBase().ToString("N0") ₫</span>
+                            <span class="tf-vat-amount-val">+@CalculateTaxTotal().ToString("N0") ₫</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="tf-vat-details-row">
+                            <span class="tf-vat-base-hint">Không áp thuế cho đơn này</span>
+                            <span class="tf-vat-amount-val">0 ₫</span>
+                        </div>
+                    }
                 </div>
 
                 <div class="tf-calc-row grand-total-row">
@@ -1265,7 +1335,28 @@
                 <div class="tf-summary-review-card">
                     <div class="tf-review-row">
                         <span>Khách hàng:</span>
-                        <strong>@(ActiveTab.Customer?.Name ?? "Khách lẻ (Tại quầy)")</strong>
+                        <div style="text-align: right;">
+                            @if (ActiveTab.Customer != null)
+                            {
+                                bool isComp = !string.IsNullOrEmpty(ActiveTab.Customer.CompanyName) || !string.IsNullOrEmpty(ActiveTab.Customer.TaxCode);
+                                <strong>@(isComp ? (!string.IsNullOrEmpty(ActiveTab.Customer.CompanyName) ? ActiveTab.Customer.CompanyName : ActiveTab.Customer.Name) : ActiveTab.Customer.Name)</strong>
+                                <span class="@(isComp ? "tf-cust-badge-company" : "tf-cust-badge-retail")" style="margin-left: 6px;">
+                                    @(isComp ? "Doanh nghiệp" : "Khách lẻ")
+                                </span>
+                                @if (isComp && !string.IsNullOrEmpty(ActiveTab.Customer.TaxCode))
+                                {
+                                    <div style="font-size: 11px; color: var(--tf-gray-600);">MST: @ActiveTab.Customer.TaxCode</div>
+                                }
+                                @if (!string.IsNullOrEmpty(ActiveTab.Customer.Phone))
+                                {
+                                    <div style="font-size: 11px; color: var(--tf-gray-600);">SĐT: @ActiveTab.Customer.Phone</div>
+                                }
+                            }
+                            else
+                            {
+                                <strong>Khách lẻ (Tại quầy)</strong>
+                            }
+                        </div>
                     </div>
                     <div class="tf-review-row">
                         <span>Ngày đặt hàng:</span>
@@ -1287,13 +1378,17 @@
                     @if (CalculateTotalDiscount() > 0)
                     {
                         <div class="tf-review-row" style="color:var(--tf-danger);">
-                            <span>Giảm giá / Chiết khấu:</span>
+                            <span>Chiết khấu (F8):</span>
                             <span>-@CalculateTotalDiscount().ToString("N0") ₫</span>
                         </div>
                     }
                     <div class="tf-review-row">
-                        <span>Thuế VAT:</span>
-                        <span>@CalculateTaxTotal().ToString("N0") ₫</span>
+                        <span>Tiền chịu thuế:</span>
+                        <span>@CalculateTaxableBase().ToString("N0") ₫</span>
+                    </div>
+                    <div class="tf-review-row">
+                        <span>Thuế VAT (@GetVatRateDescription()):</span>
+                        <span>+@CalculateTaxTotal().ToString("N0") ₫</span>
                     </div>
                     <div class="tf-review-row highlight">
                         <span style="font-size:15px; font-weight:700;">Khách cần trả:</span>
@@ -1322,7 +1417,7 @@
                 <div class="tf-invoice-toggle-row">
                     <label class="tf-checkbox-label">
                         <input type="checkbox" @bind="_createInvoiceDirectly" />
-                        <span>Xuất hóa đơn bán hàng / GTGT ngay khi hoàn tất</span>
+                        <span>Xuất hóa đơn bán hàng ngay khi hoàn tất</span>
                     </label>
                 </div>
             </div>
@@ -1337,7 +1432,7 @@
 }
 
 @* ============================================================
-   CHECKOUT SUCCESS MODAL (With PDF Printing)
+   CHECKOUT SUCCESS MODAL (With Distinct Document Options)
    ============================================================ *@
 @if (_showSuccessModal)
 {
@@ -1355,24 +1450,27 @@
                 <div class="tf-data-line">Mã đơn hàng: <strong>@_lastCreatedOrderCode</strong></div>
                 @if (!string.IsNullOrEmpty(_lastCreatedInvoiceNumber))
                 {
-                    <div class="tf-data-line">Số hóa đơn: <strong>@_lastCreatedInvoiceNumber</strong></div>
+                    <div class="tf-data-line">Số hóa đơn bán hàng: <strong>@_lastCreatedInvoiceNumber</strong></div>
                 }
-                <div class="tf-data-line">Tổng thanh toán: <strong>@_lastGrandTotal.ToString("N0") ₫</strong></div>
+                <div class="tf-data-line">Tổng tiền hàng: <span>@_lastSubTotal.ToString("N0") ₫</span></div>
+                @if (_lastTotalDiscount > 0)
+                {
+                    <div class="tf-data-line" style="color: var(--tf-danger);">Chiết khấu: <span>-@_lastTotalDiscount.ToString("N0") ₫</span></div>
+                }
+                <div class="tf-data-line">Thuế VAT: <span>+@_lastTaxTotal.ToString("N0") ₫</span></div>
+                <div class="tf-data-line tf-data-total">Tổng thanh toán: <strong>@_lastGrandTotal.ToString("N0") ₫</strong></div>
             </div>
 
             <div class="tf-success-actions">
-                @if (_lastCreatedInvoiceId > 0)
-                {
-                    <button type="button" class="tf-btn-primary" @onclick="PrintInvoicePdfAsync">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                            <rect x="6" y="14" width="12" height="8"></rect>
-                        </svg>
-                        <span>In / Tải Hóa đơn PDF</span>
-                    </button>
-                }
-                <button type="button" class="tf-btn-secondary" @onclick="PrintOrderDocPdfAsync">
+                <button type="button" class="tf-btn-primary tf-btn-success-primary" @onclick="PrintSalesInvoicePdfAsync">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                        <rect x="6" y="14" width="12" height="8"></rect>
+                    </svg>
+                    <span>In / Tải hóa đơn bán hàng (chưa cộng VAT)</span>
+                </button>
+                <button type="button" class="tf-btn-secondary tf-btn-success-secondary" @onclick="PrintOrderDocPdfAsync">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                         <polyline points="14 2 14 8 20 8"></polyline>
@@ -1380,9 +1478,9 @@
                         <line x1="16" y1="17" x2="8" y2="17"></line>
                         <polyline points="10 9 9 9 8 9"></polyline>
                     </svg>
-                    <span>In Chứng từ đơn hàng</span>
+                    <span>In chứng từ bán hàng có VAT</span>
                 </button>
-                <button type="button" class="tf-btn-secondary" @onclick="StartNewOrder">
+                <button type="button" class="tf-btn-ghost tf-btn-success-tertiary" @onclick="StartNewOrder">
                     + Tạo đơn mới
                 </button>
             </div>
@@ -1391,12 +1489,12 @@
 }
 
 @* ============================================================
-   ADD NEW CUSTOMER MODAL
+   ADD NEW CUSTOMER MODAL (Retail vs Corporate Switch)
    ============================================================ *@
 @if (_showAddCustomerModal)
 {
     <div class="tf-modal-backdrop" @onclick="() => _showAddCustomerModal = false">
-        <div class="tf-modal-dialog" @onclick:stopPropagation="true">
+        <div class="tf-modal-dialog" @onclick:stopPropagation="true" style="max-width: 520px;">
             <div class="tf-modal-header">
                 <h3 class="tf-modal-title">Thêm khách hàng mới</h3>
                 <button type="button" class="tf-modal-close-btn" @onclick="() => _showAddCustomerModal = false">
@@ -1411,26 +1509,148 @@
                 {
                     <div class="tf-modal-alert">@_addCustError</div>
                 }
-                <div class="tf-form-field">
-                    <label>Tên khách hàng <span style="color:var(--tf-danger);">*</span></label>
-                    <input type="text" class="tf-input-control" placeholder="Họ và tên hoặc tên doanh nghiệp" @bind="_newCustName" />
+
+                @* Segmented Switch: Retail vs Company *@
+                <div class="tf-cust-type-tabs">
+                    <button type="button"
+                            class="tf-cust-type-tab @(_newCustType == CustomerTypeChoice.Retail ? "active" : "")"
+                            @onclick="() => _newCustType = CustomerTypeChoice.Retail">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        <span>Khách cá nhân / Khách lẻ</span>
+                    </button>
+                    <button type="button"
+                            class="tf-cust-type-tab @(_newCustType == CustomerTypeChoice.Company ? "active" : "")"
+                            @onclick="() => _newCustType = CustomerTypeChoice.Company">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                        </svg>
+                        <span>Khách hàng doanh nghiệp</span>
+                    </button>
                 </div>
-                <div class="tf-form-field tf-mt-2">
-                    <label>Số điện thoại <span style="color:var(--tf-danger);">*</span></label>
-                    <input type="text" class="tf-input-control" placeholder="Số điện thoại liên hệ" @bind="_newCustPhone" />
-                </div>
-                <div class="tf-form-field tf-mt-2">
-                    <label>Địa chỉ</label>
-                    <input type="text" class="tf-input-control" placeholder="Địa chỉ giao hàng / nhận hóa đơn" @bind="_newCustAddress" />
-                </div>
-                <div class="tf-form-field tf-mt-2">
-                    <label>Mã số thuế</label>
-                    <input type="text" class="tf-input-control" placeholder="Mã số thuế (nếu có)" @bind="_newCustTaxCode" />
-                </div>
+
+                @if (_newCustType == CustomerTypeChoice.Retail)
+                {
+                    <div class="tf-form-field tf-mt-3">
+                        <label>Số điện thoại <span style="color:var(--tf-danger);">*</span></label>
+                        <input type="text" class="tf-input-control" placeholder="Nhập số điện thoại liên hệ" @bind="_newCustPhone" @bind:event="oninput" />
+                        <span class="tf-input-hint">Chỉ cần số điện thoại là đủ để tạo và lưu thông tin khách lẻ.</span>
+                    </div>
+                    <div class="tf-form-field tf-mt-2">
+                        <label>Tên khách hàng / Biệt danh (không bắt buộc)</label>
+                        <input type="text" class="tf-input-control" placeholder="Họ tên hoặc tên gọi thân mật" @bind="_newCustName" @bind:event="oninput" />
+                    </div>
+                    <div class="tf-form-field tf-mt-2">
+                        <label>Địa chỉ nhận hàng (tùy chọn)</label>
+                        <input type="text" class="tf-input-control" placeholder="Địa chỉ giao hàng (nếu có)" @bind="_newCustAddress" @bind:event="oninput" />
+                    </div>
+                }
+                else
+                {
+                    <div class="tf-form-field tf-mt-3">
+                        <label>Tên doanh nghiệp / Công ty <span style="color:var(--tf-danger);">*</span></label>
+                        <input type="text" class="tf-input-control" placeholder="Tên pháp lý công ty đầy đủ" @bind="_newCustCompanyName" @bind:event="oninput" />
+                    </div>
+                    <div class="tf-form-field tf-mt-2">
+                        <label>Mã số thuế (MST) <span style="color:var(--tf-danger);">*</span></label>
+                        <input type="text" class="tf-input-control" placeholder="Mã số thuế doanh nghiệp (10 hoặc 13 số)" @bind="_newCustTaxCode" @bind:event="oninput" />
+                    </div>
+                    <div class="tf-form-row tf-mt-2">
+                        <div class="tf-form-field" style="flex:1;">
+                            <label>Người liên hệ</label>
+                            <input type="text" class="tf-input-control" placeholder="Họ tên người phụ trách mua hàng" @bind="_newCustContactPerson" @bind:event="oninput" />
+                        </div>
+                        <div class="tf-form-field" style="flex:1;">
+                            <label>Số điện thoại liên hệ</label>
+                            <input type="text" class="tf-input-control" placeholder="Số điện thoại" @bind="_newCustPhone" @bind:event="oninput" />
+                        </div>
+                    </div>
+                    <div class="tf-form-field tf-mt-2">
+                        <label>Địa chỉ xuất hóa đơn / ĐKKD</label>
+                        <input type="text" class="tf-input-control" placeholder="Địa chỉ trụ sở chính hoặc chi nhánh" @bind="_newCustAddress" @bind:event="oninput" />
+                    </div>
+                    <div class="tf-form-field tf-mt-2">
+                        <label>Email nhận hóa đơn điện tử</label>
+                        <input type="email" class="tf-input-control" placeholder="email@congty.com" @bind="_newCustEmail" @bind:event="oninput" />
+                    </div>
+                }
             </div>
             <div class="tf-modal-footer">
                 <button type="button" class="tf-btn-secondary" @onclick="() => _showAddCustomerModal = false">Hủy</button>
                 <button type="button" class="tf-btn-primary" @onclick="SaveNewCustomerAsync">Lưu khách hàng</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* ============================================================
+   PROMOTION SELECTION MODAL
+   ============================================================ *@
+@if (_showPromotionModal)
+{
+    <div class="tf-modal-backdrop" @onclick="() => _showPromotionModal = false">
+        <div class="tf-modal-dialog" @onclick:stopPropagation="true" style="max-width: 580px;">
+            <div class="tf-modal-header">
+                <div class="tf-promo-modal-title-wrap">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                        <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                    </svg>
+                    <h3 class="tf-modal-title">Chương trình khuyến mãi &amp; Chính sách giá</h3>
+                </div>
+                <button type="button" class="tf-modal-close-btn" @onclick="() => _showPromotionModal = false">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="tf-modal-body" style="max-height: 440px; overflow-y: auto;">
+                <p class="tf-promo-hint">Chọn bảng giá khuyến mãi đang áp dụng để tự động cập nhật đơn giá ưu đãi cho các sản phẩm trong giỏ hàng:</p>
+
+                <div class="tf-promo-list">
+                    <div class="tf-promo-item @(!ActiveTab.PriceListId.HasValue || ActiveTab.PriceListId == _priceLists.FirstOrDefault()?.Id ? "selected" : "")"
+                         @onclick="async () => { ActiveTab.PriceListId = _priceLists.FirstOrDefault()?.Id; ActiveTab.SelectedPromotionName = null; await OnPriceListChanged(); _showPromotionModal = false; }">
+                        <div class="tf-promo-item-header">
+                            <span class="tf-promo-name">Bảng giá tiêu chuẩn (Không áp dụng KM)</span>
+                            <span class="tf-promo-badge standard">Mặc định</span>
+                        </div>
+                        <div class="tf-promo-desc">Áp dụng giá niêm yết chuẩn của cửa hàng cho mọi mặt hàng.</div>
+                    </div>
+
+                    @foreach (var pl in _priceLists)
+                    {
+                        var isSelected = ActiveTab.PriceListId == pl.Id && !string.IsNullOrEmpty(ActiveTab.SelectedPromotionName);
+                        <div class="tf-promo-item @(isSelected ? "selected" : "")"
+                             @onclick="async () => { ActiveTab.PriceListId = pl.Id; ActiveTab.SelectedPromotionName = !string.IsNullOrEmpty(pl.ProgramTitle) ? pl.ProgramTitle : pl.Name; await OnPriceListChanged(); _showPromotionModal = false; }">
+                            <div class="tf-promo-item-header">
+                                <span class="tf-promo-name">@(!string.IsNullOrEmpty(pl.ProgramTitle) ? pl.ProgramTitle : pl.Name)</span>
+                                <span class="tf-promo-badge promo">Khuyến mãi</span>
+                            </div>
+                            @if (!string.IsNullOrEmpty(pl.PriceCondition))
+                            {
+                                <div class="tf-promo-desc">@pl.PriceCondition</div>
+                            }
+                            <div class="tf-promo-validity">
+                                <span>Hiệu lực: @(pl.EffectiveFrom.HasValue ? pl.EffectiveFrom.Value.ToString("dd/MM/yyyy") : "Đang áp dụng")</span>
+                                @if (pl.EffectiveTo.HasValue)
+                                {
+                                    <span> - @pl.EffectiveTo.Value.ToString("dd/MM/yyyy")</span>
+                                }
+                                else
+                                {
+                                    <span> - Vô thời hạn</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="tf-modal-footer">
+                <button type="button" class="tf-btn-secondary" @onclick="() => _showPromotionModal = false">Đóng</button>
             </div>
         </div>
     </div>
@@ -1525,7 +1745,7 @@
                     </div>
                     <div class="tf-shortcut-row">
                         <span class="tf-kbd-tag">F8</span>
-                        <span>Nhập chiết khấu / giảm giá đơn hàng</span>
+                        <span>Nhập chiết khấu đơn hàng</span>
                     </div>
                     <div class="tf-shortcut-row">
                         <span class="tf-kbd-tag">F9</span>
@@ -1798,9 +2018,14 @@
         public DateTime OrderDate { get; set; } = DateTime.Now;
         public Customer? Customer { get; set; }
         public int? PriceListId { get; set; }
+        public string? SelectedPromotionName { get; set; }
         public string SalesChannel { get; set; } = "Bán trực tiếp";
         public List<PosItem> Items { get; set; } = new();
         public decimal Discount { get; set; }
+        public bool ApplyVat { get; set; } = true;
+        public string VatRateSelection { get; set; } = "auto";
+        public string RetailPhone { get; set; } = string.Empty;
+        public string RetailName { get; set; } = string.Empty;
         public string Notes { get; set; } = string.Empty;
         public string PaymentMethod { get; set; } = "Tiền mặt";
         public decimal CashTendered { get; set; }
@@ -1906,16 +2131,27 @@
     private bool _showF3Dropdown;
     private bool _isBarcodeMode;
 
+    // Thread-safe search lock
+    private readonly SemaphoreSlim _searchLock = new(1, 1);
+
     // F4 Customer Search State
     private string _custSearchTerm = string.Empty;
     private List<Customer> _custResults = new();
     private bool _showCustDropdown;
     private bool _showAddCustomerModal;
+    private enum CustomerTypeChoice { Retail, Company }
+    private CustomerTypeChoice _newCustType = CustomerTypeChoice.Retail;
     private string _newCustName = string.Empty;
     private string _newCustPhone = string.Empty;
     private string _newCustAddress = string.Empty;
     private string _newCustTaxCode = string.Empty;
+    private string _newCustCompanyName = string.Empty;
+    private string _newCustContactPerson = string.Empty;
+    private string _newCustEmail = string.Empty;
     private string? _addCustError;
+
+    // Promotion Modal State
+    private bool _showPromotionModal = false;
 
     // Modals State
     private bool _showShortcutsModal;
@@ -1939,6 +2175,9 @@
     private string _lastCreatedOrderCode = string.Empty;
     private int _lastCreatedInvoiceId;
     private string _lastCreatedInvoiceNumber = string.Empty;
+    private decimal _lastSubTotal;
+    private decimal _lastTotalDiscount;
+    private decimal _lastTaxTotal;
     private decimal _lastGrandTotal;
 
     // Cashier
@@ -2116,16 +2355,24 @@
             return;
         }
 
-        _f3Results = await SalesService.SearchProductsAsync(_f3SearchTerm);
-        _showF3Dropdown = _f3Results.Any();
-
-        foreach (var prod in _f3Results)
+        await _searchLock.WaitAsync();
+        try
         {
-            if (!_productPrices.ContainsKey(prod.Id))
+            _f3Results = await SalesService.SearchProductsAsync(_f3SearchTerm);
+            _showF3Dropdown = _f3Results.Any();
+
+            foreach (var prod in _f3Results)
             {
-                var priceResult = await SalesService.GetProductPriceAsync(prod.Id, ActiveTab.PriceListId, ActiveTab.OrderDate);
-                _productPrices[prod.Id] = priceResult.Price;
+                if (!_productPrices.ContainsKey(prod.Id))
+                {
+                    var priceResult = await SalesService.GetProductPriceAsync(prod.Id, ActiveTab.PriceListId, ActiveTab.OrderDate);
+                    _productPrices[prod.Id] = priceResult.Price;
+                }
             }
+        }
+        finally
+        {
+            _searchLock.Release();
         }
     }
 
@@ -2455,8 +2702,16 @@
             return;
         }
 
-        _custResults = await SalesService.SearchCustomersAsync(_custSearchTerm);
-        _showCustDropdown = _custResults.Any();
+        await _searchLock.WaitAsync();
+        try
+        {
+            _custResults = await SalesService.SearchCustomersAsync(_custSearchTerm);
+            _showCustDropdown = _custResults.Any();
+        }
+        finally
+        {
+            _searchLock.Release();
+        }
     }
 
     private void SelectCustomer(Customer customer)
@@ -2480,36 +2735,107 @@
     private async Task SaveNewCustomerAsync()
     {
         _addCustError = null;
-        if (string.IsNullOrWhiteSpace(_newCustName))
+
+        if (_newCustType == CustomerTypeChoice.Retail)
         {
-            _addCustError = "Vui lòng nhập tên khách hàng.";
-            return;
+            if (string.IsNullOrWhiteSpace(_newCustPhone))
+            {
+                _addCustError = "Vui lòng nhập số điện thoại khách hàng.";
+                return;
+            }
+
+            string phone = _newCustPhone.Trim();
+
+            // Check deduplication by phone
+            var existing = await DbContext.Customers.FirstOrDefaultAsync(c => c.Phone == phone);
+            if (existing != null)
+            {
+                SelectCustomer(existing);
+                _showAddCustomerModal = false;
+                ResetAddCustomerForm();
+                return;
+            }
+
+            string finalName = !string.IsNullOrWhiteSpace(_newCustName) 
+                ? _newCustName.Trim() 
+                : $"Khách lẻ ({phone})";
+
+            var cust = new Customer
+            {
+                Code = $"KL{DateTime.Now:yyMMddHHmm}",
+                Name = finalName,
+                Phone = phone,
+                Address = _newCustAddress?.Trim(),
+                IsActive = true
+            };
+
+            DbContext.Customers.Add(cust);
+            await DbContext.SaveChangesAsync();
+
+            SelectCustomer(cust);
+            _showAddCustomerModal = false;
+            ResetAddCustomerForm();
         }
-        if (string.IsNullOrWhiteSpace(_newCustPhone))
+        else
         {
-            _addCustError = "Vui lòng nhập số điện thoại.";
-            return;
+            if (string.IsNullOrWhiteSpace(_newCustCompanyName))
+            {
+                _addCustError = "Vui lòng nhập tên công ty / doanh nghiệp.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(_newCustTaxCode))
+            {
+                _addCustError = "Vui lòng nhập mã số thuế (MST) của doanh nghiệp.";
+                return;
+            }
+
+            string compName = _newCustCompanyName.Trim();
+            string taxCode = _newCustTaxCode.Trim();
+
+            // Check deduplication by tax code
+            var existingByTax = await DbContext.Customers.FirstOrDefaultAsync(c => c.TaxCode == taxCode);
+            if (existingByTax != null)
+            {
+                SelectCustomer(existingByTax);
+                _showAddCustomerModal = false;
+                ResetAddCustomerForm();
+                return;
+            }
+
+            var cust = new Customer
+            {
+                Code = $"DN{DateTime.Now:yyMMddHHmm}",
+                Name = compName,
+                CompanyName = compName,
+                TaxCode = taxCode,
+                ContactPerson = _newCustContactPerson?.Trim(),
+                Phone = _newCustPhone?.Trim(),
+                Email = _newCustEmail?.Trim(),
+                Address = _newCustAddress?.Trim(),
+                IsActive = true
+            };
+
+            DbContext.Customers.Add(cust);
+            await DbContext.SaveChangesAsync();
+
+            SelectCustomer(cust);
+            _showAddCustomerModal = false;
+            ResetAddCustomerForm();
         }
+    }
 
-        var cust = new Customer
-        {
-            Code = $"KH{DateTime.Now:yyMMddHHmm}",
-            Name = _newCustName.Trim(),
-            Phone = _newCustPhone.Trim(),
-            Address = _newCustAddress?.Trim(),
-            TaxCode = _newCustTaxCode?.Trim(),
-            IsActive = true
-        };
-
-        DbContext.Customers.Add(cust);
-        await DbContext.SaveChangesAsync();
-
-        SelectCustomer(cust);
-        _showAddCustomerModal = false;
+    private void ResetAddCustomerForm()
+    {
+        _newCustType = CustomerTypeChoice.Retail;
         _newCustName = string.Empty;
         _newCustPhone = string.Empty;
         _newCustAddress = string.Empty;
         _newCustTaxCode = string.Empty;
+        _newCustCompanyName = string.Empty;
+        _newCustContactPerson = string.Empty;
+        _newCustEmail = string.Empty;
+        _addCustError = null;
     }
 
     // ============================================================
@@ -2542,7 +2868,7 @@
     }
 
     // ============================================================
-    // TOTALS CALCULATIONS
+    // TOTALS CALCULATIONS & CONFIGURABLE VAT
     // ============================================================
     private decimal CalculateSubTotal()
     {
@@ -2555,21 +2881,72 @@
         return itemDiscounts + ActiveTab.Discount;
     }
 
+    private decimal CalculateTaxableBase()
+    {
+        decimal sub = CalculateSubTotal();
+        decimal disc = CalculateTotalDiscount();
+        return Math.Max(0, sub - disc);
+    }
+
+    private decimal GetItemEffectiveVatRate(PosItem item)
+    {
+        if (!ActiveTab.ApplyVat) return 0m;
+        if (ActiveTab.VatRateSelection == "auto") return item.TaxRate;
+        if (decimal.TryParse(ActiveTab.VatRateSelection, out var r)) return r;
+        return 0m;
+    }
+
     private decimal CalculateTaxTotal()
     {
-        return ActiveTab.Items.Sum(i =>
+        if (!ActiveTab.ApplyVat) return 0m;
+        if (ActiveTab.VatRateSelection == "auto")
         {
-            decimal baseLine = Math.Max(0, (i.Quantity * i.UnitPrice) - i.Discount);
-            return baseLine * (i.TaxRate / 100m);
-        });
+            decimal totalTax = 0m;
+            decimal totalItemBase = ActiveTab.Items.Sum(i => Math.Max(0, (i.Quantity * i.UnitPrice) - i.Discount));
+            if (totalItemBase <= 0) return 0m;
+
+            decimal orderDiscount = ActiveTab.Discount;
+            foreach (var i in ActiveTab.Items)
+            {
+                decimal itemBase = Math.Max(0, (i.Quantity * i.UnitPrice) - i.Discount);
+                decimal itemShareOfDiscount = totalItemBase > 0 ? (itemBase / totalItemBase) * orderDiscount : 0m;
+                decimal taxableLine = Math.Max(0, itemBase - itemShareOfDiscount);
+                totalTax += taxableLine * (i.TaxRate / 100m);
+            }
+            return Math.Round(totalTax, 0, MidpointRounding.AwayFromZero);
+        }
+        else
+        {
+            if (decimal.TryParse(ActiveTab.VatRateSelection, out var rate))
+            {
+                return Math.Round(CalculateTaxableBase() * (rate / 100m), 0, MidpointRounding.AwayFromZero);
+            }
+            return 0m;
+        }
     }
 
     private decimal CalculateGrandTotal()
     {
-        decimal sub = CalculateSubTotal();
-        decimal disc = CalculateTotalDiscount();
+        decimal taxableBase = CalculateTaxableBase();
         decimal tax = CalculateTaxTotal();
-        return Math.Max(0, sub - disc + tax);
+        return Math.Max(0, taxableBase + tax);
+    }
+
+    private string GetVatRateDescription()
+    {
+        if (!ActiveTab.ApplyVat) return "0% (Miễn/Không áp dụng)";
+        if (ActiveTab.VatRateSelection == "auto") return "Theo SP (Tự động)";
+        return $"{ActiveTab.VatRateSelection}%";
+    }
+
+    private void OnVatConfigChanged()
+    {
+        StateHasChanged();
+    }
+
+    private void OnDiscountChanged()
+    {
+        StateHasChanged();
     }
 
     private decimal CalculateChangeDue()
@@ -2592,7 +2969,7 @@
     }
 
     // ============================================================
-    // CHECKOUT FLOW & INVOICE CREATION
+    // CHECKOUT FLOW & SEPARATE DOCUMENT CREATION
     // ============================================================
     private void OpenCheckoutModal()
     {
@@ -2651,30 +3028,37 @@
                 }
             }
 
-            // 2. Build SalesOrderDto with safe editable OrderDate
+            // 2. Build SalesOrderDto with safe editable OrderDate & mapped VAT rates
             var orderDto = new SalesOrderDto
             {
                 CustomerId = customer.Id,
-                CustomerName = customer.Name,
+                CustomerName = !string.IsNullOrEmpty(customer.CompanyName) ? customer.CompanyName : customer.Name,
                 CustomerPhone = customer.Phone,
                 CustomerAddress = customer.Address,
                 OrderDate = ActiveTab.OrderDate,
+                TotalDiscount = ActiveTab.Discount,
                 Notes = string.IsNullOrWhiteSpace(ActiveTab.Notes) 
                     ? $"[Kênh: {ActiveTab.SalesChannel}]" 
                     : $"[Kênh: {ActiveTab.SalesChannel}] {ActiveTab.Notes}",
-                Items = ActiveTab.Items.Select(i => new SalesOrderItemDto
+                Items = ActiveTab.Items.Select(i =>
                 {
-                    ProductId = i.ProductId,
-                    ProductCode = i.Code,
-                    ProductName = i.Name,
-                    UnitName = i.UnitName ?? "Cái",
-                    Quantity = i.Quantity,
-                    UnitPrice = i.UnitPrice,
-                    DiscountAmount = i.Discount,
-                    TaxRate = i.TaxRate,
-                    TaxAmount = ((i.Quantity * i.UnitPrice) - i.Discount) * (i.TaxRate / 100m),
-                    LineTotal = i.LineTotal,
-                    Notes = i.Note
+                    decimal effRate = GetItemEffectiveVatRate(i);
+                    decimal itemBase = Math.Max(0, (i.Quantity * i.UnitPrice) - i.Discount);
+                    decimal itemTax = Math.Round(itemBase * (effRate / 100m), 0, MidpointRounding.AwayFromZero);
+                    return new SalesOrderItemDto
+                    {
+                        ProductId = i.ProductId,
+                        ProductCode = i.Code,
+                        ProductName = i.Name,
+                        UnitName = i.UnitName ?? "Cái",
+                        Quantity = i.Quantity,
+                        UnitPrice = i.UnitPrice,
+                        DiscountAmount = i.Discount,
+                        TaxRate = effRate,
+                        TaxAmount = itemTax,
+                        LineTotal = itemBase + itemTax,
+                        Notes = i.Note
+                    };
                 }).ToList()
             };
 
@@ -2682,15 +3066,18 @@
             var createdOrder = await SalesService.CreateOrderAsync(orderDto);
             _lastCreatedOrderId = createdOrder.Id;
             _lastCreatedOrderCode = createdOrder.Code;
+            _lastSubTotal = CalculateSubTotal();
+            _lastTotalDiscount = CalculateTotalDiscount();
+            _lastTaxTotal = CalculateTaxTotal();
             _lastGrandTotal = CalculateGrandTotal();
 
-            // 4. Optionally Create Invoice Directly
+            // 4. Optionally Create Sales Invoice Directly (Without VAT on sales invoice template)
             if (_createInvoiceDirectly)
             {
                 await SalesService.ConfirmOrderAsync(createdOrder.Id);
                 var createdInvoice = await InvoiceService.CreateInvoiceFromOrderAsync(
                     createdOrder.Id,
-                    InvoiceType.VatInvoice);
+                    InvoiceType.SalesInvoice);
                 
                 _lastCreatedInvoiceId = createdInvoice.Id;
                 _lastCreatedInvoiceNumber = !string.IsNullOrEmpty(createdInvoice.InvoiceNo) ? createdInvoice.InvoiceNo : createdInvoice.InvoiceNumber;
@@ -2709,18 +3096,24 @@
         }
     }
 
-    private async Task PrintInvoicePdfAsync()
+    private async Task PrintSalesInvoicePdfAsync()
     {
-        if (_lastCreatedInvoiceId <= 0) return;
+        if (_lastCreatedOrderId <= 0) return;
         try
         {
+            if (_lastCreatedInvoiceId <= 0)
+            {
+                var inv = await InvoiceService.CreateInvoiceFromOrderAsync(_lastCreatedOrderId, InvoiceType.SalesInvoice);
+                _lastCreatedInvoiceId = inv.Id;
+                _lastCreatedInvoiceNumber = !string.IsNullOrEmpty(inv.InvoiceNo) ? inv.InvoiceNo : inv.InvoiceNumber;
+            }
             var pdfBytes = await InvoiceService.GeneratePdfAsync(_lastCreatedInvoiceId);
             var base64 = Convert.ToBase64String(pdfBytes);
-            await JS.InvokeVoidAsync("tradeflow.downloadPdfBase64", base64, $"HoaDon_{_lastCreatedInvoiceNumber}.pdf");
+            await JS.InvokeVoidAsync("tradeflow.downloadPdfBase64", base64, $"HoaDonBanHang_{_lastCreatedOrderCode}.pdf");
         }
         catch (Exception ex)
         {
-            await JS.InvokeVoidAsync("alert", $"Lỗi tạo tệp PDF: {ex.Message}");
+            await JS.InvokeVoidAsync("alert", $"Lỗi tạo hóa đơn PDF: {ex.Message}");
         }
     }
 
@@ -2734,7 +3127,7 @@
             {
                 var pdfBytes = await InvoiceService.GenerateOrderDocumentPdfAsync(doc);
                 var base64 = Convert.ToBase64String(pdfBytes);
-                await JS.InvokeVoidAsync("tradeflow.downloadPdfBase64", base64, $"ChungTu_{_lastCreatedOrderCode}.pdf");
+                await JS.InvokeVoidAsync("tradeflow.downloadPdfBase64", base64, $"ChungTuBanHang_VAT_{_lastCreatedOrderCode}.pdf");
             }
         }
         catch (Exception ex)
@@ -2795,6 +3188,7 @@
             _showCheckoutModal = false;
             _showShortcutsModal = false;
             _showAddCustomerModal = false;
+            _showPromotionModal = false;
             _showRecentOrdersModal = false;
         }
     }

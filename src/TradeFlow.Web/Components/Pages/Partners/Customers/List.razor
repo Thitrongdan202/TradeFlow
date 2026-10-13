@@ -1,216 +1,438 @@
 @page "/doi-tac/khach-hang"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
-@using Microsoft.EntityFrameworkCore
 @using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Partners
 @using TradeFlow.Domain.Entities.MasterData
-@using TradeFlow.Infrastructure.Persistence
+@using TradeFlow.Web.Components.Common
+@using TradeFlow.Web.Components.Pages.Partners.Components
 @attribute [Authorize(Policy = "Permission:Customers:View")]
 
-@inject TradeFlowDbContext DbContext
+@inject IPartnerService PartnerService
 @inject NavigationManager Nav
 @inject IAuthorizationService AuthService
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
 @inject IAuditService AuditService
 
-<PageTitle>Khách hàng - TradeFlow</PageTitle>
+<PageTitle>Quản lý Khách hàng - TradeFlow</PageTitle>
 
-<div class="tf-page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
-    <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-        <div>
-            <h1 class="tf-page-title" style="margin: 0; font-size: 20px;">Khách hàng</h1>
-            <p class="tf-page-subtitle" style="margin: 2px 0 0; font-size: 12px;">Quản lý danh sách đối tác khách hàng và thông tin liên hệ</p>
+<div class="tf-page-container">
+    @* 1. Page Header *@
+    <div class="tf-page-header">
+        <div class="tf-page-header-left">
+            <h1 class="tf-page-title">Khách hàng</h1>
+            <p class="tf-page-subtitle">Quản lý hồ sơ đối tác khách hàng, phân loại cá nhân / doanh nghiệp và theo dõi công nợ bán hàng</p>
         </div>
-        <div style="width: 340px; max-width: 100%;">
-            <DebouncedSearchInput Placeholder="Tìm theo tên, mã KH, MST, SĐT, email..."
-                                  Value="@_searchTerm"
-                                  ValueChanged="OnSearchChanged" />
+        <div class="tf-page-header-actions">
+            <div class="tf-header-search-wrap">
+                <DebouncedSearchInput Placeholder="Tìm theo mã KH, tên, công ty, MST, SĐT..."
+                                      Value="@_filter.SearchTerm"
+                                      ValueChanged="OnSearchChanged" />
+            </div>
+
+            <button type="button" class="tf-btn tf-btn-secondary @(_showSidebar ? "active" : "")" @onclick="ToggleSidebar" title="Bật/Tắt bộ lọc nâng cao">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                <span>Bộ lọc</span>
+                @if (ActiveFilterCount > 0)
+                {
+                    <span class="tf-filter-active-count">@ActiveFilterCount</span>
+                }
+            </button>
+
+            <AuthorizeView Policy="Permission:Customers:Create">
+                <a href="/doi-tac/khach-hang/them-moi" class="tf-btn tf-btn-primary">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>Thêm khách hàng</span>
+                </a>
+            </AuthorizeView>
         </div>
     </div>
-    <div class="tf-page-actions">
-        <AuthorizeView Policy="Permission:Customers:Create">
-            <a href="/doi-tac/khach-hang/them-moi" class="tf-btn tf-btn-primary" style="display: inline-flex; align-items: center; gap: 6px; height: 36px; white-space: nowrap;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+
+    @* 2. Summary Metric Cards *@
+    <div class="tf-partner-metrics-grid">
+        <div class="tf-partner-metric-card">
+            <div class="tf-metric-icon-wrap user">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                 </svg>
-                <span>Thêm khách hàng</span>
-            </a>
-        </AuthorizeView>
+            </div>
+            <div class="tf-metric-data">
+                <div class="tf-metric-label">Tổng khách hàng</div>
+                <div class="tf-metric-value">@_totalCount</div>
+                <div class="tf-metric-hint">@_activeCount đang hoạt động</div>
+            </div>
+        </div>
+
+        <div class="tf-partner-metric-card @(_totalReceivable > 0 ? "highlight-danger" : "")">
+            <div class="tf-metric-icon-wrap debt">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+            </div>
+            <div class="tf-metric-data">
+                <div class="tf-metric-label">Nợ hiện tại (Phải thu)</div>
+                <div class="tf-metric-value @(_totalReceivable > 0 ? "text-danger" : "")">
+                    @_totalReceivable.ToString("N0") ₫
+                </div>
+                <div class="tf-metric-hint">
+                    @(_debtCustomerCount > 0 ? $"{_debtCustomerCount} khách hàng đang có nợ" : "Không có công nợ đọng")
+                </div>
+            </div>
+        </div>
+
+        <div class="tf-partner-metric-card">
+            <div class="tf-metric-icon-wrap sales">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                    <polyline points="17 6 23 6 23 12"></polyline>
+                </svg>
+            </div>
+            <div class="tf-metric-data">
+                <div class="tf-metric-label">Tổng doanh số bán</div>
+                <div class="tf-metric-value text-primary">
+                    @_totalSales.ToString("N0") ₫
+                </div>
+                <div class="tf-metric-hint">Tổng giá trị đơn hàng &amp; hóa đơn</div>
+            </div>
+        </div>
+    </div>
+
+    @* 3. Master-Detail Split Layout *@
+    <div class="tf-split-layout @(!_showSidebar ? "sidebar-collapsed" : "")">
+        @* Left Filter Sidebar *@
+        @if (_showSidebar)
+        {
+            <aside class="tf-filter-sidebar">
+                <div class="tf-sidebar-header">
+                    <span class="tf-sidebar-title">Bộ lọc khách hàng</span>
+                    @if (ActiveFilterCount > 0)
+                    {
+                        <button type="button" class="tf-btn-clear-filters" @onclick="ClearAllFilters">
+                            Xóa lọc
+                        </button>
+                    }
+                </div>
+
+                <div class="tf-sidebar-body">
+                    @* Filter: Loại khách hàng *@
+                    <div class="tf-filter-group">
+                        <label class="tf-filter-label">Loại khách hàng</label>
+                        <div class="tf-filter-pill-list">
+                            <button type="button" class="tf-filter-pill @(!_filter.CustomerType.HasValue ? "active" : "")"
+                                    @onclick="() => SetCustomerType(null)">
+                                Tất cả
+                            </button>
+                            <button type="button" class="tf-filter-pill @(_filter.CustomerType == CustomerClassification.Individual ? "active" : "")"
+                                    @onclick="() => SetCustomerType(CustomerClassification.Individual)">
+                                Cá nhân
+                            </button>
+                            <button type="button" class="tf-filter-pill @(_filter.CustomerType == CustomerClassification.Company ? "active" : "")"
+                                    @onclick="() => SetCustomerType(CustomerClassification.Company)">
+                                Công ty
+                            </button>
+                        </div>
+                    </div>
+
+                    @* Filter: Trạng thái hoạt động *@
+                    <div class="tf-filter-group">
+                        <label class="tf-filter-label">Trạng thái</label>
+                        <div class="tf-filter-pill-list">
+                            <button type="button" class="tf-filter-pill @(!_filter.IsActive.HasValue ? "active" : "")"
+                                    @onclick="() => SetStatus(null)">
+                                Tất cả
+                            </button>
+                            <button type="button" class="tf-filter-pill @(_filter.IsActive == true ? "active" : "")"
+                                    @onclick="() => SetStatus(true)">
+                                Đang hoạt động
+                            </button>
+                            <button type="button" class="tf-filter-pill @(_filter.IsActive == false ? "active" : "")"
+                                    @onclick="() => SetStatus(false)">
+                                Ngừng hoạt động
+                            </button>
+                        </div>
+                    </div>
+
+                    @* Filter: Nợ hiện tại *@
+                    <div class="tf-filter-group">
+                        <label class="tf-filter-label">Nợ hiện tại (Phải thu)</label>
+                        <div class="tf-filter-pill-list tf-mb-2">
+                            <button type="button" class="tf-filter-pill @(!_debtFilterMode.HasValue ? "active" : "")"
+                                    @onclick="() => SetDebtMode(null)">
+                                Tất cả
+                            </button>
+                            <button type="button" class="tf-filter-pill @(_debtFilterMode == 1 ? "active" : "")"
+                                    @onclick="() => SetDebtMode(1)">
+                                Có nợ (> 0)
+                            </button>
+                            <button type="button" class="tf-filter-pill @(_debtFilterMode == 0 ? "active" : "")"
+                                    @onclick="() => SetDebtMode(0)">
+                                Không nợ (= 0)
+                            </button>
+                        </div>
+                        <div class="tf-range-inputs">
+                            <input type="number" class="tf-input-sm" placeholder="Từ số tiền..." @bind="_filter.MinReceivable" @bind:event="onchange" />
+                            <span class="tf-range-sep">-</span>
+                            <input type="number" class="tf-input-sm" placeholder="Tới số tiền..." @bind="_filter.MaxReceivable" @bind:event="onchange" />
+                        </div>
+                    </div>
+
+                    @* Filter: Ngày tạo *@
+                    <div class="tf-filter-group">
+                        <label class="tf-filter-label">Thời gian tạo</label>
+                        <div class="tf-filter-pill-list tf-mb-2">
+                            <button type="button" class="tf-filter-pill @(!_datePreset.HasValue ? "active" : "")"
+                                    @onclick="() => SetDatePreset(null)">
+                                Toàn thời gian
+                            </button>
+                            <button type="button" class="tf-filter-pill @(_datePreset == 1 ? "active" : "")"
+                                    @onclick="() => SetDatePreset(1)">
+                                Hôm nay
+                            </button>
+                            <button type="button" class="tf-filter-pill @(_datePreset == 30 ? "active" : "")"
+                                    @onclick="() => SetDatePreset(30)">
+                                Tháng này
+                            </button>
+                        </div>
+                        <div class="tf-date-range-grid">
+                            <div>
+                                <span class="tf-sub-label">Từ ngày:</span>
+                                <input type="date" class="tf-input-sm" @bind="_filter.CreatedFrom" />
+                            </div>
+                            <div>
+                                <span class="tf-sub-label">Đến ngày:</span>
+                                <input type="date" class="tf-input-sm" @bind="_filter.CreatedTo" />
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Filter: Người tạo *@
+                    @if (_creators.Any())
+                    {
+                        <div class="tf-filter-group">
+                            <label class="tf-filter-label">Người tạo</label>
+                            <select class="tf-select-sm" value="@_filter.CreatedBy" @onchange="OnCreatorChanged">
+                                <option value="">Tất cả người tạo</option>
+                                @foreach (var creator in _creators)
+                                {
+                                    <option value="@creator">@creator</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                </div>
+            </aside>
+        }
+
+        @* Right Table Content *@
+        <main class="tf-table-main-panel">
+            @* Bulk Delete Action Bar (Only visible if user has delete permission & items selected) *@
+            @if (_selectedIds.Any())
+            {
+                <div class="tf-bulk-actions-bar">
+                    <span>Đã chọn <strong>@_selectedIds.Count</strong> khách hàng</span>
+                    <div class="tf-bulk-buttons">
+                        <button type="button" class="tf-btn tf-btn-sm tf-btn-secondary" @onclick="() => _selectedIds.Clear()">
+                            Bỏ chọn
+                        </button>
+                        <AuthorizeView Policy="Permission:Customers:Delete">
+                            <button type="button" class="tf-btn tf-btn-sm tf-btn-danger" @onclick="OpenBulkDeleteModal">
+                                Xóa đã chọn (@_selectedIds.Count)
+                            </button>
+                        </AuthorizeView>
+                    </div>
+                </div>
+            }
+
+            <div class="tf-card">
+                <div class="tf-card-body" style="padding:0; overflow-x:auto;">
+                    @if (_isLoading)
+                    {
+                        <div style="padding: 24px;">
+                            <Skeleton Type="table" Rows="6" Columns="8" />
+                        </div>
+                    }
+                    else if (!_pagedResult.Items.Any())
+                    {
+                        <div class="tf-empty-state">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <line x1="23" y1="11" x2="17" y2="11"></line>
+                            </svg>
+                            <h3>Không tìm thấy khách hàng phù hợp</h3>
+                            <p>Hãy thử thay đổi điều kiện tìm kiếm hoặc thiết lập lại bộ lọc.</p>
+                            @if (ActiveFilterCount > 0)
+                            {
+                                <button type="button" class="tf-btn tf-btn-secondary tf-btn-sm tf-mt-2" @onclick="ClearAllFilters">
+                                    Xóa toàn bộ bộ lọc
+                                </button>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <table class="tf-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px; text-align: center;">
+                                        <input type="checkbox" @onchange="ToggleSelectAll" checked="@(_pagedResult.Items.Any() && _selectedIds.Count == _pagedResult.Items.Count)" />
+                                    </th>
+                                    <th style="min-width: 120px;">Mã KH</th>
+                                    <th style="min-width: 220px;">Tên khách hàng</th>
+                                    <th style="min-width: 120px;">Điện thoại</th>
+                                    <th style="min-width: 120px;">Phân loại</th>
+                                    <th style="min-width: 140px; text-align: right;">Nợ hiện tại</th>
+                                    <th style="min-width: 140px; text-align: right;">Tổng bán</th>
+                                    <th style="min-width: 110px; text-align: center;">Trạng thái</th>
+                                    <th style="min-width: 130px; text-align: right;">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in _pagedResult.Items)
+                                {
+                                    <tr class="@(_selectedCustomerId == item.Id ? "row-selected" : "")" @onclick="() => OpenCustomerDrawer(item.Id)">
+                                        <td style="text-align: center;" @onclick:stopPropagation="true">
+                                            <input type="checkbox" @onchange="@(e => ToggleItemSelection(item.Id, e))" checked="@(_selectedIds.Contains(item.Id))" />
+                                        </td>
+                                        <td>
+                                            <button type="button" class="tf-table-code-btn" @onclick="() => OpenCustomerDrawer(item.Id)">
+                                                @item.Code
+                                            </button>
+                                        </td>
+                                        <td>
+                                            <div class="tf-table-customer-name">
+                                                <span class="tf-cust-name-text">@item.Name</span>
+                                                @if (item.IsCompany)
+                                                {
+                                                    <span class="tf-badge-company-sm">Doanh nghiệp</span>
+                                                }
+                                            </div>
+                                            @if (!string.IsNullOrEmpty(item.CompanyName) && item.CompanyName != item.Name)
+                                            {
+                                                <div class="tf-table-subtext">@item.CompanyName</div>
+                                            }
+                                            @if (!string.IsNullOrEmpty(item.TaxCode))
+                                            {
+                                                <div class="tf-table-subtext font-mono">MST: @item.TaxCode</div>
+                                            }
+                                        </td>
+                                        <td>
+                                            <span class="tf-phone-text">@(!string.IsNullOrEmpty(item.Phone) ? item.Phone : "-")</span>
+                                        </td>
+                                        <td>
+                                            @if (item.IsCompany)
+                                            {
+                                                <span class="tf-type-pill company">Công ty</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="tf-type-pill retail">Cá nhân</span>
+                                            }
+                                        </td>
+                                        <td style="text-align: right;">
+                                            @if (item.CurrentReceivable > 0)
+                                            {
+                                                <span class="tf-debt-amount danger font-semibold">
+                                                    @item.CurrentReceivable.ToString("N0") ₫
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="tf-debt-amount neutral">0 ₫</span>
+                                            }
+                                        </td>
+                                        <td style="text-align: right;">
+                                            <span class="tf-sales-amount font-semibold">
+                                                @item.TotalSales.ToString("N0") ₫
+                                            </span>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <TfBadge Variant="@(item.IsActive ? "success" : "gray")"
+                                                     Dot="true"
+                                                     Text="@(item.IsActive ? "Hoạt động" : "Tạm dừng")" />
+                                        </td>
+                                        <td style="text-align: right;" @onclick:stopPropagation="true">
+                                            <div class="tf-row-actions">
+                                                <button type="button" class="tf-btn-action" title="Xem chi tiết" @onclick="() => OpenCustomerDrawer(item.Id)">
+                                                    Chi tiết
+                                                </button>
+                                                <AuthorizeView Policy="Permission:Customers:Edit">
+                                                    <a href="/doi-tac/khach-hang/sua/@item.Id" class="tf-btn-action edit" title="Sửa thông tin">
+                                                        Sửa
+                                                    </a>
+                                                </AuthorizeView>
+                                                <AuthorizeView Policy="Permission:Customers:Delete">
+                                                    <button type="button" class="tf-btn-action delete" title="Xóa khách hàng" @onclick="() => ConfirmDelete(item.Id, item.Name, item.Code)">
+                                                        Xóa
+                                                    </button>
+                                                </AuthorizeView>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+
+                        @* 4. Pagination *@
+                        <div class="tf-pagination-container">
+                            <TfPagination CurrentPage="@_filter.PageIndex"
+                                          PageSize="@_filter.PageSize"
+                                          TotalCount="@_pagedResult.TotalCount"
+                                          ItemName="khách hàng"
+                                          CurrentPageChanged="OnPageChanged"
+                                          PageSizeChanged="OnPageSizeChanged" />
+                        </div>
+                    }
+                </div>
+            </div>
+        </main>
     </div>
 </div>
 
-<TfMasterDetailLayout SidebarWidth="260px">
-    <SidebarContent>
-        <FilterSidebar Title="Bộ lọc khách hàng" HasActiveFilters="@HasActiveFilters" OnClearFilters="ClearAllFilters">
-            <div class="tf-filter-card tf-mb-3">
-                <div class="tf-filter-header">
-                    <span class="tf-filter-title">Trạng thái</span>
-                </div>
-                <div class="tf-filter-body">
-                    <label class="tf-filter-option @(_statusFilter == null ? "selected" : "")" @onclick="() => SetStatusFilter(null)">
-                        <input type="radio" name="custStatus" checked="@(_statusFilter == null)" />
-                        <span>Tất cả</span>
-                        <span class="tf-filter-count">@(_items?.Count ?? 0)</span>
-                    </label>
-                    <label class="tf-filter-option @(_statusFilter == true ? "selected" : "")" @onclick="() => SetStatusFilter(true)">
-                        <input type="radio" name="custStatus" checked="@(_statusFilter == true)" />
-                        <span>Đang hoạt động</span>
-                        <span class="tf-filter-count">@(_items?.Count(p => p.IsActive) ?? 0)</span>
-                    </label>
-                    <label class="tf-filter-option @(_statusFilter == false ? "selected" : "")" @onclick="() => SetStatusFilter(false)">
-                        <input type="radio" name="custStatus" checked="@(_statusFilter == false)" />
-                        <span>Ngừng hoạt động</span>
-                        <span class="tf-filter-count">@(_items?.Count(p => !p.IsActive) ?? 0)</span>
-                    </label>
-                </div>
-            </div>
-        </FilterSidebar>
-    </SidebarContent>
+@* 5. Partner Detail Drawer Component *@
+<PartnerDetailDrawer @bind-IsOpen="_isDrawerOpen"
+                     PartnerType="PartnerType.Customer"
+                     PartnerId="@_selectedCustomerId"
+                     OnClose="() => _selectedCustomerId = null" />
 
-    <MainContent>
-        <div class="tf-card">
-            <div class="tf-card-body" style="padding:0; overflow-x: auto;">
-        
-@if (_selectedItems.Count > 0)
-{
-    <div class="tw-bg-blue-50/80 tw-border tw-border-blue-200 tw-p-3.5 tw-rounded-lg tw-mb-4 tw-flex tw-justify-between tw-items-center tw-shadow-xs">
-        <span class="tw-text-blue-900 tw-font-medium tw-text-sm">Đã chọn @_selectedItems.Count bản ghi</span>
-        <AuthorizeView Policy="Permission:Customers:Delete">
-            <button type="button" class="tf-btn tf-btn-sm tf-btn-danger" @onclick="ConfirmBulkDelete">Xóa đã chọn</button>
-        </AuthorizeView>
-    </div>
-}
-
-<TfModal IsOpen="@_showBulkDeleteModal"
-         Title="@($"Xóa {_selectedItems.Count} bản ghi đã chọn?")"
+@* 6. Deletion Confirmation Modal *@
+<TfModal IsOpen="@(_customerToDeleteId.HasValue)"
+         Title="Xác nhận xóa khách hàng"
          Size="md"
-         OnClose="CancelBulkDelete">
-    <BodyContent>
-        <p class="tw-text-slate-600 tw-mb-4">Hành động này không thể hoàn tác. Các bản ghi đang được sử dụng sẽ bị bỏ qua hoặc vô hiệu hóa thay vì xóa hoàn toàn.</p>
-        @if (_bulkDeleteErrors.Count > 0)
-        {
-            <div class="tf-alert tf-alert-error tw-mb-4 tw-max-h-36 tw-overflow-y-auto">
-                <ul class="tw-m-0 tw-pl-5">
-                    @foreach (var err in _bulkDeleteErrors)
-                    {
-                        <li>@err</li>
-                    }
-                </ul>
-            </div>
-        }
-    </BodyContent>
-    <FooterContent>
-        <button type="button" class="tf-btn tf-btn-secondary" @onclick="CancelBulkDelete">Hủy</button>
-        <LoadingButton Class="tf-btn tf-btn-danger"
-                       IsLoading="@_isBulkDeleting"
-                       LoadingText="Đang xử lý..."
-                       OnClick="ExecuteBulkDelete">
-            Xóa tất cả
-        </LoadingButton>
-    </FooterContent>
-</TfModal>
-
-@if (_items == null)
-{
-    <div style="padding: 16px;">
-        <Skeleton Type="table" Rows="6" Columns="10" />
-    </div>
-}
-else
-{
-    <div class="tf-table-loading-container">
-        <TableLoadingOverlay Visible="@_isRefreshing" Message="Đang cập nhật..." />
-        <table class="tf-table">
-            <thead>
-                <tr>
-                    <th style="width: 40px; text-align: center;"><input type="checkbox" @onchange="ToggleSelectAll" checked="@(FilteredItems.Any() && _selectedItems.Count == FilteredItems.Count())" /></th>
-                    <th style="min-width: 120px;">Mã KH</th>
-                    <th style="min-width: 110px;">Mã nội bộ</th>
-                    <th style="min-width: 180px;">Tên khách hàng</th>
-                    <th style="min-width: 180px;">Tên công ty</th>
-                    <th>MST</th>
-                    <th>Điện thoại</th>
-                    <th>Email</th>
-                    <th style="text-align:center;">Trạng thái</th>
-                    <th style="text-align:right;">Thao tác</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (!FilteredItems.Any())
-                {
-                    <tr><td colspan="10"><div class="tf-empty"><div class="tf-empty-title">Chưa có khách hàng phù hợp</div></div></td></tr>
-                }
-                else
-                {
-                    foreach (var item in PagedItems)
-                    {
-                        <tr>
-                            <td style="text-align: center;"><input type="checkbox" @onchange="@(e => ToggleSelect(item.Id, e))" checked="@(_selectedItems.Contains(item.Id))" /></td>
-                            <td>
-                                <span class="tw-font-mono tw-font-semibold tw-text-indigo-700 tw-bg-indigo-50/70 tw-px-2 tw-py-0.5 tw-rounded tw-text-xs">@item.Code</span>
-                            </td>
-                            <td>
-                                @if (!string.IsNullOrEmpty(item.BusinessCode))
-                                {
-                                    <TfBadge Variant="info" Text="@item.BusinessCode" />
-                                }
-                                else
-                                {
-                                    <span class="tw-text-slate-400">-</span>
-                                }
-                            </td>
-                            <td class="tw-font-medium tw-text-slate-900">@item.Name</td>
-                            <td class="tw-text-slate-700">@(item.CompanyName ?? "-")</td>
-                            <td class="tw-text-slate-600">@(item.TaxCode ?? "-")</td>
-                            <td class="tw-text-slate-600">@(item.Phone ?? "-")</td>
-                            <td class="tw-text-slate-600">@(item.Email ?? "-")</td>
-                            <td style="text-align:center;">
-                                <TfBadge Variant="@(item.IsActive ? "success" : "gray")"
-                                         Dot="true"
-                                         Text="@(item.IsActive ? "Hoạt động" : "Tạm dừng")" />
-                            </td>
-                            <td style="text-align:right;">
-                                <div class="tw-inline-flex tw-gap-1">
-                                    <AuthorizeView Policy="Permission:Customers:Edit">
-                                        <a href="/doi-tac/khach-hang/sua/@item.Id" class="tf-btn tf-btn-ghost tf-btn-sm">Sửa</a>
-                                    </AuthorizeView>
-                                    <AuthorizeView Policy="Permission:Customers:Delete">
-                                        <button class="tf-btn tf-btn-ghost tf-btn-sm tw-text-red-600 hover:tw-bg-red-50" @onclick="() => ConfirmDelete(item.Id, item.Name ?? string.Empty)">Xóa</button>
-                                    </AuthorizeView>
-                                </div>
-                            </td>
-                        </tr>
-                    }
-                }
-            </tbody>
-        </table>
-
-        @if (FilteredItems.Any())
-        {
-            <TfPagination CurrentPage="@_currentPage"
-                          PageSize="@_pageSize"
-                          TotalCount="@FilteredItems.Count()"
-                          ItemName="khách hàng"
-                          CurrentPageChanged="@(p => _currentPage = p)"
-                          PageSizeChanged="@(s => { _pageSize = s; _currentPage = 1; })" />
-        }
-    </div>
-}
-            </div>
-        </div>
-    </MainContent>
-</TfMasterDetailLayout>
-
-<TfModal IsOpen="@(_itemToDeleteId != null)"
-         Title="Xóa dữ liệu?"
-         Size="sm"
          OnClose="CancelDelete">
     <BodyContent>
-        <p class="tw-text-slate-600 tw-mb-4">Bạn có chắc chắn muốn xóa "<strong>@(_itemToDeleteName)</strong>"?</p>
-        @if (!string.IsNullOrEmpty(_deleteError))
+        <div class="tf-delete-dialog-content">
+            <div class="tf-delete-warning-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+            </div>
+            <div>
+                <p class="tf-delete-msg">
+                    Bạn có chắc chắn muốn xóa khách hàng <strong>@_customerToDeleteName</strong> (Mã: <code>@_customerToDeleteCode</code>)?
+                </p>
+                <div class="tf-delete-policy-notice">
+                    <strong>Chính sách an toàn dữ liệu kế toán:</strong> Nếu khách hàng đã phát sinh đơn bán hàng hoặc hóa đơn trong lịch sử, hệ thống sẽ tự động chuyển sang trạng thái <em>"Ngừng hoạt động"</em> thay vì xóa vật lý nhằm bảo vệ tính toàn vẹn chứng từ tài chính.
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_deleteMessage))
         {
-            <div class="tf-alert tf-alert-error tw-mb-3">
-                @_deleteError
+            <div class="tf-alert @(_deleteIsWarning ? "tf-alert-warning" : "tf-alert-error") tf-mt-3">
+                @_deleteMessage
             </div>
         }
     </BodyContent>
@@ -218,148 +440,312 @@ else
         <button type="button" class="tf-btn tf-btn-secondary" @onclick="CancelDelete">Hủy</button>
         <LoadingButton Class="tf-btn tf-btn-danger"
                        IsLoading="@_isDeleting"
-                       LoadingText="Đang xóa..."
+                       LoadingText="Đang xử lý..."
                        OnClick="ExecuteDelete">
-            Xóa
+            Xác nhận xóa
+        </LoadingButton>
+    </FooterContent>
+</TfModal>
+
+@* 7. Bulk Delete Modal *@
+<TfModal IsOpen="@_showBulkDeleteModal"
+         Title="@($"Xóa {_selectedIds.Count} khách hàng đã chọn?")"
+         Size="md"
+         OnClose="() => _showBulkDeleteModal = false">
+    <BodyContent>
+        <p class="tf-delete-msg">
+            Bạn có chắc chắn muốn xóa <strong>@_selectedIds.Count</strong> khách hàng đã chọn?
+        </p>
+        <div class="tf-delete-policy-notice">
+            Các khách hàng có giao dịch kế toán lịch sử sẽ được chuyển sang trạng thái <em>Ngừng hoạt động</em> để bảo toàn chứng từ.
+        </div>
+        @if (_bulkMessages.Any())
+        {
+            <div class="tf-alert tf-alert-warning tf-mt-3" style="max-height: 140px; overflow-y: auto;">
+                <ul style="margin: 0; padding-left: 18px;">
+                    @foreach (var msg in _bulkMessages)
+                    {
+                        <li>@msg</li>
+                    }
+                </ul>
+            </div>
+        }
+    </BodyContent>
+    <FooterContent>
+        <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showBulkDeleteModal = false">Hủy</button>
+        <LoadingButton Class="tf-btn tf-btn-danger"
+                       IsLoading="@_isBulkDeleting"
+                       LoadingText="Đang xử lý..."
+                       OnClick="ExecuteBulkDelete">
+            Thực hiện xóa
         </LoadingButton>
     </FooterContent>
 </TfModal>
 
 @code {
-    private int? _itemToDeleteId;
-    private string _itemToDeleteName = "";
-    private string? _deleteError;
+    private CustomerFilterDto _filter = new();
+    private PagedResult<CustomerListItemDto> _pagedResult = new();
+    private bool _isLoading = true;
+    private bool _showSidebar = true;
+    private List<string> _creators = new();
+
+    // Aggregates
+    private int _totalCount = 0;
+    private int _activeCount = 0;
+    private decimal _totalReceivable = 0m;
+    private decimal _totalSales = 0m;
+    private int _debtCustomerCount = 0;
+
+    // Filters UI state
+    private int? _debtFilterMode = null; // null = all, 1 = has debt, 0 = zero debt
+    private int? _datePreset = null; // 1 = today, 30 = this month
+
+    // Selection & Bulk
+    private HashSet<int> _selectedIds = new();
+    private bool _showBulkDeleteModal = false;
+    private bool _isBulkDeleting = false;
+    private List<string> _bulkMessages = new();
+
+    // Drawer state
+    private bool _isDrawerOpen = false;
+    private int? _selectedCustomerId = null;
+
+    // Delete single customer state
+    private int? _customerToDeleteId;
+    private string _customerToDeleteName = "";
+    private string _customerToDeleteCode = "";
+    private string? _deleteMessage;
+    private bool _deleteIsWarning = false;
     private bool _isDeleting = false;
-    private bool _isRefreshing = false;
 
-    private List<Customer>? _items;
-    private string _searchTerm = string.Empty;
-    private bool? _statusFilter;
-    private int _currentPage = 1;
-    private int _pageSize = 20;
-
-    private bool HasActiveFilters => !string.IsNullOrEmpty(_searchTerm) || _statusFilter.HasValue;
-
-    private void SetStatusFilter(bool? status) 
-    { 
-        _statusFilter = status; 
-        _currentPage = 1; 
-    }
-    
-    private void ClearAllFilters() 
-    { 
-        _searchTerm = string.Empty; 
-        _statusFilter = null; 
-        _currentPage = 1; 
+    private int ActiveFilterCount
+    {
+        get
+        {
+            int count = 0;
+            if (!string.IsNullOrWhiteSpace(_filter.SearchTerm)) count++;
+            if (_filter.CustomerType.HasValue) count++;
+            if (_filter.IsActive.HasValue) count++;
+            if (_debtFilterMode.HasValue || _filter.MinReceivable.HasValue || _filter.MaxReceivable.HasValue) count++;
+            if (_datePreset.HasValue || _filter.CreatedFrom.HasValue || _filter.CreatedTo.HasValue) count++;
+            if (!string.IsNullOrWhiteSpace(_filter.CreatedBy)) count++;
+            return count;
+        }
     }
 
     protected override async Task OnInitializedAsync()
     {
-        _items = await DbContext.Customers
-            .OrderBy(x => x.Code)
-            .ToListAsync();
+        await LoadCreatorsAsync();
+        await LoadDataAsync();
     }
 
-    private void OnSearchChanged(string val)
+    private async Task LoadCreatorsAsync()
     {
-        _searchTerm = val;
-        _currentPage = 1;
-    }
-
-    private void OnSearchInput(ChangeEventArgs e)
-    {
-        _searchTerm = e.Value?.ToString() ?? string.Empty;
-        _currentPage = 1;
-    }
-
-    private IEnumerable<Customer> PagedItems =>
-        FilteredItems.Skip((_currentPage - 1) * _pageSize).Take(_pageSize);
-
-    private IEnumerable<Customer> FilteredItems
-    {
-        get
+        try
         {
-            if (_items == null) return Enumerable.Empty<Customer>();
-
-            var q = _items.AsEnumerable();
-
-            if (_statusFilter.HasValue)
-            {
-                q = q.Where(x => x.IsActive == _statusFilter.Value);
-            }
-
-            if (!string.IsNullOrWhiteSpace(_searchTerm))
-            {
-                var term = _searchTerm.Trim().ToLower();
-                q = q.Where(x =>
-                    (x.Code != null && x.Code.ToLower().Contains(term)) ||
-                    (x.BusinessCode != null && x.BusinessCode.ToLower().Contains(term)) ||
-                    (x.Name != null && x.Name.ToLower().Contains(term)) ||
-                    (x.CompanyName != null && x.CompanyName.ToLower().Contains(term)) ||
-                    (x.TaxCode != null && x.TaxCode.ToLower().Contains(term)) ||
-                    (x.Phone != null && x.Phone.ToLower().Contains(term)) ||
-                    (x.Email != null && x.Email.ToLower().Contains(term)));
-            }
-
-            return q;
+            _creators = await PartnerService.GetCustomerCreatorsAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading creators: {ex.Message}");
         }
     }
 
-    private void ConfirmDelete(int id, string name)
+    private async Task LoadDataAsync()
     {
-        _itemToDeleteId = id;
-        _itemToDeleteName = name;
-        _deleteError = null;
+        _isLoading = true;
+        try
+        {
+            _pagedResult = await PartnerService.GetCustomersAsync(_filter);
+
+            // Compute summary metrics from current dataset
+            _totalCount = _pagedResult.TotalCount;
+            _activeCount = _pagedResult.Items.Count(x => x.IsActive);
+            _totalReceivable = _pagedResult.Items.Sum(x => x.CurrentReceivable);
+            _totalSales = _pagedResult.Items.Sum(x => x.TotalSales);
+            _debtCustomerCount = _pagedResult.Items.Count(x => x.CurrentReceivable > 0);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading customers: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task OnSearchChanged(string term)
+    {
+        _filter.SearchTerm = term;
+        _filter.PageIndex = 1;
+        await LoadDataAsync();
+    }
+
+    private void ToggleSidebar()
+    {
+        _showSidebar = !_showSidebar;
+    }
+
+    private async Task SetCustomerType(CustomerClassification? type)
+    {
+        _filter.CustomerType = type;
+        _filter.PageIndex = 1;
+        await LoadDataAsync();
+    }
+
+    private async Task SetStatus(bool? active)
+    {
+        _filter.IsActive = active;
+        _filter.PageIndex = 1;
+        await LoadDataAsync();
+    }
+
+    private async Task SetDebtMode(int? mode)
+    {
+        _debtFilterMode = mode;
+        if (mode == 1)
+        {
+            _filter.MinReceivable = 1m;
+            _filter.MaxReceivable = null;
+        }
+        else if (mode == 0)
+        {
+            _filter.MinReceivable = 0m;
+            _filter.MaxReceivable = 0m;
+        }
+        else
+        {
+            _filter.MinReceivable = null;
+            _filter.MaxReceivable = null;
+        }
+        _filter.PageIndex = 1;
+        await LoadDataAsync();
+    }
+
+    private async Task SetDatePreset(int? days)
+    {
+        _datePreset = days;
+        if (days == 1)
+        {
+            _filter.CreatedFrom = DateTime.Today;
+            _filter.CreatedTo = DateTime.Today;
+        }
+        else if (days == 30)
+        {
+            _filter.CreatedFrom = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+            _filter.CreatedTo = DateTime.Today;
+        }
+        else
+        {
+            _filter.CreatedFrom = null;
+            _filter.CreatedTo = null;
+        }
+        _filter.PageIndex = 1;
+        await LoadDataAsync();
+    }
+
+    private async Task OnCreatorChanged(ChangeEventArgs e)
+    {
+        _filter.CreatedBy = e.Value?.ToString();
+        _filter.PageIndex = 1;
+        await LoadDataAsync();
+    }
+
+    private async Task ClearAllFilters()
+    {
+        _filter = new CustomerFilterDto();
+        _debtFilterMode = null;
+        _datePreset = null;
+        await LoadDataAsync();
+    }
+
+    private void ToggleSelectAll(ChangeEventArgs e)
+    {
+        bool isChecked = (bool)(e.Value ?? false);
+        _selectedIds.Clear();
+        if (isChecked)
+        {
+            foreach (var item in _pagedResult.Items)
+            {
+                _selectedIds.Add(item.Id);
+            }
+        }
+    }
+
+    private void ToggleItemSelection(int id, ChangeEventArgs e)
+    {
+        bool isChecked = (bool)(e.Value ?? false);
+        if (isChecked) _selectedIds.Add(id);
+        else _selectedIds.Remove(id);
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        _filter.PageIndex = page;
+        await LoadDataAsync();
+    }
+
+    private async Task OnPageSizeChanged(int size)
+    {
+        _filter.PageSize = size;
+        _filter.PageIndex = 1;
+        await LoadDataAsync();
+    }
+
+    private void OpenCustomerDrawer(int customerId)
+    {
+        _selectedCustomerId = customerId;
+        _isDrawerOpen = true;
+    }
+
+    private void ConfirmDelete(int id, string name, string code)
+    {
+        _customerToDeleteId = id;
+        _customerToDeleteName = name;
+        _customerToDeleteCode = code;
+        _deleteMessage = null;
+        _deleteIsWarning = false;
     }
 
     private void CancelDelete()
     {
-        _itemToDeleteId = null;
-        _deleteError = null;
+        _customerToDeleteId = null;
+        _deleteMessage = null;
     }
 
     private async Task ExecuteDelete()
     {
-        if (_itemToDeleteId == null) return;
-        
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        if (!(await AuthService.AuthorizeAsync(authState.User, "Permission:Customers:Delete")).Succeeded)
-        {
-            _deleteError = "Bạn không có quyền thực hiện thao tác này.";
-            return;
-        }
+        if (!_customerToDeleteId.HasValue) return;
+
+        _isDeleting = true;
+        _deleteMessage = null;
 
         try
         {
-            _isDeleting = true;
-            int id = _itemToDeleteId.Value;
-            var entity = await DbContext.Customers.FindAsync(id);
-            if (entity == null)
-            {
-                CancelDelete();
-                return;
-            }
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var result = await PartnerService.DeleteCustomerAsync(_customerToDeleteId.Value, authState.User);
 
-            bool isReferenced = await DbContext.SalesOrders.AnyAsync(x => x.CustomerId == id) || await DbContext.Invoices.AnyAsync(x => x.CustomerId == id);
-
-            if (isReferenced)
+            if (result.Succeeded)
             {
-                entity.IsActive = false;
+                _customerToDeleteId = null;
+                await LoadDataAsync();
             }
             else
             {
-                DbContext.Remove(entity);
+                _deleteMessage = result.ErrorMessage;
+                _deleteIsWarning = result.SoftDeleted;
+                if (result.SoftDeleted)
+                {
+                    // Refresh data since status changed to Inactive
+                    await LoadDataAsync();
+                }
             }
-
-            await DbContext.SaveChangesAsync();
-            await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.CustomerDeleted, authState.User.Identity?.Name ?? "System", "Customer", id.ToString(), "Xóa hoặc ngừng hoạt động khách hàng", authState.User.Identity?.Name);
-            CancelDelete();
-            
-            await OnInitializedAsync();
         }
         catch (Exception ex)
         {
-            _deleteError = "Đã xảy ra lỗi: " + ex.Message;
+            _deleteMessage = "Đã xảy ra lỗi khi thực hiện thao tác xóa: " + ex.Message;
+            _deleteIsWarning = false;
         }
         finally
         {
@@ -367,124 +753,38 @@ else
         }
     }
 
-    private HashSet<int> _selectedItems = new();
-    private bool _showBulkDeleteModal = false;
-    private List<string> _bulkDeleteErrors = new();
-    private bool _isBulkDeleting = false;
-
-    private void ToggleSelectAll(ChangeEventArgs e)
+    private void OpenBulkDeleteModal()
     {
-        if (e.Value is bool isChecked && isChecked)
-        {
-            _selectedItems = new HashSet<int>(FilteredItems.Select(x => x.Id));
-        }
-        else
-        {
-            _selectedItems.Clear();
-        }
-    }
-
-    private void ToggleSelect(int id, ChangeEventArgs e)
-    {
-        if (e.Value is bool isChecked && isChecked)
-        {
-            _selectedItems.Add(id);
-        }
-        else
-        {
-            _selectedItems.Remove(id);
-        }
-    }
-
-    private void ConfirmBulkDelete()
-    {
-        _bulkDeleteErrors.Clear();
         _showBulkDeleteModal = true;
-    }
-
-    private void CancelBulkDelete()
-    {
-        _showBulkDeleteModal = false;
-        _isBulkDeleting = false;
+        _bulkMessages.Clear();
     }
 
     private async Task ExecuteBulkDelete()
     {
-        if (_selectedItems.Count == 0) return;
         _isBulkDeleting = true;
-        _bulkDeleteErrors.Clear();
-        StateHasChanged();
-
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        if (!(await AuthService.AuthorizeAsync(authState.User, "Permission:Customers:Delete")).Succeeded)
-        {
-            _bulkDeleteErrors.Add("Bạn không có quyền thực hiện thao tác này.");
-            _isBulkDeleting = false;
-            return;
-        }
+        _bulkMessages.Clear();
 
         try
         {
-            int successCount = 0;
-            var idsToProcess = _selectedItems.ToList();
-            
-            foreach (var id in idsToProcess)
-            {
-                _itemToDeleteId = id; // reuse the id for the logic block
-                try 
-                {
-                    await ProcessSingleDelete(id);
-                    _selectedItems.Remove(id);
-                    successCount++;
-                } 
-                catch (Exception ex)
-                {
-                    _bulkDeleteErrors.Add($"Bản ghi ID {id}: {ex.Message}");
-                }
-            }
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var result = await PartnerService.BulkDeleteCustomersAsync(_selectedIds.ToList(), authState.User);
 
-            if (successCount > 0)
+            _selectedIds.Clear();
+            _bulkMessages = result.Messages;
+
+            await LoadDataAsync();
+            if (!_bulkMessages.Any())
             {
-                await OnInitializedAsync();
+                _showBulkDeleteModal = false;
             }
-            
-            if (_selectedItems.Count == 0)
-            {
-                CancelBulkDelete();
-            }
+        }
+        catch (Exception ex)
+        {
+            _bulkMessages.Add("Lỗi xóa hàng loạt: " + ex.Message);
         }
         finally
         {
             _isBulkDeleting = false;
-            _itemToDeleteId = null;
-            StateHasChanged();
         }
-    }
-
-    private async Task ProcessSingleDelete(int currentId)
-    {
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        int id = _itemToDeleteId.Value;
-            var entity = await DbContext.Customers.FindAsync(id);
-            if (entity == null)
-            {
-                
-                return;
-            }
-
-            bool isReferenced = await DbContext.SalesOrders.AnyAsync(x => x.CustomerId == id) || await DbContext.Invoices.AnyAsync(x => x.CustomerId == id);
-
-            if (isReferenced)
-            {
-                entity.IsActive = false;
-            }
-            else
-            {
-                DbContext.Remove(entity);
-            }
-
-            await DbContext.SaveChangesAsync();
-            await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.CustomerDeleted, authState.User.Identity?.Name ?? "System", "Customer", id.ToString(), "Xóa hoặc ngừng hoạt động khách hàng", authState.User.Identity?.Name);
-            
     }
 }

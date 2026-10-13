@@ -1,0 +1,527 @@
+@using Microsoft.AspNetCore.Components
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Partners
+@inject IPartnerService PartnerService
+@inject NavigationManager Nav
+
+@if (IsOpen)
+{
+    <div class="tf-drawer-backdrop" @onclick="HandleClose">
+        <div class="tf-drawer-panel" @onclick:stopPropagation="true">
+            @* 1. Drawer Header *@
+            <div class="tf-drawer-header">
+                <div class="tf-drawer-header-info">
+                    <div class="tf-drawer-tags">
+                        <span class="tf-drawer-code">@(PartnerType == PartnerType.Customer ? _customer?.Code : _supplier?.Code)</span>
+                        @if (PartnerType == PartnerType.Customer && _customer != null)
+                        {
+                            <span class="@(_customer.IsCompany ? "tf-badge-company" : "tf-badge-retail")">
+                                @(_customer.IsCompany ? "Doanh nghiệp" : "Cá nhân")
+                            </span>
+                        }
+                        else if (PartnerType == PartnerType.Supplier)
+                        {
+                            <span class="tf-badge-supplier">Nhà cung cấp</span>
+                        }
+                        
+                        @if ((PartnerType == PartnerType.Customer && _customer?.IsActive == true) || (PartnerType == PartnerType.Supplier && _supplier?.IsActive == true))
+                        {
+                            <span class="tf-badge-status active">Đang hoạt động</span>
+                        }
+                        else
+                        {
+                            <span class="tf-badge-status inactive">Ngừng hoạt động</span>
+                        }
+                    </div>
+                    <h2 class="tf-drawer-title">
+                        @(PartnerType == PartnerType.Customer 
+                            ? (!string.IsNullOrEmpty(_customer?.CompanyName) ? _customer.CompanyName : _customer?.Name) 
+                            : (!string.IsNullOrEmpty(_supplier?.CompanyName) ? _supplier.CompanyName : _supplier?.Name))
+                    </h2>
+                </div>
+                <button type="button" class="tf-drawer-close-btn" @onclick="HandleClose" title="Đóng (Esc)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            @* 2. Drawer Tabs Navigation *@
+            <div class="tf-drawer-nav-tabs">
+                <button type="button" class="tf-drawer-tab-btn @(_activeTab == DrawerTab.Overview ? "active" : "")" @onclick="() => _activeTab = DrawerTab.Overview">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    <span>Tổng quan</span>
+                </button>
+                <button type="button" class="tf-drawer-tab-btn @(_activeTab == DrawerTab.Transactions ? "active" : "")" @onclick="() => _activeTab = DrawerTab.Transactions">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                        <line x1="2" y1="10" x2="22" y2="10"></line>
+                    </svg>
+                    <span>Giao dịch &amp; Công nợ</span>
+                </button>
+                <button type="button" class="tf-drawer-tab-btn @(_activeTab == DrawerTab.Audit ? "active" : "")" @onclick="() => _activeTab = DrawerTab.Audit">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    <span>Lịch sử khởi tạo</span>
+                </button>
+            </div>
+
+            @* 3. Drawer Body Content *@
+            <div class="tf-drawer-body">
+                @if (_isLoading)
+                {
+                    <div class="tf-drawer-loading">
+                        <div class="tf-drawer-spinner"></div>
+                        <p>Đang tải thông tin đối tác...</p>
+                    </div>
+                }
+                else if (PartnerType == PartnerType.Customer && _customer != null)
+                {
+                    @* TAB 1: OVERVIEW *@
+                    @if (_activeTab == DrawerTab.Overview)
+                    {
+                        @* Financial Summary Cards *@
+                        <div class="tf-drawer-metric-grid">
+                            <div class="tf-drawer-metric-card @(_customer.CurrentReceivable > 0 ? "danger" : "neutral")">
+                                <span class="tf-drawer-metric-label">Nợ hiện tại (Phải thu):</span>
+                                <span class="tf-drawer-metric-val">@_customer.CurrentReceivable.ToString("N0") ₫</span>
+                                <span class="tf-drawer-metric-sub">
+                                    @(_customer.CurrentReceivable > 0 ? "Khách còn nợ tiền hàng" : "Không có nợ đọng")
+                                </span>
+                            </div>
+                            <div class="tf-drawer-metric-card primary">
+                                <span class="tf-drawer-metric-label">Tổng doanh số bán:</span>
+                                <span class="tf-drawer-metric-val">@_customer.TotalSales.ToString("N0") ₫</span>
+                                <span class="tf-drawer-metric-sub">@_customer.OrderCount đơn hàng, @_customer.InvoiceCount hóa đơn</span>
+                            </div>
+                        </div>
+
+                        @* Overlap Cross Reference Alert *@
+                        @if (_customer.MatchingSupplierId.HasValue)
+                        {
+                            <div class="tf-drawer-overlap-pill">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M16 3h5v5"></path>
+                                    <path d="M4 20L21 3"></path>
+                                    <path d="M21 16v5h-5"></path>
+                                    <path d="M15 15l6 6"></path>
+                                    <path d="M4 4l5 5"></path>
+                                </svg>
+                                <div>
+                                    <span>Đối tác này đồng thời là <strong>Nhà cung cấp</strong> trong hệ thống:</span>
+                                    <button type="button" class="tf-overlap-btn" @onclick="() => SwitchToSupplier(_customer.MatchingSupplierId!.Value)">
+                                        Xem NCC @_customer.MatchingSupplierCode &rarr;
+                                    </button>
+                                </div>
+                            </div>
+                        }
+
+                        @* Contact Information Fields *@
+                        <div class="tf-drawer-section">
+                            <h4 class="tf-drawer-section-title">Thông tin định danh &amp; Liên hệ</h4>
+                            <div class="tf-drawer-field-list">
+                                <div class="tf-drawer-field-row">
+                                    <span class="tf-field-label">Tên khách hàng:</span>
+                                    <span class="tf-field-value font-semibold">@_customer.Name</span>
+                                </div>
+                                @if (!string.IsNullOrEmpty(_customer.CompanyName))
+                                {
+                                    <div class="tf-drawer-field-row">
+                                        <span class="tf-field-label">Tên công ty / Pháp nhân:</span>
+                                        <span class="tf-field-value">@_customer.CompanyName</span>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(_customer.TaxCode))
+                                {
+                                    <div class="tf-drawer-field-row">
+                                        <span class="tf-field-label">Mã số thuế (MST):</span>
+                                        <span class="tf-field-value font-mono font-semibold">@_customer.TaxCode</span>
+                                    </div>
+                                }
+                                <div class="tf-drawer-field-row">
+                                    <span class="tf-field-label">Số điện thoại:</span>
+                                    <span class="tf-field-value">@(!string.IsNullOrEmpty(_customer.Phone) ? _customer.Phone : "-")</span>
+                                </div>
+                                <div class="tf-drawer-field-row">
+                                    <span class="tf-field-label">Email:</span>
+                                    <span class="tf-field-value">@(!string.IsNullOrEmpty(_customer.Email) ? _customer.Email : "-")</span>
+                                </div>
+                                <div class="tf-drawer-field-row">
+                                    <span class="tf-field-label">Người liên hệ:</span>
+                                    <span class="tf-field-value">@(!string.IsNullOrEmpty(_customer.ContactPerson) ? _customer.ContactPerson : "-")</span>
+                                </div>
+                                <div class="tf-drawer-field-row">
+                                    <span class="tf-field-label">Địa chỉ:</span>
+                                    <span class="tf-field-value">@(!string.IsNullOrEmpty(_customer.Address) ? _customer.Address : "-")</span>
+                                </div>
+                                @if (!string.IsNullOrEmpty(_customer.BusinessCode))
+                                {
+                                    <div class="tf-drawer-field-row">
+                                        <span class="tf-field-label">Mã quản lý nội bộ:</span>
+                                        <span class="tf-field-value font-mono">@_customer.BusinessCode</span>
+                                    </div>
+                                }
+                                <div class="tf-drawer-field-row">
+                                    <span class="tf-field-label">Ghi chú:</span>
+                                    <span class="tf-field-value">@(!string.IsNullOrEmpty(_customer.Notes) ? _customer.Notes : "Không có ghi chú")</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    @* TAB 2: TRANSACTIONS *@
+                    @if (_activeTab == DrawerTab.Transactions)
+                    {
+                        <div class="tf-drawer-section">
+                            <h4 class="tf-drawer-section-title">Lịch sử giao dịch &amp; Chứng từ gắn kết</h4>
+                            @if (!_customer.RecentTransactions.Any())
+                            {
+                                <div class="tf-drawer-empty-table">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                    </svg>
+                                    <p>Khách hàng chưa phát sinh đơn bán hàng hay hóa đơn nào.</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="tf-drawer-table-wrap">
+                                    <table class="tf-drawer-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Mã chứng từ</th>
+                                                <th>Ngày</th>
+                                                <th style="text-align:right;">Tổng tiền</th>
+                                                <th style="text-align:right;">Còn nợ</th>
+                                                <th style="text-align:center;">Trạng thái</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var t in _customer.RecentTransactions)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <a href="@t.LinkUrl" class="tf-drawer-link" title="Xem chi tiết @t.DocumentType">
+                                                            @t.DocumentCode
+                                                        </a>
+                                                        <div class="tf-drawer-doc-sub">@t.DocumentType</div>
+                                                    </td>
+                                                    <td>@t.DocumentDate.ToString("dd/MM/yyyy")</td>
+                                                    <td style="text-align:right; font-weight:600;">@t.Amount.ToString("N0") ₫</td>
+                                                    <td style="text-align:right; font-weight:600; color:@(t.OutstandingAmount > 0 ? "var(--tf-danger)" : "var(--tf-success)");">
+                                                        @t.OutstandingAmount.ToString("N0") ₫
+                                                    </td>
+                                                    <td style="text-align:center;">
+                                                        <span class="tf-badge-doc-status">@t.Status</span>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    @* TAB 3: AUDIT METADATA *@
+                    @if (_activeTab == DrawerTab.Audit)
+                    {
+                        <div class="tf-drawer-section">
+                            <h4 class="tf-drawer-section-title">Nhật ký dữ liệu &amp; Nguồn gốc bản ghi</h4>
+                            <div class="tf-drawer-audit-box">
+                                <div class="tf-audit-step">
+                                    <div class="tf-audit-marker create"></div>
+                                    <div class="tf-audit-content">
+                                        <div class="tf-audit-title">Khởi tạo bản ghi</div>
+                                        <div class="tf-audit-time">@_customer.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</div>
+                                        <div class="tf-audit-user">
+                                            Người tạo: <strong>@(!string.IsNullOrEmpty(_customer.CreatedBy) ? _customer.CreatedBy : "Hệ thống (Khởi tạo ban đầu)")</strong>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @if (_customer.UpdatedAt.HasValue)
+                                {
+                                    <div class="tf-audit-step">
+                                        <div class="tf-audit-marker update"></div>
+                                        <div class="tf-audit-content">
+                                            <div class="tf-audit-title">Cập nhật gần nhất</div>
+                                            <div class="tf-audit-time">@_customer.UpdatedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</div>
+                                            <div class="tf-audit-user">
+                                                Người cập nhật: <strong>@(!string.IsNullOrEmpty(_customer.UpdatedBy) ? _customer.UpdatedBy : "System")</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="tf-audit-step">
+                                        <div class="tf-audit-marker neutral"></div>
+                                        <div class="tf-audit-content">
+                                            <div class="tf-audit-title">Chưa có chỉnh sửa</div>
+                                            <div class="tf-audit-desc">Bản ghi chưa được cập nhật kể từ lúc tạo.</div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+                else if (PartnerType == PartnerType.Supplier && _supplier != null)
+                {
+                    @* SUPPLIER VIEW *@
+                    @if (_activeTab == DrawerTab.Overview)
+                    {
+                        <div class="tf-drawer-metric-grid">
+                            <div class="tf-drawer-metric-card @(_supplier.CurrentPayable > 0 ? "warning" : "neutral")">
+                                <span class="tf-drawer-metric-label">Nợ cần trả hiện tại:</span>
+                                <span class="tf-drawer-metric-val">@_supplier.CurrentPayable.ToString("N0") ₫</span>
+                                <span class="tf-drawer-metric-sub">
+                                    @(_supplier.CurrentPayable > 0 ? "Doanh nghiệp nợ nhà cung cấp" : "Không có nợ đọng phải trả")
+                                </span>
+                            </div>
+                            <div class="tf-drawer-metric-card neutral">
+                                <span class="tf-drawer-metric-label">Tổng giá trị mua hàng:</span>
+                                <span class="tf-drawer-metric-val">@_supplier.TotalPurchases.ToString("N0") ₫</span>
+                                <span class="tf-drawer-metric-sub">Chưa có chứng từ mua hàng phát sinh</span>
+                            </div>
+                        </div>
+
+                        @if (_supplier.MatchingCustomerId.HasValue)
+                        {
+                            <div class="tf-drawer-overlap-pill">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M16 3h5v5"></path>
+                                    <path d="M4 20L21 3"></path>
+                                    <path d="M21 16v5h-5"></path>
+                                    <path d="M15 15l6 6"></path>
+                                    <path d="M4 4l5 5"></path>
+                                </svg>
+                                <div>
+                                    <span>Đối tác này đồng thời là <strong>Khách hàng</strong> trong hệ thống:</span>
+                                    <button type="button" class="tf-overlap-btn" @onclick="() => SwitchToCustomer(_supplier.MatchingCustomerId!.Value)">
+                                        Xem KH @_supplier.MatchingCustomerCode &rarr;
+                                    </button>
+                                </div>
+                            </div>
+                        }
+
+                        <div class="tf-drawer-section">
+                            <h4 class="tf-drawer-section-title">Thông tin Nhà cung cấp &amp; Liên hệ</h4>
+                            <div class="tf-drawer-field-list">
+                                <div class="tf-drawer-field-row">
+                                    <span class="tf-field-label">Tên nhà cung cấp:</span>
+                                    <span class="tf-field-value font-semibold">@_supplier.Name</span>
+                                </div>
+                                @if (!string.IsNullOrEmpty(_supplier.CompanyName))
+                                {
+                                    <div class="tf-drawer-field-row">
+                                        <span class="tf-field-label">Tên pháp nhân công ty:</span>
+                                        <span class="tf-field-value">@_supplier.CompanyName</span>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(_supplier.TaxCode))
+                                {
+                                    <div class="tf-drawer-field-row">
+                                        <span class="tf-field-label">Mã số thuế (MST):</span>
+                                        <span class="tf-field-value font-mono font-semibold">@_supplier.TaxCode</span>
+                                    </div>
+                                }
+                                <div class="tf-drawer-field-row">
+                                    <span class="tf-field-label">Số điện thoại:</span>
+                                    <span class="tf-field-value">@(!string.IsNullOrEmpty(_supplier.Phone) ? _supplier.Phone : "-")</span>
+                                </div>
+                                <div class="tf-drawer-field-row">
+                                    <span class="tf-field-label">Email:</span>
+                                    <span class="tf-field-value">@(!string.IsNullOrEmpty(_supplier.Email) ? _supplier.Email : "-")</span>
+                                </div>
+                                <div class="tf-drawer-field-row">
+                                    <span class="tf-field-label">Người đại diện / liên hệ:</span>
+                                    <span class="tf-field-value">@(!string.IsNullOrEmpty(_supplier.ContactPerson) ? _supplier.ContactPerson : "-")</span>
+                                </div>
+                                <div class="tf-drawer-field-row">
+                                    <span class="tf-field-label">Địa chỉ trụ sở / kho:</span>
+                                    <span class="tf-field-value">@(!string.IsNullOrEmpty(_supplier.Address) ? _supplier.Address : "-")</span>
+                                </div>
+                                <div class="tf-drawer-field-row">
+                                    <span class="tf-field-label">Ghi chú:</span>
+                                    <span class="tf-field-value">@(!string.IsNullOrEmpty(_supplier.Notes) ? _supplier.Notes : "Không có ghi chú")</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    @if (_activeTab == DrawerTab.Transactions)
+                    {
+                        <div class="tf-drawer-section">
+                            <h4 class="tf-drawer-section-title">Chứng từ Mua hàng &amp; Công nợ phải trả</h4>
+                            <div class="tf-drawer-empty-table">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                </svg>
+                                <p>Phân hệ Mua hàng (Phase 6) đang chuẩn bị kích hoạt. Hiện chưa có chứng từ mua hàng phát sinh nợ phải trả cho nhà cung cấp này.</p>
+                            </div>
+                        </div>
+                    }
+
+                    @if (_activeTab == DrawerTab.Audit)
+                    {
+                        <div class="tf-drawer-section">
+                            <h4 class="tf-drawer-section-title">Nhật ký dữ liệu &amp; Nguồn gốc bản ghi</h4>
+                            <div class="tf-drawer-audit-box">
+                                <div class="tf-audit-step">
+                                    <div class="tf-audit-marker create"></div>
+                                    <div class="tf-audit-content">
+                                        <div class="tf-audit-title">Khởi tạo bản ghi</div>
+                                        <div class="tf-audit-time">@_supplier.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</div>
+                                        <div class="tf-audit-user">
+                                            Người tạo: <strong>@(!string.IsNullOrEmpty(_supplier.CreatedBy) ? _supplier.CreatedBy : "Hệ thống (Khởi tạo ban đầu)")</strong>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @if (_supplier.UpdatedAt.HasValue)
+                                {
+                                    <div class="tf-audit-step">
+                                        <div class="tf-audit-marker update"></div>
+                                        <div class="tf-audit-content">
+                                            <div class="tf-audit-title">Cập nhật gần nhất</div>
+                                            <div class="tf-audit-time">@_supplier.UpdatedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</div>
+                                            <div class="tf-audit-user">
+                                                Người cập nhật: <strong>@(!string.IsNullOrEmpty(_supplier.UpdatedBy) ? _supplier.UpdatedBy : "System")</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="tf-audit-step">
+                                        <div class="tf-audit-marker neutral"></div>
+                                        <div class="tf-audit-content">
+                                            <div class="tf-audit-title">Chưa có chỉnh sửa</div>
+                                            <div class="tf-audit-desc">Bản ghi chưa được cập nhật kể từ lúc tạo.</div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+
+            @* 4. Drawer Footer Actions *@
+            <div class="tf-drawer-footer">
+                @if (PartnerType == PartnerType.Customer && _customer != null)
+                {
+                    <a href="/doi-tac/khach-hang/sua/@_customer.Id" class="tf-drawer-btn primary">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                        <span>Sửa thông tin</span>
+                    </a>
+                }
+                else if (PartnerType == PartnerType.Supplier && _supplier != null)
+                {
+                    <a href="/doi-tac/nha-cung-cap/sua/@_supplier.Id" class="tf-drawer-btn primary">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                        <span>Sửa thông tin</span>
+                    </a>
+                }
+                <button type="button" class="tf-drawer-btn secondary" @onclick="HandleClose">
+                    Đóng
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public PartnerType PartnerType { get; set; } = PartnerType.Customer;
+    [Parameter] public int? PartnerId { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private enum DrawerTab { Overview, Transactions, Audit }
+    private DrawerTab _activeTab = DrawerTab.Overview;
+
+    private bool _isLoading = false;
+    private CustomerDetailDto? _customer;
+    private SupplierDetailDto? _supplier;
+    private int? _lastLoadedId;
+    private PartnerType _lastLoadedType;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && PartnerId.HasValue && (PartnerId != _lastLoadedId || PartnerType != _lastLoadedType))
+        {
+            await LoadPartnerDetailAsync();
+        }
+    }
+
+    private async Task LoadPartnerDetailAsync()
+    {
+        if (!PartnerId.HasValue) return;
+
+        _isLoading = true;
+        _activeTab = DrawerTab.Overview;
+        _customer = null;
+        _supplier = null;
+
+        try
+        {
+            if (PartnerType == PartnerType.Customer)
+            {
+                _customer = await PartnerService.GetCustomerDetailAsync(PartnerId.Value);
+            }
+            else
+            {
+                _supplier = await PartnerService.GetSupplierDetailAsync(PartnerId.Value);
+            }
+
+            _lastLoadedId = PartnerId;
+            _lastLoadedType = PartnerType;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading partner detail: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task HandleClose()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task SwitchToSupplier(int supplierId)
+    {
+        PartnerType = PartnerType.Supplier;
+        PartnerId = supplierId;
+        await LoadPartnerDetailAsync();
+    }
+
+    private async Task SwitchToCustomer(int customerId)
+    {
+        PartnerType = PartnerType.Customer;
+        PartnerId = customerId;
+        await LoadPartnerDetailAsync();
+    }
+}

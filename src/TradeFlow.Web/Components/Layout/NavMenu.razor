@@ -254,7 +254,7 @@
 
             @* Desktop Fly-out Submenu *@
             <div class="tf-nav-flyout">
-                <div class="tf-nav-flyout-header">Đối tác &amp; Khách hàng</div>
+                <div class="tf-nav-flyout-header">Đối tác</div>
                 <div class="tf-nav-flyout-body">
                     <AuthorizeView Policy="Permission:Customers:View">
                         <NavLink class="tf-flyout-link" href="/doi-tac/khach-hang" ActiveClass="active" @onclick="HandleLinkClick">
@@ -266,6 +266,12 @@
                         <NavLink class="tf-flyout-link" href="/doi-tac/nha-cung-cap" ActiveClass="active" @onclick="HandleLinkClick">
                             <span class="tf-flyout-dot"></span>
                             <span>Nhà cung cấp</span>
+                        </NavLink>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permission:Customers:View">
+                        <NavLink class="tf-flyout-link" href="/doi-tac/cong-no" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Công nợ</span>
                         </NavLink>
                     </AuthorizeView>
                 </div>
@@ -284,6 +290,13 @@
                     <div class="tf-nav-sub-item">
                         <NavLink class="tf-nav-sub-link" href="/doi-tac/nha-cung-cap" ActiveClass="active" @onclick="HandleLinkClick">
                             <span class="tf-nav-sub-dot"></span>Nhà cung cấp
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+                <AuthorizeView Policy="Permission:Customers:View">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/doi-tac/cong-no" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-nav-sub-dot"></span>Công nợ
                         </NavLink>
                     </div>
                 </AuthorizeView>
@@ -596,7 +609,18 @@
     private void ToggleInvoice() => IsInvoiceOpen = !IsInvoiceOpen;
     private void ToggleCatalog() => IsCatalogOpen = !IsCatalogOpen;
     private void ToggleWarehouse() => IsWarehouseOpen = !IsWarehouseOpen;
-    private void TogglePartners() => IsPartnersOpen = !IsPartnersOpen;
+    private void TogglePartners()
+    {
+        if (!IsSectionActive("doi-tac"))
+        {
+            IsPartnersOpen = true;
+            Nav.NavigateTo("/doi-tac/khach-hang");
+        }
+        else
+        {
+            IsPartnersOpen = !IsPartnersOpen;
+        }
+    }
     private void ToggleDocuments() => IsDocumentsOpen = !IsDocumentsOpen;
     private void ToggleEmployees() => IsEmployeesOpen = !IsEmployeesOpen;
     private void ToggleSettings() => IsSettingsOpen = !IsSettingsOpen;

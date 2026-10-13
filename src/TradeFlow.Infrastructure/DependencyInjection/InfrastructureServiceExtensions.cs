@@ -104,6 +104,10 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<ICompanyBrandingService, Services.CompanyBrandingService>();
         services.AddScoped<ILoadingService, Services.LoadingService>();
 
+        // Register Partner & Debt Management services
+        services.AddScoped<IPartnerService, Services.PartnerService>();
+        services.AddScoped<IPartnerDebtService, Services.PartnerDebtService>();
+
         return services;
     }
 }

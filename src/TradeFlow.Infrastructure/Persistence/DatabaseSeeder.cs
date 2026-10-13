@@ -457,6 +457,58 @@ public class DatabaseSeeder
             }
         }
 
+        // Seed sample suppliers if none exist
+        if (!await _context.Suppliers.AnyAsync())
+        {
+            _logger.LogInformation("Seeding sample suppliers...");
+            var sampleSuppliers = new[]
+            {
+                new Supplier
+                {
+                    Code = "NCC000001",
+                    Name = "Công ty CP Xây Dựng Miền Tây",
+                    CompanyName = "Công ty CP Xây Dựng Miền Tây",
+                    TaxCode = "1801234567",
+                    Phone = "02923888999",
+                    Email = "mientay.corp@gmail.com",
+                    Address = "Đại lộ Hòa Bình, Q. Ninh Kiều, Cần Thơ",
+                    ContactPerson = "Nguyễn Văn Hùng",
+                    IsActive = true,
+                    CreatedAt = now,
+                    CreatedBy = "System"
+                },
+                new Supplier
+                {
+                    Code = "NCC000002",
+                    Name = "Tổng Công ty Thiết Bị Viglacera",
+                    CompanyName = "Tổng Công ty CP Thiết Bị Vệ Sinh Viglacera",
+                    TaxCode = "0100112233",
+                    Phone = "02438887777",
+                    Email = "kinhdoanh@viglacera.com.vn",
+                    Address = "Tòa nhà Viglacera, Mễ Trì, Nam Từ Liêm, Hà Nội",
+                    ContactPerson = "Trần Thị Mai",
+                    IsActive = true,
+                    CreatedAt = now,
+                    CreatedBy = "System"
+                },
+                new Supplier
+                {
+                    Code = "NCC000003",
+                    Name = "Công ty TNHH Sen Vòi INAX",
+                    CompanyName = "Công ty TNHH LIXIL - INAX Việt Nam",
+                    TaxCode = "0300998877",
+                    Phone = "02839996666",
+                    Email = "lienhe@inax.com.vn",
+                    Address = "Khu Công Nghiệp Biên Hòa 2, Đồng Nai",
+                    ContactPerson = "Lê Hoàng Quân",
+                    IsActive = true,
+                    CreatedAt = now,
+                    CreatedBy = "System"
+                }
+            };
+            _context.Suppliers.AddRange(sampleSuppliers);
+        }
+
         await _context.SaveChangesAsync();
     }
 

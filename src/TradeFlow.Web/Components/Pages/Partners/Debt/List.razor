@@ -1,0 +1,539 @@
+@page "/doi-tac/cong-no"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Partners
+@using TradeFlow.Domain.Entities.MasterData
+@using TradeFlow.Web.Components.Common
+@using TradeFlow.Web.Components.Pages.Partners.Components
+@attribute [Authorize(Policy = "Permission:Customers:View")]
+
+@inject IPartnerDebtService DebtService
+@inject NavigationManager Nav
+
+<PageTitle>Quản lý Công nợ - TradeFlow</PageTitle>
+
+<div class="tf-debt-container">
+    @* 1. Page Header *@
+    <div class="tf-page-header">
+        <div class="tf-page-header-left">
+            <h1 class="tf-page-title">Quản lý Công nợ</h1>
+            <p class="tf-page-subtitle">Theo dõi và đối soát tập trung các khoản nợ phải thu từ khách hàng và nợ phải trả cho nhà cung cấp</p>
+        </div>
+        <div class="tf-page-header-actions">
+            <div class="tf-header-search-wrap">
+                <DebouncedSearchInput Placeholder="Tìm theo mã đối tác, tên, SĐT, số chứng từ..."
+                                      Value="@_filter.SearchTerm"
+                                      ValueChanged="OnSearchChanged" />
+            </div>
+
+            <button type="button" class="tf-btn tf-btn-secondary @(_showSidebar ? "active" : "")" @onclick="ToggleSidebar" title="Bật/Tắt bộ lọc nâng cao">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="22 3 2 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                <span>Bộ lọc</span>
+                @if (ActiveFilterCount > 0)
+                {
+                    <span class="tf-filter-active-count">@ActiveFilterCount</span>
+                }
+            </button>
+        </div>
+    </div>
+
+    @* 2. Summary KPI Metric Cards *@
+    <div class="tf-debt-kpi-grid">
+        <div class="tf-debt-kpi-card @(_summary.TotalCustomerReceivables > 0 ? "receivable-highlight" : "")">
+            <div class="tf-kpi-icon receivable">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+            </div>
+            <div class="tf-kpi-content">
+                <div class="tf-kpi-label">Tổng phải thu khách hàng</div>
+                <div class="tf-kpi-value @(_summary.TotalCustomerReceivables > 0 ? "danger" : "")">
+                    @_summary.TotalCustomerReceivables.ToString("N0") ₫
+                </div>
+                <div class="tf-kpi-hint">
+                    @(_summary.CustomersWithDebtCount > 0 ? $"{_summary.CustomersWithDebtCount} khách hàng đang nợ" : "Không có nợ đọng")
+                </div>
+            </div>
+        </div>
+
+        <div class="tf-debt-kpi-card @(_summary.TotalSupplierPayables > 0 ? "payable-highlight" : "")">
+            <div class="tf-kpi-icon payable">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+            </div>
+            <div class="tf-kpi-content">
+                <div class="tf-kpi-label">Tổng phải trả nhà cung cấp</div>
+                <div class="tf-kpi-value @(_summary.TotalSupplierPayables > 0 ? "warning" : "")">
+                    @_summary.TotalSupplierPayables.ToString("N0") ₫
+                </div>
+                <div class="tf-kpi-hint">
+                    @(_summary.TotalSupplierPayables > 0 ? $"{_summary.SuppliersWithDebtCount} NCC đang có công nợ" : "0 ₫ — Chưa phát sinh nợ nhập hàng")
+                </div>
+            </div>
+        </div>
+
+        <div class="tf-debt-kpi-card net-highlight">
+            <div class="tf-kpi-icon net">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+                    <polyline points="16 7 22 7 22 13"></polyline>
+                </svg>
+            </div>
+            <div class="tf-kpi-content">
+                <div class="tf-kpi-label">Chênh lệch công nợ (Đối soát)</div>
+                <div class="tf-kpi-value primary">
+                    @_summary.NetDifference.ToString("N0") ₫
+                </div>
+                <div class="tf-kpi-hint">Tổng phải thu trừ Tổng phải trả (Đối soát tham chiếu)</div>
+            </div>
+        </div>
+
+        <div class="tf-debt-kpi-card">
+            <div class="tf-kpi-icon users">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+            </div>
+            <div class="tf-kpi-content">
+                <div class="tf-kpi-label">Đối tác phát sinh nợ</div>
+                <div class="tf-kpi-value">
+                    @(_summary.CustomersWithDebtCount + _summary.SuppliersWithDebtCount)
+                </div>
+                <div class="tf-kpi-hint">@_summary.CustomersWithDebtCount KH / @_summary.SuppliersWithDebtCount NCC</div>
+            </div>
+        </div>
+    </div>
+
+    @* 3. Informational Accounting Notice *@
+    @if (!string.IsNullOrEmpty(_summary.FinancialDataSourceNote))
+    {
+        <div class="tf-debt-notice">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            <span>@_summary.FinancialDataSourceNote</span>
+        </div>
+    }
+
+    @* 4. Navigation View Tabs *@
+    <div class="tf-debt-tabs">
+        <button type="button" class="tf-debt-tab @(!_filter.PartnerType.HasValue ? "active" : "")" @onclick="() => SetPartnerTypeTab(null)">
+            <span>Tất cả công nợ</span>
+            @if (_summary.CustomersWithDebtCount + _summary.SuppliersWithDebtCount > 0)
+            {
+                <span class="tf-tab-badge">@(_summary.CustomersWithDebtCount + _summary.SuppliersWithDebtCount)</span>
+            }
+        </button>
+        <button type="button" class="tf-debt-tab @(_filter.PartnerType == PartnerType.Customer ? "active" : "")" @onclick="() => SetPartnerTypeTab(PartnerType.Customer)">
+            <span>Phải thu khách hàng</span>
+            @if (_summary.CustomersWithDebtCount > 0)
+            {
+                <span class="tf-tab-badge">@_summary.CustomersWithDebtCount</span>
+            }
+        </button>
+        <button type="button" class="tf-debt-tab @(_filter.PartnerType == PartnerType.Supplier ? "active" : "")" @onclick="() => SetPartnerTypeTab(PartnerType.Supplier)">
+            <span>Phải trả nhà cung cấp</span>
+            @if (_summary.SuppliersWithDebtCount > 0)
+            {
+                <span class="tf-tab-badge">@_summary.SuppliersWithDebtCount</span>
+            }
+        </button>
+    </div>
+
+    @* 5. Split Master-Detail Layout *@
+    <div class="tf-split-layout @(!_showSidebar ? "sidebar-collapsed" : "")">
+        @* Left Filter Sidebar *@
+        @if (_showSidebar)
+        {
+            <aside class="tf-filter-sidebar">
+                <div class="tf-sidebar-header">
+                    <span class="tf-sidebar-title">Bộ lọc công nợ</span>
+                    @if (ActiveFilterCount > 0)
+                    {
+                        <button type="button" class="tf-btn-clear-filters" @onclick="ClearAllFilters">
+                            Xóa lọc
+                        </button>
+                    }
+                </div>
+
+                <div class="tf-sidebar-body">
+                    @* Filter: Trạng thái thanh toán *@
+                    <div class="tf-filter-group">
+                        <label class="tf-filter-label">Trạng thái thanh toán</label>
+                        <div class="tf-filter-pill-list">
+                            <button type="button" class="tf-filter-pill @(!_filter.DebtStatus.HasValue ? "active" : "")"
+                                    @onclick="() => SetDebtStatus(null)">
+                                Tất cả
+                            </button>
+                            <button type="button" class="tf-filter-pill @(_filter.DebtStatus == DebtStatus.Outstanding ? "active" : "")"
+                                    @onclick="() => SetDebtStatus(DebtStatus.Outstanding)">
+                                Còn nợ
+                            </button>
+                            <button type="button" class="tf-filter-pill @(_filter.DebtStatus == DebtStatus.PartiallyPaid ? "active" : "")"
+                                    @onclick="() => SetDebtStatus(DebtStatus.PartiallyPaid)">
+                                Nợ một phần
+                            </button>
+                            <button type="button" class="tf-filter-pill @(_filter.DebtStatus == DebtStatus.Settled ? "active" : "")"
+                                    @onclick="() => SetDebtStatus(DebtStatus.Settled)">
+                                Đã thanh toán
+                            </button>
+                        </div>
+                    </div>
+
+                    @* Filter: Số tiền nợ còn lại *@
+                    <div class="tf-filter-group">
+                        <label class="tf-filter-label">Số tiền còn phải thu/trả</label>
+                        <div class="tf-range-inputs">
+                            <input type="number" class="tf-input-sm" placeholder="Từ số tiền..." @bind="_filter.MinBalance" @bind:event="onchange" />
+                            <span class="tf-range-sep">-</span>
+                            <input type="number" class="tf-input-sm" placeholder="Tới số tiền..." @bind="_filter.MaxBalance" @bind:event="onchange" />
+                        </div>
+                    </div>
+
+                    @* Filter: Ngày chứng từ *@
+                    <div class="tf-filter-group">
+                        <label class="tf-filter-label">Thời gian phát sinh chứng từ</label>
+                        <div class="tf-filter-pill-list tf-mb-2">
+                            <button type="button" class="tf-filter-pill @(!_datePreset.HasValue ? "active" : "")"
+                                    @onclick="() => SetDatePreset(null)">
+                                Toàn thời gian
+                            </button>
+                            <button type="button" class="tf-filter-pill @(_datePreset == 1 ? "active" : "")"
+                                    @onclick="() => SetDatePreset(1)">
+                                Hôm nay
+                            </button>
+                            <button type="button" class="tf-filter-pill @(_datePreset == 30 ? "active" : "")"
+                                    @onclick="() => SetDatePreset(30)">
+                                Tháng này
+                            </button>
+                        </div>
+                        <div class="tf-date-range-grid">
+                            <div>
+                                <span class="tf-sub-label">Từ ngày:</span>
+                                <input type="date" class="tf-input-sm" @bind="_filter.FromDate" />
+                            </div>
+                            <div>
+                                <span class="tf-sub-label">Đến ngày:</span>
+                                <input type="date" class="tf-input-sm" @bind="_filter.ToDate" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        }
+
+        @* Right Table Content *@
+        <main class="tf-table-main-panel">
+            <div class="tf-card">
+                <div class="tf-card-body" style="padding:0; overflow-x:auto;">
+                    @if (_isLoading)
+                    {
+                        <div style="padding: 24px;">
+                            <Skeleton Type="table" Rows="6" Columns="8" />
+                        </div>
+                    }
+                    else if (!_pagedResult.Items.Any())
+                    {
+                        <div class="tf-empty-state">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            <h3>Không tìm thấy bản ghi công nợ phù hợp</h3>
+                            <p>Không có chứng từ nào thỏa mãn điều kiện tìm kiếm hoặc bộ lọc hiện tại.</p>
+                            @if (ActiveFilterCount > 0)
+                            {
+                                <button type="button" class="tf-btn tf-btn-secondary tf-btn-sm tf-mt-2" @onclick="ClearAllFilters">
+                                    Xóa toàn bộ bộ lọc
+                                </button>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <table class="tf-table">
+                            <thead>
+                                <tr>
+                                    <th style="min-width: 170px;">Hướng công nợ</th>
+                                    <th style="min-width: 110px;">Mã đối tác</th>
+                                    <th style="min-width: 200px;">Tên đối tác</th>
+                                    <th style="min-width: 170px;">Chứng từ gốc</th>
+                                    <th style="min-width: 130px; text-align: right;">Giá trị ban đầu</th>
+                                    <th style="min-width: 130px; text-align: right;">Đã trả</th>
+                                    <th style="min-width: 140px; text-align: right;">Còn phải thu / trả</th>
+                                    <th style="min-width: 120px; text-align: center;">Trạng thái</th>
+                                    <th style="min-width: 120px; text-align: right;">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in _pagedResult.Items)
+                                {
+                                    <tr>
+                                        <td>
+                                            @if (item.Direction == DebtDirection.Receivable)
+                                            {
+                                                <span class="tf-direction-badge receivable" title="Khách hàng nợ doanh nghiệp">
+                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                                        <line x1="7" y1="17" x2="17" y2="7"></line>
+                                                        <polyline points="7 7 17 7 17 17"></polyline>
+                                                    </svg>
+                                                    <span>Khách hàng nợ (Phải thu)</span>
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="tf-direction-badge payable" title="Doanh nghiệp nợ nhà cung cấp">
+                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                                        <line x1="17" y1="7" x2="7" y2="17"></line>
+                                                        <polyline points="17 17 7 17 7 7"></polyline>
+                                                    </svg>
+                                                    <span>Nợ NCC (Phải trả)</span>
+                                                </span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <button type="button" class="tf-table-code-btn" @onclick="() => OpenPartnerDrawer(item.PartnerType, item.PartnerId)">
+                                                @item.PartnerCode
+                                            </button>
+                                        </td>
+                                        <td>
+                                            <div class="tf-partner-cell">
+                                                <span class="tf-partner-name">@item.PartnerName</span>
+                                                @if (!string.IsNullOrEmpty(item.Phone))
+                                                {
+                                                    <span class="tf-partner-subtext">SĐT: @item.Phone</span>
+                                                }
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="tf-doc-cell">
+                                                <span class="tf-doc-type">@item.DocumentType</span>
+                                                @if (!string.IsNullOrEmpty(item.LinkUrl))
+                                                {
+                                                    <a href="@item.LinkUrl" class="tf-doc-link" title="Mở xem chứng từ">
+                                                        @item.DocumentCode
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <span class="tf-doc-link">@item.DocumentCode</span>
+                                                }
+                                                <span class="tf-doc-date">@item.DocumentDate.ToString("dd/MM/yyyy HH:mm")</span>
+                                            </div>
+                                        </td>
+                                        <td style="text-align: right;">
+                                            <span class="tf-amount-val neutral">
+                                                @item.OriginalAmount.ToString("N0") ₫
+                                            </span>
+                                        </td>
+                                        <td style="text-align: right;">
+                                            <span class="tf-amount-val success">
+                                                @item.PaidAmount.ToString("N0") ₫
+                                            </span>
+                                        </td>
+                                        <td style="text-align: right;">
+                                            @if (item.OutstandingAmount > 0)
+                                            {
+                                                <span class="tf-amount-val @(item.Direction == DebtDirection.Receivable ? "danger" : "warning")">
+                                                    @item.OutstandingAmount.ToString("N0") ₫
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="tf-amount-val neutral">0 ₫</span>
+                                            }
+                                        </td>
+                                        <td style="text-align: center;">
+                                            @switch (item.DebtStatus)
+                                            {
+                                                case DebtStatus.Outstanding:
+                                                    <span class="tf-status-badge outstanding">Còn nợ</span>
+                                                    break;
+                                                case DebtStatus.PartiallyPaid:
+                                                    <span class="tf-status-badge partially-paid">Nợ một phần</span>
+                                                    break;
+                                                case DebtStatus.Settled:
+                                                    <span class="tf-status-badge settled">Đã thanh toán</span>
+                                                    break;
+                                            }
+                                        </td>
+                                        <td style="text-align: right;">
+                                            <div class="tf-row-actions">
+                                                <button type="button" class="tf-btn-action" title="Xem hồ sơ đối tác" @onclick="() => OpenPartnerDrawer(item.PartnerType, item.PartnerId)">
+                                                    Hồ sơ
+                                                </button>
+                                                @if (!string.IsNullOrEmpty(item.LinkUrl))
+                                                {
+                                                    <a href="@item.LinkUrl" class="tf-btn-action source-doc" title="Xem chi tiết chứng từ phát sinh">
+                                                        Chứng từ
+                                                    </a>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+
+                        @* 6. Pagination *@
+                        <div class="tf-pagination-container">
+                            <TfPagination CurrentPage="@_filter.PageIndex"
+                                          PageSize="@_filter.PageSize"
+                                          TotalCount="@_pagedResult.TotalCount"
+                                          ItemName="bản ghi công nợ"
+                                          CurrentPageChanged="OnPageChanged"
+                                          PageSizeChanged="OnPageSizeChanged" />
+                        </div>
+                    }
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+@* 7. Partner Detail Drawer Component *@
+<PartnerDetailDrawer @bind-IsOpen="_isDrawerOpen"
+                     PartnerType="@_drawerPartnerType"
+                     PartnerId="@_drawerPartnerId"
+                     OnClose="() => _drawerPartnerId = null" />
+
+@code {
+    private DebtFilterDto _filter = new();
+    private PagedResult<DebtRecordDto> _pagedResult = new();
+    private PartnerDebtSummaryDto _summary = new();
+    private bool _isLoading = true;
+    private bool _showSidebar = true;
+    private int? _datePreset = null; // null = all, 1 = today, 30 = this month
+
+    // Detail Drawer state
+    private bool _isDrawerOpen = false;
+    private PartnerType _drawerPartnerType = PartnerType.Customer;
+    private int? _drawerPartnerId;
+
+    private int ActiveFilterCount
+    {
+        get
+        {
+            int count = 0;
+            if (!string.IsNullOrWhiteSpace(_filter.SearchTerm)) count++;
+            if (_filter.PartnerType.HasValue) count++;
+            if (_filter.DebtStatus.HasValue) count++;
+            if (_filter.MinBalance.HasValue || _filter.MaxBalance.HasValue) count++;
+            if (_datePreset.HasValue || _filter.FromDate.HasValue || _filter.ToDate.HasValue) count++;
+            return count;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSummaryAsync();
+        await LoadDebtRecordsAsync();
+    }
+
+    private async Task LoadSummaryAsync()
+    {
+        _summary = await DebtService.GetDebtSummaryAsync();
+    }
+
+    private async Task LoadDebtRecordsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _pagedResult = await DebtService.GetDebtRecordsAsync(_filter);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ToggleSidebar()
+    {
+        _showSidebar = !_showSidebar;
+    }
+
+    private async Task OnSearchChanged(string val)
+    {
+        _filter.SearchTerm = val;
+        _filter.PageIndex = 1;
+        await LoadDebtRecordsAsync();
+    }
+
+    private async Task SetPartnerTypeTab(PartnerType? partnerType)
+    {
+        _filter.PartnerType = partnerType;
+        _filter.PageIndex = 1;
+        await LoadDebtRecordsAsync();
+    }
+
+    private async Task SetDebtStatus(DebtStatus? status)
+    {
+        _filter.DebtStatus = status;
+        _filter.PageIndex = 1;
+        await LoadDebtRecordsAsync();
+    }
+
+    private async Task SetDatePreset(int? days)
+    {
+        _datePreset = days;
+        if (days == 1)
+        {
+            _filter.FromDate = DateTime.Today;
+            _filter.ToDate = DateTime.Today;
+        }
+        else if (days == 30)
+        {
+            var now = DateTime.Today;
+            _filter.FromDate = new DateTime(now.Year, now.Month, 1);
+            _filter.ToDate = now;
+        }
+        else
+        {
+            _filter.FromDate = null;
+            _filter.ToDate = null;
+        }
+        _filter.PageIndex = 1;
+        await LoadDebtRecordsAsync();
+    }
+
+    private async Task ClearAllFilters()
+    {
+        _filter = new DebtFilterDto();
+        _datePreset = null;
+        await LoadDebtRecordsAsync();
+    }
+
+    private async Task OnPageChanged(int newPage)
+    {
+        _filter.PageIndex = newPage;
+        await LoadDebtRecordsAsync();
+    }
+
+    private async Task OnPageSizeChanged(int newSize)
+    {
+        _filter.PageSize = newSize;
+        _filter.PageIndex = 1;
+        await LoadDebtRecordsAsync();
+    }
+
+    private void OpenPartnerDrawer(PartnerType type, int partnerId)
+    {
+        _drawerPartnerType = type;
+        _drawerPartnerId = partnerId;
+        _isDrawerOpen = true;
+    }
+}

@@ -171,7 +171,8 @@ public class UnitTest1
 
             _output.WriteLine($"Total products: {products.Count}. HasPrice: {hasPrice}. NoPrice: {noPrice}");
 
-            var tl2138 = products.FirstOrDefault(p => (p.NewCode != null && p.NewCode.Contains("TL2138")) || (p.LegacyCode != null && p.LegacyCode.Contains("TL2138")) || (p.Code != null && p.Code.Contains("TL2138")));
+            var tl2138 = products.FirstOrDefault(p => p.NewCode == "TL2138" || p.LegacyCode == "TL2138" || p.Code == "TL2138")
+                      ?? products.FirstOrDefault(p => (p.NewCode != null && p.NewCode.Contains("TL2138") && !p.NewCode.StartsWith("NS-")));
             _output.WriteLine($"TL2138 prod: Id={tl2138?.Id}, Code={tl2138?.Code}, NewCode={tl2138?.NewCode}, LegacyCode={tl2138?.LegacyCode}");
             if (tl2138 != null)
             {

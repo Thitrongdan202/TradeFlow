@@ -1884,6 +1884,10 @@ namespace TradeFlow.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
                     b.Property<string>("PriceSource")
                         .IsRequired()
                         .HasMaxLength(200)

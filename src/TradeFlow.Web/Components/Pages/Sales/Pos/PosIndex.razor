@@ -1,0 +1,2801 @@
+@page "/ban-hang"
+@page "/pos"
+@page "/ban-hang/pos"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permission:SalesOrders:Create")]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Sales
+@using TradeFlow.Domain.Entities.MasterData
+@using TradeFlow.Domain.Entities.Pricing
+@using TradeFlow.Domain.Entities.Sales
+@using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
+
+@inject ISalesService SalesService
+@inject IInvoiceService InvoiceService
+@inject IVatRuleEngine VatRuleEngine
+@inject IFileStorageService FileStorage
+@inject TradeFlowDbContext DbContext
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IAuditService AuditService
+@inject ICompanyBrandingService BrandingService
+
+<PageTitle>Bán hàng — TradeFlow</PageTitle>
+
+<div class="tf-sales-workspace" @onkeydown="HandleKeyDown" tabindex="0" @ref="_posContainerRef">
+    @* ============================================================
+       TOP TOOLBAR / HEADER (TradeFlow ERP Design System)
+       ============================================================ *@
+    <header class="tf-sales-header">
+        @* Left: Brand Title & Multi-Order Tabs *@
+        <div class="tf-sales-header-left">
+            <div class="tf-sales-title-group">
+                <span class="tf-sales-title">Bán hàng</span>
+                <span class="tf-sales-badge">POS &amp; Bán lẻ</span>
+            </div>
+
+            <div class="tf-sales-tabs-wrap">
+                @for (int i = 0; i < _tabs.Count; i++)
+                {
+                    int index = i;
+                    var tab = _tabs[index];
+                    bool isActive = index == _activeTabIndex;
+                    int itemCount = tab.Items.Sum(it => (int)it.Quantity);
+                    <button type="button"
+                            class="tf-sales-tab @(isActive ? "active" : "")"
+                            @onclick="() => SwitchTab(index)">
+                        <span class="tf-tab-title">@tab.Title</span>
+                        @if (itemCount > 0)
+                        {
+                            <span class="tf-tab-counter">@itemCount</span>
+                        }
+                        @if (_tabs.Count > 1)
+                        {
+                            <span class="tf-tab-close" @onclick:stopPropagation="true" @onclick="() => CloseTab(index)" title="Đóng hóa đơn">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </span>
+                        }
+                    </button>
+                }
+                @if (_tabs.Count < 10)
+                {
+                    <button type="button" class="tf-sales-tab-add" @onclick="AddNewTab" title="Thêm đơn hàng mới (tối đa 10 hóa đơn)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+                }
+            </div>
+        </div>
+
+        @* Center: Search Box (F3) with Barcode Toggle *@
+        <div class="tf-sales-header-center">
+            <div class="tf-search-box-wrapper">
+                <span class="tf-search-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </span>
+                <input @ref="_f3InputRef"
+                       type="text"
+                       class="tf-sales-f3-input"
+                       placeholder="Tìm hàng hóa theo tên, mã (F3)..."
+                       value="@_f3SearchTerm"
+                       @oninput="OnF3Input"
+                       @onfocus="() => _showF3Dropdown = true" />
+                <span class="tf-kbd-chip">F3</span>
+                <button type="button" 
+                        class="tf-barcode-toggle-btn @(_isBarcodeMode ? "active" : "")" 
+                        title="Chế độ quét mã vạch"
+                        @onclick="ToggleBarcodeMode">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14M21 5v14"></path>
+                    </svg>
+                </button>
+            </div>
+
+            @* Fast Search Dropdown *@
+            @if (_showF3Dropdown && _f3Results.Any())
+            {
+                <div class="tf-autocomplete-menu">
+                    @foreach (var prod in _f3Results)
+                    {
+                        var price = GetProductPrice(prod.Id);
+                        var imgUrl = GetProductImageUrl(prod);
+                        <div class="tf-autocomplete-row" @onclick="() => AddProductToCart(prod)">
+                            <div class="tf-auto-thumb">
+                                @if (!string.IsNullOrEmpty(imgUrl))
+                                {
+                                    <img src="@imgUrl" alt="@prod.Name" />
+                                }
+                                else
+                                {
+                                    <div class="tf-auto-fallback">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                                        </svg>
+                                    </div>
+                                }
+                            </div>
+                            <div class="tf-auto-body">
+                                <div class="tf-auto-name">@prod.Name</div>
+                                <div class="tf-auto-sub">
+                                    <span class="tf-auto-code">@(prod.NewCode ?? prod.Code)</span>
+                                    <span class="tf-auto-unit">@prod.Unit?.Name</span>
+                                </div>
+                            </div>
+                            <div class="tf-auto-price">
+                                @if (price.HasValue && price.Value > 0)
+                                {
+                                    <span class="tf-price-text">@price.Value.ToString("N0") ₫</span>
+                                }
+                                else
+                                {
+                                    <span class="tf-badge-unpriced">Chưa có giá</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        @* Right: Mode Switcher & Quick Tool Actions *@
+        <div class="tf-sales-header-right">
+            <div class="tf-mode-selector">
+                <button type="button"
+                        class="tf-mode-btn @(_currentMode == PosMode.Quick ? "active" : "")"
+                        @onclick="() => SetMode(PosMode.Quick)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                    <span>Bán nhanh</span>
+                </button>
+                <button type="button"
+                        class="tf-mode-btn @(_currentMode == PosMode.Regular ? "active" : "")"
+                        @onclick="() => SetMode(PosMode.Regular)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    <span>Bán thường</span>
+                </button>
+                <button type="button"
+                        class="tf-mode-btn @(_currentMode == PosMode.Delivery ? "active" : "")"
+                        @onclick="() => SetMode(PosMode.Delivery)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="1" y="3" width="15" height="13"></rect>
+                        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                        <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                        <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                    </svg>
+                    <span>Giao hàng</span>
+                </button>
+            </div>
+
+            <div class="tf-header-tools">
+                <button type="button" class="tf-tool-btn" title="Đơn hàng gần đây" @onclick="() => _showRecentOrdersModal = true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span class="tf-tool-label">Đơn gần đây</span>
+                </button>
+
+                <button type="button" class="tf-tool-btn" title="Phím tắt thao tác nhanh" @onclick="() => _showShortcutsModal = true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                        <line x1="6" y1="8" x2="6" y2="8"></line>
+                        <line x1="10" y1="8" x2="10" y2="8"></line>
+                        <line x1="14" y1="8" x2="14" y2="8"></line>
+                        <line x1="18" y1="8" x2="18" y2="8"></line>
+                        <line x1="7" y1="16" x2="17" y2="16"></line>
+                    </svg>
+                    <span class="tf-tool-label">Phím tắt</span>
+                </button>
+
+                <button type="button" class="tf-tool-btn" title="Đồng bộ bảng giá và danh mục" @onclick="RefreshDataAsync">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    @* ============================================================
+       MAIN WORKSPACE (Quick / Regular / Delivery Modes)
+       ============================================================ *@
+    <main class="tf-sales-body">
+        @if (_currentMode == PosMode.Quick)
+        {
+            @* MODE 1: BÁN NHANH (Trái: Giỏ hàng, Phải: Tổng hợp thanh toán) *@
+            <div class="tf-layout-quick">
+                <section class="tf-cart-section">
+                    @RenderCartTable(true)
+                    <div class="tf-cart-footer">
+                        <div class="tf-notes-wrapper">
+                            <span class="tf-notes-icon">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 20h9"></path>
+                                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                                </svg>
+                            </span>
+                            <input type="text"
+                                   class="tf-notes-input"
+                                   placeholder="Ghi chú đơn hàng (sẽ in trên hóa đơn/chứng từ)..."
+                                   @bind="ActiveTab.Notes" />
+                        </div>
+                    </div>
+                </section>
+
+                <aside class="tf-summary-section">
+                    @RenderSummaryPanel()
+                </aside>
+            </div>
+        }
+        else if (_currentMode == PosMode.Regular)
+        {
+            @* MODE 2: BÁN THƯỜNG (Trái: Đơn hàng tóm tắt không cuộn ngang, Phải: Tra cứu danh mục SP) *@
+            <div class="tf-layout-regular">
+                <section class="tf-order-panel">
+                    @* Order Header / Customer Selection *@
+                    <div class="tf-order-panel-header">
+                        <div class="tf-order-meta-summary">
+                            <span class="tf-order-tab-badge">@ActiveTab.Title</span>
+                            <span class="tf-order-time-text">@ActiveTab.OrderDate.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                        @if (ActiveTab.Customer != null)
+                        {
+                            <div class="tf-selected-cust-chip">
+                                <span class="tf-cust-name-text">Khách: <strong>@ActiveTab.Customer.Name</strong></span>
+                                <button type="button" class="tf-chip-remove" @onclick="() => ActiveTab.Customer = null" title="Xóa khách hàng">✕</button>
+                            </div>
+                        }
+                    </div>
+
+                    @* Compact Line-Item Cards List (Zero Horizontal Scrolling, Matching media_1791897987304_1811b721.png) *@
+                    <div class="tf-order-items-scroll">
+                        @if (!ActiveTab.Items.Any())
+                        {
+                            <div class="tf-empty-cart-compact">
+                                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <circle cx="9" cy="21" r="1"></circle>
+                                    <circle cx="20" cy="21" r="1"></circle>
+                                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                                </svg>
+                                <div class="tf-empty-compact-title">Chưa có sản phẩm trong đơn</div>
+                                <div class="tf-empty-compact-hint">Chọn sản phẩm từ danh mục bên phải để thêm</div>
+                            </div>
+                        }
+                        else
+                        {
+                            @for (int i = 0; i < ActiveTab.Items.Count; i++)
+                            {
+                                int itemIndex = i;
+                                var item = ActiveTab.Items[itemIndex];
+                                <div class="tf-order-item-card @(!string.IsNullOrWhiteSpace(item.Note) ? "has-note" : "")">
+                                    <div class="tf-item-row-main">
+                                        <span class="tf-item-seq">@(itemIndex + 1)</span>
+                                        <button type="button" class="tf-item-del-btn" title="Xóa dòng" @onclick="() => RemoveItem(itemIndex)">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <polyline points="3 6 5 6 21 6"></polyline>
+                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                            </svg>
+                                        </button>
+                                        <div class="tf-item-title-col">
+                                            <span class="tf-item-code-name" title="@($"{item.Code} {item.Name}")">@item.Code @item.Name</span>
+                                            @if (!string.IsNullOrEmpty(item.MaterialTag))
+                                            {
+                                                <span class="tf-item-tag-pill">@item.MaterialTag</span>
+                                            }
+                                            <button type="button" class="tf-item-info-btn" @onclick="() => ShowProductDetailsAsync(item.ProductId)" title="Xem chi tiết sản phẩm">
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <circle cx="12" cy="12" r="10"></circle>
+                                                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div class="tf-item-unit-wrap">
+                                            <span class="tf-item-unit-badge">@(item.UnitName ?? "Cái")</span>
+                                            <button type="button" class="tf-item-add-quick" @onclick="() => UpdateQuantity(item, item.Quantity + 1)" title="Tăng số lượng">+</button>
+                                            
+                                            @* Contextual Actions Menu (Matching media_1791905424479_7fe8ca12.png) *@
+                                            <div class="tf-item-menu-container">
+                                                <button type="button"
+                                                        class="tf-item-menu-btn @(_openItemMenuId == item.Id ? "active" : "")"
+                                                        @onclick="() => ToggleItemMenu(item.Id)"
+                                                        title="Thao tác dòng">
+                                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                                                        <circle cx="12" cy="5" r="1.75"></circle>
+                                                        <circle cx="12" cy="12" r="1.75"></circle>
+                                                        <circle cx="12" cy="19" r="1.75"></circle>
+                                                    </svg>
+                                                </button>
+                                                @if (_openItemMenuId == item.Id)
+                                                {
+                                                    <div class="tf-item-menu-backdrop" @onclick="CloseItemMenu"></div>
+                                                    <div class="tf-item-context-menu" role="menu">
+                                                        <button type="button" class="tf-context-menu-item" @onclick="() => OpenItemNoteEditor(item)">
+                                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                                <path d="M12 20h9"></path>
+                                                                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                                                            </svg>
+                                                            <span>Ghi chú</span>
+                                                        </button>
+                                                        <button type="button" class="tf-context-menu-item" @onclick="() => ShowProductDetailsAsync(item.ProductId)">
+                                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                                <circle cx="12" cy="12" r="10"></circle>
+                                                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                                            </svg>
+                                                            <span>Xem chi tiết</span>
+                                                        </button>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    @* Per-item Note preview if note exists *@
+                                    @if (!string.IsNullOrWhiteSpace(item.Note))
+                                    {
+                                        <div class="tf-item-note-row" @onclick="() => OpenItemNoteEditor(item)" title="Nhấp để sửa ghi chú">
+                                            <span class="tf-item-note-icon">
+                                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M12 20h9"></path>
+                                                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                                                </svg>
+                                            </span>
+                                            <span class="tf-item-note-text">@item.Note</span>
+                                            <button type="button" class="tf-item-note-clear-btn" @onclick:stopPropagation="true" @onclick="() => ClearItemNote(item)" title="Xóa ghi chú">✕</button>
+                                        </div>
+                                    }
+
+                                    <div class="tf-item-row-sub">
+                                        <div class="tf-item-qty-stepper">
+                                            <button type="button" class="tf-mini-step-btn" @onclick="() => UpdateQuantity(item, item.Quantity - 1)">-</button>
+                                            <input type="number"
+                                                   class="tf-mini-step-input"
+                                                   value="@item.Quantity"
+                                                   min="1"
+                                                   @onchange="(e) => OnQuantityChanged(item, e)" />
+                                            <button type="button" class="tf-mini-step-btn" @onclick="() => UpdateQuantity(item, item.Quantity + 1)">+</button>
+                                        </div>
+
+                                        <div class="tf-item-price-view">
+                                            @if (item.HasPrice && item.UnitPrice > 0)
+                                            {
+                                                <span class="tf-item-unit-price">@item.UnitPrice.ToString("N0")</span>
+                                            }
+                                            else
+                                            {
+                                                <input type="number"
+                                                       class="tf-mini-price-input"
+                                                       placeholder="Nhập giá..."
+                                                       value="@(item.UnitPrice > 0 ? item.UnitPrice : "")"
+                                                       @onchange="(e) => OnItemUnitPriceChanged(item, e)" />
+                                            }
+                                        </div>
+
+                                        <div class="tf-item-total-view">
+                                            <span class="tf-item-line-total">@item.LineTotal.ToString("N0")</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+
+                    @* Bottom Footer: Notes & Total Summary *@
+                    <div class="tf-order-panel-footer">
+                        <div class="tf-order-note-input-row">
+                            <span class="tf-note-icon">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 20h9"></path>
+                                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                                </svg>
+                            </span>
+                            <input type="text"
+                                   class="tf-order-note-input"
+                                   placeholder="Ghi chú đơn hàng..."
+                                   @bind="ActiveTab.Notes" />
+                        </div>
+
+                        <div class="tf-order-total-bar">
+                            <span class="tf-total-label">Tổng tiền hàng <strong class="tf-total-qty">@ActiveTab.Items.Sum(i => i.Quantity)</strong></span>
+                            <span class="tf-total-sum">@CalculateSubTotal().ToString("N0") ₫</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="tf-catalog-panel">
+                    @* Catalog Top Toolbar (Matching media_1791897987304_1811b721.png) *@
+                    <div class="tf-catalog-toolbar-pos">
+                        <div class="tf-cat-toolbar-left">
+                            <div class="tf-pos-cust-search-wrap">
+                                <span class="tf-cust-search-icon">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    </svg>
+                                </span>
+                                <input type="text"
+                                       class="tf-pos-cust-input"
+                                       placeholder="Tìm khách hàng (F4)..."
+                                       value="@_custSearchTerm"
+                                       @oninput="OnCustInput"
+                                       @onfocus="() => _showCustDropdown = true" />
+                                <button type="button" class="tf-btn-add-cust-mini" title="Thêm khách hàng mới" @onclick="() => _showAddCustomerModal = true">+</button>
+
+                                @* Customer Autocomplete Dropdown *@
+                                @if (_showCustDropdown && _custResults.Any())
+                                {
+                                    <div class="tf-cust-dropdown-menu">
+                                        @foreach (var c in _custResults)
+                                        {
+                                            <div class="tf-cust-dropdown-item" @onclick="() => SelectCustomer(c)">
+                                                <div class="tf-cust-item-name">@c.Name</div>
+                                                <div class="tf-cust-item-sub">
+                                                    <span>@c.Phone</span>
+                                                    <span>•</span>
+                                                    <span>@c.Code</span>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="tf-pos-pricelist-wrap">
+                                <select class="tf-pos-pricelist-select" @bind="ActiveTab.PriceListId" @bind:after="OnPriceListChanged">
+                                    <option value="">Bảng giá chung</option>
+                                    @foreach (var pl in _priceLists)
+                                    {
+                                        <option value="@pl.Id">@pl.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="tf-cat-toolbar-right">
+                            <div class="tf-pos-cat-search">
+                                <input type="text"
+                                       class="tf-pos-search-input"
+                                       placeholder="Tìm tên, mã sản phẩm..."
+                                       value="@_catalogSearch"
+                                       @oninput="OnCatalogSearchInput" />
+                            </div>
+
+                            <button type="button"
+                                    class="tf-filter-trigger-btn @(_selectedCategoryIds.Any() ? "active" : "")"
+                                    title="Lọc theo nhóm hàng"
+                                    @onclick="() => _showGroupFilterModal = true">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                                </svg>
+                                <span>Nhóm hàng</span>
+                                @if (_selectedCategoryIds.Any())
+                                {
+                                    <span class="tf-filter-count-badge">@_selectedCategoryIds.Count</span>
+                                }
+                            </button>
+
+                            <button type="button"
+                                    class="tf-filter-trigger-btn @(_selectedAttributes.Any() ? "active" : "")"
+                                    title="Lọc theo thuộc tính"
+                                    @onclick="() => _showAttributeFilterModal = true">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                                </svg>
+                                <span>Thuộc tính</span>
+                                @if (_selectedAttributes.Any())
+                                {
+                                    <span class="tf-filter-count-badge">@_selectedAttributes.Count</span>
+                                }
+                            </button>
+
+                            <div class="tf-view-switcher-group">
+                                <button type="button"
+                                        class="tf-view-switch-btn @(!_isGridView ? "active" : "")"
+                                        title="Dạng danh sách"
+                                        @onclick="() => _isGridView = false">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                                    </svg>
+                                </button>
+                                <button type="button"
+                                        class="tf-view-switch-btn @(_isGridView ? "active" : "")"
+                                        title="Dạng lưới"
+                                        @onclick="() => _isGridView = true">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="3" width="7" height="7"></rect>
+                                        <rect x="14" y="3" width="7" height="7"></rect>
+                                        <rect x="14" y="14" width="7" height="7"></rect>
+                                        <rect x="3" y="14" width="7" height="7"></rect>
+                                    </svg>
+                                </button>
+                                <button type="button"
+                                        class="tf-view-switch-btn @(_showImages ? "active" : "")"
+                                        title="Bật/Tắt hình ảnh"
+                                        @onclick="() => _showImages = !_showImages">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                        <polyline points="21 15 16 10 5 21"></polyline>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Catalog Content *@
+                    <div class="tf-catalog-container @(_isGridView ? "grid-mode" : "list-mode")">
+                        @if (!_catalogProducts.Any())
+                        {
+                            <div class="tf-empty-catalog">
+                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                                </svg>
+                                <div class="tf-empty-title">Không tìm thấy sản phẩm phù hợp</div>
+                                <div class="tf-empty-sub">Thử xóa bộ lọc hoặc đổi từ khóa tìm kiếm</div>
+                            </div>
+                        }
+                        else if (_isGridView)
+                        {
+                            @* GRID VIEW: 4 Columns with Image and Overlaid Price Pill (Matching media_1791897987339_f8a0825b.png) *@
+                            <div class="tf-pos-grid-layout">
+                                @foreach (var prod in _catalogProducts)
+                                {
+                                    var price = GetProductPrice(prod.Id);
+                                    var imgUrl = GetProductImageUrl(prod);
+                                    <div class="tf-pos-grid-card" @onclick="() => AddProductToCart(prod)">
+                                        @if (_showImages)
+                                        {
+                                            <div class="tf-pos-card-media">
+                                                @if (!string.IsNullOrEmpty(imgUrl))
+                                                {
+                                                    <img src="@imgUrl" alt="@prod.Name" loading="lazy" />
+                                                }
+                                                else
+                                                {
+                                                    <div class="tf-card-fallback-thumb">
+                                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                                            <polyline points="21 15 16 10 5 21"></polyline>
+                                                        </svg>
+                                                    </div>
+                                                }
+                                                <div class="tf-pos-card-price-overlay">
+                                                    @if (price.HasValue && price.Value > 0)
+                                                    {
+                                                        <span class="tf-overlay-price-pill">@price.Value.ToString("N0")</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="tf-badge-unpriced">Chưa có giá</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="tf-pos-noimage-price">
+                                                @if (price.HasValue && price.Value > 0)
+                                                {
+                                                    <span class="tf-overlay-price-pill noimg">@price.Value.ToString("N0") ₫</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="tf-badge-unpriced">Chưa có giá</span>
+                                                }
+                                            </div>
+                                        }
+                                        <div class="tf-pos-grid-card-label" title="@prod.Name">
+                                            <div class="tf-pos-grid-code">@(prod.NewCode ?? prod.Code)</div>
+                                            <div class="tf-pos-grid-name">@prod.Name</div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            @* LIST VIEW: 3 Columns Horizontal Compact Cards (Matching media_1791897987355_8ec5fa03.png) *@
+                            <div class="tf-pos-list-layout">
+                                @foreach (var prod in _catalogProducts)
+                                {
+                                    var price = GetProductPrice(prod.Id);
+                                    var imgUrl = GetProductImageUrl(prod);
+                                    <div class="tf-pos-list-item" @onclick="() => AddProductToCart(prod)">
+                                        @if (_showImages)
+                                        {
+                                            <div class="tf-pos-list-thumb">
+                                                @if (!string.IsNullOrEmpty(imgUrl))
+                                                {
+                                                    <img src="@imgUrl" alt="@prod.Name" loading="lazy" />
+                                                }
+                                                else
+                                                {
+                                                    <div class="tf-pos-list-fallback">
+                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                                            <polyline points="21 15 16 10 5 21"></polyline>
+                                                        </svg>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        <div class="tf-pos-list-info">
+                                            <div class="tf-pos-list-title" title="@prod.Name">
+                                                @(prod.NewCode ?? prod.Code) @prod.Name
+                                            </div>
+                                            <div class="tf-pos-list-price">
+                                                @if (price.HasValue && price.Value > 0)
+                                                {
+                                                    <span class="tf-list-price-text">@price.Value.ToString("N0")</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="tf-badge-unpriced">Chưa có giá</span>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    @* Catalog Bottom Bar: Pagination & Big Checkout Button (Matching media_1791897987304_1811b721.png) *@
+                    <div class="tf-catalog-bottom-bar">
+                        <div class="tf-pos-pagination">
+                            <button type="button"
+                                    class="tf-page-nav-btn"
+                                    disabled="@(_catalogPage <= 1)"
+                                    @onclick="() => ChangeCatalogPage(_catalogPage - 1)">
+                                ‹
+                            </button>
+                            <span class="tf-page-text">@_catalogPage / @Math.Max(1, _catalogTotalPages)</span>
+                            <button type="button"
+                                    class="tf-page-nav-btn"
+                                    disabled="@(_catalogPage >= _catalogTotalPages)"
+                                    @onclick="() => ChangeCatalogPage(_catalogPage + 1)">
+                                ›
+                            </button>
+                        </div>
+
+                        <button type="button"
+                                class="tf-btn-pos-checkout"
+                                disabled="@(!ActiveTab.Items.Any() || _isProcessingCheckout)"
+                                @onclick="OpenCheckoutModal">
+                            THANH TOÁN (F9)
+                        </button>
+                    </div>
+                </section>
+            </div>
+        }
+        else if (_currentMode == PosMode.Delivery)
+        {
+            @* MODE 3: BÁN GIAO HÀNG (Trái: Giỏ hàng, Phải: Đơn vị vận chuyển & Người nhận) *@
+            <div class="tf-layout-delivery">
+                <section class="tf-cart-section delivery-cart">
+                    @RenderCartTable(true)
+                    <div class="tf-cart-footer">
+                        <div class="tf-delivery-totals-bar">
+                            <span>Tổng tiền hàng: <strong>@CalculateSubTotal().ToString("N0") ₫</strong></span>
+                            <span>Khách cần trả: <strong style="color:var(--tf-primary);">@CalculateGrandTotal().ToString("N0") ₫</strong></span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="tf-delivery-form-panel">
+                    <div class="tf-delivery-panel-header">
+                        <div class="tf-panel-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="1" y="3" width="15" height="13"></rect>
+                                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                                <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                                <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                            </svg>
+                            <span>Thông tin người nhận &amp; Vận chuyển</span>
+                        </div>
+                        <div class="tf-store-tag">Kho xuất: Lacasa Cần Thơ</div>
+                    </div>
+
+                    <div class="tf-delivery-panel-body">
+                        @* Recipient Information *@
+                        <div class="tf-delivery-group">
+                            <label class="tf-group-title">Người nhận hàng</label>
+                            <div class="tf-row-2col">
+                                <input type="text" class="tf-input-control" placeholder="Họ và tên người nhận *" @bind="ActiveTab.Delivery.RecipientName" />
+                                <input type="text" class="tf-input-control" placeholder="Số điện thoại *" @bind="ActiveTab.Delivery.Phone" />
+                            </div>
+                            <input type="text" class="tf-input-control tf-mt-2" placeholder="Địa chỉ chi tiết (Số nhà, tên đường, tòa nhà)..." @bind="ActiveTab.Delivery.Address" />
+                            <div class="tf-row-2col tf-mt-2">
+                                <input type="text" class="tf-input-control" placeholder="Tỉnh / Thành phố..." @bind="ActiveTab.Delivery.Region" />
+                                <input type="text" class="tf-input-control" placeholder="Quận / Huyện, Phường / Xã..." @bind="ActiveTab.Delivery.Ward" />
+                            </div>
+                        </div>
+
+                        @* Package Spec *@
+                        <div class="tf-delivery-group">
+                            <label class="tf-group-title">Thông số kiện hàng</label>
+                            <div class="tf-row-pkg">
+                                <div class="tf-pkg-col">
+                                    <label class="tf-pkg-lbl">Trọng lượng (gram):</label>
+                                    <input type="number" class="tf-input-control" @bind="ActiveTab.Delivery.WeightGram" min="50" step="50" />
+                                </div>
+                                <div class="tf-pkg-col">
+                                    <label class="tf-pkg-lbl">Kích thước (D × R × C cm):</label>
+                                    <div class="tf-dim-inputs">
+                                        <input type="number" class="tf-input-control" @bind="ActiveTab.Delivery.LengthCm" min="1" />
+                                        <span>×</span>
+                                        <input type="number" class="tf-input-control" @bind="ActiveTab.Delivery.WidthCm" min="1" />
+                                        <span>×</span>
+                                        <input type="number" class="tf-input-control" @bind="ActiveTab.Delivery.HeightCm" min="1" />
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="text" class="tf-input-control tf-mt-2" placeholder="Ghi chú cho shipper (VD: Cho xem hàng, gọi trước khi giao)..." @bind="ActiveTab.Delivery.CourierNote" />
+                        </div>
+
+                        @* COD Checkbox *@
+                        <div class="tf-cod-row">
+                            <label class="tf-checkbox-label">
+                                <input type="checkbox" @bind="ActiveTab.Delivery.IsCod" />
+                                <span>Thu hộ tiền khi nhận hàng (COD)</span>
+                            </label>
+                            <span class="tf-cod-val">
+                                @(ActiveTab.Delivery.IsCod ? CalculateGrandTotal().ToString("N0") + " ₫" : "0 ₫")
+                            </span>
+                        </div>
+                    </div>
+                </section>
+
+                <aside class="tf-carrier-section">
+                    <div class="tf-carrier-header">
+                        <span class="tf-carrier-title">Đối tác giao vận</span>
+                    </div>
+
+                    <div class="tf-carrier-list">
+                        @foreach (var partner in _shippingPartners)
+                        {
+                            bool isSelected = ActiveTab.Delivery.PartnerName == partner.Name;
+                            <div class="tf-carrier-item @(isSelected ? "selected" : "")" @onclick="() => ActiveTab.Delivery.PartnerName = partner.Name">
+                                <div class="tf-carrier-radio">
+                                    <span class="tf-radio-dot @(isSelected ? "checked" : "")"></span>
+                                </div>
+                                <div class="tf-carrier-info">
+                                    <div class="tf-carrier-name" style="color: @partner.Color;">@partner.Name</div>
+                                    <div class="tf-carrier-desc">@partner.Desc</div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="tf-carrier-checkout">
+                        <div class="tf-carrier-total-line">
+                            <span>Khách cần trả:</span>
+                            <span class="tf-val-primary">@CalculateGrandTotal().ToString("N0") ₫</span>
+                        </div>
+                        <button class="tf-btn-checkout" @onclick="OpenCheckoutModal">
+                            THANH TOÁN (F9)
+                        </button>
+                    </div>
+                </aside>
+            </div>
+        }
+    </main>
+
+    @* ============================================================
+       BOTTOM FOOTER (Status & Shortcuts Bar)
+       ============================================================ *@
+    <footer class="tf-sales-footer">
+        <div class="tf-footer-left">
+            <span class="tf-footer-cashier">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span>Thu ngân: <strong>@_cashierName</strong></span>
+            </span>
+            <span class="tf-footer-branch">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                <span>Chi nhánh: Lacasa Cần Thơ</span>
+            </span>
+        </div>
+
+        <div class="tf-footer-center">
+            <span class="tf-footer-hint"><strong>F3</strong> Tìm hàng</span>
+            <span class="tf-footer-sep">•</span>
+            <span class="tf-footer-hint"><strong>F4</strong> Khách hàng</span>
+            <span class="tf-footer-sep">•</span>
+            <span class="tf-footer-hint"><strong>F8</strong> Giảm giá</span>
+            <span class="tf-footer-sep">•</span>
+            <span class="tf-footer-hint"><strong>F9</strong> Thanh toán</span>
+            <span class="tf-footer-sep">•</span>
+            <span class="tf-footer-hint"><strong>Esc</strong> Đóng hộp thoại</span>
+        </div>
+
+        <div class="tf-footer-right">
+            <span class="tf-footer-status">
+                <span class="tf-status-dot online"></span>
+                <span>Hệ thống sẵn sàng</span>
+            </span>
+        </div>
+    </footer>
+</div>
+
+@* ============================================================
+   REUSABLE CART TABLE FRAGMENT
+   ============================================================ *@
+@code {
+    RenderFragment RenderCartTable(bool showFullColumns) => __builder =>
+    {
+        <div class="tf-cart-table-wrapper">
+            @if (!ActiveTab.Items.Any())
+            {
+                <div class="tf-empty-cart">
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="9" cy="21" r="1"></circle>
+                        <circle cx="20" cy="21" r="1"></circle>
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                    </svg>
+                    <div class="tf-empty-cart-title">Chưa có sản phẩm trong đơn hàng</div>
+                    <div class="tf-empty-cart-hint">Nhấn <strong>F3</strong> để tìm kiếm hoặc quét mã vạch sản phẩm để thêm vào đơn</div>
+                </div>
+            }
+            else
+            {
+                <table class="tf-sales-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 36px; text-align: center;">#</th>
+                            <th style="width: 120px;">Mã hàng</th>
+                            <th>Tên hàng hóa</th>
+                            <th style="width: 70px; text-align: center;">ĐVT</th>
+                            <th style="width: 120px; text-align: center;">Số lượng</th>
+                            <th style="width: 140px; text-align: right;">Đơn giá</th>
+                            @if (showFullColumns)
+                            {
+                                <th style="width: 100px; text-align: right;">Giảm giá</th>
+                            }
+                            <th style="width: 130px; text-align: right;">Thành tiền</th>
+                            <th style="width: 44px; text-align: center;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < ActiveTab.Items.Count; i++)
+                        {
+                            int itemIndex = i;
+                            var item = ActiveTab.Items[itemIndex];
+                            <tr>
+                                <td style="text-align: center; color: var(--tf-gray-400);">@(itemIndex + 1)</td>
+                                <td class="tf-cell-code">@item.Code</td>
+                                <td class="tf-cell-name">
+                                    <div class="tf-name-text" title="@item.Name">@item.Name</div>
+                                </td>
+                                <td style="text-align: center; color: var(--tf-gray-500);">@item.UnitName</td>
+                                <td style="text-align: center;">
+                                    <div class="tf-qty-stepper">
+                                        <button type="button" class="tf-stepper-btn" @onclick="() => UpdateQuantity(item, item.Quantity - 1)">-</button>
+                                        <input type="number"
+                                               class="tf-stepper-input"
+                                               value="@item.Quantity"
+                                               min="1"
+                                               step="1"
+                                               @onchange="(e) => OnQuantityChanged(item, e)" />
+                                        <button type="button" class="tf-stepper-btn" @onclick="() => UpdateQuantity(item, item.Quantity + 1)">+</button>
+                                    </div>
+                                </td>
+                                <td style="text-align: right;">
+                                    @if (item.HasPrice && item.UnitPrice > 0)
+                                    {
+                                        <span class="tf-unit-price-text">@item.UnitPrice.ToString("N0") ₫</span>
+                                    }
+                                    else
+                                    {
+                                        <div class="tf-unpriced-box">
+                                            <span class="tf-badge-unpriced" title="Sản phẩm chưa có giá">Chưa có giá</span>
+                                            <input type="number"
+                                                   class="tf-inline-price-input"
+                                                   placeholder="Nhập giá..."
+                                                   value="@(item.UnitPrice > 0 ? item.UnitPrice : "")"
+                                                   @onchange="(e) => OnItemUnitPriceChanged(item, e)" />
+                                        </div>
+                                    }
+                                </td>
+                                @if (showFullColumns)
+                                {
+                                    <td style="text-align: right;">
+                                        <input type="number"
+                                               class="tf-item-discount-input"
+                                               value="@item.Discount"
+                                               min="0"
+                                               step="1000"
+                                               @onchange="(e) => OnItemDiscountChanged(item, e)" />
+                                    </td>
+                                }
+                                <td style="text-align: right; font-weight: 600; color: #1e293b;">
+                                    @if (item.HasPrice && item.UnitPrice > 0)
+                                    {
+                                        <span>@item.LineTotal.ToString("N0") ₫</span>
+                                    }
+                                    else
+                                    {
+                                        <span style="color:var(--tf-gray-400);">—</span>
+                                    }
+                                </td>
+                                <td style="text-align: center;">
+                                    <button type="button" class="tf-btn-del-item" title="Xóa dòng" @onclick="() => RemoveItem(itemIndex)">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        </svg>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    };
+}
+
+@* ============================================================
+   REUSABLE SUMMARY & CUSTOMER PANEL (Quick Sale)
+   ============================================================ *@
+@code {
+    RenderFragment RenderSummaryPanel() => __builder =>
+    {
+        <div class="tf-summary-container">
+            @* 1. Order Date & Channel Metadata *@
+            <div class="tf-order-meta-card">
+                <div class="tf-meta-form-row">
+                    <label class="tf-meta-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        <span>Ngày đặt hàng:</span>
+                    </label>
+                    <input type="datetime-local"
+                           class="tf-datetime-control"
+                           value="@ActiveTab.OrderDate.ToString("yyyy-MM-ddTHH:mm")"
+                           @onchange="OnOrderDateChanged" />
+                </div>
+
+                <div class="tf-meta-form-row tf-mt-2">
+                    <label class="tf-meta-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="2" y1="12" x2="22" y2="12"></line>
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                        </svg>
+                        <span>Kênh bán:</span>
+                    </label>
+                    <select class="tf-select-control-sm" @bind="ActiveTab.SalesChannel">
+                        <option value="Bán trực tiếp">Bán trực tiếp tại quầy</option>
+                        <option value="Facebook">Facebook Fanpage</option>
+                        <option value="Zalo">Zalo OA / Chat</option>
+                        <option value="Hotline">Hotline / Điện thoại</option>
+                        <option value="Khác">Kênh khác</option>
+                    </select>
+                </div>
+            </div>
+
+            @* 2. Price List Selection *@
+            <div class="tf-pricelist-card">
+                <div class="tf-pricelist-row">
+                    <label class="tf-meta-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="1" x2="12" y2="23"></line>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        </svg>
+                        <span>Bảng giá:</span>
+                    </label>
+                    <select class="tf-select-control-sm" @bind="ActiveTab.PriceListId" @bind:after="OnPriceListChanged">
+                        <option value="">Bảng giá chung (Tự động)</option>
+                        @foreach (var pl in _priceLists)
+                        {
+                            <option value="@pl.Id">@pl.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            @* 3. Customer Selector (F4) *@
+            <div class="tf-customer-card">
+                <div class="tf-cust-header-row">
+                    <span class="tf-meta-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        <span>Khách hàng (F4):</span>
+                    </span>
+                    <button type="button" class="tf-btn-add-cust" title="Thêm khách hàng mới" @onclick="() => _showAddCustomerModal = true">
+                        + Thêm mới
+                    </button>
+                </div>
+
+                <div class="tf-cust-input-wrapper">
+                    @if (ActiveTab.Customer != null)
+                    {
+                        <div class="tf-cust-pill">
+                            <div class="tf-cust-info">
+                                <span class="tf-cust-name">@ActiveTab.Customer.Name</span>
+                                @if (!string.IsNullOrEmpty(ActiveTab.Customer.Phone))
+                                {
+                                    <span class="tf-cust-phone">(@ActiveTab.Customer.Phone)</span>
+                                }
+                            </div>
+                            <button type="button" class="tf-cust-clear" @onclick="ClearCustomer" title="Bỏ chọn">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="tf-cust-search-box">
+                            <input @ref="_f4InputRef"
+                                   type="text"
+                                   class="tf-cust-search-input"
+                                   placeholder="Tìm khách hàng theo tên, SĐT (F4)..."
+                                   value="@_custSearchTerm"
+                                   @oninput="OnCustomerSearchInput"
+                                   @onfocus="() => _showCustDropdown = true" />
+                            <span class="tf-cust-kbd">F4</span>
+                        </div>
+                    }
+                </div>
+
+                @if (_showCustDropdown && _custResults.Any())
+                {
+                    <div class="tf-cust-dropdown-menu">
+                        @foreach (var c in _custResults)
+                        {
+                            <div class="tf-cust-dropdown-item" @onclick="() => SelectCustomer(c)">
+                                <div class="tf-cust-opt-name">@c.Name</div>
+                                <div class="tf-cust-opt-sub">@c.Phone • @c.Address</div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            @* 4. Totals Breakdown *@
+            <div class="tf-totals-breakdown">
+                <div class="tf-calc-row">
+                    <span class="tf-calc-label">Tổng tiền hàng:</span>
+                    <span class="tf-calc-val">@CalculateSubTotal().ToString("N0") ₫</span>
+                </div>
+
+                <div class="tf-calc-row">
+                    <span class="tf-calc-label">Giảm giá / Chiết khấu (F8):</span>
+                    <div class="tf-discount-control-wrap">
+                        <input @ref="_f8InputRef"
+                               type="number"
+                               class="tf-discount-input"
+                               @bind="ActiveTab.Discount"
+                               @bind:after="StateHasChanged"
+                               min="0"
+                               step="5000" />
+                        <span class="tf-currency-unit">₫</span>
+                    </div>
+                </div>
+
+                <div class="tf-calc-row">
+                    <span class="tf-calc-label">Thuế GTGT (VAT):</span>
+                    <span class="tf-calc-val">@CalculateTaxTotal().ToString("N0") ₫</span>
+                </div>
+
+                <div class="tf-calc-row grand-total-row">
+                    <span class="tf-grand-label">Khách cần trả:</span>
+                    <span class="tf-grand-val">@CalculateGrandTotal().ToString("N0") ₫</span>
+                </div>
+
+                <div class="tf-pay-methods-selector">
+                    <button type="button"
+                            class="tf-pay-btn @(ActiveTab.PaymentMethod == "Tiền mặt" ? "active" : "")"
+                            @onclick='() => ActiveTab.PaymentMethod = "Tiền mặt"'>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+                            <circle cx="12" cy="12" r="2"></circle>
+                            <path d="M6 12h.01M18 12h.01"></path>
+                        </svg>
+                        <span>Tiền mặt</span>
+                    </button>
+                    <button type="button"
+                            class="tf-pay-btn @(ActiveTab.PaymentMethod == "Chuyển khoản (TM/CK)" ? "active" : "")"
+                            @onclick='() => ActiveTab.PaymentMethod = "Chuyển khoản (TM/CK)"'>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                            <line x1="1" y1="10" x2="23" y2="10"></line>
+                        </svg>
+                        <span>Chuyển khoản</span>
+                    </button>
+                    <button type="button"
+                            class="tf-pay-btn @(ActiveTab.PaymentMethod == "Thẻ" ? "active" : "")"
+                            @onclick='() => ActiveTab.PaymentMethod = "Thẻ"'>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                            <line x1="2" y1="10" x2="22" y2="10"></line>
+                        </svg>
+                        <span>Thẻ POS</span>
+                    </button>
+                </div>
+
+                @if (ActiveTab.PaymentMethod == "Tiền mặt")
+                {
+                    <div class="tf-cash-tender-box">
+                        <div class="tf-calc-row">
+                            <span class="tf-calc-label">Khách thanh toán:</span>
+                            <input type="number"
+                                   class="tf-tendered-input"
+                                   @bind="ActiveTab.CashTendered"
+                                   @bind:after="StateHasChanged"
+                                   min="0"
+                                   step="10000" />
+                        </div>
+                        <div class="tf-quick-cash-row">
+                            <button type="button" class="tf-cash-chip" @onclick="() => ActiveTab.CashTendered = CalculateGrandTotal()">Đúng số tiền</button>
+                            <button type="button" class="tf-cash-chip" @onclick="() => ActiveTab.CashTendered = RoundUpCash(CalculateGrandTotal(), 100000)">Làm tròn 100k</button>
+                            <button type="button" class="tf-cash-chip" @onclick="() => ActiveTab.CashTendered = RoundUpCash(CalculateGrandTotal(), 500000)">Làm tròn 500k</button>
+                        </div>
+                        <div class="tf-calc-row tf-mt-2">
+                            <span class="tf-calc-label">Tiền thừa trả khách:</span>
+                            <span class="tf-change-due-val">
+                                @CalculateChangeDue().ToString("N0") ₫
+                            </span>
+                        </div>
+                    </div>
+                }
+                else if (ActiveTab.PaymentMethod == "Chuyển khoản (TM/CK)")
+                {
+                    <div class="tf-qr-tender-box">
+                        <div class="tf-qr-image-container">
+                            <img src="@CompanyQrPath" alt="Mã QR thanh toán ACB" class="tf-qr-code-image" />
+                        </div>
+                        <div class="tf-qr-info-details">
+                            <div class="tf-qr-bank-name">@CompanyBankName</div>
+                            <div class="tf-qr-info-row">
+                                <span>Số tài khoản:</span>
+                                <strong>@CompanyBankAccount</strong>
+                            </div>
+                            <div class="tf-qr-info-row">
+                                <span>Chủ tài khoản:</span>
+                                <strong>@CompanyBankAccountHolder</strong>
+                            </div>
+                            <div class="tf-qr-info-row highlight">
+                                <span>Số tiền:</span>
+                                <strong style="color:var(--tf-primary);">@CalculateGrandTotal().ToString("N0") ₫</strong>
+                            </div>
+                            <div class="tf-qr-info-row">
+                                <span>Nội dung CK:</span>
+                                <strong class="tf-qr-ref">TF @ActiveTab.Title</strong>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @* 5. Validation Alert Box *@
+            @if (!string.IsNullOrEmpty(_checkoutErrorMessage))
+            {
+                <div class="tf-checkout-alert">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <span>@_checkoutErrorMessage</span>
+                </div>
+            }
+
+            @* 6. Checkout Action Button (F9) *@
+            <button type="button"
+                    class="tf-btn-checkout"
+                    disabled="@(!ActiveTab.Items.Any() || _isProcessingCheckout)"
+                    @onclick="OpenCheckoutModal">
+                @if (_isProcessingCheckout)
+                {
+                    <span>Đang xử lý đơn hàng...</span>
+                }
+                else
+                {
+                    <span>THANH TOÁN (F9)</span>
+                }
+            </button>
+        </div>
+    };
+}
+
+@* ============================================================
+   CHECKOUT CONFIRMATION MODAL
+   ============================================================ *@
+@if (_showCheckoutModal)
+{
+    <div class="tf-modal-backdrop" @onclick="() => _showCheckoutModal = false">
+        <div class="tf-modal-dialog" @onclick:stopPropagation="true">
+            <div class="tf-modal-header">
+                <h3 class="tf-modal-title">Xác nhận thanh toán đơn hàng</h3>
+                <button type="button" class="tf-modal-close-btn" @onclick="() => _showCheckoutModal = false">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="tf-modal-body">
+                <div class="tf-summary-review-card">
+                    <div class="tf-review-row">
+                        <span>Khách hàng:</span>
+                        <strong>@(ActiveTab.Customer?.Name ?? "Khách lẻ (Tại quầy)")</strong>
+                    </div>
+                    <div class="tf-review-row">
+                        <span>Ngày đặt hàng:</span>
+                        <strong>@ActiveTab.OrderDate.ToString("dd/MM/yyyy HH:mm")</strong>
+                    </div>
+                    <div class="tf-review-row">
+                        <span>Số lượng sản phẩm:</span>
+                        <strong>@ActiveTab.Items.Sum(i => i.Quantity) món</strong>
+                    </div>
+                    <div class="tf-review-row">
+                        <span>Phương thức thanh toán:</span>
+                        <strong>@ActiveTab.PaymentMethod</strong>
+                    </div>
+                    <div class="tf-review-divider"></div>
+                    <div class="tf-review-row">
+                        <span>Tổng tiền hàng:</span>
+                        <span>@CalculateSubTotal().ToString("N0") ₫</span>
+                    </div>
+                    @if (CalculateTotalDiscount() > 0)
+                    {
+                        <div class="tf-review-row" style="color:var(--tf-danger);">
+                            <span>Giảm giá / Chiết khấu:</span>
+                            <span>-@CalculateTotalDiscount().ToString("N0") ₫</span>
+                        </div>
+                    }
+                    <div class="tf-review-row">
+                        <span>Thuế VAT:</span>
+                        <span>@CalculateTaxTotal().ToString("N0") ₫</span>
+                    </div>
+                    <div class="tf-review-row highlight">
+                        <span style="font-size:15px; font-weight:700;">Khách cần trả:</span>
+                        <span style="font-size:18px; font-weight:800; color:var(--tf-primary);">
+                            @CalculateGrandTotal().ToString("N0") ₫
+                        </span>
+                    </div>
+                </div>
+
+                @if (ActiveTab.PaymentMethod == "Chuyển khoản (TM/CK)")
+                {
+                    <div class="tf-checkout-qr-box">
+                        <div class="tf-checkout-qr-img-wrap">
+                            <img src="@CompanyQrPath" alt="QR Code Thanh toán" class="tf-checkout-qr-img" />
+                        </div>
+                        <div class="tf-checkout-qr-details">
+                            <div class="tf-checkout-bank-name">@CompanyBankName</div>
+                            <div class="tf-checkout-qr-line">Số tài khoản: <strong>@CompanyBankAccount</strong></div>
+                            <div class="tf-checkout-qr-line">Chủ tài khoản: <strong>@CompanyBankAccountHolder</strong></div>
+                            <div class="tf-checkout-qr-line">Số tiền: <strong style="color:var(--tf-primary);">@CalculateGrandTotal().ToString("N0") ₫</strong></div>
+                            <div class="tf-checkout-qr-line">Nội dung CK: <strong class="tf-qr-ref">TF @ActiveTab.Title</strong></div>
+                        </div>
+                    </div>
+                }
+
+                <div class="tf-invoice-toggle-row">
+                    <label class="tf-checkbox-label">
+                        <input type="checkbox" @bind="_createInvoiceDirectly" />
+                        <span>Xuất hóa đơn bán hàng / GTGT ngay khi hoàn tất</span>
+                    </label>
+                </div>
+            </div>
+            <div class="tf-modal-footer">
+                <button type="button" class="tf-btn-secondary" @onclick="() => _showCheckoutModal = false">Hủy</button>
+                <button type="button" class="tf-btn-primary" disabled="@_isProcessingCheckout" @onclick="ConfirmAndExecuteCheckoutAsync">
+                    @(_isProcessingCheckout ? "Đang xử lý..." : "Xác nhận & Hoàn tất (F9)")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* ============================================================
+   CHECKOUT SUCCESS MODAL (With PDF Printing)
+   ============================================================ *@
+@if (_showSuccessModal)
+{
+    <div class="tf-modal-backdrop">
+        <div class="tf-modal-dialog success-card" @onclick:stopPropagation="true">
+            <div class="tf-success-badge-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+            <h3 class="tf-success-title">Thanh toán đơn hàng thành công!</h3>
+            <p class="tf-success-desc">Đơn bán hàng đã được lưu và cập nhật vào hệ thống TradeFlow.</p>
+
+            <div class="tf-success-data-box">
+                <div class="tf-data-line">Mã đơn hàng: <strong>@_lastCreatedOrderCode</strong></div>
+                @if (!string.IsNullOrEmpty(_lastCreatedInvoiceNumber))
+                {
+                    <div class="tf-data-line">Số hóa đơn: <strong>@_lastCreatedInvoiceNumber</strong></div>
+                }
+                <div class="tf-data-line">Tổng thanh toán: <strong>@_lastGrandTotal.ToString("N0") ₫</strong></div>
+            </div>
+
+            <div class="tf-success-actions">
+                @if (_lastCreatedInvoiceId > 0)
+                {
+                    <button type="button" class="tf-btn-primary" @onclick="PrintInvoicePdfAsync">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                        <span>In / Tải Hóa đơn PDF</span>
+                    </button>
+                }
+                <button type="button" class="tf-btn-secondary" @onclick="PrintOrderDocPdfAsync">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    <span>In Chứng từ đơn hàng</span>
+                </button>
+                <button type="button" class="tf-btn-secondary" @onclick="StartNewOrder">
+                    + Tạo đơn mới
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* ============================================================
+   ADD NEW CUSTOMER MODAL
+   ============================================================ *@
+@if (_showAddCustomerModal)
+{
+    <div class="tf-modal-backdrop" @onclick="() => _showAddCustomerModal = false">
+        <div class="tf-modal-dialog" @onclick:stopPropagation="true">
+            <div class="tf-modal-header">
+                <h3 class="tf-modal-title">Thêm khách hàng mới</h3>
+                <button type="button" class="tf-modal-close-btn" @onclick="() => _showAddCustomerModal = false">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="tf-modal-body">
+                @if (!string.IsNullOrEmpty(_addCustError))
+                {
+                    <div class="tf-modal-alert">@_addCustError</div>
+                }
+                <div class="tf-form-field">
+                    <label>Tên khách hàng <span style="color:var(--tf-danger);">*</span></label>
+                    <input type="text" class="tf-input-control" placeholder="Họ và tên hoặc tên doanh nghiệp" @bind="_newCustName" />
+                </div>
+                <div class="tf-form-field tf-mt-2">
+                    <label>Số điện thoại <span style="color:var(--tf-danger);">*</span></label>
+                    <input type="text" class="tf-input-control" placeholder="Số điện thoại liên hệ" @bind="_newCustPhone" />
+                </div>
+                <div class="tf-form-field tf-mt-2">
+                    <label>Địa chỉ</label>
+                    <input type="text" class="tf-input-control" placeholder="Địa chỉ giao hàng / nhận hóa đơn" @bind="_newCustAddress" />
+                </div>
+                <div class="tf-form-field tf-mt-2">
+                    <label>Mã số thuế</label>
+                    <input type="text" class="tf-input-control" placeholder="Mã số thuế (nếu có)" @bind="_newCustTaxCode" />
+                </div>
+            </div>
+            <div class="tf-modal-footer">
+                <button type="button" class="tf-btn-secondary" @onclick="() => _showAddCustomerModal = false">Hủy</button>
+                <button type="button" class="tf-btn-primary" @onclick="SaveNewCustomerAsync">Lưu khách hàng</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* ============================================================
+   RECENT ORDERS MODAL
+   ============================================================ *@
+@if (_showRecentOrdersModal)
+{
+    <div class="tf-modal-backdrop" @onclick="() => _showRecentOrdersModal = false">
+        <div class="tf-modal-dialog wide-dialog" @onclick:stopPropagation="true">
+            <div class="tf-modal-header">
+                <h3 class="tf-modal-title">Đơn hàng bán gần đây</h3>
+                <button type="button" class="tf-modal-close-btn" @onclick="() => _showRecentOrdersModal = false">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="tf-modal-body" style="max-height: 480px; overflow-y: auto;">
+                @if (!_recentOrders.Any())
+                {
+                    <div style="text-align: center; padding: 24px; color: var(--tf-gray-500);">Chưa có đơn hàng nào được tạo gần đây.</div>
+                }
+                else
+                {
+                    <table class="tf-recent-table">
+                        <thead>
+                            <tr>
+                                <th>Mã đơn</th>
+                                <th>Thời gian</th>
+                                <th>Khách hàng</th>
+                                <th style="text-align: right;">Tổng thanh toán</th>
+                                <th style="text-align: center;">Trạng thái</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var ord in _recentOrders)
+                            {
+                                <tr>
+                                    <td><strong>@ord.Code</strong></td>
+                                    <td>@ord.OrderDate.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td>@(ord.CustomerName ?? "Khách lẻ")</td>
+                                    <td style="text-align: right; font-weight: 600;">@ord.GrandTotal.ToString("N0") ₫</td>
+                                    <td style="text-align: center;">
+                                        <span class="tf-status-tag">@ord.Status</span>
+                                    </td>
+                                    <td style="text-align: right;">
+                                        <a href="/ban-hang/don-ban-hang" class="tf-link-action" target="_blank">Chi tiết</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+            <div class="tf-modal-footer">
+                <button type="button" class="tf-btn-secondary" @onclick="() => _showRecentOrdersModal = false">Đóng</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* ============================================================
+   KEYBOARD SHORTCUTS MODAL
+   ============================================================ *@
+@if (_showShortcutsModal)
+{
+    <div class="tf-modal-backdrop" @onclick="() => _showShortcutsModal = false">
+        <div class="tf-modal-dialog" @onclick:stopPropagation="true">
+            <div class="tf-modal-header">
+                <h3 class="tf-modal-title">Phím tắt thao tác nhanh</h3>
+                <button type="button" class="tf-modal-close-btn" @onclick="() => _showShortcutsModal = false">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="tf-modal-body">
+                <div class="tf-shortcuts-list">
+                    <div class="tf-shortcut-row">
+                        <span class="tf-kbd-tag">F3</span>
+                        <span>Tìm kiếm hàng hóa / Quét mã vạch</span>
+                    </div>
+                    <div class="tf-shortcut-row">
+                        <span class="tf-kbd-tag">F4</span>
+                        <span>Tìm kiếm và chọn khách hàng</span>
+                    </div>
+                    <div class="tf-shortcut-row">
+                        <span class="tf-kbd-tag">F8</span>
+                        <span>Nhập chiết khấu / giảm giá đơn hàng</span>
+                    </div>
+                    <div class="tf-shortcut-row">
+                        <span class="tf-kbd-tag">F9</span>
+                        <span>Mở hộp thoại thanh toán / Xác nhận thanh toán</span>
+                    </div>
+                    <div class="tf-shortcut-row">
+                        <span class="tf-kbd-tag">Esc</span>
+                        <span>Đóng các hộp thoại, bảng gợi ý tìm kiếm</span>
+                    </div>
+                </div>
+            </div>
+            <div class="tf-modal-footer">
+                <button type="button" class="tf-btn-primary" @onclick="() => _showShortcutsModal = false">Đã hiểu</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* ============================================================
+   GROUP FILTER MODAL (Lọc theo nhóm hàng — Matching media_1791897987311_db5ad73e.png)
+   ============================================================ *@
+@if (_showGroupFilterModal)
+{
+    <div class="tf-modal-backdrop" @onclick="() => _showGroupFilterModal = false">
+        <div class="tf-modal-dialog tf-filter-dialog" @onclick:stopPropagation="true">
+            <div class="tf-modal-header">
+                <h3 class="tf-modal-title">Lọc theo nhóm hàng</h3>
+                <button type="button" class="tf-modal-close-btn" @onclick="() => _showGroupFilterModal = false">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="tf-modal-body tf-filter-modal-body">
+                <div class="tf-filter-search-row">
+                    <span class="tf-filter-search-label">Nhóm hàng</span>
+                    <div class="tf-filter-search-input-wrap">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text"
+                               class="tf-filter-search-input"
+                               placeholder="Tìm nhóm hàng..."
+                               value="@_groupFilterTerm"
+                               @oninput="OnGroupFilterTermInput" />
+                    </div>
+                </div>
+
+                <div class="tf-filter-items-list">
+                    <label class="tf-filter-checkbox-item">
+                        <input type="checkbox"
+                               checked="@_allCategoriesSelected"
+                               @onchange="ToggleSelectAllCategories" />
+                        <span class="tf-filter-item-text font-bold">Tất cả</span>
+                    </label>
+
+                    @foreach (var cat in FilteredGroupCategories)
+                    {
+                        bool isChecked = _selectedCategoryIds.Contains(cat.Id);
+                        <label class="tf-filter-checkbox-item">
+                            <input type="checkbox"
+                                   checked="@isChecked"
+                                   @onchange="() => ToggleCategorySelection(cat.Id)" />
+                            <span class="tf-filter-item-text">@cat.Name</span>
+                        </label>
+                    }
+                </div>
+            </div>
+            <div class="tf-modal-footer tf-filter-modal-footer">
+                <button type="button" class="tf-btn-clear-filter" @onclick="ClearAllCategorySelections">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    <span>Xóa chọn tất cả</span>
+                </button>
+                <div class="tf-filter-footer-actions">
+                    <button type="button" class="tf-btn-secondary" @onclick="() => _showGroupFilterModal = false">Bỏ qua</button>
+                    <button type="button" class="tf-btn-primary" @onclick="ApplyGroupFilterAsync">Xong</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ============================================================
+   ATTRIBUTE FILTER MODAL (Lọc theo thuộc tính — Matching media_1791897987306_fb152322.png)
+   ============================================================ *@
+@if (_showAttributeFilterModal)
+{
+    <div class="tf-modal-backdrop" @onclick="() => _showAttributeFilterModal = false">
+        <div class="tf-modal-dialog tf-filter-dialog" @onclick:stopPropagation="true">
+            <div class="tf-modal-header">
+                <h3 class="tf-modal-title">Lọc hàng hóa theo thuộc tính</h3>
+                <button type="button" class="tf-modal-close-btn" @onclick="() => _showAttributeFilterModal = false">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="tf-modal-body tf-attr-modal-body">
+                @foreach (var attr in _allAttributes)
+                {
+                    bool isSelected = _selectedAttributes.Contains(attr);
+                    <div class="tf-attr-section">
+                        <div class="tf-attr-group-title">@attr</div>
+                        <div class="tf-attr-chips-wrap">
+                            <button type="button"
+                                    class="tf-attr-chip @(isSelected ? "selected" : "")"
+                                    @onclick="() => ToggleAttributeSelection(attr)">
+                                <span>@attr</span>
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="tf-modal-footer tf-filter-modal-footer">
+                <button type="button" class="tf-btn-clear-filter" @onclick="ClearAllAttributeSelections">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    <span>Xóa chọn tất cả</span>
+                </button>
+                <div class="tf-filter-footer-actions">
+                    <button type="button" class="tf-btn-secondary" @onclick="() => _showAttributeFilterModal = false">Bỏ qua</button>
+                    <button type="button" class="tf-btn-primary" @onclick="ApplyAttributeFilterAsync">Xong</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ============================================================
+   LINE-ITEM NOTE MODAL (Ghi chú độc lập từng dòng hàng)
+   ============================================================ *@
+@if (_showItemNoteModal && _editingNoteItem != null)
+{
+    <div class="tf-modal-backdrop" @onclick="CancelItemNoteEditor">
+        <div class="tf-modal-dialog tf-note-dialog" @onclick:stopPropagation="true">
+            <div class="tf-modal-header">
+                <div class="tf-note-dialog-title-group">
+                    <h3 class="tf-modal-title">Ghi chú dòng sản phẩm</h3>
+                    <span class="tf-note-dialog-item-name">@_editingNoteItem.Code — @_editingNoteItem.Name</span>
+                </div>
+                <button type="button" class="tf-modal-close-btn" @onclick="CancelItemNoteEditor">✕</button>
+            </div>
+            <div class="tf-modal-body">
+                <div class="tf-form-group">
+                    <label class="tf-label">Yêu cầu đặc biệt cho sản phẩm này</label>
+                    <textarea class="tf-textarea"
+                              placeholder="Nhập yêu cầu đặc biệt của khách hàng (quy cách cắt, kiểm tra nước men, đổi phụ kiện, lưu ý bảo quản...)..."
+                              @bind="_editingNoteText"
+                              @bind:event="oninput"></textarea>
+                    <div class="tf-help-text">Ghi chú này thuộc về riêng dòng sản phẩm này, không ảnh hưởng đến các sản phẩm khác hoặc ghi chú chung của đơn hàng.</div>
+                </div>
+            </div>
+            <div class="tf-modal-footer">
+                @if (!string.IsNullOrWhiteSpace(_editingNoteItem.Note))
+                {
+                    <button type="button" class="tf-btn tf-btn-danger-outline" @onclick="() => { ClearItemNote(_editingNoteItem); SaveItemNote(); }">
+                        Xóa ghi chú
+                    </button>
+                }
+                <div style="flex: 1;"></div>
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="CancelItemNoteEditor">Bỏ qua</button>
+                <button type="button" class="tf-btn tf-btn-primary" @onclick="SaveItemNote">Lưu ghi chú</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* ============================================================
+   PRODUCT DETAIL MODAL (Xem chi tiết thông số hàng hóa)
+   ============================================================ *@
+@if (_showProductDetailModal && _viewingProductDetail != null)
+{
+    <div class="tf-modal-backdrop" @onclick="() => _showProductDetailModal = false">
+        <div class="tf-modal-dialog tf-product-detail-dialog" @onclick:stopPropagation="true">
+            <div class="tf-modal-header">
+                <div class="tf-product-detail-header-text">
+                    <h3 class="tf-modal-title">Chi tiết sản phẩm</h3>
+                    <span class="tf-product-detail-sub">@(_viewingProductDetail.NewCode ?? _viewingProductDetail.Code) — @_viewingProductDetail.Name</span>
+                </div>
+                <button type="button" class="tf-modal-close-btn" @onclick="() => _showProductDetailModal = false">✕</button>
+            </div>
+            <div class="tf-modal-body tf-detail-modal-body">
+                <div class="tf-detail-info-grid">
+                    <div class="tf-detail-field">
+                        <span class="tf-detail-label">Mã sản phẩm:</span>
+                        <span class="tf-detail-value font-bold">@(_viewingProductDetail.NewCode ?? _viewingProductDetail.Code)</span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(_viewingProductDetail.LegacyCode))
+                    {
+                        <div class="tf-detail-field">
+                            <span class="tf-detail-label">Mã cũ / phụ:</span>
+                            <span class="tf-detail-value">@_viewingProductDetail.LegacyCode</span>
+                        </div>
+                    }
+                    <div class="tf-detail-field">
+                        <span class="tf-detail-label">Tên sản phẩm:</span>
+                        <span class="tf-detail-value">@_viewingProductDetail.Name</span>
+                    </div>
+                    <div class="tf-detail-field">
+                        <span class="tf-detail-label">Danh mục:</span>
+                        <span class="tf-detail-value">@(_viewingProductDetail.Category?.Name ?? "Chưa phân loại")</span>
+                    </div>
+                    <div class="tf-detail-field">
+                        <span class="tf-detail-label">Đơn vị tính:</span>
+                        <span class="tf-detail-value">@(_viewingProductDetail.Unit?.Name ?? "Cái")</span>
+                    </div>
+                    <div class="tf-detail-field">
+                        <span class="tf-detail-label">Giá áp dụng hiện tại:</span>
+                        <span class="tf-detail-value price-highlight">
+                            @{
+                                var curPrice = GetProductPrice(_viewingProductDetail.Id);
+                                if (curPrice.HasValue && curPrice.Value > 0)
+                                {
+                                    <span>@curPrice.Value.ToString("N0") ₫</span>
+                                }
+                                else
+                                {
+                                    <span>Chưa có giá</span>
+                                }
+                            }
+                        </span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(_viewingProductDetail.Specifications))
+                    {
+                        <div class="tf-detail-field full">
+                            <span class="tf-detail-label">Thông số kỹ thuật:</span>
+                            <span class="tf-detail-value">@_viewingProductDetail.Specifications</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(_viewingProductDetail.Description))
+                    {
+                        <div class="tf-detail-field full">
+                            <span class="tf-detail-label">Mô tả sản phẩm:</span>
+                            <span class="tf-detail-value">@_viewingProductDetail.Description</span>
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="tf-modal-footer">
+                <button type="button" class="tf-btn tf-btn-primary" @onclick="() => _showProductDetailModal = false">Đóng</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    // Component References
+    private ElementReference _posContainerRef;
+    private ElementReference _f3InputRef;
+    private ElementReference _f4InputRef;
+    private ElementReference _f8InputRef;
+
+    // Selling Modes
+    private enum PosMode { Quick, Regular, Delivery }
+    private PosMode _currentMode = PosMode.Quick;
+
+    // Tabs Management
+    private class PosTab
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Title { get; set; } = "Hóa đơn 1";
+        public DateTime OrderDate { get; set; } = DateTime.Now;
+        public Customer? Customer { get; set; }
+        public int? PriceListId { get; set; }
+        public string SalesChannel { get; set; } = "Bán trực tiếp";
+        public List<PosItem> Items { get; set; } = new();
+        public decimal Discount { get; set; }
+        public string Notes { get; set; } = string.Empty;
+        public string PaymentMethod { get; set; } = "Tiền mặt";
+        public decimal CashTendered { get; set; }
+        public DeliveryInfo Delivery { get; set; } = new();
+    }
+
+    private class PosItem
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public int ProductId { get; set; }
+        public string Code { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string? UnitName { get; set; }
+        public string? ImageUrl { get; set; }
+        public string MaterialTag { get; set; } = string.Empty;
+        public decimal Quantity { get; set; } = 1;
+        public decimal UnitPrice { get; set; }
+        public bool HasPrice { get; set; } = true;
+        public decimal Discount { get; set; }
+        public decimal TaxRate { get; set; }
+        public decimal LineTotal => Math.Max(0, (Quantity * UnitPrice) - Discount);
+        public string? Note { get; set; }
+    }
+
+    private class DeliveryInfo
+    {
+        public string RecipientName { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+        public string Region { get; set; } = string.Empty;
+        public string Ward { get; set; } = string.Empty;
+        public int WeightGram { get; set; } = 500;
+        public int LengthCm { get; set; } = 10;
+        public int WidthCm { get; set; } = 10;
+        public int HeightCm { get; set; } = 10;
+        public string CourierNote { get; set; } = string.Empty;
+        public bool IsCod { get; set; }
+        public string PartnerName { get; set; } = "GHN";
+    }
+
+    private class ShippingPartnerOption
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Desc { get; set; } = string.Empty;
+        public string Color { get; set; } = "#0066cc";
+    }
+
+    private List<ShippingPartnerOption> _shippingPartners = new()
+    {
+        new() { Name = "GHN", Desc = "Giao Hàng Nhanh", Color = "#f97316" },
+        new() { Name = "Viettel Post", Desc = "Viettel Bưu Chính", Color = "#dc2626" },
+        new() { Name = "GHTK", Desc = "Giao Hàng Tiết Kiệm", Color = "#16a34a" },
+        new() { Name = "Shopee Xpress", Desc = "SPX Express", Color = "#ea580c" },
+        new() { Name = "J&T Express", Desc = "Chuyển phát nhanh", Color = "#e11d48" },
+        new() { Name = "Ahamove", Desc = "Giao hàng nội thành", Color = "#d97706" }
+    };
+
+    private List<PosTab> _tabs = new() { new PosTab { Title = "Hóa đơn 1" } };
+    private int _activeTabIndex = 0;
+    private PosTab ActiveTab => _tabs.ElementAtOrDefault(_activeTabIndex) ?? _tabs[0];
+
+    // Company Settings (for QR Code Payment)
+    private TradeFlow.Domain.Entities.Settings.CompanySettings? _companySettings;
+    private string CompanyBankName => _companySettings?.BankName ?? "NGÂN HÀNG Á CHÂU (ACB)";
+    private string CompanyBankAccount => _companySettings?.BankAccount ?? "4987.9177";
+    private string CompanyBankAccountHolder => _companySettings?.BankAccountHolder ?? "TRẦN VĂN TUẤN";
+    private string CompanyQrPath => !string.IsNullOrEmpty(_companySettings?.OrderQrCodePath) ? _companySettings.OrderQrCodePath : "/images/lacasa_qr.png";
+
+    // Filtering State
+    private readonly List<string> _allAttributes = new() { "SỨ", "INOX", "HÀNG XI", "NHỰA", "KÍNH", "NHÔM" };
+    private HashSet<string> _selectedAttributes = new();
+    private HashSet<int> _selectedCategoryIds = new();
+    private string _groupFilterTerm = string.Empty;
+    private bool _showGroupFilterModal = false;
+    private bool _showAttributeFilterModal = false;
+
+    private IEnumerable<ProductCategory> FilteredGroupCategories =>
+        string.IsNullOrWhiteSpace(_groupFilterTerm)
+            ? _categories
+            : _categories.Where(c => c.Name.Contains(_groupFilterTerm, StringComparison.OrdinalIgnoreCase));
+
+    private bool _allCategoriesSelected => _selectedCategoryIds.Count == 0 || _selectedCategoryIds.Count == _categories.Count;
+
+    // Master Data Cache
+    private List<PriceList> _priceLists = new();
+    private List<ProductCategory> _categories = new();
+    private Dictionary<int, decimal?> _productPrices = new();
+    private Dictionary<int, string?> _productImages = new();
+
+    // Catalog State (Regular Mode)
+    private List<Product> _catalogProducts = new();
+    private string _catalogSearch = string.Empty;
+    private int _catalogPage = 1;
+    private int _catalogPageSize = 12;
+    private int _catalogTotalCount = 0;
+    private int _catalogTotalPages => (int)Math.Ceiling((double)_catalogTotalCount / _catalogPageSize);
+    private bool _showImages = true;
+    private bool _isGridView = true;
+
+    // F3 Fast Search State
+    private string _f3SearchTerm = string.Empty;
+    private List<Product> _f3Results = new();
+    private bool _showF3Dropdown;
+    private bool _isBarcodeMode;
+
+    // F4 Customer Search State
+    private string _custSearchTerm = string.Empty;
+    private List<Customer> _custResults = new();
+    private bool _showCustDropdown;
+    private bool _showAddCustomerModal;
+    private string _newCustName = string.Empty;
+    private string _newCustPhone = string.Empty;
+    private string _newCustAddress = string.Empty;
+    private string _newCustTaxCode = string.Empty;
+    private string? _addCustError;
+
+    // Modals State
+    private bool _showShortcutsModal;
+    private bool _showRecentOrdersModal;
+    private List<SalesOrderDto> _recentOrders = new();
+    // Item Context Menu, Line Notes & Product Details
+    private string? _openItemMenuId;
+    private PosItem? _editingNoteItem;
+    private string _editingNoteText = string.Empty;
+    private bool _showItemNoteModal;
+    private Product? _viewingProductDetail;
+    private bool _showProductDetailModal;
+    private string? _checkoutErrorMessage;
+
+    // Checkout Execution State
+    private bool _showCheckoutModal;
+    private bool _createInvoiceDirectly = true;
+    private bool _isProcessingCheckout;
+    private bool _showSuccessModal;
+    private int _lastCreatedOrderId;
+    private string _lastCreatedOrderCode = string.Empty;
+    private int _lastCreatedInvoiceId;
+    private string _lastCreatedInvoiceNumber = string.Empty;
+    private decimal _lastGrandTotal;
+
+    // Cashier
+    private string _cashierName = "Thu ngân";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (authState.User.Identity?.IsAuthenticated == true)
+            {
+                _cashierName = authState.User.Identity.Name ?? "Thu ngân";
+            }
+
+            await LoadInitialDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[POS Initialization Error]: {ex.Message}");
+        }
+    }
+
+    private async Task LoadInitialDataAsync()
+    {
+        // 0. Company Settings (for QR Code & Bank configuration)
+        _companySettings = await DbContext.CompanySettings.AsNoTracking().FirstOrDefaultAsync();
+
+        // 1. Applicable Price lists
+        _priceLists = await SalesService.GetApplicablePriceListsAsync(DateTime.UtcNow);
+        if (_priceLists.Any())
+        {
+            var defaultPlId = _priceLists.First().Id;
+            foreach (var tab in _tabs)
+            {
+                if (!tab.PriceListId.HasValue)
+                {
+                    tab.PriceListId = defaultPlId;
+                }
+            }
+        }
+
+        // 2. Product Categories
+        _categories = await DbContext.ProductCategories
+            .AsNoTracking()
+            .Where(c => c.IsActive)
+            .OrderBy(c => c.DisplayOrder)
+            .ThenBy(c => c.Name)
+            .ToListAsync();
+
+        // 3. Load catalog products
+        await LoadCatalogPageAsync();
+
+        // 4. Load recent orders
+        var allOrders = await SalesService.GetOrdersAsync();
+        _recentOrders = allOrders.Take(15).ToList();
+    }
+
+    private async Task RefreshDataAsync()
+    {
+        _productPrices.Clear();
+        await LoadInitialDataAsync();
+        StateHasChanged();
+    }
+
+    // ============================================================
+    // CATALOG & PRICING LOGIC
+    // ============================================================
+    private async Task LoadCatalogPageAsync()
+    {
+        var query = DbContext.Products
+            .Include(p => p.Unit)
+            .Include(p => p.Images)
+            .AsNoTracking()
+            .Where(p => p.IsActive);
+
+        // Category filter (multi-select modal)
+        if (_selectedCategoryIds.Any())
+        {
+            query = query.Where(p => p.CategoryId.HasValue && _selectedCategoryIds.Contains(p.CategoryId.Value));
+        }
+
+        // Text search
+        if (!string.IsNullOrWhiteSpace(_catalogSearch))
+        {
+            var term = $"%{_catalogSearch}%";
+            query = query.Where(p => EF.Functions.ILike(p.Name, term) 
+                                  || EF.Functions.ILike(p.Code, term) 
+                                  || (p.NewCode != null && EF.Functions.ILike(p.NewCode, term)));
+        }
+
+        // Attribute filter (SỨ, INOX, HÀNG XI, NHỰA, KÍNH, NHÔM)
+        if (_selectedAttributes.Any())
+        {
+            query = ApplyAttributeFilters(query, _selectedAttributes);
+        }
+
+        _catalogTotalCount = await query.CountAsync();
+        _catalogProducts = await query
+            .OrderBy(p => p.Name)
+            .Skip((_catalogPage - 1) * _catalogPageSize)
+            .Take(_catalogPageSize)
+            .ToListAsync();
+
+        // Cache prices for catalog products
+        foreach (var p in _catalogProducts)
+        {
+            if (!_productPrices.ContainsKey(p.Id))
+            {
+                var priceResult = await SalesService.GetProductPriceAsync(p.Id, ActiveTab.PriceListId, ActiveTab.OrderDate);
+                _productPrices[p.Id] = priceResult.Price;
+            }
+
+            if (!_productImages.ContainsKey(p.Id))
+            {
+                var primaryImg = p.Images.FirstOrDefault(i => i.IsPrimary) ?? p.Images.FirstOrDefault();
+                _productImages[p.Id] = primaryImg != null ? FileStorage.GetPublicUrl(primaryImg.StorageReference) : null;
+            }
+        }
+    }
+
+    private decimal? GetProductPrice(int productId)
+    {
+        if (_productPrices.TryGetValue(productId, out var p))
+        {
+            return p;
+        }
+        return null;
+    }
+
+    private string? GetProductImageUrl(Product prod)
+    {
+        if (_productImages.TryGetValue(prod.Id, out var url))
+        {
+            return url;
+        }
+        var primaryImg = prod.Images?.FirstOrDefault(i => i.IsPrimary) ?? prod.Images?.FirstOrDefault();
+        var publicUrl = primaryImg != null ? FileStorage.GetPublicUrl(primaryImg.StorageReference) : null;
+        _productImages[prod.Id] = publicUrl;
+        return publicUrl;
+    }
+
+    private async Task OnCategoryChanged()
+    {
+        _catalogPage = 1;
+        await LoadCatalogPageAsync();
+    }
+
+    private async Task OnCatalogSearchInput(ChangeEventArgs e)
+    {
+        _catalogSearch = e.Value?.ToString() ?? string.Empty;
+        _catalogPage = 1;
+        await LoadCatalogPageAsync();
+    }
+
+    private async Task ChangeCatalogPage(int newPage)
+    {
+        if (newPage >= 1 && newPage <= _catalogTotalPages)
+        {
+            _catalogPage = newPage;
+            await LoadCatalogPageAsync();
+        }
+    }
+
+    // ============================================================
+    // FAST SEARCH (F3) & AUTOCOMPLETE
+    // ============================================================
+    private async Task OnF3Input(ChangeEventArgs e)
+    {
+        _f3SearchTerm = e.Value?.ToString() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(_f3SearchTerm))
+        {
+            _f3Results.Clear();
+            _showF3Dropdown = false;
+            return;
+        }
+
+        _f3Results = await SalesService.SearchProductsAsync(_f3SearchTerm);
+        _showF3Dropdown = _f3Results.Any();
+
+        foreach (var prod in _f3Results)
+        {
+            if (!_productPrices.ContainsKey(prod.Id))
+            {
+                var priceResult = await SalesService.GetProductPriceAsync(prod.Id, ActiveTab.PriceListId, ActiveTab.OrderDate);
+                _productPrices[prod.Id] = priceResult.Price;
+            }
+        }
+    }
+
+    private void ToggleBarcodeMode()
+    {
+        _isBarcodeMode = !_isBarcodeMode;
+    }
+
+    private void AddProductToCart(Product product)
+    {
+        _checkoutErrorMessage = null;
+        var existing = ActiveTab.Items.FirstOrDefault(i => i.ProductId == product.Id && string.IsNullOrWhiteSpace(i.Note));
+        if (existing != null)
+        {
+            existing.Quantity += 1;
+        }
+        else
+        {
+            var unitPrice = GetProductPrice(product.Id);
+            var vatRate = VatRuleEngine.DetermineVatRate(product, ActiveTab.OrderDate);
+
+            ActiveTab.Items.Add(new PosItem
+            {
+                ProductId = product.Id,
+                Code = product.NewCode ?? product.Code,
+                Name = product.Name,
+                UnitName = product.Unit?.Name ?? "Cái",
+                Quantity = 1,
+                UnitPrice = unitPrice ?? 0m,
+                HasPrice = unitPrice.HasValue && unitPrice.Value > 0,
+                Discount = 0,
+                TaxRate = vatRate.Rate,
+                MaterialTag = GetMaterialTag(product.Name, product.Specifications, product.Description)
+            });
+        }
+
+        _f3SearchTerm = string.Empty;
+        _showF3Dropdown = false;
+        StateHasChanged();
+    }
+
+    private void OnGroupFilterTermInput(ChangeEventArgs e)
+    {
+        _groupFilterTerm = e.Value?.ToString() ?? string.Empty;
+    }
+
+    private void ToggleSelectAllCategories(ChangeEventArgs e)
+    {
+        bool isChecked = (bool)(e.Value ?? false);
+        if (isChecked)
+        {
+            _selectedCategoryIds.Clear();
+            foreach (var c in _categories) _selectedCategoryIds.Add(c.Id);
+        }
+        else
+        {
+            _selectedCategoryIds.Clear();
+        }
+    }
+
+    private void ToggleCategorySelection(int categoryId)
+    {
+        if (_selectedCategoryIds.Contains(categoryId))
+            _selectedCategoryIds.Remove(categoryId);
+        else
+            _selectedCategoryIds.Add(categoryId);
+    }
+
+    private void ClearAllCategorySelections()
+    {
+        _selectedCategoryIds.Clear();
+    }
+
+    private async Task ApplyGroupFilterAsync()
+    {
+        _showGroupFilterModal = false;
+        _catalogPage = 1;
+        await LoadCatalogPageAsync();
+    }
+
+    private void ToggleAttributeSelection(string attr)
+    {
+        if (_selectedAttributes.Contains(attr))
+            _selectedAttributes.Remove(attr);
+        else
+            _selectedAttributes.Add(attr);
+    }
+
+    private void ClearAllAttributeSelections()
+    {
+        _selectedAttributes.Clear();
+    }
+
+    private async Task ApplyAttributeFilterAsync()
+    {
+        _showAttributeFilterModal = false;
+        _catalogPage = 1;
+        await LoadCatalogPageAsync();
+    }
+
+    private async Task OnCustInput(ChangeEventArgs e)
+    {
+        await OnCustomerSearchInput(e);
+    }
+
+    private void ToggleItemMenu(string itemId)
+    {
+        if (_openItemMenuId == itemId)
+            _openItemMenuId = null;
+        else
+            _openItemMenuId = itemId;
+    }
+
+    private void CloseItemMenu()
+    {
+        _openItemMenuId = null;
+    }
+
+    private void OpenItemNoteEditor(PosItem item)
+    {
+        _openItemMenuId = null;
+        _editingNoteItem = item;
+        _editingNoteText = item.Note ?? string.Empty;
+        _showItemNoteModal = true;
+    }
+
+    private void SaveItemNote()
+    {
+        if (_editingNoteItem != null)
+        {
+            _editingNoteItem.Note = string.IsNullOrWhiteSpace(_editingNoteText) ? null : _editingNoteText.Trim();
+        }
+        _showItemNoteModal = false;
+        _editingNoteItem = null;
+        _editingNoteText = string.Empty;
+    }
+
+    private void ClearItemNote(PosItem item)
+    {
+        item.Note = null;
+        if (_editingNoteItem == item)
+        {
+            _editingNoteText = string.Empty;
+        }
+    }
+
+    private void CancelItemNoteEditor()
+    {
+        _showItemNoteModal = false;
+        _editingNoteItem = null;
+        _editingNoteText = string.Empty;
+    }
+
+    private async Task ShowProductDetailsAsync(int productId)
+    {
+        _openItemMenuId = null;
+        _viewingProductDetail = await DbContext.Products
+            .Include(p => p.Category)
+            .Include(p => p.Unit)
+            .FirstOrDefaultAsync(p => p.Id == productId);
+        _showProductDetailModal = true;
+    }
+
+    private static string GetMaterialTag(string productName, string? specs = null, string? desc = null)
+    {
+        var text = $"{productName} {specs} {desc}".ToLowerInvariant();
+        if (text.Contains("bồn cầu") || text.Contains("bàn cầu") || text.Contains("lavabo") || text.Contains("chậu") || text.Contains("tiểu nam") || text.Contains("sứ"))
+            return "sứ";
+        if (text.Contains("inox") || text.Contains("sus 304") || text.Contains("sus 201"))
+            return "inox";
+        if (text.Contains("xi") || text.Contains("mạ") || text.Contains("củ sen") || text.Contains("cây sen") || text.Contains("vòi"))
+            return "hàng xi";
+        if (text.Contains("nhựa") || text.Contains("bộ xả") || text.Contains("dây cấp") || text.Contains("nắp bàn cầu") || text.Contains("phao"))
+            return "nhựa";
+        if (text.Contains("kính") || text.Contains("gương"))
+            return "kính";
+        if (text.Contains("nhôm"))
+            return "nhôm";
+        return "";
+    }
+
+    private static IQueryable<Product> ApplyAttributeFilters(IQueryable<Product> query, HashSet<string> attrs)
+    {
+        return query.Where(p =>
+            (attrs.Contains("SỨ") && (
+                EF.Functions.ILike(p.Name, "%bồn cầu%") ||
+                EF.Functions.ILike(p.Name, "%bàn cầu%") ||
+                EF.Functions.ILike(p.Name, "%lavabo%") ||
+                EF.Functions.ILike(p.Name, "%chậu%") ||
+                EF.Functions.ILike(p.Name, "%tiểu nam%") ||
+                EF.Functions.ILike(p.Name, "%sứ%") ||
+                (p.Specifications != null && EF.Functions.ILike(p.Specifications, "%sứ%"))
+            )) ||
+            (attrs.Contains("INOX") && (
+                EF.Functions.ILike(p.Name, "%inox%") ||
+                EF.Functions.ILike(p.Name, "%sus 304%") ||
+                EF.Functions.ILike(p.Name, "%sus 201%") ||
+                (p.Specifications != null && EF.Functions.ILike(p.Specifications, "%inox%"))
+            )) ||
+            (attrs.Contains("HÀNG XI") && (
+                EF.Functions.ILike(p.Name, "%xi%") ||
+                EF.Functions.ILike(p.Name, "%mạ%") ||
+                EF.Functions.ILike(p.Name, "%củ sen%") ||
+                EF.Functions.ILike(p.Name, "%cây sen%") ||
+                EF.Functions.ILike(p.Name, "%vòi%")
+            )) ||
+            (attrs.Contains("NHỰA") && (
+                EF.Functions.ILike(p.Name, "%nhựa%") ||
+                EF.Functions.ILike(p.Name, "%bộ xả%") ||
+                EF.Functions.ILike(p.Name, "%dây cấp%") ||
+                EF.Functions.ILike(p.Name, "%nắp bàn cầu%") ||
+                EF.Functions.ILike(p.Name, "%phao%")
+            )) ||
+            (attrs.Contains("KÍNH") && (
+                EF.Functions.ILike(p.Name, "%kính%") ||
+                EF.Functions.ILike(p.Name, "%gương%")
+            )) ||
+            (attrs.Contains("NHÔM") && (
+                EF.Functions.ILike(p.Name, "%nhôm%")
+            ))
+        );
+    }
+
+    // ============================================================
+    // CART OPERATIONS
+    // ============================================================
+    private void UpdateQuantity(PosItem item, decimal newQty)
+    {
+        if (newQty <= 0)
+        {
+            ActiveTab.Items.Remove(item);
+        }
+        else
+        {
+            item.Quantity = newQty;
+        }
+        StateHasChanged();
+    }
+
+    private void OnQuantityChanged(PosItem item, ChangeEventArgs e)
+    {
+        if (decimal.TryParse(e.Value?.ToString(), out var qty))
+        {
+            UpdateQuantity(item, qty);
+        }
+    }
+
+    private void OnItemDiscountChanged(PosItem item, ChangeEventArgs e)
+    {
+        if (decimal.TryParse(e.Value?.ToString(), out var disc))
+        {
+            item.Discount = Math.Max(0, disc);
+            StateHasChanged();
+        }
+    }
+
+    private void OnItemUnitPriceChanged(PosItem item, ChangeEventArgs e)
+    {
+        if (decimal.TryParse(e.Value?.ToString(), out var price) && price > 0)
+        {
+            item.UnitPrice = price;
+            item.HasPrice = true;
+            _checkoutErrorMessage = null;
+            StateHasChanged();
+        }
+    }
+
+    private void RemoveItem(int index)
+    {
+        if (index >= 0 && index < ActiveTab.Items.Count)
+        {
+            ActiveTab.Items.RemoveAt(index);
+            StateHasChanged();
+        }
+    }
+
+    // ============================================================
+    // TABS MANAGEMENT
+    // ============================================================
+    private void AddNewTab()
+    {
+        if (_tabs.Count >= 10) return;
+        int nextNum = _tabs.Count + 1;
+        var newTab = new PosTab
+        {
+            Title = $"Hóa đơn {nextNum}",
+            OrderDate = DateTime.Now,
+            PriceListId = _priceLists.FirstOrDefault()?.Id
+        };
+        _tabs.Add(newTab);
+        _activeTabIndex = _tabs.Count - 1;
+        StateHasChanged();
+    }
+
+    private void SwitchTab(int index)
+    {
+        if (index >= 0 && index < _tabs.Count)
+        {
+            _activeTabIndex = index;
+            _checkoutErrorMessage = null;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseTab(int index)
+    {
+        if (_tabs.Count <= 1) return;
+        _tabs.RemoveAt(index);
+        if (_activeTabIndex >= _tabs.Count)
+        {
+            _activeTabIndex = _tabs.Count - 1;
+        }
+        _checkoutErrorMessage = null;
+        StateHasChanged();
+    }
+
+    // ============================================================
+    // CUSTOMER SELECTION (F4)
+    // ============================================================
+    private async Task OnCustomerSearchInput(ChangeEventArgs e)
+    {
+        _custSearchTerm = e.Value?.ToString() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(_custSearchTerm))
+        {
+            _custResults.Clear();
+            _showCustDropdown = false;
+            return;
+        }
+
+        _custResults = await SalesService.SearchCustomersAsync(_custSearchTerm);
+        _showCustDropdown = _custResults.Any();
+    }
+
+    private void SelectCustomer(Customer customer)
+    {
+        ActiveTab.Customer = customer;
+        ActiveTab.Delivery.RecipientName = customer.Name;
+        ActiveTab.Delivery.Phone = customer.Phone ?? string.Empty;
+        ActiveTab.Delivery.Address = customer.Address ?? string.Empty;
+        _custSearchTerm = string.Empty;
+        _showCustDropdown = false;
+        StateHasChanged();
+    }
+
+    private void ClearCustomer()
+    {
+        ActiveTab.Customer = null;
+        _custSearchTerm = string.Empty;
+        StateHasChanged();
+    }
+
+    private async Task SaveNewCustomerAsync()
+    {
+        _addCustError = null;
+        if (string.IsNullOrWhiteSpace(_newCustName))
+        {
+            _addCustError = "Vui lòng nhập tên khách hàng.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(_newCustPhone))
+        {
+            _addCustError = "Vui lòng nhập số điện thoại.";
+            return;
+        }
+
+        var cust = new Customer
+        {
+            Code = $"KH{DateTime.Now:yyMMddHHmm}",
+            Name = _newCustName.Trim(),
+            Phone = _newCustPhone.Trim(),
+            Address = _newCustAddress?.Trim(),
+            TaxCode = _newCustTaxCode?.Trim(),
+            IsActive = true
+        };
+
+        DbContext.Customers.Add(cust);
+        await DbContext.SaveChangesAsync();
+
+        SelectCustomer(cust);
+        _showAddCustomerModal = false;
+        _newCustName = string.Empty;
+        _newCustPhone = string.Empty;
+        _newCustAddress = string.Empty;
+        _newCustTaxCode = string.Empty;
+    }
+
+    // ============================================================
+    // ORDER DATE & PRICELIST CHANGE HANDLERS
+    // ============================================================
+    private void OnOrderDateChanged(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var dt))
+        {
+            ActiveTab.OrderDate = dt;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnPriceListChanged()
+    {
+        // Re-evaluate prices for all cart items
+        foreach (var item in ActiveTab.Items)
+        {
+            var p = await SalesService.GetProductPriceAsync(item.ProductId, ActiveTab.PriceListId, ActiveTab.OrderDate);
+            if (p.Price.HasValue && p.Price.Value > 0)
+            {
+                item.UnitPrice = p.Price.Value;
+                item.HasPrice = true;
+            }
+        }
+        _productPrices.Clear();
+        await LoadCatalogPageAsync();
+        StateHasChanged();
+    }
+
+    // ============================================================
+    // TOTALS CALCULATIONS
+    // ============================================================
+    private decimal CalculateSubTotal()
+    {
+        return ActiveTab.Items.Sum(i => i.Quantity * i.UnitPrice);
+    }
+
+    private decimal CalculateTotalDiscount()
+    {
+        decimal itemDiscounts = ActiveTab.Items.Sum(i => i.Discount);
+        return itemDiscounts + ActiveTab.Discount;
+    }
+
+    private decimal CalculateTaxTotal()
+    {
+        return ActiveTab.Items.Sum(i =>
+        {
+            decimal baseLine = Math.Max(0, (i.Quantity * i.UnitPrice) - i.Discount);
+            return baseLine * (i.TaxRate / 100m);
+        });
+    }
+
+    private decimal CalculateGrandTotal()
+    {
+        decimal sub = CalculateSubTotal();
+        decimal disc = CalculateTotalDiscount();
+        decimal tax = CalculateTaxTotal();
+        return Math.Max(0, sub - disc + tax);
+    }
+
+    private decimal CalculateChangeDue()
+    {
+        if (ActiveTab.CashTendered <= 0) return 0;
+        decimal grand = CalculateGrandTotal();
+        return Math.Max(0, ActiveTab.CashTendered - grand);
+    }
+
+    private static decimal RoundUpCash(decimal amount, decimal roundStep)
+    {
+        if (roundStep <= 0) return amount;
+        return Math.Ceiling(amount / roundStep) * roundStep;
+    }
+
+    private void SetMode(PosMode mode)
+    {
+        _currentMode = mode;
+        StateHasChanged();
+    }
+
+    // ============================================================
+    // CHECKOUT FLOW & INVOICE CREATION
+    // ============================================================
+    private void OpenCheckoutModal()
+    {
+        if (!ActiveTab.Items.Any()) return;
+
+        // Verify all items have valid prices
+        var unpricedItems = ActiveTab.Items.Where(i => !i.HasPrice || i.UnitPrice <= 0).ToList();
+        if (unpricedItems.Any())
+        {
+            _checkoutErrorMessage = $"Đơn hàng có {unpricedItems.Count} sản phẩm chưa thiết lập giá bán ({string.Join(", ", unpricedItems.Take(2).Select(i => i.Name))}). Vui lòng nhập giá hoặc xóa sản phẩm khỏi giỏ hàng trước khi thanh toán.";
+            return;
+        }
+
+        _checkoutErrorMessage = null;
+        if (ActiveTab.CashTendered <= 0)
+        {
+            ActiveTab.CashTendered = CalculateGrandTotal();
+        }
+        _showCheckoutModal = true;
+    }
+
+    private async Task ConfirmAndExecuteCheckoutAsync()
+    {
+        if (!ActiveTab.Items.Any() || _isProcessingCheckout) return;
+
+        var unpricedItems = ActiveTab.Items.Where(i => !i.HasPrice || i.UnitPrice <= 0).ToList();
+        if (unpricedItems.Any())
+        {
+            _checkoutErrorMessage = "Vui lòng nhập giá bán hợp lệ cho tất cả sản phẩm trước khi thanh toán.";
+            _showCheckoutModal = false;
+            return;
+        }
+
+        try
+        {
+            _isProcessingCheckout = true;
+            _showCheckoutModal = false;
+
+            // 1. Ensure Customer
+            var customer = ActiveTab.Customer;
+            if (customer == null)
+            {
+                customer = await DbContext.Customers.FirstOrDefaultAsync(c => c.Name == "Khách lẻ" || c.Code == "KL" || c.Code == "KH_LE");
+                if (customer == null)
+                {
+                    customer = new Customer
+                    {
+                        Code = "KL",
+                        Name = "Khách lẻ",
+                        Phone = "0900000000",
+                        Address = "Tại quầy cửa hàng",
+                        IsActive = true
+                    };
+                    DbContext.Customers.Add(customer);
+                    await DbContext.SaveChangesAsync();
+                }
+            }
+
+            // 2. Build SalesOrderDto with safe editable OrderDate
+            var orderDto = new SalesOrderDto
+            {
+                CustomerId = customer.Id,
+                CustomerName = customer.Name,
+                CustomerPhone = customer.Phone,
+                CustomerAddress = customer.Address,
+                OrderDate = ActiveTab.OrderDate,
+                Notes = string.IsNullOrWhiteSpace(ActiveTab.Notes) 
+                    ? $"[Kênh: {ActiveTab.SalesChannel}]" 
+                    : $"[Kênh: {ActiveTab.SalesChannel}] {ActiveTab.Notes}",
+                Items = ActiveTab.Items.Select(i => new SalesOrderItemDto
+                {
+                    ProductId = i.ProductId,
+                    ProductCode = i.Code,
+                    ProductName = i.Name,
+                    UnitName = i.UnitName ?? "Cái",
+                    Quantity = i.Quantity,
+                    UnitPrice = i.UnitPrice,
+                    DiscountAmount = i.Discount,
+                    TaxRate = i.TaxRate,
+                    TaxAmount = ((i.Quantity * i.UnitPrice) - i.Discount) * (i.TaxRate / 100m),
+                    LineTotal = i.LineTotal,
+                    Notes = i.Note
+                }).ToList()
+            };
+
+            // 3. Create Sales Order
+            var createdOrder = await SalesService.CreateOrderAsync(orderDto);
+            _lastCreatedOrderId = createdOrder.Id;
+            _lastCreatedOrderCode = createdOrder.Code;
+            _lastGrandTotal = CalculateGrandTotal();
+
+            // 4. Optionally Create Invoice Directly
+            if (_createInvoiceDirectly)
+            {
+                await SalesService.ConfirmOrderAsync(createdOrder.Id);
+                var createdInvoice = await InvoiceService.CreateInvoiceFromOrderAsync(
+                    createdOrder.Id,
+                    InvoiceType.VatInvoice);
+                
+                _lastCreatedInvoiceId = createdInvoice.Id;
+                _lastCreatedInvoiceNumber = !string.IsNullOrEmpty(createdInvoice.InvoiceNo) ? createdInvoice.InvoiceNo : createdInvoice.InvoiceNumber;
+            }
+
+            _showSuccessModal = true;
+            await RefreshDataAsync();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"Lỗi thanh toán: {ex.Message}");
+        }
+        finally
+        {
+            _isProcessingCheckout = false;
+        }
+    }
+
+    private async Task PrintInvoicePdfAsync()
+    {
+        if (_lastCreatedInvoiceId <= 0) return;
+        try
+        {
+            var pdfBytes = await InvoiceService.GeneratePdfAsync(_lastCreatedInvoiceId);
+            var base64 = Convert.ToBase64String(pdfBytes);
+            await JS.InvokeVoidAsync("tradeflow.downloadPdfBase64", base64, $"HoaDon_{_lastCreatedInvoiceNumber}.pdf");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"Lỗi tạo tệp PDF: {ex.Message}");
+        }
+    }
+
+    private async Task PrintOrderDocPdfAsync()
+    {
+        if (_lastCreatedOrderId <= 0) return;
+        try
+        {
+            var doc = await InvoiceService.GetOrderDocumentByOrderIdAsync(_lastCreatedOrderId);
+            if (doc != null)
+            {
+                var pdfBytes = await InvoiceService.GenerateOrderDocumentPdfAsync(doc);
+                var base64 = Convert.ToBase64String(pdfBytes);
+                await JS.InvokeVoidAsync("tradeflow.downloadPdfBase64", base64, $"ChungTu_{_lastCreatedOrderCode}.pdf");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"Lỗi tạo chứng từ PDF: {ex.Message}");
+        }
+    }
+
+    private void StartNewOrder()
+    {
+        _showSuccessModal = false;
+        ActiveTab.Items.Clear();
+        ActiveTab.Customer = null;
+        ActiveTab.Notes = string.Empty;
+        ActiveTab.Discount = 0;
+        ActiveTab.CashTendered = 0;
+        ActiveTab.OrderDate = DateTime.Now;
+        ActiveTab.Delivery = new();
+        _checkoutErrorMessage = null;
+        StateHasChanged();
+    }
+
+    // ============================================================
+    // KEYBOARD SHORTCUTS HANDLER
+    // ============================================================
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "F3")
+        {
+            await _f3InputRef.FocusAsync();
+        }
+        else if (e.Key == "F4")
+        {
+            await _f4InputRef.FocusAsync();
+        }
+        else if (e.Key == "F8")
+        {
+            await _f8InputRef.FocusAsync();
+        }
+        else if (e.Key == "F9")
+        {
+            if (_showCheckoutModal)
+            {
+                await ConfirmAndExecuteCheckoutAsync();
+            }
+            else
+            {
+                OpenCheckoutModal();
+            }
+        }
+        else if (e.Key == "Escape")
+        {
+            _openItemMenuId = null;
+            _showItemNoteModal = false;
+            _showProductDetailModal = false;
+            _showF3Dropdown = false;
+            _showCustDropdown = false;
+            _showCheckoutModal = false;
+            _showShortcutsModal = false;
+            _showAddCustomerModal = false;
+            _showRecentOrdersModal = false;
+        }
+    }
+}

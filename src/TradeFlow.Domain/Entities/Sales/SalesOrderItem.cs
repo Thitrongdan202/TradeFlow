@@ -24,4 +24,7 @@ public class SalesOrderItem : AuditableEntity<int>
     public decimal TaxRate { get; set; } = 0; // 0, 5, 8, 10
     public decimal TaxAmount { get; set; }
     public decimal LineTotal { get; set; } // (Qty * UnitPrice) - Discount + Tax
+
+    public string? Notes { get; set; }
 }
+

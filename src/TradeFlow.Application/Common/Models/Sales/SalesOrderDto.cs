@@ -53,6 +53,7 @@ public class SalesOrderItemDto
     public decimal TaxRate { get; set; }
     public decimal TaxAmount { get; set; }
     public decimal LineTotal { get; set; }
+    public string? Notes { get; set; }
 
     public decimal DiscountedUnitPrice => (UnitPrice ?? 0) - (Quantity > 0 ? (DiscountAmount / Quantity) : 0);
 }

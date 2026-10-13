@@ -42,9 +42,9 @@
             </div>
         </div>
 
-        @* 2. BÁN HÀNG *@
-        <div class="tf-nav-item @(IsSectionActive("ban-hang") ? "is-active" : "")">
-            <button type="button" class="tf-nav-link @(IsSectionActive("ban-hang") ? "active" : "")" @onclick="ToggleSales" title="Bán hàng">
+        @* 2. BÁN HÀNG (STANDALONE DIRECT LINK) *@
+        <div class="tf-nav-item">
+            <NavLink class="tf-nav-link" href="/ban-hang" Match="NavLinkMatch.All" ActiveClass="active" title="Bán hàng" @onclick="HandleLinkClick">
                 <span class="tf-nav-icon">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="9" cy="21" r="1"/>
@@ -53,50 +53,15 @@
                     </svg>
                 </span>
                 <span class="tf-nav-label">Bán hàng</span>
-                <span class="tf-nav-chevron-wrap">
-                    <svg class="tf-nav-chevron @(IsSalesOpen ? "expanded" : "")" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="9 18 15 12 9 6"/>
-                    </svg>
-                </span>
-            </button>
-
-            @* Desktop Fly-out Submenu *@
-            <div class="tf-nav-flyout">
-                <div class="tf-nav-flyout-header">Bán hàng</div>
-                <div class="tf-nav-flyout-body">
-                    <AuthorizeView Policy="Permission:Quotations:View">
-                        <NavLink class="tf-flyout-link" href="/ban-hang/bao-gia" Match="NavLinkMatch.All" ActiveClass="active" @onclick="HandleLinkClick">
-                            <span class="tf-flyout-dot"></span>
-                            <span>Báo giá</span>
-                        </NavLink>
-                    </AuthorizeView>
-                    <NavLink class="tf-flyout-link" href="/ban-hang/don-ban-hang" Match="NavLinkMatch.All" ActiveClass="active" @onclick="HandleLinkClick">
-                        <span class="tf-flyout-dot"></span>
-                        <span>Đơn bán hàng</span>
-                    </NavLink>
-                </div>
-            </div>
-
-            @* Mobile / Click Accordion Submenu *@
-            <div class="tf-nav-sub @(IsSalesOpen ? "expanded" : "")">
-                <AuthorizeView Policy="Permission:Quotations:View">
-                    <div class="tf-nav-sub-item">
-                        <NavLink class="tf-nav-sub-link" href="/ban-hang/bao-gia" Match="NavLinkMatch.All" ActiveClass="active" @onclick="HandleLinkClick">
-                            <span class="tf-nav-sub-dot"></span>Báo giá
-                        </NavLink>
-                    </div>
-                </AuthorizeView>
-                <div class="tf-nav-sub-item">
-                    <NavLink class="tf-nav-sub-link" href="/ban-hang/don-ban-hang" Match="NavLinkMatch.All" ActiveClass="active" @onclick="HandleLinkClick">
-                        <span class="tf-nav-sub-dot"></span>Đơn bán hàng
-                    </NavLink>
-                </div>
+            </NavLink>
+            <div class="tf-nav-flyout tf-nav-flyout-single">
+                <div class="tf-nav-flyout-header" style="border-bottom:none; margin-bottom:0; padding:6px 12px; font-size:12px; font-weight:600; color:#1e293b; text-transform:none;">Bán hàng</div>
             </div>
         </div>
 
-        @* 3. HÓA ĐƠN *@
-        <div class="tf-nav-item @(IsSectionActive("hoa-don") ? "is-active" : "")">
-            <button type="button" class="tf-nav-link @(IsSectionActive("hoa-don") ? "active" : "")" @onclick="ToggleInvoice" title="Hóa đơn">
+        @* 3. HÓA ĐƠN & ĐƠN HÀNG *@
+        <div class="tf-nav-item @(IsInvoiceSectionActive() ? "is-active" : "")">
+            <button type="button" class="tf-nav-link @(IsInvoiceSectionActive() ? "active" : "")" @onclick="ToggleInvoice" title="Hóa đơn">
                 <span class="tf-nav-icon">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -116,12 +81,22 @@
 
             @* Desktop Fly-out Submenu *@
             <div class="tf-nav-flyout">
-                <div class="tf-nav-flyout-header">Hóa đơn</div>
+                <div class="tf-nav-flyout-header">Hóa đơn &amp; Đơn hàng</div>
                 <div class="tf-nav-flyout-body">
                     <NavLink class="tf-flyout-link" href="/hoa-don" Match="NavLinkMatch.All" ActiveClass="active" @onclick="HandleLinkClick">
                         <span class="tf-flyout-dot"></span>
                         <span>Danh sách hóa đơn</span>
                     </NavLink>
+                    <NavLink class="tf-flyout-link" href="/ban-hang/don-ban-hang" Match="NavLinkMatch.All" ActiveClass="active" @onclick="HandleLinkClick">
+                        <span class="tf-flyout-dot"></span>
+                        <span>Đơn bán hàng</span>
+                    </NavLink>
+                    <AuthorizeView Policy="Permission:Quotations:View">
+                        <NavLink class="tf-flyout-link" href="/ban-hang/bao-gia" Match="NavLinkMatch.All" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Báo giá</span>
+                        </NavLink>
+                    </AuthorizeView>
                 </div>
             </div>
 
@@ -132,6 +107,18 @@
                         <span class="tf-nav-sub-dot"></span>Danh sách hóa đơn
                     </NavLink>
                 </div>
+                <div class="tf-nav-sub-item">
+                    <NavLink class="tf-nav-sub-link" href="/ban-hang/don-ban-hang" Match="NavLinkMatch.All" ActiveClass="active" @onclick="HandleLinkClick">
+                        <span class="tf-nav-sub-dot"></span>Đơn bán hàng
+                    </NavLink>
+                </div>
+                <AuthorizeView Policy="Permission:Quotations:View">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/ban-hang/bao-gia" Match="NavLinkMatch.All" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-nav-sub-dot"></span>Báo giá
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
             </div>
         </div>
 
@@ -548,7 +535,6 @@
     [Parameter] public EventCallback OnToggleCollapse { get; set; }
     [Parameter] public EventCallback OnCloseMobile { get; set; }
 
-    private bool IsSalesOpen { get; set; }
     private bool IsInvoiceOpen { get; set; }
     private bool IsCatalogOpen { get; set; }
     private bool IsWarehouseOpen { get; set; }
@@ -584,10 +570,21 @@
         return _currentUrl.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
     }
 
+    private bool IsInvoiceSectionActive()
+    {
+        return IsSectionActive("hoa-don") 
+            || IsSectionActive("ban-hang/don-ban-hang") 
+            || IsSectionActive("ban-hang/bao-gia");
+    }
+
     private void AutoExpandSection(string url)
     {
-        if (url.StartsWith("ban-hang", StringComparison.OrdinalIgnoreCase)) IsSalesOpen = true;
-        if (url.StartsWith("hoa-don", StringComparison.OrdinalIgnoreCase)) IsInvoiceOpen = true;
+        if (url.StartsWith("hoa-don", StringComparison.OrdinalIgnoreCase) 
+            || url.StartsWith("ban-hang/don-ban-hang", StringComparison.OrdinalIgnoreCase) 
+            || url.StartsWith("ban-hang/bao-gia", StringComparison.OrdinalIgnoreCase)) 
+        {
+            IsInvoiceOpen = true;
+        }
         if (url.StartsWith("danh-muc", StringComparison.OrdinalIgnoreCase) || url.StartsWith("bang-gia", StringComparison.OrdinalIgnoreCase)) IsCatalogOpen = true;
         if (url.StartsWith("kho", StringComparison.OrdinalIgnoreCase)) IsWarehouseOpen = true;
         if (url.StartsWith("doi-tac", StringComparison.OrdinalIgnoreCase)) IsPartnersOpen = true;
@@ -596,7 +593,6 @@
         if (url.StartsWith("cai-dat", StringComparison.OrdinalIgnoreCase) || url.StartsWith("ho-tro", StringComparison.OrdinalIgnoreCase)) IsSettingsOpen = true;
     }
 
-    private void ToggleSales() => IsSalesOpen = !IsSalesOpen;
     private void ToggleInvoice() => IsInvoiceOpen = !IsInvoiceOpen;
     private void ToggleCatalog() => IsCatalogOpen = !IsCatalogOpen;
     private void ToggleWarehouse() => IsWarehouseOpen = !IsWarehouseOpen;

@@ -22,6 +22,7 @@ public class SalesOrderItemConfiguration : IEntityTypeConfiguration<SalesOrderIt
         builder.Property(x => x.TaxRate).HasPrecision(5, 2);
         builder.Property(x => x.TaxAmount).HasPrecision(18, 2);
         builder.Property(x => x.LineTotal).HasPrecision(18, 2);
+        builder.Property(x => x.Notes).HasMaxLength(1000);
 
         builder.HasIndex(x => x.SalesOrderId);
         builder.HasIndex(x => x.ProductId);

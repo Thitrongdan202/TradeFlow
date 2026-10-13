@@ -97,7 +97,8 @@ public class SalesService : ISalesService
                 DiscountAmount = 0m,
                 TaxRate = 0m,
                 TaxAmount = 0m,
-                LineTotal = lineTotal
+                LineTotal = lineTotal,
+                Notes = itemDto.Notes
             };
             order.Items.Add(item);
         }
@@ -148,7 +149,8 @@ public class SalesService : ISalesService
                 DiscountAmount = 0m,
                 TaxRate = 0m,
                 TaxAmount = 0m,
-                LineTotal = lineTotal
+                LineTotal = lineTotal,
+                Notes = itemDto.Notes
             };
             order.Items.Add(item);
         }
@@ -246,11 +248,26 @@ public class SalesService : ISalesService
     public async Task<List<TradeFlow.Domain.Entities.Pricing.PriceList>> GetApplicablePriceListsAsync(DateTime targetDate, CancellationToken cancellationToken = default)
     {
         var utcTarget = NormalizeToUtc(targetDate);
-        return await _context.PriceLists
+        var inRange = await _context.PriceLists
+            .AsNoTracking()
             .Where(x => x.Status == TradeFlow.Domain.Enums.PriceListStatus.Active 
-                     && x.EffectiveFrom <= utcTarget 
+                     && (x.EffectiveFrom == null || x.EffectiveFrom <= utcTarget)
                      && (x.EffectiveTo == null || x.EffectiveTo >= utcTarget))
             .OrderByDescending(x => x.EffectiveFrom)
+            .ToListAsync(cancellationToken);
+
+        if (inRange.Any())
+        {
+            return inRange;
+        }
+
+        // Fallback: If no price lists specifically cover targetDate, return all active price lists sorted by recency
+        return await _context.PriceLists
+            .AsNoTracking()
+            .Where(x => x.Status == TradeFlow.Domain.Enums.PriceListStatus.Active)
+            .OrderByDescending(x => x.Year)
+            .ThenByDescending(x => x.Quarter)
+            .ThenByDescending(x => x.EffectiveFrom)
             .ToListAsync(cancellationToken);
     }
 
@@ -268,13 +285,13 @@ public class SalesService : ISalesService
             }
         }
         
-        // Fallback to general active price list
+        // 1. Try active price list covering date
         var activeItem = await _context.PriceListItems
             .Include(x => x.PriceList)
             .Where(x => x.ProductId == productId 
                      && x.PriceList!.Status == TradeFlow.Domain.Enums.PriceListStatus.Active
-                     && x.PriceList!.EffectiveFrom <= utcTarget 
-                     && (x.PriceList!.EffectiveTo == null || x.PriceList!.EffectiveTo >= utcTarget))
+                     && (x.PriceList.EffectiveFrom == null || x.PriceList.EffectiveFrom <= utcTarget)
+                     && (x.PriceList.EffectiveTo == null || x.PriceList.EffectiveTo >= utcTarget))
             .OrderByDescending(x => x.PriceList!.EffectiveFrom)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -283,28 +300,57 @@ public class SalesService : ISalesService
             return (activeItem.UnitPrice, activeItem.PriceList!.Name);
         }
 
-        return (null, "Thủ công");
+        // 2. Fallback: latest Active PriceList item for this product
+        var latestActiveItem = await _context.PriceListItems
+            .Include(x => x.PriceList)
+            .Where(x => x.ProductId == productId
+                     && x.PriceList!.Status == TradeFlow.Domain.Enums.PriceListStatus.Active)
+            .OrderByDescending(x => x.PriceList!.Year)
+            .ThenByDescending(x => x.PriceList!.Quarter)
+            .ThenByDescending(x => x.PriceList!.EffectiveFrom)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (latestActiveItem != null)
+        {
+            return (latestActiveItem.UnitPrice, latestActiveItem.PriceList!.Name);
+        }
+
+        // 3. Fallback: match by Product code / NewCode / LegacyCode with healing
+        var prod = await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == productId, cancellationToken);
+        if (prod != null)
+        {
+            var pNew = (prod.NewCode ?? "").Trim();
+            var pLeg = (prod.LegacyCode ?? "").Trim();
+            var pCode = prod.Code.Trim();
+
+            var candidate = await _context.PriceListItems
+                .Include(x => x.PriceList)
+                .Where(x => x.PriceList!.Status == TradeFlow.Domain.Enums.PriceListStatus.Active
+                         && ((pNew != "" && (x.NewCode == pNew || x.NewCode.Contains(pNew)))
+                          || (pLeg != "" && (x.LegacyCode == pLeg || x.NewCode == pLeg))
+                          || (pCode != "" && x.NewCode == pCode)))
+                .OrderByDescending(x => x.PriceList!.Year)
+                .ThenByDescending(x => x.PriceList!.Quarter)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (candidate != null)
+            {
+                if (!candidate.ProductId.HasValue)
+                {
+                    candidate.ProductId = prod.Id;
+                    try { await _context.SaveChangesAsync(cancellationToken); } catch { }
+                }
+                return (candidate.UnitPrice, candidate.PriceList!.Name);
+            }
+        }
+
+        return (null, "Chưa thiết lập giá");
     }
 
     public async Task<decimal> GetActivePriceAsync(int productId, DateTime targetDate, CancellationToken cancellationToken = default)
     {
-        var utcTarget = NormalizeToUtc(targetDate);
-        // Find active PriceList that covers targetDate
-        var activePriceListItem = await _context.PriceListItems
-            .Include(x => x.PriceList)
-            .Where(x => x.ProductId == productId 
-                     && x.PriceList!.Status == PriceListStatus.Active
-                     && x.PriceList!.EffectiveFrom <= utcTarget 
-                     && (x.PriceList!.EffectiveTo == null || x.PriceList!.EffectiveTo >= utcTarget))
-            .OrderByDescending(x => x.PriceList!.EffectiveFrom) // get latest if multiple
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (activePriceListItem != null)
-        {
-            return activePriceListItem.UnitPrice;
-        }
-        
-        return 0; // Return 0 if no active price is found
+        var priceInfo = await GetProductPriceAsync(productId, null, targetDate, cancellationToken);
+        return priceInfo.Price ?? 0m;
     }
 
     private static SalesOrderDto MapToDto(SalesOrder order)
@@ -343,7 +389,8 @@ public class SalesService : ISalesService
                 DiscountAmount = 0m,
                 TaxRate = 0m,
                 TaxAmount = 0m,
-                LineTotal = i.Quantity * i.UnitPrice
+                LineTotal = i.Quantity * i.UnitPrice,
+                Notes = i.Notes
             }).ToList()
         };
     }

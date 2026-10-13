@@ -400,6 +400,14 @@
             },
             setupEscapeHandler: function (dotNetHelper) {
                 // Retained for backward compatibility
+            },
+            downloadPdfBase64: function (base64Data, fileName) {
+                var link = document.createElement('a');
+                link.download = fileName;
+                link.href = 'data:application/pdf;base64,' + base64Data;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
             }
         };
 

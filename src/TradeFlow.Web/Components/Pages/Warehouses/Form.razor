@@ -1,4 +1,4 @@
-﻿@page "/kho/kho-hang/them-moi"
+@page "/kho/kho-hang/them-moi"
 @page "/kho/kho-hang/sua/{Id:int}"
 @page "/kho-hang/them-moi"
 @page "/kho-hang/sua/{Id:int}"
@@ -12,7 +12,7 @@
 @using TradeFlow.Domain.Enums
 @attribute [Authorize]
 
-@inject TradeFlowDbContext DbContext
+@inject IDbContextFactory<TradeFlowDbContext> DbContextFactory
 @inject ISystemCodeGenerator CodeGenerator
 @inject IAuditService AuditService
 @inject NavigationManager Nav
@@ -142,7 +142,8 @@ else
                 Nav.NavigateTo("/Account/AccessDenied");
                 return;
             }
-            _model = await DbContext.Warehouses.FindAsync(Id);
+            await using var db = await DbContextFactory.CreateDbContextAsync();
+            _model = await db.Warehouses.FindAsync(Id);
             if (_model == null)
             {
                 Nav.NavigateTo("/kho/kho-hang");
@@ -174,11 +175,13 @@ else
                 return;
             }
 
+            await using var db = await DbContextFactory.CreateDbContextAsync();
             if (IsEdit)
             {
                 _model.UpdatedAt = DateTime.UtcNow;
                 _model.UpdatedBy = CurrentUser.UserName;
-                DbContext.Warehouses.Update(_model);
+                db.Warehouses.Update(_model);
+                await db.SaveChangesAsync();
                 await AuditService.LogAsync(AuditEventType.WarehouseUpdated, CurrentUser.UserName, "Warehouse", _model.Id.ToString());
             }
             else
@@ -186,11 +189,11 @@ else
                 _model.Code = await CodeGenerator.GenerateCodeAsync(SystemCodeConstants.Warehouse);
                 _model.CreatedAt = DateTime.UtcNow;
                 _model.CreatedBy = CurrentUser.UserName;
-                DbContext.Warehouses.Add(_model);
+                db.Warehouses.Add(_model);
+                await db.SaveChangesAsync();
                 await AuditService.LogAsync(AuditEventType.WarehouseCreated, CurrentUser.UserName, "Warehouse", _model.Code);
             }
 
-            await DbContext.SaveChangesAsync();
             Nav.NavigateTo("/kho/kho-hang");
         }
         catch (Exception ex)
@@ -225,13 +228,17 @@ else
 
         try
         {
-            bool isReferenced = false; if(isReferenced) { _model.IsActive = false; DbContext.Warehouses.Update(_model); } else {
-            
-                DbContext.Warehouses.Remove(_model);
+            if (_model != null)
+            {
+                await using var db = await DbContextFactory.CreateDbContextAsync();
+                var wh = await db.Warehouses.FindAsync(_model.Id);
+                if (wh != null)
+                {
+                    db.Warehouses.Remove(wh);
+                    await db.SaveChangesAsync();
+                }
+                await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.WarehouseDeleted, authState.User.Identity?.Name ?? "System", "Warehouse", _model.Id.ToString(), "Xóa", authState.User.Identity?.Name);
             }
-
-            await DbContext.SaveChangesAsync();
-            await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.WarehouseDeleted, authState.User.Identity?.Name ?? "System", "Warehouse", _model.Id.ToString(), "Xóa", authState.User.Identity?.Name);
             Nav.NavigateTo(Nav.Uri.Split('/')[1] == "danh-muc" ? "/danh-muc/" + Nav.Uri.Split('/')[2] : (Nav.Uri.Split('/')[1] == "doi-tac" ? "/doi-tac/" + Nav.Uri.Split('/')[2] : "/kho-hang"));
         }
         catch (Exception ex)

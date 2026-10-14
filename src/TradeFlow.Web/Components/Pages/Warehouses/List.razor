@@ -8,7 +8,7 @@
 @using TradeFlow.Infrastructure.Persistence
 @attribute [Authorize(Policy = "Permission:Warehouses:View")]
 
-@inject TradeFlowDbContext DbContext
+@inject IDbContextFactory<TradeFlowDbContext> DbContextFactory
 @inject NavigationManager Nav
 @inject IAuthorizationService AuthService
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
@@ -235,9 +235,25 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _items = await DbContext.Warehouses
-            .OrderBy(x => x.Code)
-            .ToListAsync();
+        await LoadWarehousesAsync();
+    }
+
+    private async Task LoadWarehousesAsync()
+    {
+        if (_isRefreshing) return;
+        _isRefreshing = true;
+        try
+        {
+            await using var db = await DbContextFactory.CreateDbContextAsync();
+            _items = await db.Warehouses
+                .AsNoTracking()
+                .OrderBy(x => x.Code)
+                .ToListAsync();
+        }
+        finally
+        {
+            _isRefreshing = false;
+        }
     }
 
     private int _currentPage = 1;
@@ -322,37 +338,33 @@ else
         try
         {
             int id = _itemToDeleteId.Value;
-            var entity = await DbContext.Warehouses.FindAsync(id);
-            if (entity == null)
+            await using (var db = await DbContextFactory.CreateDbContextAsync())
             {
-                CancelDelete();
-                return;
+                var entity = await db.Warehouses.FindAsync(id);
+                if (entity == null)
+                {
+                    CancelDelete();
+                    return;
+                }
+
+                bool isReferenced = false;
+
+                if (isReferenced)
+                {
+                    entity.IsActive = false;
+                }
+                else
+                {
+                    db.Remove(entity);
+                }
+
+                await db.SaveChangesAsync();
             }
 
-            bool isReferenced = false;
-
-            if (isReferenced)
-            {
-                entity.IsActive = false;
-            }
-            else
-            {
-                DbContext.Remove(entity);
-            }
-
-            await DbContext.SaveChangesAsync();
             await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.WarehouseDeleted, authState.User.Identity?.Name ?? "System", "Warehouse", id.ToString(), "Xóa kho hàng", authState.User.Identity?.Name);
             CancelDelete();
             
-            _isRefreshing = true;
-            try
-            {
-                await OnInitializedAsync();
-            }
-            finally
-            {
-                _isRefreshing = false;
-            }
+            await LoadWarehousesAsync();
         }
         catch (Exception ex)
         {
@@ -442,15 +454,7 @@ else
 
             if (successCount > 0)
             {
-                _isRefreshing = true;
-                try
-                {
-                    await OnInitializedAsync();
-                }
-                finally
-                {
-                    _isRefreshing = false;
-                }
+                await LoadWarehousesAsync();
             }
             
             if (_selectedItems.Count == 0)
@@ -470,10 +474,11 @@ else
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         int id = _itemToDeleteId.Value;
-            var entity = await DbContext.Warehouses.FindAsync(id);
+        await using (var db = await DbContextFactory.CreateDbContextAsync())
+        {
+            var entity = await db.Warehouses.FindAsync(id);
             if (entity == null)
             {
-                
                 return;
             }
 
@@ -485,11 +490,11 @@ else
             }
             else
             {
-                DbContext.Remove(entity);
+                db.Remove(entity);
             }
 
-            await DbContext.SaveChangesAsync();
-            await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.WarehouseDeleted, authState.User.Identity?.Name ?? "System", "Warehouse", id.ToString(), "Xóa kho hàng", authState.User.Identity?.Name);
-            
+            await db.SaveChangesAsync();
+        }
+        await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.WarehouseDeleted, authState.User.Identity?.Name ?? "System", "Warehouse", id.ToString(), "Xóa kho hàng", authState.User.Identity?.Name);
     }
 }

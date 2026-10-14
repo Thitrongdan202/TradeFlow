@@ -1,6 +1,11 @@
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Web
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Notifications
+@inject INotificationService NotificationService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
 
 <div class="tf-dropdown tf-notification-dropdown-container" @onkeydown="HandleKeyDown">
     <button type="button"
@@ -73,7 +78,7 @@
                             <line x1="12" y1="16" x2="12.01" y2="16" />
                         </svg>
                         <div class="tf-notif-state-title">Không thể tải thông báo</div>
-                        <div class="tf-notif-state-desc">Đã có lỗi xảy ra khi truy vấn dữ liệu thông báo.</div>
+                        <div class="tf-notif-state-desc">@_errorMessage</div>
                         <button type="button" class="tf-notif-retry-btn" @onclick="LoadNotificationsAsync">Thử lại</button>
                     </div>
                 }
@@ -87,7 +92,7 @@
                             </svg>
                         </div>
                         <div class="tf-notif-state-title">Chưa có thông báo mới</div>
-                        <div class="tf-notif-state-desc">Bạn sẽ thấy thông báo mới tại đây khi có cập nhật từ hệ thống hoặc đơn hàng.</div>
+                        <div class="tf-notif-state-desc">Bạn sẽ thấy thông báo mới tại đây khi có cập nhật từ hệ thống hoặc đề xuất phê duyệt.</div>
                     </div>
                 }
                 else
@@ -95,13 +100,21 @@
                     <div class="tf-notif-list">
                         @foreach (var n in _notifications)
                         {
-                            <div class="tf-notif-item @(n.IsRead ? "read" : "unread")" @onclick="() => MarkAsRead(n)">
+                            <div class="tf-notif-item @(n.IsRead ? "read" : "unread") @(n.IsApprovalRequest ? "is-approval" : "")" @onclick="() => OnItemClicked(n)">
                                 <div class="tf-notif-item-icon @n.Type">
-                                    @if (n.Type == "order")
+                                    @if (n.IsApprovalRequest)
+                                    {
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M9 11l3 3L22 4"/>
+                                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                                        </svg>
+                                    }
+                                    else if (n.Type == "warning")
                                     {
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
-                                            <line x1="3" y1="6" x2="21" y2="6"/>
+                                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                            <line x1="12" y1="9" x2="12" y2="13"/>
+                                            <line x1="12" y1="17" x2="12.01" y2="17"/>
                                         </svg>
                                     }
                                     else
@@ -114,9 +127,57 @@
                                     }
                                 </div>
                                 <div class="tf-notif-item-content">
-                                    <div class="tf-notif-item-title">@n.Title</div>
+                                    <div class="tf-notif-top-row">
+                                        <div class="tf-notif-item-title">@n.Title</div>
+                                        @if (n.IsApprovalRequest)
+                                        {
+                                            <span class="tf-notif-badge-pill">@n.RequestTypeName</span>
+                                        }
+                                    </div>
                                     <div class="tf-notif-item-body">@n.Message</div>
-                                    <div class="tf-notif-item-time">@n.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                                    
+                                    @if (n.IsApprovalRequest)
+                                    {
+                                        <div class="tf-notif-approval-meta">
+                                            <span>Mã: <strong>@n.RequestCode</strong></span>
+                                            <span>• Người gửi: <strong>@n.Requester</strong></span>
+                                            <span>• Trạng thái: <span class="tf-status-draft-pill">@n.Status</span></span>
+                                        </div>
+
+                                        <div class="tf-notif-approval-actions" @onclick:stopPropagation="true">
+                                            @if (n.CanApprove)
+                                            {
+                                                <button type="button" class="tf-btn-appr-ok" disabled="@(_actionLoadingId == n.Id)" @onclick="() => HandleApprove(n)">
+                                                    @if (_actionLoadingId == n.Id)
+                                                    {
+                                                        <span>Đang xử lý...</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>Phê duyệt</span>
+                                                    }
+                                                </button>
+                                                <button type="button" class="tf-btn-appr-no" disabled="@(_actionLoadingId == n.Id)" @onclick="() => HandleReject(n)">
+                                                    <span>Từ chối</span>
+                                                </button>
+                                            }
+                                            else if (n.IsSelfRequest)
+                                            {
+                                                <span class="tf-notif-self-hint">Đề xuất của bạn (không thể tự duyệt)</span>
+                                            }
+
+                                            @if (!string.IsNullOrEmpty(n.TargetUrl))
+                                            {
+                                                <a href="@n.TargetUrl" class="tf-notif-detail-link" @onclick="CloseDropdown">
+                                                    Chi tiết &rarr;
+                                                </a>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="tf-notif-item-time">@n.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                                    }
                                 </div>
                                 @if (!n.IsRead)
                                 {
@@ -146,19 +207,10 @@
     private bool _isOpen;
     private bool _isLoading;
     private bool _hasError;
+    private string _errorMessage = "Đã có lỗi xảy ra khi truy vấn dữ liệu thông báo.";
+    private string? _actionLoadingId;
     private int _unreadCount => _notifications.Count(n => !n.IsRead);
-    private List<NotificationModel> _notifications = new();
-
-    public class NotificationModel
-    {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
-        public string Title { get; set; } = string.Empty;
-        public string Message { get; set; } = string.Empty;
-        public string Type { get; set; } = "system"; // system, order, invoice
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public bool IsRead { get; set; }
-        public string? TargetUrl { get; set; }
-    }
+    private List<SystemNotificationDto> _notifications = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -170,11 +222,7 @@
         _isOpen = !_isOpen;
         if (_isOpen)
         {
-            // If error occurred previously, retry
-            if (_hasError)
-            {
-                await LoadNotificationsAsync();
-            }
+            await LoadNotificationsAsync();
         }
     }
 
@@ -189,13 +237,13 @@
         {
             _isLoading = true;
             _hasError = false;
-            // Real query: currently there are no custom user notifications persisted, so empty list is real and legitimate!
-            await Task.Delay(50); // slight async yield
-            _notifications = new List<NotificationModel>();
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            _notifications = await NotificationService.GetNotificationsAsync(authState.User, 20);
         }
-        catch
+        catch (Exception ex)
         {
             _hasError = true;
+            _errorMessage = "Không thể tải danh sách thông báo: " + ex.Message;
         }
         finally
         {
@@ -203,16 +251,85 @@
         }
     }
 
-    private void MarkAsRead(NotificationModel notif)
+    private async Task OnItemClicked(SystemNotificationDto n)
     {
-        notif.IsRead = true;
+        await MarkAsRead(n);
+        if (!string.IsNullOrEmpty(n.TargetUrl) && !n.IsApprovalRequest)
+        {
+            CloseDropdown();
+            Nav.NavigateTo(n.TargetUrl);
+        }
     }
 
-    private void MarkAllAsRead()
+    private async Task MarkAsRead(SystemNotificationDto notif)
+    {
+        if (notif.IsRead) return;
+        notif.IsRead = true;
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            await NotificationService.MarkAsReadAsync(notif.Id, authState.User);
+        }
+        catch { }
+    }
+
+    private async Task MarkAllAsRead()
     {
         foreach (var n in _notifications)
         {
             n.IsRead = true;
+        }
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            await NotificationService.MarkAllAsReadAsync(authState.User);
+        }
+        catch { }
+    }
+
+    private async Task HandleApprove(SystemNotificationDto n)
+    {
+        _actionLoadingId = n.Id;
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var success = await NotificationService.ApproveNotificationAsync(n.Id, authState.User);
+            if (success)
+            {
+                await LoadNotificationsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _hasError = true;
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _actionLoadingId = null;
+        }
+    }
+
+    private async Task HandleReject(SystemNotificationDto n)
+    {
+        _actionLoadingId = n.Id;
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var success = await NotificationService.RejectNotificationAsync(n.Id, "Từ chối duyệt qua trung tâm thông báo", authState.User);
+            if (success)
+            {
+                await LoadNotificationsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _hasError = true;
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _actionLoadingId = null;
         }
     }
 

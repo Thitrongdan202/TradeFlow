@@ -245,19 +245,124 @@
             @* MODE 2: BÁN THƯỜNG (Trái: Đơn hàng tóm tắt không cuộn ngang, Phải: Tra cứu danh mục SP) *@
             <div class="tf-layout-regular">
                 <section class="tf-order-panel">
-                    @* Order Header / Customer Selection *@
+                    @* Order Header / Customer Selection & Promotion Bar *@
                     <div class="tf-order-panel-header">
-                        <div class="tf-order-meta-summary">
-                            <span class="tf-order-tab-badge">@ActiveTab.Title</span>
-                            <span class="tf-order-time-text">@ActiveTab.OrderDate.ToString("dd/MM/yyyy HH:mm")</span>
-                        </div>
-                        @if (ActiveTab.Customer != null)
-                        {
-                            <div class="tf-selected-cust-chip">
-                                <span class="tf-cust-name-text">Khách: <strong>@ActiveTab.Customer.Name</strong></span>
-                                <button type="button" class="tf-chip-remove" @onclick="() => ActiveTab.Customer = null" title="Xóa khách hàng">✕</button>
+                        <div class="tf-order-header-top-row">
+                            <div class="tf-order-meta-summary">
+                                <span class="tf-order-tab-badge">@ActiveTab.Title</span>
+                                <span class="tf-order-time-text">@ActiveTab.OrderDate.ToString("dd/MM/yyyy HH:mm")</span>
                             </div>
-                        }
+                            <div class="tf-pos-pricelist-wrap">
+                                <select class="tf-pos-pricelist-select" @bind="ActiveTab.PriceListId" @bind:after="OnPriceListChanged" title="Bảng giá áp dụng">
+                                    <option value="">Bảng giá chung</option>
+                                    @foreach (var pl in _priceLists)
+                                    {
+                                        <option value="@pl.Id">@pl.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                        @* Customer Selection Row *@
+                        <div class="tf-order-cust-row">
+                            @if (ActiveTab.Customer != null)
+                            {
+                                bool isComp = !string.IsNullOrEmpty(ActiveTab.Customer.CompanyName) || !string.IsNullOrEmpty(ActiveTab.Customer.TaxCode);
+                                <div class="tf-cust-pill-regular">
+                                    <div class="tf-cust-pill-content">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tf-cust-icon">
+                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                            <circle cx="12" cy="7" r="4"></circle>
+                                        </svg>
+                                        <span class="tf-cust-name-text">@(isComp ? (!string.IsNullOrEmpty(ActiveTab.Customer.CompanyName) ? ActiveTab.Customer.CompanyName : ActiveTab.Customer.Name) : ActiveTab.Customer.Name)</span>
+                                        <span class="@(isComp ? "tf-cust-badge-company" : "tf-cust-badge-retail")">
+                                            @(isComp ? "DN" : "Lẻ")
+                                        </span>
+                                        @if (!string.IsNullOrEmpty(ActiveTab.Customer.Phone))
+                                        {
+                                            <span class="tf-cust-phone-text">@ActiveTab.Customer.Phone</span>
+                                        }
+                                    </div>
+                                    <button type="button" class="tf-chip-remove" @onclick="ClearCustomer" title="Bỏ chọn khách hàng">✕</button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="tf-order-cust-search-wrap">
+                                    <span class="tf-cust-search-icon">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="11" cy="11" r="8"></circle>
+                                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                        </svg>
+                                    </span>
+                                    <input @ref="_f4InputRef"
+                                           type="text"
+                                           class="tf-order-cust-input"
+                                           placeholder="Tìm khách hàng (F4)..."
+                                           value="@_custSearchTerm"
+                                           @oninput="OnCustomerSearchInput"
+                                           @onfocus="() => _showCustDropdown = true" />
+                                    <span class="tf-order-cust-kbd">F4</span>
+                                    <button type="button" class="tf-btn-add-cust-mini" title="Thêm khách hàng mới" @onclick="() => _showAddCustomerModal = true">+</button>
+
+                                    @* Customer Autocomplete Dropdown *@
+                                    @if (_showCustDropdown && _custResults.Any())
+                                    {
+                                        <div class="tf-cust-dropdown-menu">
+                                            @foreach (var c in _custResults)
+                                            {
+                                                bool isCompany = !string.IsNullOrEmpty(c.CompanyName) || !string.IsNullOrEmpty(c.TaxCode);
+                                                <div class="tf-cust-dropdown-item" @onclick="() => SelectCustomer(c)">
+                                                    <div class="tf-cust-item-name">
+                                                        <span>@(isCompany ? (!string.IsNullOrEmpty(c.CompanyName) ? c.CompanyName : c.Name) : c.Name)</span>
+                                                        <span class="@(isCompany ? "tf-cust-badge-company" : "tf-cust-badge-retail")">
+                                                            @(isCompany ? "Doanh nghiệp" : "Khách lẻ")
+                                                        </span>
+                                                    </div>
+                                                    <div class="tf-cust-item-sub">
+                                                        <span>@c.Phone</span>
+                                                        @if (isCompany && !string.IsNullOrEmpty(c.TaxCode))
+                                                        {
+                                                            <span>• MST: @c.TaxCode</span>
+                                                        }
+                                                        <span>• @c.Code</span>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+
+                        @* Promotion Selector Row *@
+                        <div class="tf-order-promo-row">
+                            @if (!string.IsNullOrEmpty(ActiveTab.SelectedPromotionName))
+                            {
+                                <div class="tf-order-promo-pill active" title="Nhấp để thay đổi chương trình">
+                                    <div class="tf-promo-pill-body" @onclick="() => _showPromotionModal = true">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tf-promo-icon">
+                                            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                                            <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                                        </svg>
+                                        <span class="tf-promo-pill-label">KM:</span>
+                                        <span class="tf-promo-pill-name">@ActiveTab.SelectedPromotionName</span>
+                                    </div>
+                                    <button type="button" class="tf-promo-pill-clear" @onclick="ClearPromotion" title="Hủy áp dụng khuyến mãi">✕</button>
+                                </div>
+                            }
+                            else
+                            {
+                                <button type="button" class="tf-order-promo-btn" @onclick="() => _showPromotionModal = true" title="Chọn chương trình khuyến mãi / chính sách giá">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                                        <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                                    </svg>
+                                    <span>Khuyến mãi / Chính sách giá</span>
+                                    <span class="tf-promo-btn-hint">Chọn</span>
+                                </button>
+                            }
+                        </div>
                     </div>
 
                     @* Compact Line-Item Cards List (Zero Horizontal Scrolling, Matching media_1791897987304_1811b721.png) *@
@@ -417,84 +522,29 @@
                 </section>
 
                 <section class="tf-catalog-panel">
-                    @* Catalog Top Toolbar (Matching media_1791897987304_1811b721.png) *@
+                    @* Catalog Top Toolbar - Product Discovery Only *@
                     <div class="tf-catalog-toolbar-pos">
                         <div class="tf-cat-toolbar-left">
-                            <div class="tf-pos-cust-search-wrap">
-                                <span class="tf-cust-search-icon">
+                            <div class="tf-pos-cat-search">
+                                <span class="tf-cat-search-icon">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <circle cx="11" cy="11" r="8"></circle>
                                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                                     </svg>
                                 </span>
                                 <input type="text"
-                                       class="tf-pos-cust-input"
-                                       placeholder="Tìm khách hàng (F4)..."
-                                       value="@_custSearchTerm"
-                                       @oninput="OnCustInput"
-                                       @onfocus="() => _showCustDropdown = true" />
-                                <button type="button" class="tf-btn-add-cust-mini" title="Thêm khách hàng mới" @onclick="() => _showAddCustomerModal = true">+</button>
-
-                                @* Customer Autocomplete Dropdown *@
-                                @if (_showCustDropdown && _custResults.Any())
+                                       class="tf-pos-search-input"
+                                       placeholder="Tìm tên, mã sản phẩm trong danh mục..."
+                                       value="@_catalogSearch"
+                                       @oninput="OnCatalogSearchInput" />
+                                @if (!string.IsNullOrEmpty(_catalogSearch))
                                 {
-                                    <div class="tf-cust-dropdown-menu">
-                                        @foreach (var c in _custResults)
-                                        {
-                                            bool isCompany = !string.IsNullOrEmpty(c.CompanyName) || !string.IsNullOrEmpty(c.TaxCode);
-                                            <div class="tf-cust-dropdown-item" @onclick="() => SelectCustomer(c)">
-                                                <div class="tf-cust-item-name">
-                                                    <span>@(isCompany ? (!string.IsNullOrEmpty(c.CompanyName) ? c.CompanyName : c.Name) : c.Name)</span>
-                                                    <span class="@(isCompany ? "tf-cust-badge-company" : "tf-cust-badge-retail")">
-                                                        @(isCompany ? "Doanh nghiệp" : "Khách lẻ")
-                                                    </span>
-                                                </div>
-                                                <div class="tf-cust-item-sub">
-                                                    <span>@c.Phone</span>
-                                                    @if (isCompany && !string.IsNullOrEmpty(c.TaxCode))
-                                                    {
-                                                        <span>• MST: @c.TaxCode</span>
-                                                    }
-                                                    <span>• @c.Code</span>
-                                                </div>
-                                            </div>
-                                        }
-                                    </div>
+                                    <button type="button" class="tf-cat-search-clear" @onclick="ClearCatalogSearch" title="Xóa tìm kiếm">✕</button>
                                 }
-                            </div>
-
-                            <div class="tf-pricing-promo-group">
-                                <div class="tf-pos-pricelist-wrap">
-                                    <select class="tf-pos-pricelist-select" @bind="ActiveTab.PriceListId" @bind:after="OnPriceListChanged">
-                                        <option value="">Bảng giá chung</option>
-                                        @foreach (var pl in _priceLists)
-                                        {
-                                            <option value="@pl.Id">@pl.Name</option>
-                                        }
-                                    </select>
-                                </div>
-
-                                <button type="button" 
-                                        class="tf-pos-promo-btn @(!string.IsNullOrEmpty(ActiveTab.SelectedPromotionName) ? "active" : "")"
-                                        title="Chương trình khuyến mãi & Chính sách giá"
-                                        @onclick="() => _showPromotionModal = true">
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tf-promo-icon">
-                                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
-                                        <line x1="7" y1="7" x2="7.01" y2="7"></line>
-                                    </svg>
-                                    <span class="tf-promo-btn-text">@(!string.IsNullOrEmpty(ActiveTab.SelectedPromotionName) ? ActiveTab.SelectedPromotionName : "Khuyến mãi")</span>
-                                </button>
                             </div>
                         </div>
 
                         <div class="tf-cat-toolbar-right">
-                            <div class="tf-pos-cat-search">
-                                <input type="text"
-                                       class="tf-pos-search-input"
-                                       placeholder="Tìm tên, mã sản phẩm..."
-                                       value="@_catalogSearch"
-                                       @oninput="OnCatalogSearchInput" />
-                            </div>
 
                             <button type="button"
                                     class="tf-filter-trigger-btn @(_selectedCategoryIds.Any() ? "active" : "")"
@@ -1130,6 +1180,35 @@
                         }
                     </div>
                 }
+
+                @* Promotion Selector in Customer Card *@
+                <div class="tf-cust-promo-row">
+                    @if (!string.IsNullOrEmpty(ActiveTab.SelectedPromotionName))
+                    {
+                        <div class="tf-order-promo-pill active" title="Nhấp để thay đổi chương trình">
+                            <div class="tf-promo-pill-body" @onclick="() => _showPromotionModal = true">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tf-promo-icon">
+                                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                                    <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                                </svg>
+                                <span class="tf-promo-pill-label">KM:</span>
+                                <span class="tf-promo-pill-name">@ActiveTab.SelectedPromotionName</span>
+                            </div>
+                            <button type="button" class="tf-promo-pill-clear" @onclick="ClearPromotion" title="Hủy áp dụng khuyến mãi">✕</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <button type="button" class="tf-order-promo-btn" @onclick="() => _showPromotionModal = true" title="Chọn chương trình khuyến mãi / chính sách giá">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                                <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                            </svg>
+                            <span>Khuyến mãi / Chính sách giá</span>
+                            <span class="tf-promo-btn-hint">Chọn</span>
+                        </button>
+                    }
+                </div>
             </div>
 
             @* 4. Totals Breakdown *@
@@ -2726,6 +2805,22 @@
         StateHasChanged();
     }
 
+    private async Task ClearPromotion()
+    {
+        ActiveTab.SelectedPromotionName = null;
+        ActiveTab.PriceListId = _priceLists.FirstOrDefault()?.Id;
+        await OnPriceListChanged();
+        StateHasChanged();
+    }
+
+    private async Task ClearCatalogSearch()
+    {
+        _catalogSearch = string.Empty;
+        _catalogPage = 1;
+        await LoadCatalogPageAsync();
+        StateHasChanged();
+    }
+
     private async Task SaveNewCustomerAsync()
     {
         _addCustError = null;
@@ -3155,7 +3250,11 @@
         }
         else if (e.Key == "F4")
         {
-            await _f4InputRef.FocusAsync();
+            try
+            {
+                await _f4InputRef.FocusAsync();
+            }
+            catch { }
         }
         else if (e.Key == "F8")
         {

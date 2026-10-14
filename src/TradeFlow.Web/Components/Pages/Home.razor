@@ -8,7 +8,7 @@
 @using TradeFlow.Domain.Entities.Users
 @using TradeFlow.Domain.Enums
 @using TradeFlow.Infrastructure.Persistence
-@inject TradeFlowDbContext DbContext
+@inject IDbContextFactory<TradeFlowDbContext> DbContextFactory
 @inject INotificationService NotificationService
 @inject AuthenticationStateProvider AuthStateProvider
 
@@ -165,14 +165,49 @@
                             <div class="tf-notifications-list">
                                 @foreach (var n in _notifications)
                                 {
-                                    <a href="@(n.TargetUrl ?? "/cai-dat")" class="tf-notification-item">
+                                    <div class="tf-notification-item @(n.IsApprovalRequest ? "is-approval-card" : "")">
                                         <div class="tf-notification-dot @(n.IsRead ? "read" : "")"></div>
                                         <div class="tf-notification-content">
-                                            <div class="tf-notification-title">@n.Title</div>
+                                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                                                <div class="tf-notification-title">@n.Title</div>
+                                                @if (n.IsApprovalRequest)
+                                                {
+                                                    <span class="tf-badge tf-badge-info" style="font-size: 10px; padding: 1px 6px;">@n.RequestTypeName</span>
+                                                }
+                                            </div>
                                             <div class="tf-notification-message">@n.Message</div>
-                                            <div class="tf-notification-time">@n.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                                            @if (n.IsApprovalRequest)
+                                            {
+                                                <div style="font-size: 11px; color: #64748b; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px;">
+                                                    <span>Mã: <strong>@n.RequestCode</strong></span>
+                                                    <span>• Người gửi: <strong>@n.Requester</strong></span>
+                                                    <span style="background: #fef3c7; color: #b45309; padding: 1px 4px; border-radius: 3px; font-weight: 600;">@n.Status</span>
+                                                </div>
+                                                <div style="display: flex; align-items: center; gap: 6px; margin-top: 6px;">
+                                                    @if (n.CanApprove)
+                                                    {
+                                                        <button type="button" class="tf-btn tf-btn-xs tf-btn-success" disabled="@(_dashboardActionLoadingId == n.Id)" @onclick="() => HandleDashboardApproveAsync(n)">
+                                                            @(_dashboardActionLoadingId == n.Id ? "Đang duyệt..." : "Phê duyệt")
+                                                        </button>
+                                                    }
+                                                    else if (n.IsSelfRequest)
+                                                    {
+                                                        <span style="font-size: 10.5px; color: #94a3b8; font-style: italic;">Đề xuất do bạn tạo</span>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(n.TargetUrl))
+                                                    {
+                                                        <a href="@n.TargetUrl" style="font-size: 11px; font-weight: 600; color: #3b82f6; text-decoration: none; margin-left: auto;">
+                                                            Xem chi tiết &rarr;
+                                                        </a>
+                                                    }
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="tf-notification-time">@n.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                                            }
                                         </div>
-                                    </a>
+                                    </div>
                                 }
                             </div>
                         }
@@ -186,7 +221,7 @@
                                     </svg>
                                 </div>
                                 <div class="tf-empty-title" style="font-size:13px;">Chưa có thông báo mới</div>
-                                <div class="tf-empty-desc" style="font-size:12px;">Thông báo mới sẽ xuất hiện tại đây khi có cập nhật.</div>
+                                <div class="tf-empty-desc" style="font-size:12px;">Hiện không có thông báo hay yêu cầu chờ duyệt nào.</div>
                             </div>
                         }
                     </div>
@@ -255,17 +290,19 @@
             var today = DateTime.UtcNow.Date;
             var startOfMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
-            var todayOrdersCount = await DbContext.SalesOrders
+            await using var db = await DbContextFactory.CreateDbContextAsync();
+
+            var todayOrdersCount = await db.SalesOrders
                 .CountAsync(o => o.OrderDate >= today);
 
-            var monthRevenue = await DbContext.Invoices
+            var monthRevenue = await db.Invoices
                 .Where(i => i.InvoiceDate >= startOfMonth)
                 .SumAsync(i => (decimal?)i.GrandTotal) ?? 0m;
 
-            var customersCount = await DbContext.Customers
+            var customersCount = await db.Customers
                 .CountAsync(c => c.IsActive);
 
-            var productsCount = await DbContext.Products
+            var productsCount = await db.Products
                 .CountAsync(p => p.IsActive);
 
             _stats =
@@ -276,7 +313,8 @@
                 new("Sản phẩm đang bán", productsCount.ToString("N0"), $"{productsCount} mặt hàng trong danh mục", "warning")
             ];
 
-            _recentActivities = await DbContext.AuditLogs
+            _recentActivities = await db.AuditLogs
+                .AsNoTracking()
                 .OrderByDescending(x => x.OccurredAt)
                 .Take(5)
                 .ToListAsync();
@@ -308,6 +346,30 @@
         finally
         {
             _isLoadingNotifications = false;
+        }
+    }
+
+    private string? _dashboardActionLoadingId;
+
+    private async Task HandleDashboardApproveAsync(SystemNotificationDto n)
+    {
+        _dashboardActionLoadingId = n.Id;
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var success = await NotificationService.ApproveNotificationAsync(n.Id, authState.User);
+            if (success)
+            {
+                _notifications = await NotificationService.GetNotificationsAsync(authState.User, 5);
+            }
+        }
+        catch (Exception ex)
+        {
+            _notificationError = ex.Message;
+        }
+        finally
+        {
+            _dashboardActionLoadingId = null;
         }
     }
 

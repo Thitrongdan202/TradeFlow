@@ -244,7 +244,7 @@
                         <button type="button" class="tf-btn tf-btn-sm tf-btn-secondary" @onclick="() => _selectedIds.Clear()">
                             Bỏ chọn
                         </button>
-                        <AuthorizeView Policy="Permission:Customers:Delete">
+                        <AuthorizeView Roles="Administrator">
                             <button type="button" class="tf-btn tf-btn-sm tf-btn-danger" @onclick="OpenBulkDeleteModal">
                                 Xóa đã chọn (@_selectedIds.Count)
                             </button>
@@ -371,10 +371,13 @@
                                                         Sửa
                                                     </a>
                                                 </AuthorizeView>
-                                                <AuthorizeView Policy="Permission:Customers:Delete">
-                                                    <button type="button" class="tf-btn-action delete" title="Xóa khách hàng" @onclick="() => ConfirmDelete(item.Id, item.Name, item.Code)">
-                                                        Xóa
-                                                    </button>
+                                                <AuthorizeView Roles="Administrator">
+                                                    @if (!item.IsActive)
+                                                    {
+                                                        <button type="button" class="tf-btn-action delete" title="Xóa khách hàng đã ngừng hoạt động" @onclick="() => ConfirmDelete(item.Id, item.Name, item.Code)">
+                                                            Xóa
+                                                        </button>
+                                                    }
                                                 </AuthorizeView>
                                             </div>
                                         </td>
@@ -425,7 +428,7 @@
                     Bạn có chắc chắn muốn xóa khách hàng <strong>@_customerToDeleteName</strong> (Mã: <code>@_customerToDeleteCode</code>)?
                 </p>
                 <div class="tf-delete-policy-notice">
-                    <strong>Chính sách an toàn dữ liệu kế toán:</strong> Nếu khách hàng đã phát sinh đơn bán hàng hoặc hóa đơn trong lịch sử, hệ thống sẽ tự động chuyển sang trạng thái <em>"Ngừng hoạt động"</em> thay vì xóa vật lý nhằm bảo vệ tính toàn vẹn chứng từ tài chính.
+                    <strong>Chính sách an toàn dữ liệu kế toán:</strong> Chỉ khách hàng ở trạng thái <em>"Ngừng hoạt động"</em> và chưa từng phát sinh chứng từ giao dịch lịch sử (đơn hàng, hóa đơn, thanh toán...) mới có thể xóa vĩnh viễn. Nếu khách hàng đã có dữ liệu chứng từ, hệ thống sẽ từ chối xóa để bảo vệ tính toàn vẹn tài chính.
                 </div>
             </div>
         </div>
@@ -458,7 +461,7 @@
             Bạn có chắc chắn muốn xóa <strong>@_selectedIds.Count</strong> khách hàng đã chọn?
         </p>
         <div class="tf-delete-policy-notice">
-            Các khách hàng có giao dịch kế toán lịch sử sẽ được chuyển sang trạng thái <em>Ngừng hoạt động</em> để bảo toàn chứng từ.
+            Chỉ những khách hàng ở trạng thái <em>Ngừng hoạt động</em> và chưa phát sinh chứng từ giao dịch lịch sử mới được xóa vĩnh viễn khỏi hệ thống.
         </div>
         @if (_bulkMessages.Any())
         {

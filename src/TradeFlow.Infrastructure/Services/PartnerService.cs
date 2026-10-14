@@ -245,6 +245,7 @@ public class PartnerService : IPartnerService
 
         // Fetch linked orders
         var orders = await _context.SalesOrders.AsNoTracking()
+            .Include(o => o.Items)
             .Where(o => o.CustomerId == id && o.Status != SalesOrderStatus.Cancelled)
             .OrderByDescending(o => o.OrderDate)
             .Take(20)
@@ -252,6 +253,7 @@ public class PartnerService : IPartnerService
 
         // Fetch linked invoices
         var invoices = await _context.Invoices.AsNoTracking()
+            .Include(i => i.Items)
             .Where(i => i.CustomerId == id && i.Status != InvoiceStatus.Cancelled)
             .OrderByDescending(i => i.InvoiceDate)
             .Take(20)
@@ -283,6 +285,20 @@ public class PartnerService : IPartnerService
             decimal paid = !isUnpaid ? inv.GrandTotal : specificPaid;
             decimal debt = Math.Max(0m, inv.GrandTotal - paid);
 
+            var lines = inv.Items.OrderBy(x => x.SortOrder).Select(it => new PartnerTransactionLineItemDto
+            {
+                SortOrder = it.SortOrder,
+                ProductCode = it.ProductCode,
+                ProductName = it.ProductName,
+                UnitName = it.UnitName,
+                Quantity = it.Quantity,
+                UnitPrice = it.UnitPrice,
+                DiscountAmount = it.DiscountAmount,
+                TaxRate = it.TaxRate,
+                TaxAmount = it.TaxAmount,
+                LineTotal = it.LineTotal
+            }).ToList();
+
             recentTransactions.Add(new PartnerLinkedTransactionDto
             {
                 DocumentId = inv.Id,
@@ -298,7 +314,8 @@ public class PartnerService : IPartnerService
                 PaymentMethod = inv.PaymentMethod,
                 ReferenceCode = inv.SalesOrderId.HasValue ? $"DH-{inv.SalesOrderId}" : null,
                 Notes = inv.Notes,
-                LinkUrl = $"/hoa-don/chi-tiet/{inv.Id}"
+                LinkUrl = $"/hoa-don/chi-tiet/{inv.Id}",
+                LineItems = lines
             });
         }
 
@@ -306,6 +323,17 @@ public class PartnerService : IPartnerService
         var invoicedOrderIds = invoices.Where(i => i.SalesOrderId.HasValue).Select(i => i.SalesOrderId!.Value).ToHashSet();
         foreach (var ord in orders.Where(o => !invoicedOrderIds.Contains(o.Id)))
         {
+            var ordLines = ord.Items.Select(it => new PartnerTransactionLineItemDto
+            {
+                ProductCode = it.ProductCode ?? $"SP-{it.ProductId}",
+                ProductName = it.ProductName,
+                UnitName = it.UnitName ?? "Cái",
+                Quantity = it.Quantity,
+                UnitPrice = it.UnitPrice,
+                DiscountAmount = it.DiscountAmount,
+                LineTotal = it.LineTotal
+            }).ToList();
+
             recentTransactions.Add(new PartnerLinkedTransactionDto
             {
                 DocumentId = ord.Id,
@@ -320,7 +348,8 @@ public class PartnerService : IPartnerService
                 Status = ord.Status == SalesOrderStatus.Confirmed ? "Đã xác nhận" : "Bản nháp",
                 PaymentMethod = "Chờ xuất hóa đơn",
                 LinkUrl = $"/ban-hang/don-ban-hang/chi-tiet/{ord.Id}",
-                Notes = ord.Notes
+                Notes = ord.Notes,
+                LineItems = ordLines
             });
         }
 
@@ -408,15 +437,14 @@ public class PartnerService : IPartnerService
 
     public async Task<DeletePartnerResult> DeleteCustomerAsync(int id, ClaimsPrincipal user, CancellationToken cancellationToken = default)
     {
-        // 1. Server-side Authorization Check
-        var authResult = await _authService.AuthorizeAsync(user, "Permission:Customers:Delete");
-        if (!authResult.Succeeded)
+        // 1. Server-side Authorization Check: Admin only
+        if (user?.Identity?.IsAuthenticated != true || !user.IsInRole("Administrator"))
         {
-            _logger.LogWarning("Unauthorized attempt to delete Customer ID {CustomerId} by user {User}", id, user.Identity?.Name);
+            _logger.LogWarning("Unauthorized attempt to delete Customer ID {CustomerId} by user {User}", id, user?.Identity?.Name);
             return new DeletePartnerResult
             {
                 Succeeded = false,
-                ErrorMessage = "Bạn không có quyền xóa khách hàng. Thao tác xóa chỉ dành cho Quản trị viên (Administrator) hoặc Quản lý có thẩm quyền."
+                ErrorMessage = "Bạn không có quyền thực hiện thao tác xóa khách hàng. Thao tác này chỉ dành riêng cho Quản trị viên (Administrator)."
             };
         }
 
@@ -429,23 +457,28 @@ public class PartnerService : IPartnerService
         // 2. Referential Integrity Protection: Inspect Historical Transactions
         int orderCount = await _context.SalesOrders.CountAsync(x => x.CustomerId == id, cancellationToken);
         int invoiceCount = await _context.Invoices.CountAsync(x => x.CustomerId == id, cancellationToken);
-        int totalRefs = orderCount + invoiceCount;
+        int quotationCount = await _context.Quotations.CountAsync(x => x.CustomerId == id, cancellationToken);
+        int paymentCount = await _context.PartnerPayments.CountAsync(x => x.PartnerType == (int)PartnerType.Customer && x.PartnerId == id, cancellationToken);
+        int totalRefs = orderCount + invoiceCount + quotationCount + paymentCount;
 
         if (totalRefs > 0)
         {
-            // Protect historical financial documents: DO NOT cascade delete! Soft-deactivate instead.
-            customer.IsActive = false;
-            customer.UpdatedAt = DateTime.UtcNow;
-            customer.UpdatedBy = user.Identity?.Name ?? _currentUser.UserName ?? "System";
+            // Soft-deactivate if active to protect financial documents
+            if (customer.IsActive)
+            {
+                customer.IsActive = false;
+                customer.UpdatedAt = DateTime.UtcNow;
+                customer.UpdatedBy = user.Identity?.Name ?? _currentUser.UserName ?? "System";
+                await _context.SaveChangesAsync(cancellationToken);
 
-            await _context.SaveChangesAsync(cancellationToken);
-            await _auditService.LogAsync(
-                AuditEventType.CustomerUpdated,
-                customer.UpdatedBy,
-                "Customer",
-                customer.Id.ToString(),
-                $"Chuyển trạng thái sang 'Ngừng hoạt động' thay vì xóa vật lý do có {orderCount} đơn hàng và {invoiceCount} hóa đơn liên kết.",
-                cancellationToken: cancellationToken);
+                await _auditService.LogAsync(
+                    AuditEventType.CustomerUpdated,
+                    customer.UpdatedBy,
+                    "Customer",
+                    customer.Id.ToString(),
+                    $"Chuyển trạng thái sang 'Ngừng hoạt động' thay vì xóa vật lý do có {totalRefs} chứng từ liên kết.",
+                    cancellationToken: cancellationToken);
+            }
 
             return new DeletePartnerResult
             {
@@ -453,7 +486,7 @@ public class PartnerService : IPartnerService
                 IsReferenced = true,
                 SoftDeleted = true,
                 ReferenceCount = totalRefs,
-                ErrorMessage = $"Khách hàng '{customer.Name}' ({customer.Code}) đang gắn với {orderCount} đơn hàng và {invoiceCount} hóa đơn lịch sử. Để bảo toàn tính toàn vẹn chứng từ tài chính, hệ thống đã chuyển khách hàng sang trạng thái 'Ngừng hoạt động' thay vì xóa vật lý."
+                ErrorMessage = $"Không thể xóa vật lý khách hàng '{customer.Name}' ({customer.Code}) do đã phát sinh {totalRefs} chứng từ giao dịch lịch sử ({orderCount} đơn hàng, {invoiceCount} hóa đơn, {quotationCount} báo giá, {paymentCount} phiếu thu). Hệ thống bảo vệ toàn vẹn dữ liệu bằng cách duy trì khách hàng ở trạng thái 'Ngừng hoạt động' để bảo toàn tính toàn vẹn chứng từ tài chính."
             };
         }
 
@@ -473,13 +506,12 @@ public class PartnerService : IPartnerService
 
     public async Task<BulkDeletePartnerResult> BulkDeleteCustomersAsync(List<int> ids, ClaimsPrincipal user, CancellationToken cancellationToken = default)
     {
-        var authResult = await _authService.AuthorizeAsync(user, "Permission:Customers:Delete");
-        if (!authResult.Succeeded)
+        if (user?.Identity?.IsAuthenticated != true || !user.IsInRole("Administrator"))
         {
             return new BulkDeletePartnerResult
             {
                 RequestedCount = ids.Count,
-                Messages = new List<string> { "Bạn không có quyền thực hiện thao tác xóa khách hàng." }
+                Messages = new List<string> { "Chỉ Quản trị viên (Administrator) mới có quyền thực hiện thao tác xóa khách hàng." }
             };
         }
 
@@ -492,17 +524,13 @@ public class PartnerService : IPartnerService
             {
                 result.DeletedCount++;
             }
-            else if (singleResult.SoftDeleted)
+            else
             {
                 result.DeactivatedCount++;
                 if (!string.IsNullOrEmpty(singleResult.ErrorMessage))
                 {
                     result.Messages.Add(singleResult.ErrorMessage);
                 }
-            }
-            else if (!string.IsNullOrEmpty(singleResult.ErrorMessage))
-            {
-                result.Messages.Add(singleResult.ErrorMessage);
             }
         }
 
@@ -693,15 +721,14 @@ public class PartnerService : IPartnerService
 
     public async Task<DeletePartnerResult> DeleteSupplierAsync(int id, ClaimsPrincipal user, CancellationToken cancellationToken = default)
     {
-        // 1. Authorization check
-        var authResult = await _authService.AuthorizeAsync(user, "Permission:Suppliers:Delete");
-        if (!authResult.Succeeded)
+        // 1. Server-side Authorization Check: Admin only
+        if (user?.Identity?.IsAuthenticated != true || !user.IsInRole("Administrator"))
         {
-            _logger.LogWarning("Unauthorized attempt to delete Supplier ID {SupplierId} by user {User}", id, user.Identity?.Name);
+            _logger.LogWarning("Unauthorized attempt to delete Supplier ID {SupplierId} by user {User}", id, user?.Identity?.Name);
             return new DeletePartnerResult
             {
                 Succeeded = false,
-                ErrorMessage = "Bạn không có quyền xóa nhà cung cấp. Thao tác xóa chỉ dành cho Quản trị viên (Administrator) hoặc Quản lý có thẩm quyền."
+                ErrorMessage = "Bạn không có quyền thực hiện thao tác xóa nhà cung cấp. Thao tác này chỉ dành riêng cho Quản trị viên (Administrator)."
             };
         }
 
@@ -711,7 +738,37 @@ public class PartnerService : IPartnerService
             return new DeletePartnerResult { Succeeded = false, ErrorMessage = "Không tìm thấy nhà cung cấp cần xóa." };
         }
 
-        // 2. Physical delete when zero references exist
+        // 2. Referential Integrity Protection: Inspect Historical Transactions
+        int paymentCount = await _context.PartnerPayments.CountAsync(x => x.PartnerType == (int)PartnerType.Supplier && x.PartnerId == id, cancellationToken);
+        if (paymentCount > 0)
+        {
+            if (supplier.IsActive)
+            {
+                supplier.IsActive = false;
+                supplier.UpdatedAt = DateTime.UtcNow;
+                supplier.UpdatedBy = user.Identity?.Name ?? _currentUser.UserName ?? "System";
+                await _context.SaveChangesAsync(cancellationToken);
+
+                await _auditService.LogAsync(
+                    AuditEventType.SupplierUpdated,
+                    supplier.UpdatedBy,
+                    "Supplier",
+                    supplier.Id.ToString(),
+                    $"Chuyển trạng thái sang 'Ngừng hoạt động' thay vì xóa vật lý do có {paymentCount} phiếu liên kết.",
+                    cancellationToken: cancellationToken);
+            }
+
+            return new DeletePartnerResult
+            {
+                Succeeded = false,
+                IsReferenced = true,
+                SoftDeleted = true,
+                ReferenceCount = paymentCount,
+                ErrorMessage = $"Không thể xóa vật lý nhà cung cấp '{supplier.Name}' ({supplier.Code}) vì đã phát sinh {paymentCount} phiếu thanh toán / công nợ lịch sử. Hệ thống bảo vệ toàn vẹn dữ liệu bằng cách duy trì nhà cung cấp ở trạng thái 'Ngừng hoạt động' để bảo toàn tính toàn vẹn chứng từ tài chính."
+            };
+        }
+
+        // 3. Physical deletion when zero references exist
         _context.Suppliers.Remove(supplier);
         await _context.SaveChangesAsync(cancellationToken);
         await _auditService.LogAsync(
@@ -719,7 +776,7 @@ public class PartnerService : IPartnerService
             user.Identity?.Name ?? _currentUser.UserName ?? "System",
             "Supplier",
             supplier.Code,
-            $"Đã xóa nhà cung cấp {supplier.Name} ({supplier.Code}).",
+            $"Đã xóa vĩnh viễn nhà cung cấp {supplier.Name} ({supplier.Code}).",
             cancellationToken: cancellationToken);
 
         return new DeletePartnerResult { Succeeded = true };
@@ -727,13 +784,12 @@ public class PartnerService : IPartnerService
 
     public async Task<BulkDeletePartnerResult> BulkDeleteSuppliersAsync(List<int> ids, ClaimsPrincipal user, CancellationToken cancellationToken = default)
     {
-        var authResult = await _authService.AuthorizeAsync(user, "Permission:Suppliers:Delete");
-        if (!authResult.Succeeded)
+        if (user?.Identity?.IsAuthenticated != true || !user.IsInRole("Administrator"))
         {
             return new BulkDeletePartnerResult
             {
                 RequestedCount = ids.Count,
-                Messages = new List<string> { "Bạn không có quyền thực hiện thao tác xóa nhà cung cấp." }
+                Messages = new List<string> { "Chỉ Quản trị viên (Administrator) mới có quyền thực hiện thao tác xóa nhà cung cấp." }
             };
         }
 
@@ -746,9 +802,13 @@ public class PartnerService : IPartnerService
             {
                 result.DeletedCount++;
             }
-            else if (!string.IsNullOrEmpty(singleResult.ErrorMessage))
+            else
             {
-                result.Messages.Add(singleResult.ErrorMessage);
+                result.DeactivatedCount++;
+                if (!string.IsNullOrEmpty(singleResult.ErrorMessage))
+                {
+                    result.Messages.Add(singleResult.ErrorMessage);
+                }
             }
         }
 

@@ -20,7 +20,7 @@ public static class InfrastructureServiceExtensions
                 "Connection string 'DefaultConnection' not found. " +
                 "Set it in appsettings.json, environment variables, or user secrets.");
 
-        services.AddDbContext<Persistence.TradeFlowDbContext>(options =>
+        Action<DbContextOptionsBuilder> configureDbOptions = options =>
         {
             options.UseNpgsql(connectionString, npgsqlOptions =>
             {
@@ -34,7 +34,13 @@ public static class InfrastructureServiceExtensions
             options.EnableSensitiveDataLogging(false);
             options.EnableDetailedErrors();
 #endif
-        });
+        };
+
+        // Register IDbContextFactory for thread-safe isolated contexts in Blazor components & background services
+        services.AddDbContextFactory<Persistence.TradeFlowDbContext>(configureDbOptions);
+
+        // Register scoped DbContext resolved from factory for Identity, Seeders, and backward compatibility
+        services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<Persistence.TradeFlowDbContext>>().CreateDbContext());
 
         // Register the DbContext as IApplicationDbContext
         services.AddScoped<IApplicationDbContext>(
@@ -112,6 +118,7 @@ public static class InfrastructureServiceExtensions
         // Register Data Backup & Notification services
         services.AddScoped<IDataBackupService, Services.DataBackupService>();
         services.AddScoped<INotificationService, Services.NotificationService>();
+        services.AddScoped<IProductService, Services.ProductService>();
 
         return services;
     }

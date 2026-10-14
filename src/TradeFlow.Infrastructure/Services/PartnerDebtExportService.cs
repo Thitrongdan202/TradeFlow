@@ -155,24 +155,42 @@ public class PartnerDebtExportService : IPartnerDebtExportService
         var ws4 = workbook.Worksheets.Add(SafeSheetName("Chi tiết giao dịch", existingSheetNames));
         BuildManagementAllMovementsSheet(ws4, allMovements, company, request);
 
-        // Optional individual sheets for selected partners if requested
-        if (request.IncludeIndividualPartnerSheets && (request.SelectedCustomerIds.Any() || request.SelectedSupplierIds.Any()))
+        // Optional individual sheets for partners if requested
+        if (request.IncludeIndividualPartnerSheets)
         {
-            var selectedStatementReq = new PartnerDebtStatementExportRequest
+            List<int> targetIds;
+            if (request.SelectedCustomerIds.Any() || request.SelectedSupplierIds.Any())
             {
-                Scope = DebtExportScope.SelectedPartners,
-                PartnerIds = request.SelectedCustomerIds.Concat(request.SelectedSupplierIds).ToList(),
-                FromDate = request.FromDate,
-                ToDate = request.ToDate,
-                DatePresetTitle = request.DatePresetTitle,
-                IncludeLineDetails = true
-            };
-            var partnerSummaries = await LoadPartnerStatementsAsync(selectedStatementReq, cancellationToken);
-            foreach (var summary in partnerSummaries.Take(30)) // safe guard limit
+                targetIds = request.SelectedCustomerIds.Concat(request.SelectedSupplierIds).Distinct().ToList();
+            }
+            else
             {
-                var sheetName = SafeSheetName($"{summary.Code} - {summary.Name}", existingSheetNames);
-                var wsPartner = workbook.Worksheets.Add(sheetName);
-                BuildPartnerDetailTransactionsSheet(wsPartner, summary, company, selectedStatementReq);
+                // Include partners that have closing balance or transactions in this period (up to 30)
+                targetIds = customersData.Where(c => c.ClosingReceivable > 0).Select(c => c.Id)
+                    .Concat(suppliersData.Where(s => s.ClosingPayable > 0).Select(s => s.Id))
+                    .Distinct()
+                    .Take(30)
+                    .ToList();
+            }
+
+            if (targetIds.Any())
+            {
+                var selectedStatementReq = new PartnerDebtStatementExportRequest
+                {
+                    Scope = DebtExportScope.SelectedPartners,
+                    PartnerIds = targetIds,
+                    FromDate = request.FromDate,
+                    ToDate = request.ToDate,
+                    DatePresetTitle = request.DatePresetTitle,
+                    IncludeLineDetails = true
+                };
+                var partnerSummaries = await LoadPartnerStatementsAsync(selectedStatementReq, cancellationToken);
+                foreach (var summary in partnerSummaries.Take(30)) // safe guard limit
+                {
+                    var sheetName = SafeSheetName($"{summary.Code} - {summary.Name}", existingSheetNames);
+                    var wsPartner = workbook.Worksheets.Add(sheetName);
+                    BuildPartnerDetailTransactionsSheet(wsPartner, summary, company, selectedStatementReq);
+                }
             }
         }
 
@@ -1154,15 +1172,23 @@ public class PartnerDebtExportService : IPartnerDebtExportService
         var targetCustomerIds = new List<int>();
         var targetSupplierIds = new List<int>();
 
-        if (request.Scope == DebtExportScope.CurrentPartner && request.PartnerIds.Any())
+        if (request.Scope == DebtExportScope.CurrentPartner)
         {
+            if (!request.PartnerIds.Any())
+            {
+                throw new ArgumentException("Chưa chỉ định đối tác cần xuất báo cáo công nợ.", nameof(request.PartnerIds));
+            }
             if (request.PartnerType == PartnerType.Supplier)
                 targetSupplierIds.AddRange(request.PartnerIds);
             else
                 targetCustomerIds.AddRange(request.PartnerIds);
         }
-        else if (request.Scope == DebtExportScope.SelectedPartners && request.PartnerIds.Any())
+        else if (request.Scope == DebtExportScope.SelectedPartners)
         {
+            if (!request.PartnerIds.Any())
+            {
+                throw new ArgumentException("Chưa chọn đối tác nào để xuất báo cáo công nợ.", nameof(request.PartnerIds));
+            }
             if (request.PartnerType.HasValue)
             {
                 if (request.PartnerType.Value == PartnerType.Customer) targetCustomerIds.AddRange(request.PartnerIds);
@@ -1179,9 +1205,20 @@ public class PartnerDebtExportService : IPartnerDebtExportService
         }
         else
         {
-            // All filtered or all partners
-            targetCustomerIds = await _context.Customers.AsNoTracking().Select(c => c.Id).ToListAsync(cancellationToken);
-            targetSupplierIds = await _context.Suppliers.AsNoTracking().Select(s => s.Id).ToListAsync(cancellationToken);
+            // All filtered or all partners according to PartnerType
+            if (request.PartnerType == PartnerType.Customer)
+            {
+                targetCustomerIds = await _context.Customers.AsNoTracking().Select(c => c.Id).ToListAsync(cancellationToken);
+            }
+            else if (request.PartnerType == PartnerType.Supplier)
+            {
+                targetSupplierIds = await _context.Suppliers.AsNoTracking().Select(s => s.Id).ToListAsync(cancellationToken);
+            }
+            else
+            {
+                targetCustomerIds = await _context.Customers.AsNoTracking().Select(c => c.Id).ToListAsync(cancellationToken);
+                targetSupplierIds = await _context.Suppliers.AsNoTracking().Select(s => s.Id).ToListAsync(cancellationToken);
+            }
         }
 
         DateTime? fromDateUtc = request.FromDate.HasValue ? DateTime.SpecifyKind(request.FromDate.Value.Date, DateTimeKind.Utc) : null;

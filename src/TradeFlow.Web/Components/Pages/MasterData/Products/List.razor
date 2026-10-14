@@ -10,7 +10,7 @@
 @using TradeFlow.Infrastructure.Persistence
 @attribute [Authorize(Policy = "Permission:Products:View")]
 
-@inject TradeFlowDbContext DbContext
+@inject IDbContextFactory<TradeFlowDbContext> DbContextFactory
 @inject IPriceListService PriceListService
 @inject IFileStorageService FileStorage
 @inject ISystemCodeGenerator CodeGenerator
@@ -19,6 +19,7 @@
 @inject NavigationManager Nav
 @inject IAuthorizationService AuthService
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+@inject IProductService ProductService
 
 <PageTitle>Sản phẩm - TradeFlow</PageTitle>
 
@@ -142,7 +143,7 @@
                             Đã chọn <strong>@_selectedItems.Count</strong> sản phẩm
                         </span>
                         <div style="display: flex; gap: 8px;">
-                            <AuthorizeView Policy="Permission:Products:Delete">
+                            <AuthorizeView Roles="Administrator">
                                 <button type="button" class="tf-btn tf-btn-sm tf-btn-danger" @onclick="ConfirmBulkDelete">
                                     Xóa các mục đã chọn
                                 </button>
@@ -392,6 +393,19 @@
                                                                                     <span>Kích hoạt lại</span>
                                                                                 }
                                                                             </button>
+                                                                        </AuthorizeView>
+
+                                                                        <AuthorizeView Roles="Administrator">
+                                                                            @if (!item.IsActive)
+                                                                            {
+                                                                                <button type="button" class="tf-btn tf-btn-outline-danger tf-btn-sm" @onclick="() => ConfirmSingleDelete(item)" style="display: inline-flex; align-items: center; gap: 4px;" title="Xóa vĩnh viễn sản phẩm đã ngừng dùng">
+                                                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                                                        <polyline points="3 6 5 6 21 6"/>
+                                                                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                                                                    </svg>
+                                                                                    <span>Xóa</span>
+                                                                                </button>
+                                                                            }
                                                                         </AuthorizeView>
 
                                                                         <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => ToggleExpand(item.Id)">
@@ -678,6 +692,45 @@
         </div>
     </div>
 }
+@* Modal: Single Product Delete Confirmation *@
+@if (_showSingleDeleteModal && _productToDelete != null)
+{
+    <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1050; display: flex; align-items: center; justify-content: center; padding: 16px;">
+        <div style="background: white; padding: 24px; border-radius: 10px; width: 480px; max-width: 95%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+                <div style="width: 36px; height: 36px; border-radius: 50%; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                </div>
+                <h3 style="margin: 0; font-size: 18px; color: #1e293b;">Xác nhận xóa sản phẩm</h3>
+            </div>
+
+            <p style="margin: 0 0 12px; font-size: 14px; color: #334155; line-height: 1.5;">
+                Bạn có chắc chắn muốn xóa vĩnh viễn sản phẩm <strong>@_productToDelete.Name</strong> (Mã: <code>@_productToDelete.Code</code>@(!string.IsNullOrEmpty(_productToDelete.NewCode) ? $", Mã mới: {_productToDelete.NewCode}" : ""))?
+            </p>
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; font-size: 12.5px; color: #475569; margin-bottom: 16px; line-height: 1.4;">
+                <strong style="color: #0f172a;">Chính sách an toàn dữ liệu:</strong> Thao tác xóa vĩnh viễn chỉ áp dụng cho sản phẩm đã ngừng dùng và chưa từng phát sinh chứng từ kế toán lịch sử (đơn hàng, hóa đơn hoặc báo giá). Nếu đã có chứng từ, hệ thống sẽ ngăn chặn việc xóa vật lý để bảo vệ toàn vẹn lịch sử.
+            </div>
+
+            @if (!string.IsNullOrEmpty(_singleDeleteError))
+            {
+                <div class="tf-alert tf-alert-error" style="margin-bottom: 16px; font-size: 13px;">
+                    @_singleDeleteError
+                </div>
+            }
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="CancelSingleDelete" disabled="@_isDeletingSingle">Hủy</button>
+                <LoadingButton Class="tf-btn tf-btn-danger" IsLoading="@_isDeletingSingle" LoadingText="Đang xóa..." OnClick="ExecuteSingleDeleteAsync">
+                    Xác nhận xóa
+                </LoadingButton>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     private List<Product>? _items;
@@ -727,22 +780,30 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _categories = await DbContext.ProductCategories.Where(c => c.IsActive).OrderBy(c => c.Name).ToListAsync();
-        _units = await DbContext.UnitOfMeasures.Where(u => u.IsActive).OrderBy(u => u.Name).ToListAsync();
+        await using (var db = await DbContextFactory.CreateDbContextAsync())
+        {
+            _categories = await db.ProductCategories.AsNoTracking().Where(c => c.IsActive).OrderBy(c => c.Name).ToListAsync();
+            _units = await db.UnitOfMeasures.AsNoTracking().Where(u => u.IsActive).OrderBy(u => u.Name).ToListAsync();
+        }
         await LoadProductsAsync();
     }
 
     private async Task LoadProductsAsync()
     {
+        if (_isRefreshing) return;
         _isRefreshing = true;
         try
         {
-            _items = await DbContext.Products
-                .Include(p => p.Category)
-                .Include(p => p.Unit)
-                .Include(p => p.Images)
-                .OrderBy(x => x.Code)
-                .ToListAsync();
+            await using (var db = await DbContextFactory.CreateDbContextAsync())
+            {
+                _items = await db.Products
+                    .AsNoTracking()
+                    .Include(p => p.Category)
+                    .Include(p => p.Unit)
+                    .Include(p => p.Images)
+                    .OrderBy(x => x.Code)
+                    .ToListAsync();
+            }
 
             if (_items.Any())
             {
@@ -920,7 +981,8 @@
         {
             _isSavingInline = true;
 
-            var productToUpdate = await DbContext.Products.FirstOrDefaultAsync(p => p.Id == originalProduct.Id);
+            await using var db = await DbContextFactory.CreateDbContextAsync();
+            var productToUpdate = await db.Products.FirstOrDefaultAsync(p => p.Id == originalProduct.Id);
             if (productToUpdate != null)
             {
                 productToUpdate.Name = _inlineEditModel.Name;
@@ -934,13 +996,13 @@
                 productToUpdate.UpdatedAt = DateTime.UtcNow;
                 productToUpdate.UpdatedBy = CurrentUser.UserName;
 
-                await DbContext.SaveChangesAsync();
+                await db.SaveChangesAsync();
                 await AuditService.LogAsync(AuditEventType.ProductUpdated, CurrentUser.UserName, "Product", productToUpdate.Id.ToString());
 
                 // Update Price in active PriceList if entered
                 if (_inlineEditModel.UnitPrice.HasValue && _inlineEditModel.UnitPrice.Value > 0)
                 {
-                    var activePriceList = await DbContext.PriceLists
+                    var activePriceList = await db.PriceLists
                         .OrderByDescending(p => p.Year)
                         .ThenByDescending(p => p.CreatedAt)
                         .FirstOrDefaultAsync(p => p.Status == PriceListStatus.Active);
@@ -956,11 +1018,11 @@
                             CreatedAt = DateTime.UtcNow,
                             CreatedBy = CurrentUser.UserName
                         };
-                        DbContext.PriceLists.Add(activePriceList);
-                        await DbContext.SaveChangesAsync();
+                        db.PriceLists.Add(activePriceList);
+                        await db.SaveChangesAsync();
                     }
 
-                    var priceItem = await DbContext.PriceListItems.FirstOrDefaultAsync(i => i.PriceListId == activePriceList.Id && i.ProductId == productToUpdate.Id);
+                    var priceItem = await db.PriceListItems.FirstOrDefaultAsync(i => i.PriceListId == activePriceList.Id && i.ProductId == productToUpdate.Id);
                     if (priceItem == null)
                     {
                         priceItem = new PriceListItem
@@ -976,7 +1038,7 @@
                             CreatedAt = DateTime.UtcNow,
                             CreatedBy = CurrentUser.UserName
                         };
-                        DbContext.PriceListItems.Add(priceItem);
+                        db.PriceListItems.Add(priceItem);
                     }
                     else
                     {
@@ -987,7 +1049,7 @@
                         priceItem.UpdatedAt = DateTime.UtcNow;
                         priceItem.UpdatedBy = CurrentUser.UserName;
                     }
-                    await DbContext.SaveChangesAsync();
+                    await db.SaveChangesAsync();
                     _currentPrices[productToUpdate.Id] = _inlineEditModel.UnitPrice.Value;
                 }
 
@@ -1013,13 +1075,14 @@
     {
         try
         {
-            var p = await DbContext.Products.FirstOrDefaultAsync(x => x.Id == product.Id);
+            await using var db = await DbContextFactory.CreateDbContextAsync();
+            var p = await db.Products.FirstOrDefaultAsync(x => x.Id == product.Id);
             if (p != null)
             {
                 p.IsActive = !p.IsActive;
                 p.UpdatedAt = DateTime.UtcNow;
                 p.UpdatedBy = CurrentUser.UserName;
-                await DbContext.SaveChangesAsync();
+                await db.SaveChangesAsync();
                 await AuditService.LogAsync(AuditEventType.ProductUpdated, CurrentUser.UserName, "Product", p.Id.ToString(), p.IsActive ? "Kích hoạt lại sản phẩm" : "Ngừng sử dụng sản phẩm");
                 
                 product.IsActive = p.IsActive;
@@ -1044,8 +1107,9 @@
             using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
             var storageRef = await FileStorage.SaveFileAsync(stream, file.Name, file.ContentType ?? "image/jpeg", "products");
 
+            await using var db = await DbContextFactory.CreateDbContextAsync();
             // Deactivate old primary images
-            var existingImages = await DbContext.ProductImages.Where(i => i.ProductId == productId).ToListAsync();
+            var existingImages = await db.ProductImages.Where(i => i.ProductId == productId).ToListAsync();
             foreach (var img in existingImages)
             {
                 img.IsPrimary = false;
@@ -1065,8 +1129,8 @@
                 CreatedBy = CurrentUser.UserName
             };
 
-            DbContext.ProductImages.Add(newImage);
-            await DbContext.SaveChangesAsync();
+            db.ProductImages.Add(newImage);
+            await db.SaveChangesAsync();
 
             await LoadProductsAsync();
             _inlineEditImages = existingImages.Concat(new[] { newImage }).ToList();
@@ -1124,6 +1188,59 @@
         _bulkDeleteErrors.Clear();
     }
 
+    // Single Product Delete State & Methods
+    private Product? _productToDelete;
+    private bool _showSingleDeleteModal;
+    private bool _isDeletingSingle;
+    private string? _singleDeleteError;
+
+    private void ConfirmSingleDelete(Product product)
+    {
+        _productToDelete = product;
+        _singleDeleteError = null;
+        _showSingleDeleteModal = true;
+    }
+
+    private void CancelSingleDelete()
+    {
+        _showSingleDeleteModal = false;
+        _productToDelete = null;
+        _singleDeleteError = null;
+    }
+
+    private async Task ExecuteSingleDeleteAsync()
+    {
+        if (_productToDelete == null) return;
+        _isDeletingSingle = true;
+        _singleDeleteError = null;
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var result = await ProductService.DeleteProductAsync(_productToDelete.Id, authState.User);
+            if (result.Succeeded)
+            {
+                _toastMessage = $"Đã xóa vĩnh viễn sản phẩm '{_productToDelete.Name}' thành công.";
+                _showSingleDeleteModal = false;
+                _productToDelete = null;
+                _expandedProductId = null;
+                await LoadProductsAsync();
+            }
+            else
+            {
+                _singleDeleteError = result.ErrorMessage;
+            }
+        }
+        catch (Exception ex)
+        {
+            _singleDeleteError = "Lỗi khi xóa sản phẩm: " + ex.Message;
+        }
+        finally
+        {
+            _isDeletingSingle = false;
+        }
+    }
+
     private async Task ExecuteBulkDelete()
     {
         _isBulkDeleting = true;
@@ -1132,50 +1249,28 @@
         try
         {
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            if (!(await AuthService.AuthorizeAsync(authState.User, "Permission:Products:Delete")).Succeeded)
+            if (!authState.User.IsInRole("Administrator"))
             {
-                _bulkDeleteErrors.Add("Bạn không có quyền thực hiện thao tác xóa.");
+                _bulkDeleteErrors.Add("Chỉ Quản trị viên (Administrator) mới có quyền thực hiện thao tác xóa sản phẩm.");
                 return;
             }
 
-            int successCount = 0;
-            var idsToDelete = _selectedItems.ToList();
-
-            foreach (var id in idsToDelete)
+            var bulkResult = await ProductService.BulkDeleteProductsAsync(_selectedItems.ToList(), authState.User);
+            if (bulkResult.DeletedCount > 0)
             {
-                var product = await DbContext.Products.FindAsync(id);
-                if (product == null) continue;
-
-                bool isUsed = await DbContext.SalesOrderItems.AnyAsync(x => x.ProductId == id) ||
-                              await DbContext.InvoiceItems.AnyAsync(x => x.ProductId == id);
-
-                if (isUsed)
-                {
-                    product.IsActive = false;
-                    product.UpdatedAt = DateTime.UtcNow;
-                    product.UpdatedBy = CurrentUser.UserName;
-                    DbContext.Products.Update(product);
-                    await AuditService.LogAsync(AuditEventType.ProductUpdated, CurrentUser.UserName, "Product", id.ToString(), "Ngừng sử dụng do đã phát sinh chứng từ nghiệp vụ");
-                }
-                else
-                {
-                    var priceListItems = await DbContext.PriceListItems.Where(x => x.ProductId == id).ToListAsync();
-                    foreach (var pli in priceListItems)
-                    {
-                        pli.ProductId = null;
-                    }
-
-                    DbContext.Products.Remove(product);
-                    await AuditService.LogAsync(AuditEventType.ProductDeleted, CurrentUser.UserName, "Product", id.ToString(), "Xóa vật lý sản phẩm");
-                }
-                successCount++;
+                _toastMessage = $"Đã xóa vĩnh viễn {bulkResult.DeletedCount} sản phẩm ngừng dùng thành công.";
+                _selectedItems.Clear();
+                await LoadProductsAsync();
             }
 
-            await DbContext.SaveChangesAsync();
-            _selectedItems.Clear();
-            _showBulkDeleteModal = false;
-            _toastMessage = $"Đã xử lý {successCount} sản phẩm thành công.";
-            await LoadProductsAsync();
+            if (bulkResult.SkippedCount > 0)
+            {
+                _bulkDeleteErrors.AddRange(bulkResult.Messages);
+            }
+            else
+            {
+                _showBulkDeleteModal = false;
+            }
         }
         catch (Exception ex)
         {

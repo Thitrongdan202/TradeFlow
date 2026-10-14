@@ -232,7 +232,7 @@
                         <button type="button" class="tf-btn tf-btn-sm tf-btn-secondary" @onclick="() => _selectedIds.Clear()">
                             Bỏ chọn
                         </button>
-                        <AuthorizeView Policy="Permission:Suppliers:Delete">
+                        <AuthorizeView Roles="Administrator">
                             <button type="button" class="tf-btn tf-btn-sm tf-btn-danger" @onclick="OpenBulkDeleteModal">
                                 Xóa đã chọn (@_selectedIds.Count)
                             </button>
@@ -365,10 +365,13 @@
                                                         Sửa
                                                     </a>
                                                 </AuthorizeView>
-                                                <AuthorizeView Policy="Permission:Suppliers:Delete">
-                                                    <button type="button" class="tf-btn-action delete" title="Xóa nhà cung cấp" @onclick="() => ConfirmDelete(item.Id, item.Name, item.Code)">
-                                                        Xóa
-                                                    </button>
+                                                <AuthorizeView Roles="Administrator">
+                                                    @if (!item.IsActive)
+                                                    {
+                                                        <button type="button" class="tf-btn-action delete" title="Xóa nhà cung cấp đã ngừng hoạt động" @onclick="() => ConfirmDelete(item.Id, item.Name, item.Code)">
+                                                            Xóa
+                                                        </button>
+                                                    }
                                                 </AuthorizeView>
                                             </div>
                                         </td>
@@ -419,7 +422,7 @@
                     Bạn có chắc chắn muốn xóa nhà cung cấp <strong>@_supplierToDeleteName</strong> (Mã: <code>@_supplierToDeleteCode</code>)?
                 </p>
                 <div class="tf-delete-policy-notice">
-                    <strong>Chính sách bảo toàn chứng từ:</strong> Nếu nhà cung cấp đã có phát sinh đơn nhập hàng, hóa đơn mua hoặc công nợ tài chính, hệ thống sẽ tự động chuyển trạng thái sang <em>"Ngừng hoạt động"</em> thay vì xóa vật lý nhằm bảo vệ tính toàn vẹn cơ sở dữ liệu kế toán.
+                    <strong>Chính sách bảo toàn chứng từ:</strong> Chỉ nhà cung cấp ở trạng thái <em>"Ngừng hoạt động"</em> và chưa từng phát sinh chứng từ giao dịch lịch sử (đơn mua hàng, thanh toán...) mới có thể xóa vĩnh viễn. Nếu nhà cung cấp đã có dữ liệu chứng từ tài chính, hệ thống sẽ từ chối xóa để đảm bảo toàn vẹn kế toán.
                 </div>
             </div>
         </div>
@@ -452,7 +455,7 @@
             Bạn có chắc chắn muốn xóa <strong>@_selectedIds.Count</strong> nhà cung cấp đã chọn?
         </p>
         <div class="tf-delete-policy-notice">
-            Các nhà cung cấp có liên kết chứng từ lịch sử sẽ được chuyển sang trạng thái <em>Ngừng hoạt động</em> để bảo toàn chứng từ.
+            Chỉ những nhà cung cấp ở trạng thái <em>Ngừng hoạt động</em> và chưa phát sinh chứng từ giao dịch lịch sử mới được xóa vĩnh viễn khỏi hệ thống.
         </div>
         @if (_bulkMessages.Any())
         {

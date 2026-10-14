@@ -12,4 +12,6 @@ public interface INotificationService
     Task<int> GetUnreadCountAsync(ClaimsPrincipal? user = null, CancellationToken cancellationToken = default);
     Task MarkAsReadAsync(string notificationId, ClaimsPrincipal? user = null, CancellationToken cancellationToken = default);
     Task MarkAllAsReadAsync(ClaimsPrincipal? user = null, CancellationToken cancellationToken = default);
+    Task<bool> ApproveNotificationAsync(string notificationId, ClaimsPrincipal user, CancellationToken cancellationToken = default);
+    Task<bool> RejectNotificationAsync(string notificationId, string? reason, ClaimsPrincipal user, CancellationToken cancellationToken = default);
 }

@@ -108,7 +108,23 @@
                         Hỗ trợ kỹ thuật &amp; Khôi phục
                     </a>
                     <p style="margin: 6px 0 0; font-size: 13px; color: var(--tf-text-secondary); padding-left: 26px;">
-                        Công cụ cứu hộ tài khoản quản trị viên và xử lý sự cố bảo mật nâng cao.
+                        Yêu cầu can thiệp từ xa, gửi nhật ký chẩn đoán và hướng dẫn xử lý sự cố.
+                    </p>
+                </li>
+            </AuthorizeView>
+
+            <AuthorizeView Policy="Permission:CompanySettings:View">
+                <li style="padding: 12px; border: 1px solid var(--tf-border); border-radius: 8px; transition: background 0.15s ease;">
+                    <a href="/cai-dat/sao-luu" style="font-weight: 600; font-size: 15px; color: var(--tf-primary); text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        Sao lưu dữ liệu
+                    </a>
+                    <p style="margin: 6px 0 0; font-size: 13px; color: var(--tf-text-secondary); padding-left: 26px;">
+                        Tạo và tải về bản sao lưu toàn bộ cơ sở dữ liệu PostgreSQL và tệp kinh doanh đính kèm hệ thống.
                     </p>
                 </li>
             </AuthorizeView>

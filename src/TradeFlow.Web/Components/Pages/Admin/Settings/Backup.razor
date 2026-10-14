@@ -1,0 +1,277 @@
+@page "/cai-dat/sao-luu"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permission:CompanySettings:View")]
+
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Settings
+
+@inject IDataBackupService BackupService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>Sao lưu dữ liệu — TradeFlow</PageTitle>
+
+<div class="tf-backup-container">
+    @* Page Header *@
+    <div class="tf-page-header">
+        <div class="tf-page-header-left">
+            <div class="tf-breadcrumb">
+                <a href="/cai-dat" class="tf-breadcrumb-link">Cài đặt</a>
+                <span class="tf-breadcrumb-sep">/</span>
+                <span class="tf-breadcrumb-current">Sao lưu dữ liệu</span>
+            </div>
+            <h1 class="tf-page-title">Sao lưu dữ liệu</h1>
+            <p class="tf-page-subtitle">Tạo và tải về bản sao lưu toàn bộ cơ sở dữ liệu hệ thống cùng các tệp kinh doanh đính kèm</p>
+        </div>
+    </div>
+
+    <div class="tf-backup-layout">
+        @* Primary Working Backup Card *@
+        <div class="tf-card tf-backup-main-card">
+            <div class="tf-card-header">
+                <div class="tf-card-header-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="tf-card-title">Tải bản sao lưu máy chủ</h2>
+                    <p class="tf-card-desc">Bản sao lưu hoàn chỉnh lưu trữ trên máy tính cục bộ của bạn</p>
+                </div>
+            </div>
+
+            <div class="tf-card-body">
+                <div class="tf-backup-scope-info">
+                    <h3 class="tf-scope-title">Nội dung gói sao lưu bao gồm:</h3>
+                    <ul class="tf-scope-list">
+                        <li>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            <span><strong>Toàn bộ cơ sở dữ liệu PostgreSQL</strong> (cấu trúc bảng, quan hệ khóa ngoại, người dùng, bảng giá, đơn hàng, hóa đơn, công nợ, nhật ký kiểm toán). Định dạng lưu trữ chuẩn PostgreSQL Custom Archive (pg_dump -Fc) có thể khôi phục nhất quán bằng pg_restore.</span>
+                        </li>
+                        <li>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            <span><strong>Tệp đính kèm và tài sản kinh doanh</strong> (hình ảnh sản phẩm, file bảng giá Excel gốc đã tải lên hệ thống).</span>
+                        </li>
+                        <li>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            <span><strong>Tệp thông tin đặc tả (manifest.json)</strong> xác thực phiên bản phần mềm, ngày giờ khởi tạo, số lượng tệp và định danh hệ thống.</span>
+                        </li>
+                    </ul>
+                </div>
+
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="tf-alert tf-alert-error" role="alert">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <span>@_errorMessage</span>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(_successMessage))
+                {
+                    <div class="tf-alert tf-alert-success" role="status">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        <div>
+                            <strong>Sao lưu hoàn tất!</strong>
+                            <div>@_successMessage</div>
+                        </div>
+                    </div>
+                }
+
+                <div class="tf-backup-action-row">
+                    <button type="button" 
+                            class="tf-btn tf-btn-primary tf-btn-lg" 
+                            disabled="@_isBackingUp"
+                            @onclick="HandleCreateBackupAsync">
+                        @if (_isBackingUp)
+                        {
+                            <span class="tf-spinner"></span>
+                            <span>Đang trích xuất &amp; nén dữ liệu...</span>
+                        }
+                        else
+                        {
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            <span>Tải bản sao lưu (.zip)</span>
+                        }
+                    </button>
+                    <span class="tf-backup-note">Định dạng nén chuẩn .zip, dung lượng tối ưu hóa</span>
+                </div>
+
+                @* Latest Backup Status Tracker *@
+                @if (_latestBackup != null)
+                {
+                    <div class="tf-latest-backup-card">
+                        <div class="tf-latest-backup-header">
+                            <span class="tf-latest-label">Lần sao lưu gần nhất ghi nhận trên hệ thống</span>
+                            <span class="tf-latest-time">@_latestBackup.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</span>
+                        </div>
+                        <div class="tf-latest-backup-details">
+                            <div class="tf-latest-item">
+                                <span class="tf-meta-dim">Tên tệp:</span>
+                                <span class="tf-meta-code font-mono">@_latestBackup.FileName</span>
+                            </div>
+                            @if (_latestBackup.FileSizeBytes > 0)
+                            {
+                                <div class="tf-latest-item">
+                                    <span class="tf-meta-dim">Dung lượng:</span>
+                                    <span>@FormatFileSize(_latestBackup.FileSizeBytes)</span>
+                                </div>
+                            }
+                            <div class="tf-latest-item">
+                                <span class="tf-meta-dim">Người thực hiện:</span>
+                                <strong>@_latestBackup.CreatedBy</strong>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="tf-latest-backup-empty">
+                        <span class="tf-empty-hint">Chưa ghi nhận sự kiện sao lưu nào trong nhật ký kiểm toán. Nhấn nút bên trên để tạo bản sao lưu đầu tiên.</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* Deferred Future Destinations Section *@
+        <div class="tf-card tf-backup-future-card">
+            <div class="tf-card-header">
+                <h2 class="tf-card-title">Điểm đến sao lưu bổ sung</h2>
+                <p class="tf-card-desc">Các tùy chọn lưu trữ mở rộng trong tương lai</p>
+            </div>
+            <div class="tf-card-body" style="padding: 12px 16px;">
+                <div class="tf-future-list">
+                    <div class="tf-future-item">
+                        <div class="tf-future-info">
+                            <div class="tf-future-title-row">
+                                <span class="tf-future-title">Sao lưu đám mây</span>
+                                <span class="tf-badge-pill-dev">Đang phát triển</span>
+                            </div>
+                            <p class="tf-future-desc">Đồng bộ tự động định kỳ lên Google Cloud Storage, AWS S3 hoặc OneDrive doanh nghiệp.</p>
+                        </div>
+                    </div>
+
+                    <div class="tf-future-item">
+                        <div class="tf-future-info">
+                            <div class="tf-future-title-row">
+                                <span class="tf-future-title">Sao lưu vào thẻ nhớ hoặc USB</span>
+                                <span class="tf-badge-pill-dev">Đang phát triển</span>
+                            </div>
+                            <p class="tf-future-desc">Tự động nhận diện thiết bị lưu trữ di động cắm ngoài và sao chép bản sao lưu bảo mật.</p>
+                        </div>
+                    </div>
+
+                    <div class="tf-future-item">
+                        <div class="tf-future-info">
+                            <div class="tf-future-title-row">
+                                <span class="tf-future-title">Sao lưu vào ổ cứng ngoài</span>
+                                <span class="tf-badge-pill-dev">Đang phát triển</span>
+                            </div>
+                            <p class="tf-future-desc">Lưu trữ dự phòng trên hệ thống ổ đĩa gắn ngoài (External HDD/SSD) hoặc phân vùng NAS nội bộ.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool _isBackingUp = false;
+    private string? _errorMessage;
+    private string? _successMessage;
+    private BackupMetadataDto? _latestBackup;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLatestBackupInfoAsync();
+    }
+
+    private async Task LoadLatestBackupInfoAsync()
+    {
+        try
+        {
+            _latestBackup = await BackupService.GetLatestBackupInfoAsync();
+        }
+        catch
+        {
+            // Fail gracefully without interrupting UI
+        }
+    }
+
+    private async Task HandleCreateBackupAsync()
+    {
+        if (_isBackingUp) return;
+
+        try
+        {
+            _isBackingUp = true;
+            _errorMessage = null;
+            _successMessage = null;
+
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            var options = new BackupOptions
+            {
+                IncludeDatabase = true,
+                IncludeUploads = true
+            };
+
+            var result = await BackupService.CreateBackupAsync(options, user);
+
+            if (!result.Succeeded || string.IsNullOrEmpty(result.BackupId))
+            {
+                _errorMessage = result.ErrorMessage ?? "Không thể tạo bản sao lưu. Vui lòng thử lại sau.";
+                return;
+            }
+
+            _successMessage = $"Tệp '{result.FileName}' ({FormatFileSize(result.FileSizeBytes)}) đã sẵn sàng. Trình duyệt đang tải tệp xuống máy tính...";
+            
+            // Reload tracked latest backup from audit logs
+            await LoadLatestBackupInfoAsync();
+
+            // Trigger direct stream download via minimal API endpoint
+            Nav.NavigateTo($"/api/admin/backup/download-prepared?id={result.BackupId}", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Đã xảy ra lỗi không mong muốn khi chuẩn bị bản sao lưu: " + ex.Message;
+        }
+        finally
+        {
+            _isBackingUp = false;
+        }
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024.0):F2} MB";
+        return $"{bytes / (1024.0 * 1024.0 * 1024.0):F2} GB";
+    }
+}

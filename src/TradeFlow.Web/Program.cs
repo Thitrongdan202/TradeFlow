@@ -128,6 +128,56 @@ app.MapGet("/api/documents/{id:int}/preview", async (int id, IDocumentService do
     return Results.File(stream, contentType, enableRangeProcessing: true);
 }).RequireAuthorization("Permission:Documents:View");
 
+// Data Backup Download Endpoints
+app.MapGet("/api/admin/backup/download-prepared", async (
+    string id,
+    IDataBackupService backupService,
+    System.Security.Claims.ClaimsPrincipal user,
+    Microsoft.AspNetCore.Authorization.IAuthorizationService authService) =>
+{
+    var authResult = await authService.AuthorizeAsync(user, null, "Permission:CompanySettings:View");
+    if (!authResult.Succeeded && !user.IsInRole("Administrator"))
+    {
+        return Results.Forbid();
+    }
+
+    var stream = await backupService.GetPreparedBackupStreamAsync(id, user);
+    if (stream == null)
+    {
+        return Results.NotFound("Tệp sao lưu không tồn tại hoặc đã hết hạn.");
+    }
+
+    string fileName = $"tradeflow_backup_{DateTime.Now:yyyyMMdd_HHmmss}.zip";
+    return Results.File(stream, "application/zip", fileName);
+}).RequireAuthorization();
+
+app.MapGet("/api/admin/backup/download", async (
+    IDataBackupService backupService,
+    System.Security.Claims.ClaimsPrincipal user,
+    Microsoft.AspNetCore.Authorization.IAuthorizationService authService) =>
+{
+    var authResult = await authService.AuthorizeAsync(user, null, "Permission:CompanySettings:View");
+    if (!authResult.Succeeded && !user.IsInRole("Administrator"))
+    {
+        return Results.Forbid();
+    }
+
+    var result = await backupService.CreateBackupAsync(new TradeFlow.Application.Common.Models.Settings.BackupOptions(), user);
+    if (!result.Succeeded || string.IsNullOrEmpty(result.BackupId))
+    {
+        return Results.Problem(result.ErrorMessage ?? "Không thể tạo bản sao lưu dữ liệu.");
+    }
+
+    var stream = await backupService.GetPreparedBackupStreamAsync(result.BackupId, user);
+    if (stream == null)
+    {
+        return Results.NotFound();
+    }
+
+    return Results.File(stream, "application/zip", result.FileName ?? $"tradeflow_backup_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+}).RequireAuthorization();
+
+
 
 app.MapGet("/test-import", async (TradeFlow.Application.Common.Interfaces.IExcelPricingService excelService) => 
 { 

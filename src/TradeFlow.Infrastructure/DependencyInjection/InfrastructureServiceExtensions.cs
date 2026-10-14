@@ -109,6 +109,10 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IPartnerDebtService, Services.PartnerDebtService>();
         services.AddScoped<IPartnerDebtExportService, Services.PartnerDebtExportService>();
 
+        // Register Data Backup & Notification services
+        services.AddScoped<IDataBackupService, Services.DataBackupService>();
+        services.AddScoped<INotificationService, Services.NotificationService>();
+
         return services;
     }
 }

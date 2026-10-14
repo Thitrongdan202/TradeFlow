@@ -77,10 +77,10 @@
             </div>
         </div>
 
-        @* Center: Search Box (F3) with Barcode Toggle *@
+        @* Center: Search Box (F3) — Fast Product Search by Name or Code *@
         <div class="tf-sales-header-center">
             <div class="tf-search-box-wrapper">
-                <span class="tf-search-icon">
+                <span class="tf-f3-search-icon">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -94,14 +94,6 @@
                        @oninput="OnF3Input"
                        @onfocus="() => _showF3Dropdown = true" />
                 <span class="tf-kbd-chip">F3</span>
-                <button type="button" 
-                        class="tf-barcode-toggle-btn @(_isBarcodeMode ? "active" : "")" 
-                        title="Chế độ quét mã vạch"
-                        @onclick="ToggleBarcodeMode">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14M21 5v14"></path>
-                    </svg>
-                </button>
             </div>
 
             @* Fast Search Dropdown *@
@@ -471,26 +463,28 @@
                                 }
                             </div>
 
-                            <div class="tf-pos-pricelist-wrap">
-                                <select class="tf-pos-pricelist-select" @bind="ActiveTab.PriceListId" @bind:after="OnPriceListChanged">
-                                    <option value="">Bảng giá chung</option>
-                                    @foreach (var pl in _priceLists)
-                                    {
-                                        <option value="@pl.Id">@pl.Name</option>
-                                    }
-                                </select>
-                            </div>
+                            <div class="tf-pricing-promo-group">
+                                <div class="tf-pos-pricelist-wrap">
+                                    <select class="tf-pos-pricelist-select" @bind="ActiveTab.PriceListId" @bind:after="OnPriceListChanged">
+                                        <option value="">Bảng giá chung</option>
+                                        @foreach (var pl in _priceLists)
+                                        {
+                                            <option value="@pl.Id">@pl.Name</option>
+                                        }
+                                    </select>
+                                </div>
 
-                            <button type="button" 
-                                    class="tf-pos-promo-btn @(!string.IsNullOrEmpty(ActiveTab.SelectedPromotionName) ? "active" : "")"
-                                    title="Chương trình khuyến mãi & Chính sách giá"
-                                    @onclick="() => _showPromotionModal = true">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
-                                    <line x1="7" y1="7" x2="7.01" y2="7"></line>
-                                </svg>
-                                <span>@(!string.IsNullOrEmpty(ActiveTab.SelectedPromotionName) ? ActiveTab.SelectedPromotionName : "Khuyến mãi")</span>
-                            </button>
+                                <button type="button" 
+                                        class="tf-pos-promo-btn @(!string.IsNullOrEmpty(ActiveTab.SelectedPromotionName) ? "active" : "")"
+                                        title="Chương trình khuyến mãi & Chính sách giá"
+                                        @onclick="() => _showPromotionModal = true">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tf-promo-icon">
+                                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                                        <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                                    </svg>
+                                    <span class="tf-promo-btn-text">@(!string.IsNullOrEmpty(ActiveTab.SelectedPromotionName) ? ActiveTab.SelectedPromotionName : "Khuyến mãi")</span>
+                                </button>
+                            </div>
                         </div>
 
                         <div class="tf-cat-toolbar-right">

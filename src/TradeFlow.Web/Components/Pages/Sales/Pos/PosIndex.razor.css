@@ -168,11 +168,12 @@
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
-.tf-search-icon {
+.tf-f3-search-icon {
     display: flex;
     align-items: center;
     color: var(--tf-gray-400, #94a3b8);
     margin-right: 8px;
+    flex-shrink: 0;
 }
 
 .tf-sales-f3-input {
@@ -3206,12 +3207,19 @@
 /* ============================================================
    TOOLBAR PROMOTION BUTTON & REPOSITIONING
    ============================================================ */
+.tf-pricing-promo-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
 .tf-pos-promo-btn {
     display: inline-flex;
     align-items: center;
     gap: 6px;
     height: 32px;
-    padding: 0 12px;
+    padding: 0 10px;
     border-radius: 6px;
     border: 1px solid var(--tf-border, #cbd5e1);
     background: #ffffff;
@@ -3221,7 +3229,18 @@
     cursor: pointer;
     transition: all 0.15s ease-in-out;
     white-space: nowrap;
+    max-width: 140px;
     flex-shrink: 0;
+}
+
+.tf-promo-icon {
+    flex-shrink: 0;
+}
+
+.tf-promo-btn-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .tf-pos-promo-btn:hover {
@@ -3238,22 +3257,34 @@
 
 /* Ensure catalog toolbar items never overlap search */
 .tf-catalog-toolbar-pos {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     flex-wrap: nowrap !important;
     overflow-x: auto;
 }
 
 .tf-cat-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     min-width: 0 !important;
-    flex-shrink: 1;
+    flex: 1 1 auto;
 }
 
 .tf-cat-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     flex-shrink: 0;
+    margin-left: auto;
 }
 
 .tf-pos-cat-search {
     min-width: 170px;
-    width: 180px;
+    width: 200px;
+    flex-shrink: 0;
 }
 
 /* ============================================================

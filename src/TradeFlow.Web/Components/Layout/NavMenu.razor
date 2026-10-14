@@ -467,6 +467,12 @@
                             <span>Nhật ký kiểm toán</span>
                         </NavLink>
                     </AuthorizeView>
+                    <AuthorizeView Policy="Permission:CompanySettings:View">
+                        <NavLink class="tf-flyout-link" href="/cai-dat/sao-luu" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Sao lưu dữ liệu</span>
+                        </NavLink>
+                    </AuthorizeView>
                     <NavLink class="tf-flyout-link" href="/cai-dat/ho-tro" ActiveClass="active" @onclick="HandleLinkClick">
                         <span class="tf-flyout-dot"></span>
                         <span>Hỗ trợ kỹ thuật</span>
@@ -516,6 +522,13 @@
                     <div class="tf-nav-sub-item">
                         <NavLink class="tf-nav-sub-link" href="/cai-dat/nhat-ky" ActiveClass="active" @onclick="HandleLinkClick">
                             <span class="tf-nav-sub-dot"></span>Nhật ký kiểm toán
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+                <AuthorizeView Policy="Permission:CompanySettings:View">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/cai-dat/sao-luu" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-nav-sub-dot"></span>Sao lưu dữ liệu
                         </NavLink>
                     </div>
                 </AuthorizeView>

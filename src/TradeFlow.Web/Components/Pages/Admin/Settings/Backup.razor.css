@@ -1,0 +1,247 @@
+.tf-backup-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 0 40px 0;
+}
+
+.tf-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--tf-gray-500, #64748b);
+    margin-bottom: 6px;
+}
+
+.tf-breadcrumb-link {
+    color: var(--tf-primary, #1d4ed8);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.tf-breadcrumb-link:hover {
+    text-decoration: underline;
+}
+
+.tf-breadcrumb-sep {
+    color: var(--tf-gray-400, #94a3b8);
+}
+
+.tf-breadcrumb-current {
+    color: var(--tf-gray-700, #334155);
+}
+
+.tf-backup-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.tf-card-header-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    background-color: #eff6ff;
+    color: var(--tf-primary, #1d4ed8);
+    flex-shrink: 0;
+}
+
+.tf-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--tf-border, #e2e8f0);
+}
+
+.tf-card-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--tf-gray-900, #0f172a);
+    margin: 0;
+}
+
+.tf-card-desc {
+    font-size: 13px;
+    color: var(--tf-gray-500, #64748b);
+    margin: 2px 0 0 0;
+}
+
+.tf-backup-scope-info {
+    background: #f8fafc;
+    border: 1px solid var(--tf-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.tf-scope-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--tf-gray-800, #1e293b);
+    margin: 0 0 10px 0;
+}
+
+.tf-scope-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.tf-scope-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--tf-gray-700, #334155);
+}
+
+.tf-scope-list li svg {
+    flex-shrink: 0;
+    margin-top: 3px;
+}
+
+.tf-backup-action-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 24px 0 20px 0;
+    flex-wrap: wrap;
+}
+
+.tf-backup-note {
+    font-size: 13px;
+    color: var(--tf-gray-500, #64748b);
+}
+
+.tf-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #ffffff;
+    animation: tf-spin 0.8s linear infinite;
+    margin-right: 8px;
+}
+
+@keyframes tf-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Latest Backup Status Card */
+.tf-latest-backup-card {
+    border-top: 1px solid var(--tf-border, #e2e8f0);
+    padding-top: 18px;
+    margin-top: 10px;
+}
+
+.tf-latest-backup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.tf-latest-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--tf-gray-700, #334155);
+}
+
+.tf-latest-time {
+    font-size: 12px;
+    color: var(--tf-gray-500, #64748b);
+    font-weight: 500;
+}
+
+.tf-latest-backup-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: #f1f5f9;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.tf-latest-item {
+    display: flex;
+    gap: 8px;
+}
+
+.tf-meta-dim {
+    color: var(--tf-gray-500, #64748b);
+    min-width: 105px;
+}
+
+.tf-meta-code {
+    color: var(--tf-gray-800, #1e293b);
+}
+
+.tf-latest-backup-empty {
+    border-top: 1px solid var(--tf-border, #e2e8f0);
+    padding-top: 14px;
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--tf-gray-500, #64748b);
+    font-style: italic;
+}
+
+/* Future Destinations */
+.tf-future-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tf-future-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 10px 12px;
+    border: 1px dashed var(--tf-border, #cbd5e1);
+    border-radius: 6px;
+    background: #fafafa;
+}
+
+.tf-future-info {
+    flex: 1;
+}
+
+.tf-future-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tf-future-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--tf-gray-700, #334155);
+}
+
+.tf-badge-pill-dev {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 12px;
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #cbd5e1;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.tf-future-desc {
+    font-size: 12px;
+    color: var(--tf-gray-500, #64748b);
+    margin: 4px 0 0 0;
+}

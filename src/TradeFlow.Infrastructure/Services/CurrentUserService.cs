@@ -38,11 +38,12 @@ public class CurrentUserService : ICurrentUserService
                 if (authStateProvider != null)
                 {
                     var task = authStateProvider.GetAuthenticationStateAsync();
-                    if (task.IsCompleted)
+                    if (task.IsCompletedSuccessfully)
                     {
                         return task.Result.User;
                     }
-                    return task.GetAwaiter().GetResult().User;
+                    // Offload continuation to thread pool to prevent deadlocks on Blazor SynchronizationContext
+                    return Task.Run(async () => await authStateProvider.GetAuthenticationStateAsync()).GetAwaiter().GetResult().User;
                 }
             }
             catch

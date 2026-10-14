@@ -120,6 +120,10 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<INotificationService, Services.NotificationService>();
         services.AddScoped<IProductService, Services.ProductService>();
 
+        // Register Contracts services
+        services.AddScoped<IContractPdfService, Services.Pdf.ContractPdfService>();
+        services.AddScoped<IContractService, Services.ContractService>();
+
         return services;
     }
 }

@@ -35,4 +35,14 @@ public interface IPartnerDebtService
     /// Xuất file quản lý công nợ Excel — Báo cáo quản lý tổng hợp công nợ toàn doanh nghiệp
     /// </summary>
     Task<byte[]> ExportDebtManagementWorkbookAsync(DebtManagementExportRequest request, System.Security.Claims.ClaimsPrincipal user, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Tìm kiếm đối tác nhanh (theo mã, tên, SĐT, MST) kèm số dư nợ hiện tại để lập phiếu thu/chi
+    /// </summary>
+    Task<List<PartnerLookupDto>> SearchPartnersAsync(PartnerType partnerType, string query, int maxResults = 10, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lấy số dư nợ hiện tại tức thời của đối tác (phải thu đối với khách hàng, phải trả đối với nhà cung cấp)
+    /// </summary>
+    Task<decimal> GetPartnerCurrentBalanceAsync(PartnerType partnerType, int partnerId, CancellationToken cancellationToken = default);
 }

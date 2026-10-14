@@ -34,4 +34,9 @@ public interface ICompanyBrandingService
     /// Xóa cache cấu hình thương hiệu để các component cập nhật tức thì.
     /// </summary>
     void InvalidateCache();
+
+    /// <summary>
+    /// Lấy thông tin thương hiệu nhanh từ bộ nhớ đệm (hoặc mặc định) không gây trễ I/O cho lần render đầu tiên.
+    /// </summary>
+    CompanyBrandingDto GetCachedBranding();
 }

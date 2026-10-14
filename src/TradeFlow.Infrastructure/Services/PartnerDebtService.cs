@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TradeFlow.Application.Common.Interfaces;
 using TradeFlow.Application.Common.Models.Partners;
+using TradeFlow.Domain.Entities.Documents;
 using TradeFlow.Domain.Entities.Partners;
 using TradeFlow.Domain.Entities.Sales;
 using TradeFlow.Domain.Entities.Settings;
@@ -490,7 +491,11 @@ public class PartnerDebtService : IPartnerDebtService
         CancellationToken cancellationToken = default)
     {
         // 1. Authorization check
-        var authResult = await _authService.AuthorizeAsync(user, "Permission:Customers:Edit");
+        string requiredPolicy = dto.PartnerType == PartnerType.Customer
+            ? "Permission:Customers:Edit"
+            : "Permission:Suppliers:Edit";
+
+        var authResult = await _authService.AuthorizeAsync(user, requiredPolicy);
         if (!authResult.Succeeded)
         {
             return new RecordDebtPaymentResult
@@ -577,6 +582,22 @@ public class PartnerDebtService : IPartnerDebtService
 
         _context.PartnerPayments.Add(paymentEntity);
 
+        // Register voucher into DocumentAttachment under CHUNG_TU
+        var chungTuCat = await _context.DocumentCategories.FirstOrDefaultAsync(c => c.Code == "CHUNG_TU", cancellationToken);
+        var docAttachment = new DocumentAttachment
+        {
+            FileName = $"{paymentCode}.pdf",
+            StoragePath = $"/documents/vouchers/{paymentCode}.pdf",
+            ContentType = "application/pdf",
+            FileSize = 0,
+            CategoryId = chungTuCat?.Id,
+            RelatedEntityType = dto.PartnerType == PartnerType.Customer ? "Customer" : "Supplier",
+            RelatedEntityId = dto.PartnerId,
+            Description = $"Chứng từ {paymentCode} - {dto.TransactionType}: {dto.Amount:N0} ₫ ({partnerName})",
+            Status = "Active"
+        };
+        _context.DocumentAttachments.Add(docAttachment);
+
         // If target invoice was selected and paid in full, update its PaymentMethod
         if (dto.InvoiceId.HasValue && dto.TransactionType == DebtTransactionType.Payment)
         {
@@ -644,5 +665,87 @@ public class PartnerDebtService : IPartnerDebtService
         CancellationToken cancellationToken = default)
     {
         return await _exportService.ExportDebtManagementWorkbookAsync(request, user, cancellationToken);
+    }
+
+    public async Task<decimal> GetPartnerCurrentBalanceAsync(
+        PartnerType partnerType,
+        int partnerId,
+        CancellationToken cancellationToken = default)
+    {
+        var history = await GetPartnerDebtHistoryAsync(partnerType, partnerId, cancellationToken);
+        return history.FirstOrDefault()?.RunningBalance ?? 0m;
+    }
+
+    public async Task<List<PartnerLookupDto>> SearchPartnersAsync(
+        PartnerType partnerType,
+        string searchTerm,
+        int limit = 10,
+        CancellationToken cancellationToken = default)
+    {
+        var term = (searchTerm ?? "").Trim().ToLower();
+        var result = new List<PartnerLookupDto>();
+
+        if (partnerType == PartnerType.Customer)
+        {
+            var custQuery = _context.Customers.AsNoTracking().Where(c => c.IsActive);
+            if (!string.IsNullOrWhiteSpace(term))
+            {
+                custQuery = custQuery.Where(c =>
+                    c.Code.ToLower().Contains(term) ||
+                    c.Name.ToLower().Contains(term) ||
+                    (c.CompanyName != null && c.CompanyName.ToLower().Contains(term)) ||
+                    (c.Phone != null && c.Phone.Contains(term)) ||
+                    (c.TaxCode != null && c.TaxCode.Contains(term)));
+            }
+
+            var customers = await custQuery.OrderBy(c => c.Name).Take(limit).ToListAsync(cancellationToken);
+            foreach (var c in customers)
+            {
+                decimal balance = await GetPartnerCurrentBalanceAsync(PartnerType.Customer, c.Id, cancellationToken);
+                result.Add(new PartnerLookupDto
+                {
+                    Id = c.Id,
+                    PartnerType = PartnerType.Customer,
+                    Code = c.Code,
+                    Name = c.Name,
+                    CompanyName = c.CompanyName,
+                    Phone = c.Phone,
+                    TaxCode = c.TaxCode,
+                    CurrentBalance = balance
+                });
+            }
+        }
+        else
+        {
+            var supQuery = _context.Suppliers.AsNoTracking().Where(s => s.IsActive);
+            if (!string.IsNullOrWhiteSpace(term))
+            {
+                supQuery = supQuery.Where(s =>
+                    s.Code.ToLower().Contains(term) ||
+                    s.Name.ToLower().Contains(term) ||
+                    (s.CompanyName != null && s.CompanyName.ToLower().Contains(term)) ||
+                    (s.Phone != null && s.Phone.Contains(term)) ||
+                    (s.TaxCode != null && s.TaxCode.Contains(term)));
+            }
+
+            var suppliers = await supQuery.OrderBy(s => s.Name).Take(limit).ToListAsync(cancellationToken);
+            foreach (var s in suppliers)
+            {
+                decimal balance = await GetPartnerCurrentBalanceAsync(PartnerType.Supplier, s.Id, cancellationToken);
+                result.Add(new PartnerLookupDto
+                {
+                    Id = s.Id,
+                    PartnerType = PartnerType.Supplier,
+                    Code = s.Code,
+                    Name = s.Name,
+                    CompanyName = s.CompanyName,
+                    Phone = s.Phone,
+                    TaxCode = s.TaxCode,
+                    CurrentBalance = balance
+                });
+            }
+        }
+
+        return result;
     }
 }

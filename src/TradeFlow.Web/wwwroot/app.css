@@ -2818,8 +2818,6 @@ h1:focus { outline: none; }
   pointer-events: none;
   transform-origin: 50% 50%;
   will-change: transform;
-  transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
   animation: tf-spin-ring 1.4s linear infinite;
 }
 

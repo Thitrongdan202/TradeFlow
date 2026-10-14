@@ -3,7 +3,9 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using TradeFlow.Application.Common.Interfaces
 @using TradeFlow.Application.Common.Models.Documents
+@using TradeFlow.Application.Common.Models.Partners
 @using TradeFlow.Domain.Enums
+@using TradeFlow.Web.Components.Pages.Partners.Components
 @inject IDocumentService DocumentService
 @inject NavigationManager Nav
 @rendermode InteractiveServer
@@ -17,6 +19,13 @@
         <p class="tf-page-subtitle">Quản lý toàn bộ tài liệu đính kèm, chứng từ giao dịch, hợp đồng và hóa đơn trong hệ thống.</p>
     </div>
     <div class="tf-page-header-actions" style="display:flex; gap:8px;">
+        <a href="/hop-dong" class="tf-btn tf-btn-outline-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            Hợp đồng đã tạo
+        </a>
         <a href="/tai-lieu/danh-muc" class="tf-btn tf-btn-outline-secondary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;">
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
@@ -24,6 +33,25 @@
             </svg>
             Danh mục chứng từ
         </a>
+        <AuthorizeView Policy="Permission:Customers:Edit">
+            <button type="button" class="tf-btn tf-btn-outline-primary" @onclick="() => OpenVoucherModal(PartnerType.Customer)" title="Lập phiếu thu tiền khách hàng">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+                <span>Lập phiếu thu</span>
+            </button>
+        </AuthorizeView>
+
+        <AuthorizeView Policy="Permission:Suppliers:Edit">
+            <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="() => OpenVoucherModal(PartnerType.Supplier)" title="Lập phiếu chi tiền nhà cung cấp">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="5" width="20" height="14" rx="2"/>
+                    <line x1="2" y1="10" x2="22" y2="10"/>
+                </svg>
+                <span>Lập phiếu chi</span>
+            </button>
+        </AuthorizeView>
+
         <AuthorizeView Policy="Permission:Documents:Create">
             <button type="button" class="tf-btn tf-btn-primary" @onclick="OpenUploadModal">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;">
@@ -68,6 +96,7 @@
             <select class="tf-form-control" @bind="_filter.RelatedEntityType" @bind:after="ApplyFilter">
                 <option value="">-- Tất cả đối tượng --</option>
                 <option value="General">Tài liệu chung</option>
+                <option value="Contract">Hợp đồng thương mại</option>
                 <option value="Quotation">Báo giá</option>
                 <option value="SalesOrder">Đơn bán hàng</option>
                 <option value="Invoice">Hóa đơn</option>
@@ -287,7 +316,28 @@ else
     </div>
 }
 
+@* Voucher Creation Modal *@
+<DebtPaymentModal @bind-IsOpen="_isVoucherModalOpen"
+                  PartnerType="_voucherPartnerType"
+                  PartnerId="0"
+                  OnPaymentRecorded="HandleVoucherRecorded" />
+
 @code {
+    // Voucher Modal State
+    private bool _isVoucherModalOpen = false;
+    private PartnerType _voucherPartnerType = PartnerType.Customer;
+
+    private void OpenVoucherModal(PartnerType partnerType)
+    {
+        _voucherPartnerType = partnerType;
+        _isVoucherModalOpen = true;
+    }
+
+    private async Task HandleVoucherRecorded(RecordDebtPaymentResult result)
+    {
+        _statusMessage = $"Đã lập thành công chứng từ {result.PaymentCode}.";
+        await LoadDataAsync();
+    }
     private List<DocumentAttachmentDto> _documents = new();
     private List<DocumentCategoryDto> _categories = new();
     private DocumentFilterDto _filter = new();
@@ -478,6 +528,7 @@ else
 
         string url = entityType switch
         {
+            "Contract" => $"/hop-dong/{entityId}",
             "Quotation" => $"/ban-hang/bao-gia/chi-tiet/{entityId}",
             "SalesOrder" => $"/ban-hang/don-ban-hang/chi-tiet/{entityId}",
             "Invoice" => $"/hoa-don/chi-tiet/{entityId}",
@@ -488,6 +539,7 @@ else
 
         string label = entityType switch
         {
+            "Contract" => $"Hợp đồng #{entityId}",
             "Quotation" => $"Báo giá #{entityId}",
             "SalesOrder" => $"Đơn hàng #{entityId}",
             "Invoice" => $"Hóa đơn #{entityId}",

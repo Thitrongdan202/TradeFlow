@@ -1,0 +1,805 @@
+/* ==========================================================================
+   ContractTemplateGallery.razor.css — Light Theme Real A4 Document Previews
+   ========================================================================== */
+
+.tf-contract-gallery-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    color: #0f172a;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* --- Gallery Controls (Light Theme) --- */
+.tf-gallery-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px 18px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.tf-controls-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.tf-search-box {
+    position: relative;
+    flex: 1 1 320px;
+    max-width: 580px;
+}
+
+.tf-search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+}
+
+.tf-search-input {
+    width: 100%;
+    padding: 8px 36px 8px 36px;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 13.5px;
+    color: #0f172a;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.tf-search-input:focus {
+    background: #ffffff;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.tf-search-input::placeholder {
+    color: #94a3b8;
+}
+
+.tf-search-clear {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #e2e8f0;
+    border: none;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #475569;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.tf-search-clear:hover {
+    background: #cbd5e1;
+    color: #0f172a;
+}
+
+.tf-gallery-counter {
+    font-size: 13px;
+    color: #64748b;
+    white-space: nowrap;
+}
+
+.tf-counter-val {
+    color: #2563eb;
+    font-weight: 700;
+}
+
+/* --- Category Filter Pills --- */
+.tf-category-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+}
+
+.tf-cat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    color: #475569;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.18s ease;
+    user-select: none;
+}
+
+.tf-cat-pill:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+    border-color: #cbd5e1;
+}
+
+.tf-cat-pill.active {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+}
+
+.tf-cat-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.06);
+    color: inherit;
+}
+
+.tf-cat-pill.active .tf-cat-count {
+    background: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+}
+
+/* --- Gallery Grid Container --- */
+.tf-gallery-grid-container {
+    width: 100%;
+}
+
+.tf-gallery-grid {
+    display: grid;
+    /* Desktop default: 5 cards per row on standard desktop, 4-6 cards responsive */
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 18px;
+    width: 100%;
+}
+
+@media (min-width: 1500px) {
+    .tf-gallery-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 1279px) and (min-width: 992px) {
+    .tf-gallery-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 991px) and (min-width: 640px) {
+    .tf-gallery-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+    }
+}
+
+@media (max-width: 639px) {
+    .tf-gallery-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+}
+
+/* --- Gallery Card --- */
+.tf-gallery-card {
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    /* Matching the sidebar's 150ms ease and 160ms cubic-bezier transition */
+    transition: border-color 0.15s ease,
+                box-shadow 0.15s ease,
+                transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+    cursor: pointer;
+    position: relative;
+    outline: none;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.tf-gallery-card:hover,
+.tf-gallery-card:focus-within,
+.tf-gallery-card.is-active {
+    /* Subtle 2px elevation and restrained shadow - keeps A4 preview stable and avoids cursor bounce */
+    transform: translateY(-2px);
+    border-color: #3b82f6;
+    box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.08), 0 2px 4px -1px rgba(15, 23, 42, 0.04);
+    z-index: 2;
+}
+
+.tf-gallery-card:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+.tf-gallery-card.is-selected {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2), 0 8px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* --- Paper Wrapper --- */
+.tf-card-paper-wrapper {
+    position: relative;
+    width: 100%;
+    border-radius: 4px;
+    background: #f8fafc;
+    box-sizing: border-box;
+}
+
+/* --- The Miniature Pure White A4 Contract Sheet (Rock-solid visual stability) --- */
+.tf-a4-sheet {
+    width: 100%;
+    /* Standard A4 Aspect Ratio: 210mm x 297mm */
+    aspect-ratio: 210 / 297;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 6px -1px rgba(0, 0, 0, 0.07), 0 1px 3px -1px rgba(0, 0, 0, 0.04);
+    border-radius: 3px;
+    position: relative;
+    overflow: hidden;
+    container-type: inline-size;
+    user-select: none;
+}
+
+.tf-a4-page-content {
+    font-family: 'Times New Roman', Times, serif;
+    color: #1e293b;
+    padding: 4.5cqw 4cqw;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+/* --- A4 Page Elements Typography & Spacing (using cqw) --- */
+.tf-a4-national-header {
+    text-align: center;
+    margin-bottom: 1.5cqw;
+}
+
+.tf-a4-nat-name {
+    font-size: 3.2cqw;
+    font-weight: bold;
+    text-transform: uppercase;
+    line-height: 1.15;
+    color: #0f172a;
+}
+
+.tf-a4-nat-motto {
+    font-size: 2.9cqw;
+    font-weight: bold;
+    line-height: 1.15;
+    color: #1e293b;
+}
+
+.tf-a4-nat-line {
+    width: 34cqw;
+    height: 0.35cqw;
+    background: #334155;
+    margin: 0.8cqw auto;
+}
+
+.tf-a4-nat-date {
+    font-size: 2.4cqw;
+    font-style: italic;
+    color: #475569;
+}
+
+.tf-a4-doc-header {
+    text-align: center;
+    margin-bottom: 1.8cqw;
+}
+
+.tf-a4-doc-title {
+    font-size: 3.9cqw;
+    font-weight: bold;
+    text-transform: uppercase;
+    line-height: 1.22;
+    color: #0f172a;
+    margin-bottom: 0.6cqw;
+}
+
+.tf-a4-doc-num {
+    font-size: 2.6cqw;
+    font-weight: 600;
+    color: #475569;
+}
+
+.tf-a4-legal-basis {
+    margin-bottom: 1.4cqw;
+    border-left: 0.6cqw solid #e2e8f0;
+    padding-left: 1.2cqw;
+}
+
+.tf-a4-basis-line {
+    font-size: 2.1cqw;
+    font-style: italic;
+    line-height: 1.25;
+    color: #475569;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tf-a4-preamble {
+    font-size: 2.2cqw;
+    font-style: italic;
+    color: #334155;
+    margin-bottom: 1cqw;
+}
+
+.tf-a4-party-block {
+    background: #f8fafc;
+    border: 0.2cqw solid #e2e8f0;
+    border-left: 0.8cqw solid #94a3b8;
+    padding: 0.8cqw 1.2cqw;
+    margin-bottom: 1.2cqw;
+    border-radius: 1px;
+}
+
+.tf-a4-party-title {
+    font-size: 2.2cqw;
+    font-weight: bold;
+    color: #0f172a;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tf-a4-party-detail {
+    font-size: 2.0cqw;
+    color: #475569;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tf-a4-table-wrapper {
+    margin-bottom: 1.4cqw;
+}
+
+.tf-a4-mini-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 2.0cqw;
+}
+
+.tf-a4-mini-table th {
+    background: #f1f5f9;
+    border: 0.2cqw solid #cbd5e1;
+    padding: 0.6cqw 0.8cqw;
+    font-weight: bold;
+    text-align: center;
+    color: #1e293b;
+}
+
+.tf-a4-mini-table td {
+    border: 0.2cqw solid #e2e8f0;
+    padding: 0.5cqw 0.8cqw;
+    text-align: center;
+    color: #334155;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 50cqw;
+}
+
+.tf-a4-clauses-wrapper {
+    margin-bottom: 1.2cqw;
+}
+
+.tf-a4-clause-item {
+    font-size: 2.1cqw;
+    line-height: 1.25;
+    margin-bottom: 0.8cqw;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tf-a4-clause-num {
+    font-weight: bold;
+    color: #0f172a;
+}
+
+.tf-a4-clause-text {
+    color: #334155;
+}
+
+.tf-a4-signatures {
+    display: flex;
+    justify-content: space-between;
+    margin-top: auto;
+    padding-top: 1.4cqw;
+    border-top: 0.25cqw dashed #cbd5e1;
+}
+
+.tf-a4-sig-col {
+    width: 48%;
+    text-align: center;
+}
+
+.tf-a4-sig-label {
+    font-size: 2.2cqw;
+    font-weight: bold;
+    color: #0f172a;
+}
+
+.tf-a4-sig-space {
+    height: 3cqw;
+}
+
+.tf-a4-sig-name {
+    font-size: 2.1cqw;
+    font-weight: 600;
+    color: #475569;
+}
+
+/* --- Responsive Action Area Below A4 Preview (Zero Clipping, Stable Height) --- */
+.tf-card-actions-wrapper {
+    width: 100%;
+    min-width: 0;
+    height: 32px;
+    margin-top: 8px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    position: relative;
+    container-type: inline-size;
+    container-name: actions;
+}
+
+.tf-card-idle-hint {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #94a3b8;
+    background: #f8fafc;
+    border: 1px dashed #e2e8f0;
+    border-radius: 6px;
+    opacity: 1;
+    /* Matching sidebar 0.15s ease */
+    transition: opacity 0.15s ease;
+    user-select: none;
+    pointer-events: none;
+    box-sizing: border-box;
+}
+
+.tf-hint-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #94a3b8;
+    transition: background-color 0.15s ease;
+}
+
+.tf-card-actions {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    opacity: 0;
+    transform: translateY(2px);
+    pointer-events: none;
+    /* Matching sidebar flyout 0.16s cubic-bezier(0.16, 1, 0.3, 1) */
+    transition: opacity 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 3;
+}
+
+.tf-gallery-card:hover .tf-card-idle-hint,
+.tf-gallery-card:focus-within .tf-card-idle-hint,
+.tf-gallery-card.is-active .tf-card-idle-hint {
+    opacity: 0;
+}
+
+.tf-gallery-card:hover .tf-card-actions,
+.tf-gallery-card:focus-within .tf-card-actions,
+.tf-gallery-card.is-active .tf-card-actions {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.tf-btn-preview {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 30px;
+    padding: 0 6px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.tf-btn-preview:hover,
+.tf-btn-preview:focus-visible {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+    color: #0f172a;
+    outline: none;
+}
+
+.tf-btn-preview svg {
+    flex-shrink: 0;
+}
+
+.tf-btn-preview span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tf-btn-compose {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 30px;
+    padding: 0 6px;
+    background: #2563eb;
+    border: 1px solid #1d4ed8;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #ffffff;
+    cursor: pointer;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tf-btn-compose:hover,
+.tf-btn-compose:focus-visible {
+    background: #1d4ed8;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+    outline: none;
+}
+
+.tf-btn-compose svg {
+    flex-shrink: 0;
+}
+
+.tf-btn-compose span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@container actions (max-width: 185px) {
+    .tf-card-actions-wrapper {
+        height: 64px;
+    }
+    .tf-card-actions {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+}
+
+/* --- Selected Corner Badge --- */
+.tf-selected-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 22px;
+    height: 22px;
+    background: #2563eb;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    z-index: 6;
+}
+
+/* --- Card Caption & Metadata --- */
+.tf-card-caption {
+    padding-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.tf-card-meta-tags {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.tf-meta-cat {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #2563eb;
+    background: #eff6ff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #bfdbfe;
+}
+
+.tf-meta-party {
+    font-size: 10.5px;
+    font-weight: 500;
+    color: #64748b;
+    background: #f8fafc;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #e2e8f0;
+}
+
+.tf-card-title {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: #0f172a;
+    margin: 2px 0 0 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 35px;
+}
+
+.tf-card-desc {
+    font-size: 11.5px;
+    line-height: 1.35;
+    color: #64748b;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* --- Empty State --- */
+.tf-gallery-empty {
+    text-align: center;
+    padding: 48px 24px;
+    background: #ffffff;
+    border: 1px dashed #cbd5e1;
+    border-radius: 12px;
+}
+
+.tf-empty-icon {
+    margin-bottom: 12px;
+}
+
+.tf-empty-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #334155;
+    margin-bottom: 4px;
+}
+
+.tf-empty-sub {
+    font-size: 13px;
+    color: #64748b;
+}
+
+/* --- Full-Scale A4 Inspection Modal Styles --- */
+.tf-inspect-modal-backdrop {
+    background-color: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 1070;
+}
+
+.tf-inspect-modal-dialog {
+    max-width: 900px;
+    margin: 1.5rem auto;
+}
+
+.tf-inspect-modal-content {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+}
+
+.tf-inspect-header {
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 14px 20px;
+}
+
+.tf-inspect-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #2563eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.tf-inspect-body {
+    background: #f1f5f9;
+    padding: 24px 16px;
+    max-height: 75vh;
+    overflow-y: auto;
+}
+
+.tf-inspect-a4-sheet {
+    background: #ffffff;
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 48px 44px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e2e8f0;
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: #000000;
+}
+
+.tf-inspect-footer {
+    background: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    padding: 12px 20px;
+}
+
+/* --- Reduced Motion --- */
+@media (prefers-reduced-motion: reduce) {
+    .tf-gallery-card,
+    .tf-card-actions,
+    .tf-card-idle-hint,
+    .tf-a4-sheet,
+    .tf-cat-pill {
+        transition: none !important;
+        transform: none !important;
+    }
+}

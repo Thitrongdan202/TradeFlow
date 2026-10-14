@@ -1,0 +1,226 @@
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Contracts
+@inject IContractService ContractService
+@inject AuthenticationStateProvider AuthStateProvider
+
+@if (IsOpen)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5); z-index: 1060;">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fs-6 fw-semibold d-flex align-items-center gap-2">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                        Thiết lập thông tin pháp nhân Bên A (Mặc định cho Hợp đồng)
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseAsync"></button>
+                </div>
+                <div class="modal-body p-4">
+                    @if (isLoading)
+                    {
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <div class="text-muted small mt-2">Đang tải thông tin Bên A...</div>
+                        </div>
+                    }
+                    else if (model != null)
+                    {
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger py-2 px-3 small mb-3">@errorMessage</div>
+                        }
+                        @if (!string.IsNullOrEmpty(successMessage))
+                        {
+                            <div class="alert alert-success py-2 px-3 small mb-3">@successMessage</div>
+                        }
+
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <h6 class="fw-bold text-dark border-bottom pb-1 mb-2">1. Thông tin doanh nghiệp</h6>
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label small fw-semibold text-secondary">Tên doanh nghiệp / Đơn vị bán hàng <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control form-control-sm" @bind="model.CompanyName" placeholder="CÔNG TY TNHH..." />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold text-secondary">Tên thương hiệu viết tắt</label>
+                                <input type="text" class="form-control form-control-sm" @bind="model.TradingName" placeholder="LACASA" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-secondary">Mã số thuế / Mã số DN <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control form-control-sm" @bind="model.TaxCode" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-secondary">Số GCN ĐKKD (nếu có)</label>
+                                <input type="text" class="form-control form-control-sm" @bind="model.BusinessRegistrationNumber" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold text-secondary">Địa chỉ trụ sở chính (theo ĐKKD) <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control form-control-sm" @bind="model.RegisteredAddress" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold text-secondary">Địa chỉ Showroom / Văn phòng giao dịch</label>
+                                <input type="text" class="form-control form-control-sm" @bind="model.ContactAddress" />
+                            </div>
+
+                            <div class="col-12 pt-2">
+                                <h6 class="fw-bold text-dark border-bottom pb-1 mb-2">2. Người đại diện ký kết</h6>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label small fw-semibold text-secondary">Họ và tên người đại diện <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control form-control-sm" @bind="model.RepresentativeName" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold text-secondary">Chức vụ <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control form-control-sm" @bind="model.RepresentativePosition" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold text-secondary">Căn cứ thẩm quyền</label>
+                                <input type="text" class="form-control form-control-sm" @bind="model.RepresentativeAuthority" placeholder="Đại diện theo pháp luật..." />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-secondary">Số điện thoại liên hệ <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control form-control-sm" @bind="model.Phone" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-secondary">Hộp thư điện tử (Email) <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control form-control-sm" @bind="model.Email" />
+                            </div>
+
+                            <div class="col-12 pt-2">
+                                <h6 class="fw-bold text-dark border-bottom pb-1 mb-2">3. Tài khoản ngân hàng công ty</h6>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-secondary">Tên ngân hàng mở tài khoản</label>
+                                <input type="text" class="form-control form-control-sm" @bind="model.BankName" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-secondary">Số tài khoản ngân hàng</label>
+                                <input type="text" class="form-control form-control-sm" @bind="model.BankAccount" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-secondary">Tên chủ tài khoản</label>
+                                <input type="text" class="form-control form-control-sm" @bind="model.BankAccountHolder" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-secondary">Chi nhánh ngân hàng</label>
+                                <input type="text" class="form-control form-control-sm" @bind="model.BankBranch" />
+                            </div>
+
+                            <div class="col-12 pt-2">
+                                <h6 class="fw-bold text-dark border-bottom pb-1 mb-2">4. Điều khoản thương mại mặc định</h6>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold text-secondary">Hướng dẫn thanh toán mặc định</label>
+                                <textarea class="form-control form-control-sm" rows="2" @bind="model.DefaultPaymentInstructions"></textarea>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold text-secondary">Điều kiện giao nhận mặc định</label>
+                                <textarea class="form-control form-control-sm" rows="2" @bind="model.DefaultDeliveryTerms"></textarea>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold text-secondary">Chính sách bảo hành mặc định</label>
+                                <textarea class="form-control form-control-sm" rows="2" @bind="model.DefaultWarrantyTerms"></textarea>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CloseAsync">Đóng</button>
+                    <button type="button" class="btn btn-sm btn-primary px-3" @onclick="SaveAsync" disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                            <span>Đang lưu...</span>
+                        }
+                        else
+                        {
+                            <span>Lưu cấu hình Bên A</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private ContractPartyASettingsDto? model;
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private string? errorMessage;
+    private string? successMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && model == null)
+        {
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            model = await ContractService.GetPartyASettingsAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Lỗi khi tải cấu hình: " + ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (model == null) return;
+        errorMessage = null;
+        successMessage = null;
+
+        if (string.IsNullOrWhiteSpace(model.CompanyName) || string.IsNullOrWhiteSpace(model.TaxCode) || string.IsNullOrWhiteSpace(model.RegisteredAddress))
+        {
+            errorMessage = "Vui lòng nhập đầy đủ Tên doanh nghiệp, Mã số thuế và Địa chỉ trụ sở.";
+            return;
+        }
+
+        isSaving = true;
+        try
+        {
+            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userName = auth.User.Identity?.Name ?? "Admin";
+
+            model = await ContractService.UpdatePartyASettingsAsync(model, userName);
+            successMessage = "Lưu cấu hình pháp nhân Bên A thành công!";
+            await OnSaved.InvokeAsync();
+
+            await Task.Delay(800);
+            await CloseAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Lỗi khi lưu cấu hình: " + ex.Message;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+}

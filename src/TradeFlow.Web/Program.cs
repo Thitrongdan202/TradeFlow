@@ -114,6 +114,14 @@ app.MapGet("/api/quotations/{id:int}/export-pdf", async (int id, IQuotationServi
     return Results.File(bytes, "application/pdf", $"BaoGia_{quotation.Code}.pdf");
 }).RequireAuthorization("Permission:Quotations:View");
 
+app.MapGet("/api/contracts/{id:int}/export-pdf", async (int id, IContractService contractService) =>
+{
+    var contract = await contractService.GetContractByIdAsync(id);
+    if (contract == null) return Results.NotFound();
+    var bytes = await contractService.GenerateContractPdfAsync(id);
+    return Results.File(bytes, "application/pdf", $"HopDong_{contract.ContractNumber}.pdf");
+}).RequireAuthorization("Permission:Contracts:View");
+
 app.MapGet("/api/documents/{id:int}/download", async (int id, IDocumentService documentService) =>
 {
     var (stream, contentType, fileName) = await documentService.GetFileStreamAsync(id);

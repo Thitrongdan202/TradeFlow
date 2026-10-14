@@ -41,6 +41,15 @@
                 }
             </button>
 
+            <AuthorizeView Policy="Permission:Customers:Edit">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="OpenCreateReceiptModal" title="Lập phiếu thu tiền khách hàng">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                    </svg>
+                    <span>Lập phiếu thu</span>
+                </button>
+            </AuthorizeView>
+
             <AuthorizeView Policy="Permission:Customers:Create">
                 <a href="/doi-tac/khach-hang/them-moi" class="tf-btn tf-btn-primary">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -367,6 +376,9 @@
                                                     Chi tiết
                                                 </button>
                                                 <AuthorizeView Policy="Permission:Customers:Edit">
+                                                    <button type="button" class="tf-btn-action" title="Lập phiếu thu tiền khách hàng" @onclick="() => OpenRowReceiptModal(item)">
+                                                        Thu tiền
+                                                    </button>
                                                     <a href="/doi-tac/khach-hang/sua/@item.Id" class="tf-btn-action edit" title="Sửa thông tin">
                                                         Sửa
                                                     </a>
@@ -486,6 +498,18 @@
         </LoadingButton>
     </FooterContent>
 </TfModal>
+
+@* 8. Debt Payment Modal *@
+<DebtPaymentModal @bind-IsOpen="_isReceiptModalOpen"
+                  PartnerType="PartnerType.Customer"
+                  PartnerId="_receiptPartnerId"
+                  PartnerCode="@_receiptPartnerCode"
+                  PartnerName="@_receiptPartnerName"
+                  PartnerCompanyName="@_receiptPartnerCompanyName"
+                  PartnerPhone="@_receiptPartnerPhone"
+                  PartnerTaxCode="@_receiptPartnerTaxCode"
+                  CurrentBalance="_receiptCurrentBalance"
+                  OnPaymentRecorded="HandleReceiptRecorded" />
 
 @code {
     private CustomerFilterDto _filter = new();
@@ -791,5 +815,44 @@
         {
             _isBulkDeleting = false;
         }
+    }
+
+    // Receipt Modal State
+    private bool _isReceiptModalOpen = false;
+    private int _receiptPartnerId = 0;
+    private string _receiptPartnerCode = "";
+    private string _receiptPartnerName = "";
+    private string? _receiptPartnerCompanyName;
+    private string? _receiptPartnerPhone;
+    private string? _receiptPartnerTaxCode;
+    private decimal _receiptCurrentBalance = 0m;
+
+    private void OpenCreateReceiptModal()
+    {
+        _receiptPartnerId = 0;
+        _receiptPartnerCode = "";
+        _receiptPartnerName = "";
+        _receiptPartnerCompanyName = null;
+        _receiptPartnerPhone = null;
+        _receiptPartnerTaxCode = null;
+        _receiptCurrentBalance = 0m;
+        _isReceiptModalOpen = true;
+    }
+
+    private void OpenRowReceiptModal(CustomerListItemDto item)
+    {
+        _receiptPartnerId = item.Id;
+        _receiptPartnerCode = item.Code;
+        _receiptPartnerName = item.Name;
+        _receiptPartnerCompanyName = item.CompanyName;
+        _receiptPartnerPhone = item.Phone;
+        _receiptPartnerTaxCode = item.TaxCode;
+        _receiptCurrentBalance = item.CurrentReceivable;
+        _isReceiptModalOpen = true;
+    }
+
+    private async Task HandleReceiptRecorded(RecordDebtPaymentResult result)
+    {
+        await LoadDataAsync();
     }
 }

@@ -1,0 +1,175 @@
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Contracts
+@using TradeFlow.Domain.Enums
+@inject IContractService ContractService
+@inject NavigationManager Nav
+
+@if (IsOpen)
+{
+    <div class="modal fade show d-block tf-gallery-modal-backdrop" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-dialog-centered tf-gallery-modal-dialog">
+            <div class="modal-content tf-gallery-modal-content">
+                <!-- Modal Header (Clean Light Theme) -->
+                <div class="modal-header tf-gallery-modal-header">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="tf-modal-icon-badge">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2">
+                                <h5 class="modal-title fs-5 fw-bold text-dark mb-0">Thư viện Mẫu Hợp đồng Thương mại &amp; Dân sự</h5>
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 small">BLDS 2015 &amp; Luật GDĐT 2023</span>
+                            </div>
+                            <div class="text-muted small mt-1">
+                                Tuyển tập 7 mẫu văn bản chuẩn hóa ngành thiết bị vệ sinh LACASA — Xem trước tài liệu A4 chuẩn in ấn
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" @onclick="CloseAsync" aria-label="Đóng"></button>
+                </div>
+
+                <!-- Modal Body: Real A4 Document Preview Gallery -->
+                <div class="modal-body tf-gallery-modal-body">
+                    @if (isLoading)
+                    {
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <div class="text-muted small mt-3">Đang tải danh mục mẫu hợp đồng...</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <ContractTemplateGallery Templates="@templates"
+                                                OnSelect="SelectTemplate"
+                                                ActionButtonText="Soạn hợp đồng" />
+                    }
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="modal-footer tf-gallery-modal-footer">
+                    <div class="text-muted small me-auto d-flex align-items-center gap-2">
+                        <span class="tf-hint-dot"></span>
+                        <span>Chọn một mẫu hợp đồng hoặc bấm "Xem mẫu" để đọc toàn văn tài liệu A4 trước khi soạn thảo.</span>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary px-4" @onclick="CloseAsync">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .tf-gallery-modal-backdrop {
+        background-color: rgba(15, 23, 42, 0.55);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 1060;
+    }
+
+    .tf-gallery-modal-dialog {
+        max-width: 1380px;
+        width: 96vw;
+        margin: 1.5rem auto;
+    }
+
+    .tf-gallery-modal-content {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        overflow: hidden;
+    }
+
+    .tf-gallery-modal-header {
+        background: #ffffff;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 16px 24px;
+    }
+
+    .tf-modal-icon-badge {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #2563eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .tf-gallery-modal-body {
+        background: #f8fafc;
+        padding: 20px 24px 28px 24px;
+        max-height: calc(88vh - 140px);
+        overflow-y: auto;
+    }
+
+    .tf-gallery-modal-footer {
+        background: #ffffff;
+        border-top: 1px solid #e2e8f0;
+        padding: 12px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .tf-hint-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #2563eb;
+        box-shadow: 0 0 6px rgba(37, 99, 235, 0.5);
+    }
+</style>
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public EventCallback<ContractTemplateDto> OnTemplateSelected { get; set; }
+
+    private List<ContractTemplateDto> templates = new();
+    private bool isLoading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && templates.Count == 0)
+        {
+            await LoadTemplatesAsync();
+        }
+    }
+
+    private async Task LoadTemplatesAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var result = await ContractService.GetTemplatesAsync();
+            templates = result.ToList();
+        }
+        catch (Exception) { }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SelectTemplate(ContractTemplateDto t)
+    {
+        await OnTemplateSelected.InvokeAsync(t);
+        await CloseAsync();
+        Nav.NavigateTo($"/hop-dong/tao-moi/{t.Code}");
+    }
+
+    private async Task CloseAsync()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+}

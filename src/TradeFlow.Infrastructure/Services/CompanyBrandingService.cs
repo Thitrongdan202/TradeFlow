@@ -249,6 +249,26 @@ public class CompanyBrandingService : ICompanyBrandingService
         _cache.Remove(CacheKey);
     }
 
+    public static readonly CompanyBrandingDto DefaultBranding = new()
+    {
+        CompanyName = "TỔNG KHO THIẾT BỊ VỆ SINH LACASA",
+        LogoPath = "/uploads/branding/lacasa_logo.png",
+        ShowLoadingScreen = true,
+        ShowCompanyNameOnLoading = true,
+        SpinnerColor = "#10b981",
+        SpinnerOpacity = 0.8,
+        SpinnerSpeed = "normal"
+    };
+
+    public CompanyBrandingDto GetCachedBranding()
+    {
+        if (_cache.TryGetValue(CacheKey, out CompanyBrandingDto? cached) && cached != null)
+        {
+            return cached;
+        }
+        return DefaultBranding;
+    }
+
     private static bool ValidateImageHeader(byte[] header, int length, string ext)
     {
         if (length < 4) return false;

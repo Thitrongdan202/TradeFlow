@@ -38,6 +38,31 @@
                 }
             </button>
 
+            <AuthorizeView Policy="Permission:Customers:Edit">
+                @if (!_filter.PartnerType.HasValue || _filter.PartnerType == PartnerType.Customer)
+                {
+                    <button type="button" class="tf-btn tf-btn-primary" @onclick="() => OpenStandaloneVoucherModal(PartnerType.Customer)" title="Lập phiếu thu tiền khách hàng">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                        <span>Lập phiếu thu</span>
+                    </button>
+                }
+            </AuthorizeView>
+
+            <AuthorizeView Policy="Permission:Suppliers:Edit">
+                @if (!_filter.PartnerType.HasValue || _filter.PartnerType == PartnerType.Supplier)
+                {
+                    <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => OpenStandaloneVoucherModal(PartnerType.Supplier)" title="Lập phiếu chi tiền nhà cung cấp">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="5" width="20" height="14" rx="2"/>
+                            <line x1="2" y1="10" x2="22" y2="10"/>
+                        </svg>
+                        <span>Lập phiếu chi</span>
+                    </button>
+                }
+            </AuthorizeView>
+
             <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => OpenExportModal(false)" title="Xuất bảng đối soát chi tiết công nợ đối tác">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -592,6 +617,18 @@
         _paymentCurrentBalance = item.OutstandingAmount;
         _paymentInvoiceId = item.DocumentType.Contains("Hóa đơn") ? item.DocumentId : null;
         _paymentDocumentCode = item.DocumentCode;
+        _isPaymentModalOpen = true;
+    }
+
+    private void OpenStandaloneVoucherModal(PartnerType partnerType)
+    {
+        _paymentPartnerType = partnerType;
+        _paymentPartnerId = 0;
+        _paymentPartnerCode = "";
+        _paymentPartnerName = "";
+        _paymentCurrentBalance = 0;
+        _paymentInvoiceId = null;
+        _paymentDocumentCode = null;
         _isPaymentModalOpen = true;
     }
 

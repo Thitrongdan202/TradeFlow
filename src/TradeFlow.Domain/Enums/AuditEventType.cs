@@ -135,5 +135,19 @@ public enum AuditEventType
     DebtPaymentRecorded = 190,
     DebtAdjustmentRecorded = 191,
     DebtDiscountRecorded = 192,
-    DebtExported = 193
+    DebtExported = 193,
+
+    // === Quản lý Hợp đồng & Phụ lục ===
+    ContractCreated = 200,
+    ContractUpdated = 201,
+    ContractFinalized = 202,
+    ContractSigned = 203,
+    ContractPrinted = 204,
+    ContractCancelled = 205,
+    ContractLiquidated = 206,
+    ContractExportedPdf = 207,
+    ContractSettingsUpdated = 208,
+    ContractPartyASettingsUpdated = 208,
+    ContractTemplateUpdated = 209,
+    ContractDeleted = 210
 }

@@ -41,6 +41,16 @@
                 }
             </button>
 
+            <AuthorizeView Policy="Permission:Suppliers:Edit">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="OpenCreatePaymentModal" title="Lập phiếu chi tiền nhà cung cấp">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="5" width="20" height="14" rx="2"/>
+                        <line x1="2" y1="10" x2="22" y2="10"/>
+                    </svg>
+                    <span>Lập phiếu chi</span>
+                </button>
+            </AuthorizeView>
+
             <AuthorizeView Policy="Permission:Suppliers:Create">
                 <a href="/doi-tac/nha-cung-cap/them-moi" class="tf-btn tf-btn-primary">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -361,6 +371,9 @@
                                                     Chi tiết
                                                 </button>
                                                 <AuthorizeView Policy="Permission:Suppliers:Edit">
+                                                    <button type="button" class="tf-btn-action" title="Lập phiếu chi tiền nhà cung cấp" @onclick="() => OpenRowPaymentModal(item)">
+                                                        Chi tiền
+                                                    </button>
                                                     <a href="/doi-tac/nha-cung-cap/sua/@item.Id" class="tf-btn-action edit" title="Sửa thông tin">
                                                         Sửa
                                                     </a>
@@ -480,6 +493,18 @@
         </LoadingButton>
     </FooterContent>
 </TfModal>
+
+@* 8. Debt Payment Modal *@
+<DebtPaymentModal @bind-IsOpen="_isPaymentModalOpen"
+                  PartnerType="PartnerType.Supplier"
+                  PartnerId="_paymentPartnerId"
+                  PartnerCode="@_paymentPartnerCode"
+                  PartnerName="@_paymentPartnerName"
+                  PartnerCompanyName="@_paymentPartnerCompanyName"
+                  PartnerPhone="@_paymentPartnerPhone"
+                  PartnerTaxCode="@_paymentPartnerTaxCode"
+                  CurrentBalance="_paymentCurrentBalance"
+                  OnPaymentRecorded="HandlePaymentRecorded" />
 
 @code {
     private SupplierFilterDto _filter = new();
@@ -789,5 +814,45 @@
         {
             _isBulkDeleting = false;
         }
+    }
+
+    // Payment Modal State
+    private bool _isPaymentModalOpen = false;
+    private int _paymentPartnerId = 0;
+    private string _paymentPartnerCode = "";
+    private string _paymentPartnerName = "";
+    private string? _paymentPartnerCompanyName;
+    private string? _paymentPartnerPhone;
+    private string? _paymentPartnerTaxCode;
+    private decimal _paymentCurrentBalance = 0m;
+
+    private void OpenCreatePaymentModal()
+    {
+        _paymentPartnerId = 0;
+        _paymentPartnerCode = "";
+        _paymentPartnerName = "";
+        _paymentPartnerCompanyName = null;
+        _paymentPartnerPhone = null;
+        _paymentPartnerTaxCode = null;
+        _paymentCurrentBalance = 0m;
+        _isPaymentModalOpen = true;
+    }
+
+    private void OpenRowPaymentModal(SupplierListItemDto item)
+    {
+        _paymentPartnerId = item.Id;
+        _paymentPartnerCode = item.Code;
+        _paymentPartnerName = item.Name;
+        _paymentPartnerCompanyName = item.CompanyName;
+        _paymentPartnerPhone = item.Phone;
+        _paymentPartnerTaxCode = item.TaxCode;
+        _paymentCurrentBalance = item.CurrentPayable;
+        _isPaymentModalOpen = true;
+    }
+
+    private async Task HandlePaymentRecorded(RecordDebtPaymentResult result)
+    {
+        await LoadAggregatesAsync();
+        await LoadSuppliersAsync();
     }
 }

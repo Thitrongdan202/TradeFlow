@@ -101,11 +101,26 @@
 
     private bool _brandingLoaded;
 
+    [Inject] private IJSRuntime JS { get; set; } = null!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !IsPreview)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("tfDismissStartupLoader");
+            }
+            catch { }
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         if (!IsPreview)
         {
             LoadingService.OnChange += HandleLoadingChanged;
+            _liveBranding = BrandingService.GetCachedBranding();
             try
             {
                 _liveBranding = await BrandingService.GetBrandingAsync();
@@ -118,7 +133,7 @@
         }
     }
 
-    private void HandleLoadingChanged()
+    private async void HandleLoadingChanged()
     {
         if (_disposed) return;
 
@@ -126,22 +141,19 @@
 
         if (nowActive && !_brandingLoaded)
         {
-            _ = Task.Run(async () =>
+            try
             {
-                try
+                _liveBranding = await BrandingService.GetBrandingAsync();
+                _brandingLoaded = true;
+                if (!_disposed)
                 {
-                    _liveBranding = await BrandingService.GetBrandingAsync();
-                    _brandingLoaded = true;
-                    if (!_disposed)
-                    {
-                        await InvokeAsync(StateHasChanged);
-                    }
+                    await InvokeAsync(StateHasChanged);
                 }
-                catch
-                {
-                    // Fallback branding already active
-                }
-            });
+            }
+            catch
+            {
+                // Fallback branding already active
+            }
         }
 
         if (_wasActive && !nowActive)
@@ -149,9 +161,9 @@
             // Transition from active -> inactive: start short 240ms fade-out
             _isFadingOut = true;
             _wasActive = false;
-            InvokeAsync(StateHasChanged);
+            await InvokeAsync(StateHasChanged);
 
-            _ = Task.Run(async () =>
+            try
             {
                 await Task.Delay(240);
                 if (!_disposed)
@@ -159,13 +171,14 @@
                     _isFadingOut = false;
                     await InvokeAsync(StateHasChanged);
                 }
-            });
+            }
+            catch { }
         }
         else
         {
             _wasActive = nowActive;
             _isFadingOut = false;
-            InvokeAsync(StateHasChanged);
+            await InvokeAsync(StateHasChanged);
         }
     }
 

@@ -226,7 +226,7 @@
                                         <line x1="12" y1="1" x2="12" y2="23"></line>
                                         <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                                     </svg>
-                                    <span>Thanh toán</span>
+                                    <span>Lập phiếu thu</span>
                                 </button>
                                 <button type="button" class="tf-debt-action-btn" @onclick="() => OpenPaymentModal(DebtTransactionType.Adjustment)" title="Lập phiếu điều chỉnh dư nợ">
                                     <span>Điều chỉnh</span>
@@ -558,7 +558,7 @@
                                         <line x1="12" y1="8" x2="12" y2="12"></line>
                                         <line x1="12" y1="16" x2="12.01" y2="16"></line>
                                     </svg>
-                                    <span>Thanh toán</span>
+                                    <span>Lập phiếu chi</span>
                                 </button>
                                 <button type="button" class="tf-debt-action-btn" @onclick="() => OpenPaymentModal(DebtTransactionType.Adjustment)" title="Lập phiếu điều chỉnh dư nợ">
                                     <span>Điều chỉnh</span>
@@ -971,6 +971,9 @@
                   PartnerId="@(PartnerType == PartnerType.Customer ? (_customer?.Id ?? 0) : (_supplier?.Id ?? 0))"
                   PartnerCode="@(PartnerType == PartnerType.Customer ? (_customer?.Code ?? "") : (_supplier?.Code ?? ""))"
                   PartnerName="@(PartnerType == PartnerType.Customer ? (_customer?.Name ?? "") : (_supplier?.Name ?? ""))"
+                  PartnerCompanyName="@(PartnerType == PartnerType.Customer ? _customer?.CompanyName : _supplier?.CompanyName)"
+                  PartnerPhone="@(PartnerType == PartnerType.Customer ? _customer?.Phone : _supplier?.Phone)"
+                  PartnerTaxCode="@(PartnerType == PartnerType.Customer ? _customer?.TaxCode : _supplier?.TaxCode)"
                   CurrentBalance="@(PartnerType == PartnerType.Customer ? (_customer?.CurrentReceivable ?? 0) : (_supplier?.CurrentPayable ?? 0))"
                   InitialTransactionType="_modalTransactionType"
                   OnPaymentRecorded="HandlePaymentRecorded" />

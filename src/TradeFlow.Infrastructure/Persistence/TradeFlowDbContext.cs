@@ -11,6 +11,7 @@ using TradeFlow.Domain.Entities.Documents;
 using TradeFlow.Domain.Entities.Security;
 using TradeFlow.Domain.Entities.Employees;
 using TradeFlow.Domain.Entities.Partners;
+using TradeFlow.Domain.Entities.Contracts;
 
 namespace TradeFlow.Infrastructure.Persistence;
 
@@ -75,6 +76,12 @@ public class TradeFlowDbContext
     public DbSet<Position> Positions => Set<Position>();
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<EmployeeRequest> EmployeeRequests => Set<EmployeeRequest>();
+
+    // === Quản lý Hợp đồng & Phụ lục ===
+    public DbSet<TradeFlow.Domain.Entities.Contracts.Contract> Contracts => Set<TradeFlow.Domain.Entities.Contracts.Contract>();
+    public DbSet<TradeFlow.Domain.Entities.Contracts.ContractItem> ContractItems => Set<TradeFlow.Domain.Entities.Contracts.ContractItem>();
+    public DbSet<TradeFlow.Domain.Entities.Contracts.ContractTemplate> ContractTemplates => Set<TradeFlow.Domain.Entities.Contracts.ContractTemplate>();
+    public DbSet<TradeFlow.Domain.Entities.Contracts.ContractPartyASettings> ContractPartyASettings => Set<TradeFlow.Domain.Entities.Contracts.ContractPartyASettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

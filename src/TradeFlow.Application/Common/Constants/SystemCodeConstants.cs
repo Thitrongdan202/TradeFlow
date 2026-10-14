@@ -11,6 +11,7 @@ public static class SystemCodeConstants
     public const string PriceList = "PriceList";
     public const string Quotation = "Quotation";
     public const string Employee = "Employee";
+    public const string Contract = "Contract";
 
     public static readonly IReadOnlyDictionary<string, (string Prefix, string Description)> Defaults =
         new Dictionary<string, (string Prefix, string Description)>
@@ -23,5 +24,6 @@ public static class SystemCodeConstants
             [UnitOfMeasure] = ("DV", "Mã đơn vị tính hệ thống"),
             [PriceList] = ("BG", "Mã bảng giá hệ thống"),
             [Employee] = ("NV", "Mã nhân viên hệ thống"),
+            [Contract] = ("HD", "Mã hợp đồng thương mại"),
         };
 }

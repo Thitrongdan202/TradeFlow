@@ -301,6 +301,18 @@ public enum DebtExportScope
     AllFiltered = 3
 }
 
+public class PartnerLookupDto
+{
+    public int Id { get; set; }
+    public PartnerType PartnerType { get; set; }
+    public string Code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? CompanyName { get; set; }
+    public string? Phone { get; set; }
+    public string? TaxCode { get; set; }
+    public decimal CurrentBalance { get; set; }
+}
+
 public class RecordDebtPaymentDto
 {
     public PartnerType PartnerType { get; set; } = PartnerType.Customer;

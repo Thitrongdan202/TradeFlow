@@ -82,5 +82,10 @@ public enum ResourceType
     Departments = 42,
 
     /// <summary>Chức danh</summary>
-    Positions = 43
+    Positions = 43,
+
+    // === Quản lý Hợp đồng & Phụ lục ===
+
+    /// <summary>Hợp đồng thương mại & phụ lục</summary>
+    Contracts = 50
 }

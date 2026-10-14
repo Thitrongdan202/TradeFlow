@@ -1,0 +1,798 @@
+@using TradeFlow.Application.Common.Models.Contracts
+@using TradeFlow.Domain.Enums
+@inject NavigationManager Nav
+
+<div class="tf-contract-gallery-wrapper">
+    <!-- Gallery Controls (Light Theme) -->
+    <div class="tf-gallery-controls">
+        <div class="tf-controls-top">
+            <div class="tf-search-box">
+                <svg class="tf-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input type="text"
+                       class="tf-search-input"
+                       placeholder="Tìm kiếm theo tên mẫu hợp đồng, căn cứ pháp lý, đối tượng..."
+                       value="@searchQuery"
+                       @oninput="OnSearchInput" />
+                @if (!string.IsNullOrEmpty(searchQuery))
+                {
+                    <button type="button" class="tf-search-clear" @onclick="ClearSearch" title="Xóa tìm kiếm">✕</button>
+                }
+            </div>
+            <div class="tf-gallery-counter">
+                Hiển thị <span class="tf-counter-val">@FilteredTemplates.Count()</span>/@(Templates?.Count ?? 0) mẫu hợp đồng
+            </div>
+        </div>
+
+        <!-- Category Filter Pills (Light Theme) -->
+        <div class="tf-category-bar" role="tablist" aria-label="Bộ lọc danh mục hợp đồng">
+            <button type="button"
+                    class="tf-cat-pill @(selectedCategory == null ? "active" : "")"
+                    @onclick="() => SelectCategory(null)"
+                    role="tab"
+                    aria-selected="@(selectedCategory == null)">
+                <span class="tf-cat-name">Tất cả mẫu</span>
+                <span class="tf-cat-count">@(Templates?.Count ?? 0)</span>
+            </button>
+            @foreach (var cat in AvailableCategories)
+            {
+                var count = Templates?.Count(t => t.Category == cat) ?? 0;
+                <button type="button"
+                        class="tf-cat-pill @(selectedCategory == cat ? "active" : "")"
+                        @onclick="() => SelectCategory(cat)"
+                        role="tab"
+                        aria-selected="@(selectedCategory == cat)">
+                    <span class="tf-cat-name">@cat</span>
+                    <span class="tf-cat-count">@count</span>
+                </button>
+            }
+        </div>
+    </div>
+
+    <!-- Gallery Grid of Miniature A4 Documents -->
+    <div class="tf-gallery-grid-container">
+        @if (!FilteredTemplates.Any())
+        {
+            <div class="tf-gallery-empty">
+                <div class="tf-empty-icon">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                </div>
+                <div class="tf-empty-title">Không tìm thấy mẫu hợp đồng phù hợp</div>
+                <div class="tf-empty-sub">Vui lòng thử từ khóa tìm kiếm khác hoặc chọn lại "Tất cả mẫu".</div>
+                <button type="button" class="btn btn-sm btn-outline-secondary mt-3" @onclick="ResetFilters">
+                    Đặt lại bộ lọc
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="tf-gallery-grid" role="list">
+                @foreach (var t in FilteredTemplates)
+                {
+                    var isSelected = SelectedTemplateCode == t.Code;
+                    var isActive = activeCardCode == t.Code;
+
+                    <div class="tf-gallery-card @(isSelected ? "is-selected" : "") @(isActive ? "is-active" : "")"
+                         tabindex="0"
+                         role="listitem"
+                         aria-label="@t.Title"
+                         @onkeydown="(e) => OnCardKeyDown(e, t)">
+
+                        <!-- 1. The Miniature Pure White A4 Contract Sheet -->
+                        <div class="tf-card-paper-wrapper" @onclick="() => OnCardClicked(t)">
+                            <div class="tf-a4-sheet" role="document" aria-label="Bản xem trước A4 của @t.Title">
+                                <div class="tf-a4-page-content">
+                                    <!-- National Header -->
+                                    <div class="tf-a4-national-header">
+                                        <div class="tf-a4-nat-name">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+                                        <div class="tf-a4-nat-motto">Độc lập - Tự do - Hạnh phúc</div>
+                                        <div class="tf-a4-nat-line"></div>
+                                        <div class="tf-a4-nat-date">TP. Cần Thơ, ngày @DateTime.Now.ToString("dd") tháng @DateTime.Now.ToString("MM") năm @DateTime.Now.ToString("yyyy")</div>
+                                    </div>
+
+                                    <!-- Document Title & Number -->
+                                    <div class="tf-a4-doc-header">
+                                        <div class="tf-a4-doc-title">@GetTemplateDocTitle(t.Code)</div>
+                                        <div class="tf-a4-doc-num">Số: @GetSampleContractNumber(t.Code)</div>
+                                    </div>
+
+                                    <!-- Legal Basis -->
+                                    <div class="tf-a4-legal-basis">
+                                        @foreach (var basis in GetLegalBasisLines(t.Code))
+                                        {
+                                            <div class="tf-a4-basis-line">- @basis</div>
+                                        }
+                                    </div>
+
+                                    <!-- Preamble & Parties -->
+                                    <div class="tf-a4-preamble">
+                                        Hôm nay, tại văn phòng LACASA, chúng tôi gồm các bên:
+                                    </div>
+                                    <div class="tf-a4-party-block">
+                                        <div class="tf-a4-party-title">BÊN A (BÊN BÁN): CÔNG TY TNHH THIẾT BỊ VỆ SINH LACASA VIỆT NAM</div>
+                                        <div class="tf-a4-party-detail">MST: 0316899999 | Địa chỉ: 123 Nguyễn Văn Cừ, P. An Khánh, Q. Ninh Kiều, Cần Thơ</div>
+                                    </div>
+                                    <div class="tf-a4-party-block">
+                                        <div class="tf-a4-party-title">@GetPartyBHeader(t.Code)</div>
+                                        <div class="tf-a4-party-detail">@GetPartyBDetail(t.Code)</div>
+                                    </div>
+
+                                    <!-- Sample Line Items Table if applicable -->
+                                    @if (HasItemsTable(t.Code))
+                                    {
+                                        <div class="tf-a4-table-wrapper">
+                                            <table class="tf-a4-mini-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>STT</th>
+                                                        <th>Tên thiết bị / Hạng mục</th>
+                                                        <th>ĐVT</th>
+                                                        <th>SL</th>
+                                                        <th>Thành tiền (đ)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var row in GetSampleItems(t.Code))
+                                                    {
+                                                        <tr>
+                                                            <td>@row.Stt</td>
+                                                            <td class="text-start">@row.Name</td>
+                                                            <td>@row.Unit</td>
+                                                            <td>@row.Qty</td>
+                                                            <td class="text-end">@row.Total</td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    }
+
+                                    <!-- Numbered Articles / Clauses -->
+                                    <div class="tf-a4-clauses-wrapper">
+                                        @foreach (var clause in GetPreviewClauses(t.Code))
+                                        {
+                                            <div class="tf-a4-clause-item">
+                                                <span class="tf-a4-clause-num">@clause.Num: @clause.Title.</span>
+                                                <span class="tf-a4-clause-text">@clause.Summary</span>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    <!-- Signatures Block -->
+                                    <div class="tf-a4-signatures">
+                                        <div class="tf-a4-sig-col">
+                                            <div class="tf-a4-sig-label">ĐẠI DIỆN BÊN A</div>
+                                            <div class="tf-a4-sig-space"></div>
+                                            <div class="tf-a4-sig-name">Nguyễn Văn An</div>
+                                        </div>
+                                        <div class="tf-a4-sig-col">
+                                            <div class="tf-a4-sig-label">@GetPartyBSigLabel(t.Code)</div>
+                                            <div class="tf-a4-sig-space"></div>
+                                            <div class="tf-a4-sig-name">@GetPartyBSigName(t.Code)</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Selected Corner Badge -->
+                            @if (isSelected)
+                            {
+                                <div class="tf-selected-badge" title="Mẫu đang được chọn">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                        <polyline points="20 6 9 17 4 12"/>
+                                    </svg>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- 2. Responsive Action Area Below A4 Preview (Zero Clipping, Smooth Reveal) -->
+                        <div class="tf-card-actions-wrapper">
+                            <div class="tf-card-idle-hint" aria-hidden="true">
+                                <span class="tf-hint-dot"></span>
+                                <span class="tf-hint-text">Xem mẫu &amp; Soạn thảo</span>
+                            </div>
+                            <div class="tf-card-actions">
+                                <button type="button"
+                                        class="tf-btn-preview"
+                                        title="Xem chi tiết toàn văn mẫu A4"
+                                        @onclick="() => OpenPreviewModal(t)"
+                                        @onclick:stopPropagation="true">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                        <circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                    <span>Xem mẫu</span>
+                                </button>
+                                <button type="button"
+                                        class="tf-btn-compose"
+                                        title="Soạn thảo hợp đồng từ mẫu này"
+                                        @onclick="() => HandleSelectTemplate(t)"
+                                        @onclick:stopPropagation="true">
+                                    <span>@(string.IsNullOrEmpty(ActionButtonText) ? "Soạn hợp đồng" : ActionButtonText)</span>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <line x1="5" y1="12" x2="19" y2="12"/>
+                                        <polyline points="12 5 19 12 12 19"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 2. Clean Caption & Metadata Beneath A4 Preview -->
+                        <div class="tf-card-caption" @onclick="() => OnCardClicked(t)">
+                            <div class="tf-card-meta-tags">
+                                <span class="tf-meta-cat">@t.Category</span>
+                                <span class="tf-meta-party">@GetPartyBBadgeText(t.TargetPartyType)</span>
+                            </div>
+                            <h3 class="tf-card-title" title="@t.Title">@t.Title</h3>
+                            <p class="tf-card-desc">@GetCuratedDescription(t)</p>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- 3. Full-Scale A4 Inspection Modal ("Xem mẫu hợp đồng") -->
+    @if (inspectTemplate != null)
+    {
+        <div class="modal fade show d-block tf-inspect-modal-backdrop" tabindex="-1" role="dialog" aria-modal="true">
+            <div class="modal-dialog modal-dialog-centered modal-xl tf-inspect-modal-dialog">
+                <div class="modal-content tf-inspect-modal-content">
+                    <!-- Modal Header -->
+                    <div class="modal-header tf-inspect-header">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="tf-inspect-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="16" y1="13" x2="8" y2="13"/>
+                                    <line x1="16" y1="17" x2="8" y2="17"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <h5 class="modal-title fw-bold text-dark mb-0">@inspectTemplate.Title</h5>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle small">@inspectTemplate.Category</span>
+                                    <span class="badge bg-secondary-subtle text-secondary border small">@GetPartyBBadgeText(inspectTemplate.TargetPartyType)</span>
+                                </div>
+                                <div class="text-muted small mt-1">@inspectTemplate.LegalBasis</div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close" @onclick="CloseInspectModal" aria-label="Đóng"></button>
+                    </div>
+
+                    <!-- Modal Body: High-Resolution A4 Document Sheet -->
+                    <div class="modal-body tf-inspect-body">
+                        <div class="tf-inspect-a4-sheet">
+                            <!-- National Header -->
+                            <div class="text-center mb-4">
+                                <div class="fw-bold" style="font-size: 15px;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+                                <div class="fw-bold" style="font-size: 14px;">Độc lập - Tự do - Hạnh phúc</div>
+                                <div class="mx-auto my-1" style="width: 140px; height: 1px; background-color: #333;"></div>
+                                <div class="fst-italic" style="font-size: 13px;">TP. Cần Thơ, ngày @DateTime.Now.ToString("dd") tháng @DateTime.Now.ToString("MM") năm @DateTime.Now.ToString("yyyy")</div>
+                            </div>
+
+                            <!-- Document Title & Number -->
+                            <div class="text-center mb-4">
+                                <div class="fw-bold fs-5 text-uppercase">@GetTemplateDocTitle(inspectTemplate.Code)</div>
+                                <div class="fw-semibold">Số: @GetSampleContractNumber(inspectTemplate.Code)</div>
+                            </div>
+
+                            <!-- Legal Basis -->
+                            <div class="mb-3 fst-italic" style="font-size: 13.5px;">
+                                @foreach (var basis in GetLegalBasisLines(inspectTemplate.Code))
+                                {
+                                    <div>- @basis</div>
+                                }
+                            </div>
+
+                            <div class="mb-3 fst-italic">
+                                Hôm nay, ngày @DateTime.Now.ToString("dd/MM/yyyy"), tại Showroom Công ty TNHH Thiết bị Vệ sinh LACASA Việt Nam, chúng tôi gồm có:
+                            </div>
+
+                            <!-- Party A -->
+                            <div class="mb-3 p-3 border rounded bg-light bg-opacity-50">
+                                <div class="fw-bold text-uppercase mb-1">BÊN A (BÊN BÁN): CÔNG TY TNHH THIẾT BỊ VỆ SINH LACASA VIỆT NAM</div>
+                                <div>Địa chỉ: Số 123 Đường Nguyễn Văn Cừ, Phường An Khánh, Quận Ninh Kiều, TP. Cần Thơ</div>
+                                <div>Mã số thuế: 0316899999 | Điện thoại: 0909 123 456 | Email: hopdong@lacasavietnam.vn</div>
+                                <div>Người đại diện: <strong>Nguyễn Văn An</strong> - Chức vụ: Giám đốc (Người đại diện theo pháp luật)</div>
+                                <div>Tài khoản ngân hàng: 0071000999888 tại Ngân hàng Ngoại thương Việt Nam (Vietcombank) - CN Cần Thơ</div>
+                            </div>
+
+                            <!-- Party B -->
+                            <div class="mb-3 p-3 border rounded bg-light bg-opacity-50">
+                                <div class="fw-bold text-uppercase mb-1">@GetPartyBHeader(inspectTemplate.Code)</div>
+                                <div>@GetPartyBDetail(inspectTemplate.Code)</div>
+                            </div>
+
+                            <div class="mb-3 fst-italic">
+                                Hai bên cùng thống nhất ký kết hợp đồng theo các điều khoản cụ thể sau đây:
+                            </div>
+
+                            <!-- Sample Items Table -->
+                            @if (HasItemsTable(inspectTemplate.Code))
+                            {
+                                <table class="table table-bordered table-sm mb-3 text-center" style="font-size: 13.5px;">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>STT</th>
+                                            <th>Tên thiết bị / Hạng mục quy cách</th>
+                                            <th>ĐVT</th>
+                                            <th>SL</th>
+                                            <th>Thành tiền (VNĐ)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var row in GetSampleItems(inspectTemplate.Code))
+                                        {
+                                            <tr>
+                                                <td>@row.Stt</td>
+                                                <td class="text-start">@row.Name</td>
+                                                <td>@row.Unit</td>
+                                                <td>@row.Qty</td>
+                                                <td class="text-end fw-semibold">@row.Total</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            }
+
+                            <!-- Full Clauses -->
+                            @foreach (var clause in GetFullClauses(inspectTemplate.Code))
+                            {
+                                <div class="mb-3">
+                                    <div class="fw-bold">@clause.Num: @clause.Title</div>
+                                    <div style="text-align: justify;">@clause.Summary</div>
+                                </div>
+                            }
+
+                            <!-- Signatures Box -->
+                            <div class="row mt-5 pt-4 text-center">
+                                <div class="col-6">
+                                    <div class="fw-bold">ĐẠI DIỆN BÊN A</div>
+                                    <div class="fst-italic small mb-2">(Ký, ghi rõ họ tên và đóng dấu)</div>
+                                    <div style="height: 70px;"></div>
+                                    <div class="fw-bold">Nguyễn Văn An</div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="fw-bold">@GetPartyBSigLabel(inspectTemplate.Code)</div>
+                                    <div class="fst-italic small mb-2">(Ký, ghi rõ họ tên)</div>
+                                    <div style="height: 70px;"></div>
+                                    <div class="fw-bold">@GetPartyBSigName(inspectTemplate.Code)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal Footer -->
+                    <div class="modal-footer tf-inspect-footer">
+                        <div class="text-muted small me-auto d-none d-md-block">
+                            <span>Văn bản mẫu chuẩn A4, phông Times New Roman theo thể thức NĐ 30/2020/NĐ-CP và BLDS 2015.</span>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary px-3" @onclick="CloseInspectModal">Đóng xem trước</button>
+                        <button type="button" class="btn btn-sm btn-primary px-4 d-flex align-items-center gap-1" @onclick="() => HandleSelectTemplate(inspectTemplate)">
+                            <span>Soạn hợp đồng từ mẫu này</span>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                                <polyline points="12 5 19 12 12 19"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public List<ContractTemplateDto>? Templates { get; set; }
+    [Parameter] public string? SelectedTemplateCode { get; set; }
+    [Parameter] public EventCallback<ContractTemplateDto> OnSelect { get; set; }
+    [Parameter] public string ActionButtonText { get; set; } = "Soạn hợp đồng";
+
+    private string? selectedCategory;
+    private string searchQuery = string.Empty;
+    private string? activeCardCode;
+    private ContractTemplateDto? inspectTemplate;
+
+    private IEnumerable<string> AvailableCategories =>
+        Templates?.Select(t => t.Category).Distinct().ToList() ?? Enumerable.Empty<string>();
+
+    private IEnumerable<ContractTemplateDto> FilteredTemplates
+    {
+        get
+        {
+            if (Templates == null) return Enumerable.Empty<ContractTemplateDto>();
+
+            var list = Templates.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(selectedCategory))
+            {
+                list = list.Where(t => t.Category.Equals(selectedCategory, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                var q = searchQuery.Trim().ToLowerInvariant();
+                list = list.Where(t =>
+                    t.Title.ToLowerInvariant().Contains(q) ||
+                    t.Category.ToLowerInvariant().Contains(q) ||
+                    t.Description.ToLowerInvariant().Contains(q) ||
+                    t.TypicalUseCase.ToLowerInvariant().Contains(q) ||
+                    t.LegalBasis.ToLowerInvariant().Contains(q) ||
+                    t.Code.ToLowerInvariant().Contains(q)
+                );
+            }
+
+            return list.OrderBy(t => t.DisplayOrder);
+        }
+    }
+
+    private void SelectCategory(string? category)
+    {
+        selectedCategory = category;
+        activeCardCode = null;
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        searchQuery = e.Value?.ToString() ?? string.Empty;
+        activeCardCode = null;
+    }
+
+    private void ClearSearch()
+    {
+        searchQuery = string.Empty;
+        activeCardCode = null;
+    }
+
+    private void ResetFilters()
+    {
+        selectedCategory = null;
+        searchQuery = string.Empty;
+        activeCardCode = null;
+    }
+
+    private void OpenPreviewModal(ContractTemplateDto t)
+    {
+        inspectTemplate = t;
+    }
+
+    private void CloseInspectModal()
+    {
+        inspectTemplate = null;
+    }
+
+    private void OnCardClicked(ContractTemplateDto t)
+    {
+        if (activeCardCode == t.Code)
+        {
+            OpenPreviewModal(t);
+        }
+        else
+        {
+            activeCardCode = t.Code;
+        }
+    }
+
+    private async Task OnCardKeyDown(KeyboardEventArgs e, ContractTemplateDto t)
+    {
+        if (e.Key == "Enter" || e.Key == " ")
+        {
+            await HandleSelectTemplate(t);
+        }
+        else if (e.Key == "Escape")
+        {
+            activeCardCode = null;
+            inspectTemplate = null;
+        }
+    }
+
+    private async Task HandleSelectTemplate(ContractTemplateDto t)
+    {
+        inspectTemplate = null;
+        activeCardCode = null;
+        if (OnSelect.HasDelegate)
+        {
+            await OnSelect.InvokeAsync(t);
+        }
+        else
+        {
+            Nav.NavigateTo($"/hop-dong/tao-moi/{t.Code}");
+        }
+    }
+
+    private string GetPartyBBadgeText(ContractPartyBType? type) => type switch
+    {
+        ContractPartyBType.Company => "Bên B: Doanh nghiệp",
+        ContractPartyBType.Individual => "Bên B: Cá nhân",
+        _ => "Bên B: Doanh nghiệp / Cá nhân"
+    };
+
+    private string GetCuratedDescription(ContractTemplateDto t) => t.Code switch
+    {
+        "B2B_SALE" => "Hợp đồng cung cấp thiết bị vệ sinh quy mô lớn cho chủ đầu tư, tổng thầu xây dựng và hệ thống đại lý ủy quyền.",
+        "B2C_RETAIL" => "Hợp đồng bán lẻ và hoàn thiện thiết bị vệ sinh phòng tắm cho khách hàng cá nhân, chủ nhà, căn hộ và biệt thự.",
+        "SUPPLY_INSTALL" => "Hợp đồng trọn gói từ cung ứng thiết bị đến thi công lắp đặt, đấu nối kỹ thuật, thử áp lực nước và bàn giao hoàn thiện.",
+        "PRINCIPLE_AGREEMENT" => "Hợp đồng khung nguyên tắc cung ứng định kỳ theo năm, áp dụng hạn mức công nợ và chiết khấu theo từng đơn đặt hàng (PO).",
+        "DEPOSIT_AGREEMENT" => "Thỏa thuận đặt cọc bảo đảm giao kết hợp đồng theo Điều 328 BLDS 2015, giữ giá ưu đãi và giữ chỗ lô hàng đặc thù.",
+        "CONTRACT_LIQUIDATION" => "Biên bản xác nhận hoàn tất 100% nghĩa vụ giao nhận, nghiệm thu, quyết toán dứt điểm công nợ và chuyển sang bảo hành.",
+        "CONTRACT_APPENDIX" => "Phụ lục sửa đổi, bổ sung danh mục thiết bị vệ sinh phát sinh, điều chỉnh đơn giá hoặc gia hạn tiến độ công trình.",
+        _ => t.Description
+    };
+
+    // --- Content Helpers for Real A4 Document Rendering ---
+    private string GetTemplateDocTitle(string code) => code switch
+    {
+        "B2B_SALE" => "HỢP ĐỒNG MUA BÁN THIẾT BỊ VỆ SINH (B2B)",
+        "B2C_RETAIL" => "HỢP ĐỒNG BÁN LẺ THIẾT BỊ VỆ SINH (B2C)",
+        "SUPPLY_INSTALL" => "HỢP ĐỒNG CUNG CẤP VÀ LẮP ĐẶT THIẾT BỊ VỆ SINH",
+        "PRINCIPLE_AGREEMENT" => "HỢP ĐỒNG NGUYÊN TẮC CUNG ỨNG HÀNG HÓA",
+        "DEPOSIT_AGREEMENT" => "THỎA THUẬN ĐẶT CỌC GIỮ HÀNG / SẢN XUẤT",
+        "CONTRACT_LIQUIDATION" => "BIÊN BẢN THANH LÝ HỢP ĐỒNG",
+        "CONTRACT_APPENDIX" => "PHỤ LỤC HỢP ĐỒNG (BỔ SUNG / ĐIỀU CHỈNH)",
+        _ => "HỢP ĐỒNG THƯƠNG MẠI"
+    };
+
+    private string GetSampleContractNumber(string code) => code switch
+    {
+        "B2B_SALE" => "HĐ-2026/LACASA-B2B/018",
+        "B2C_RETAIL" => "HĐ-2026/LACASA-B2C/042",
+        "SUPPLY_INSTALL" => "HĐ-2026/LACASA-DA/009",
+        "PRINCIPLE_AGREEMENT" => "HĐNT-2026/LACASA/003",
+        "DEPOSIT_AGREEMENT" => "TTĐC-2026/LACASA/015",
+        "CONTRACT_LIQUIDATION" => "BBTL-2026/LACASA/007",
+        "CONTRACT_APPENDIX" => "PLHĐ-01/HĐ-2026/LACASA",
+        _ => "HĐ-2026/LACASA/001"
+    };
+
+    private string[] GetLegalBasisLines(string code) => code switch
+    {
+        "B2B_SALE" => new[]
+        {
+            "Căn cứ Bộ luật Dân sự số 91/2015/QH13;",
+            "Căn cứ Luật Thương mại số 36/2005/QH11 (Điều 301 về mức phạt vi phạm không quá 8%);",
+            "Căn cứ Luật Giao dịch điện tử số 20/2023/QH15."
+        },
+        "B2C_RETAIL" => new[]
+        {
+            "Căn cứ Bộ luật Dân sự số 91/2015/QH13;",
+            "Căn cứ Luật Bảo vệ quyền lợi người tiêu dùng số 19/2023/QH15;",
+            "Căn cứ Luật Giao dịch điện tử số 20/2023/QH15."
+        },
+        "SUPPLY_INSTALL" => new[]
+        {
+            "Căn cứ Bộ luật Dân sự 2015; Luật Thương mại 2005;",
+            "Căn cứ Luật Xây dựng số 50/2014/QH13 và Tiêu chuẩn TCVN 4513:1988 cấp thoát nước;"
+        },
+        "PRINCIPLE_AGREEMENT" => new[]
+        {
+            "Căn cứ Bộ luật Dân sự 2015; Luật Thương mại 2005;",
+            "Căn cứ Luật Doanh nghiệp 2020 và nhu cầu phân phối thiết bị vệ sinh định kỳ;"
+        },
+        "DEPOSIT_AGREEMENT" => new[]
+        {
+            "Căn cứ Điều 328 Bộ luật Dân sự số 91/2015/QH13 về Đặt cọc;",
+            "Căn cứ Luật Thương mại số 36/2005/QH11;"
+        },
+        "CONTRACT_LIQUIDATION" => new[]
+        {
+            "Căn cứ Hợp đồng kinh tế gốc số HĐ-2026/LACASA-B2B/001;",
+            "Căn cứ Điều 422, Điều 424 Bộ luật Dân sự số 91/2015/QH13 về Chấm dứt hợp đồng;"
+        },
+        "CONTRACT_APPENDIX" => new[]
+        {
+            "Căn cứ Hợp đồng mua bán thiết bị vệ sinh gốc số HĐ-2026/LACASA-B2B/001;",
+            "Căn cứ Điều 403 Bộ luật Dân sự số 91/2015/QH13 về Phụ lục hợp đồng;"
+        },
+        _ => new[] { "Căn cứ Bộ luật Dân sự số 91/2015/QH13;" }
+    };
+
+    private string GetPartyBHeader(string code) => code switch
+    {
+        "B2B_SALE" => "BÊN B (BÊN MUA): CÔNG TY CP ĐẦU TƯ XÂY DỰNG MINH ĐỨC",
+        "B2C_RETAIL" => "BÊN B (BÊN MUA): ÔNG / BÀ: NGUYỄN HOÀNG LONG",
+        "SUPPLY_INSTALL" => "BÊN B (CHỦ ĐẦU TƯ): CÔNG TY CP ĐẦU TƯ KHÁCH SẠN SAO MAI",
+        "PRINCIPLE_AGREEMENT" => "BÊN B (ĐẠI LÝ PHÂN PHỐI): CÔNG TY TNHH TM ĐẠI TÍN",
+        "DEPOSIT_AGREEMENT" => "BÊN B (BÊN ĐẶT CỌC): ÔNG / BÀ: PHẠM VĂN THÀNH",
+        "CONTRACT_LIQUIDATION" => "BÊN B: CÔNG TY CP ĐẦU TƯ XÂY DỰNG MINH ĐỨC",
+        "CONTRACT_APPENDIX" => "BÊN B: CÔNG TY CP ĐẦU TƯ XÂY DỰNG MINH ĐỨC",
+        _ => "BÊN B (BÊN MUA / ĐỐI TÁC): KHÁCH HÀNG DOANH NGHIỆP / CÁ NHÂN"
+    };
+
+    private string GetPartyBDetail(string code) => code switch
+    {
+        "B2B_SALE" => "MST: 0108998877 | Địa chỉ: KĐT Nam Cần Thơ | Đại diện: Trần Minh Đức - TGĐ",
+        "B2C_RETAIL" => "Số CCCD: 079085012345 | ĐT: 0918 333 444 | Địa chỉ: Biệt thự BT-12, KĐT Nam Cần Thơ",
+        "SUPPLY_INSTALL" => "MST: 0315777888 | Công trình: Tòa nhà Khách sạn Sao Mai Hotel & Suites",
+        "PRINCIPLE_AGREEMENT" => "MST: 0309991122 | Địa chỉ Showroom: Số 45 Lê Lợi, TP. Long Xuyên",
+        "DEPOSIT_AGREEMENT" => "Số CCCD: 079090005678 | ĐT: 0939 666 777 | Mục đích: Đặt cọc giữ hàng",
+        "CONTRACT_LIQUIDATION" => "MST: 0108998877 | Căn cứ Biên bản nghiệm thu và thanh toán hoàn tất 100%",
+        "CONTRACT_APPENDIX" => "MST: 0108998877 | Hạng mục: Bổ sung thiết bị vệ sinh khu căn hộ Penthouse",
+        _ => "Địa chỉ: TP. Cần Thơ | Điện thoại: 0909 xxx xxx"
+    };
+
+    private bool HasItemsTable(string code) => code switch
+    {
+        "B2B_SALE" => true,
+        "B2C_RETAIL" => true,
+        "SUPPLY_INSTALL" => true,
+        "CONTRACT_LIQUIDATION" => true,
+        "CONTRACT_APPENDIX" => true,
+        _ => false
+    };
+
+    private record MiniRow(int Stt, string Name, string Unit, string Qty, string Total);
+
+    private MiniRow[] GetSampleItems(string code) => code switch
+    {
+        "B2B_SALE" => new[]
+        {
+            new MiniRow(1, "Bồn cầu thông minh LACASA Smart-01", "Bộ", "15", "187.500.000"),
+            new MiniRow(2, "Sen cây tắm nhiệt độ Chrome", "Bộ", "25", "120.000.000")
+        },
+        "B2C_RETAIL" => new[]
+        {
+            new MiniRow(1, "Bồn cầu liền khối men Nano chống bám bẩn", "Cái", "2", "12.400.000"),
+            new MiniRow(2, "Sen vòi chậu rửa lavabo nóng lạnh", "Bộ", "3", "5.550.000")
+        },
+        "SUPPLY_INSTALL" => new[]
+        {
+            new MiniRow(1, "Thiết bị phòng tắm khách sạn 4 sao", "Phòng", "60", "420.000.000"),
+            new MiniRow(2, "Nhân công lắp đặt & thử áp lực nước", "Gói", "1", "45.000.000")
+        },
+        "CONTRACT_LIQUIDATION" => new[]
+        {
+            new MiniRow(1, "Tổng giá trị quyết toán thực hiện", "HĐ", "1", "307.500.000"),
+            new MiniRow(2, "Đã thanh toán (100%) - Còn nợ: 0đ", "Đợt", "3", "307.500.000")
+        },
+        "CONTRACT_APPENDIX" => new[]
+        {
+            new MiniRow(1, "Vòi sen âm tường mạ vàng PVD bổ sung", "Bộ", "10", "38.000.000"),
+            new MiniRow(2, "Thoát sàn ngăn mùi Inox 304 cao cấp", "Cái", "15", "7.500.000")
+        },
+        _ => Array.Empty<MiniRow>()
+    };
+
+    private record MiniClause(string Num, string Title, string Summary);
+
+    private MiniClause[] GetPreviewClauses(string code) => code switch
+    {
+        "B2B_SALE" => new[]
+        {
+            new MiniClause("Điều 1", "Đối tượng hợp đồng", "Cung cấp thiết bị vệ sinh men Nano chính hãng."),
+            new MiniClause("Điều 2", "Thanh toán", "Chia 3 đợt (30% - 50% - 20%)."),
+            new MiniClause("Điều 5", "Bảo hành", "Thân sứ 10 năm, phụ kiện 3 năm."),
+            new MiniClause("Điều 6", "Phạt vi phạm", "Tối đa 8% theo Điều 301 Luật Thương mại.")
+        },
+        "B2C_RETAIL" => new[]
+        {
+            new MiniClause("Điều 1", "Hàng hóa đặt mua", "Thiết bị vệ sinh hoàn thiện biệt thự/nhà phố."),
+            new MiniClause("Điều 2", "Thanh toán", "Cọc 30%, 70% còn lại khi nhận hàng tại nhà."),
+            new MiniClause("Điều 4", "Bảo hành & Đổi trả", "1 đổi 1 trong 30 ngày, bảo hành sứ 10 năm.")
+        },
+        "SUPPLY_INSTALL" => new[]
+        {
+            new MiniClause("Điều 1", "Phạm vi thi công", "Cung cấp và lắp đặt hoàn thiện thiết bị vệ sinh."),
+            new MiniClause("Điều 2", "Nghiệm thu áp lực nước", "Thử nghiệm 3-5 bar TCVN chống rò rỉ."),
+            new MiniClause("Điều 5", "Bảo hành lắp đặt", "Bảo hành kỹ thuật lắp đặt 24 tháng.")
+        },
+        "PRINCIPLE_AGREEMENT" => new[]
+        {
+            new MiniClause("Điều 1", "Nguyên tắc hợp tác", "Thực hiện qua từng Đơn đặt hàng (PO) trong kỳ."),
+            new MiniClause("Điều 2", "Chính sách giá", "Chiết khấu Đại lý Cấp 1 theo biểu giá hiện hành."),
+            new MiniClause("Điều 3", "Hạn mức công nợ", "Tín dụng tối đa 500.000.000đ, thời hạn 30 ngày.")
+        },
+        "DEPOSIT_AGREEMENT" => new[]
+        {
+            new MiniClause("Điều 1", "Mục đích đặt cọc", "Giữ giá và giữ chỗ độc quyền lô bồn tắm cao cấp."),
+            new MiniClause("Điều 2", "Số tiền cọc", "Tương ứng 20% tổng giá trị dự kiến của lô hàng."),
+            new MiniClause("Điều 4", "Xử lý tiền cọc", "Căn cứ Điều 328 BLDS 2015 khi giao kết HĐ.")
+        },
+        "CONTRACT_LIQUIDATION" => new[]
+        {
+            new MiniClause("Điều 1", "Phạm vi thanh lý", "Xác nhận hoàn tất 100% nghĩa vụ giao nhận hàng."),
+            new MiniClause("Điều 2", "Quyết toán công nợ", "Đã thanh toán dứt điểm, không còn nợ tồn đọng."),
+            new MiniClause("Điều 3", "Bảo hành sau thanh lý", "Duy trì bảo hành men sứ và sen vòi đã cam kết.")
+        },
+        "CONTRACT_APPENDIX" => new[]
+        {
+            new MiniClause("Điều 1", "Căn cứ bổ sung", "Bổ sung thiết bị theo nhu cầu hoàn thiện phát sinh."),
+            new MiniClause("Điều 2", "Tiến độ giao hàng", "Giao hàng bổ sung trong 10 ngày làm việc."),
+            new MiniClause("Điều 4", "Hiệu lực phụ lục", "Là bộ phận không tách rời của Hợp đồng chính.")
+        },
+        _ => new[]
+        {
+            new MiniClause("Điều 1", "Nội dung hợp đồng", "Quyền và nghĩa vụ thỏa thuận giữa hai bên."),
+            new MiniClause("Điều 2", "Điều khoản thi hành", "Hợp đồng có hiệu lực kể từ ngày ký.")
+        }
+    };
+
+    private MiniClause[] GetFullClauses(string code) => code switch
+    {
+        "B2B_SALE" => new[]
+        {
+            new MiniClause("Điều 1", "Đối tượng hợp đồng và Danh mục hàng hóa", "Bên A đồng ý bán và Bên B đồng ý mua các thiết bị vệ sinh, phụ kiện và vật tư cao cấp LACASA theo danh mục, chủng loại, số lượng, quy cách và đơn giá chi tiết tại Bảng kê hàng hóa đính kèm."),
+            new MiniClause("Điều 2", "Giá trị hợp đồng và Phương thức thanh toán", "Giá trị hợp đồng đã bao gồm thuế GTGT (VAT) và chi phí vận chuyển đến chân công trình. Thanh toán chia làm 03 đợt: Đợt 1 đặt cọc 30% sau khi ký; Đợt 2 thanh toán 50% trước khi giao hàng; Đợt 3 thanh toán 20% còn lại trong vòng 07 ngày sau nghiệm thu."),
+            new MiniClause("Điều 3", "Thời gian, địa điểm và Quy cách giao nhận", "Bên A giao hàng trong vòng 07-15 ngày làm việc kể từ ngày nhận đủ tiền đợt 1. Địa điểm giao hàng tại công trình Bên B. Hai bên ký Biên bản giao nhận và phiếu kiểm định chất lượng."),
+            new MiniClause("Điều 4", "Tiêu chuẩn chất lượng và Xuất xứ hàng hóa", "Hàng hóa là hàng mới 100%, chính hãng LACASA, đạt tiêu chuẩn chất lượng TCVN và có đầy đủ chứng chỉ CO/CQ từ nhà sản xuất."),
+            new MiniClause("Điều 5", "Trách nhiệm và Bảo hành thiết bị", "Bên A bảo hành 10 năm cho phần men sứ Nano chống bám bẩn và 03 năm cho linh kiện phụ trợ van xả, sen vòi nóng lạnh. Mọi hư hỏng do lỗi sản xuất sẽ được đổi mới miễn phí trong vòng 48 giờ."),
+            new MiniClause("Điều 6", "Phạt vi phạm và Bồi thường thiệt hại", "Bên nào vi phạm nghĩa vụ hợp đồng sẽ phải chịu phạt vi phạm với mức 8% giá trị phần nghĩa vụ bị vi phạm theo đúng quy định tại Điều 301 Luật Thương mại 2005 và bồi thường thiệt hại thực tế phát sinh."),
+            new MiniClause("Điều 7", "Giải quyết tranh chấp và Điều khoản thi hành", "Mọi tranh chấp phát sinh sẽ được ưu tiên giải quyết thông qua thương lượng, hòa giải. Trường hợp không hòa giải được sẽ đưa ra Tòa án nhân dân có thẩm quyền tại TP. Cần Thơ để giải quyết.")
+        },
+        "B2C_RETAIL" => new[]
+        {
+            new MiniClause("Điều 1", "Hàng hóa đặt mua", "Bên A cung cấp cho Bên B các sản phẩm thiết bị vệ sinh LACASA chính hãng theo đơn đặt hàng chi tiết phục vụ hoàn thiện nhà ở."),
+            new MiniClause("Điều 2", "Giá cả và Thanh toán", "Bên B đặt cọc 30% khi xác nhận đơn và thanh toán 70% số tiền còn lại ngay khi nhận hàng và kiểm tra nguyên vẹn tại nhà."),
+            new MiniClause("Điều 3", "Giao hàng và Kiểm tra", "Bên A giao hàng tận nơi theo lịch hẹn trước với Bên B. Bên B có trách nhiệm kiểm tra ngoại quan men sứ, phụ kiện kèm theo trước khi ký biên bản giao nhận."),
+            new MiniClause("Điều 4", "Chính sách bảo hành và Đổi trả", "Áp dụng chính sách 1 đổi 1 trong vòng 30 ngày nếu phát hiện lỗi kỹ thuật từ nhà sản xuất. Bảo hành men sứ 10 năm theo số điện thoại kích hoạt bảo hành điện tử."),
+            new MiniClause("Điều 5", "Hiệu lực hợp đồng", "Hợp đồng có hiệu lực kể từ ngày ký và chấm dứt khi hai bên hoàn thành nghĩa vụ giao nhận, thanh toán.")
+        },
+        "SUPPLY_INSTALL" => new[]
+        {
+            new MiniClause("Điều 1", "Phạm vi cung cấp và Thi công lắp đặt", "Bên A chịu trách nhiệm cung ứng toàn bộ thiết bị vệ sinh, phụ kiện đấu nối và bố trí đội ngũ kỹ thuật viên có chứng chỉ nghề thực hiện lắp đặt hoàn thiện theo bản vẽ thiết kế đã duyệt."),
+            new MiniClause("Điều 2", "Tiêu chuẩn kỹ thuật và Nghiệm thu thử áp lực nước", "Công tác lắp đặt tuân thủ TCVN 4513:1988. Sau khi lắp đặt hoàn thiện, hai bên thử áp lực nước tối thiểu 3-5 bar trong 30 phút, kiểm tra độ kín nước, chống rò rỉ và thoát nước êm trước khi ký Biên bản nghiệm thu kỹ thuật."),
+            new MiniClause("Điều 3", "An toàn lao động và Vệ sinh môi trường", "Bên A trang bị đầy đủ bảo hộ lao động cho công nhân, tuân thủ nội quy công trường và dọn dẹp sạch sẽ mặt bằng sau khi thi công."),
+            new MiniClause("Điều 4", "Giá trị hợp đồng và Nghiệm thu thanh toán", "Thanh toán theo 3 đợt: 30% tạm ứng, 40% khi tập kết vật tư đến chân công trình, 30% còn lại sau khi ký Biên bản nghiệm thu bàn giao đưa vào sử dụng."),
+            new MiniClause("Điều 5", "Bảo hành công trình và Thiết bị", "Bảo hành kỹ thuật lắp đặt 24 tháng; bảo hành thiết bị chính hãng theo tiêu chuẩn LACASA (10 năm men sứ, 03 năm sen vòi).")
+        },
+        "PRINCIPLE_AGREEMENT" => new[]
+        {
+            new MiniClause("Điều 1", "Nguyên tắc hợp tác và Đặt hàng", "Hợp đồng này xác định các nguyên tắc chung về việc Bên A cung cấp thiết bị vệ sinh cho Bên B. Từng lần mua bán cụ thể sẽ được thực hiện bằng Đơn đặt hàng (PO) được xác nhận bởi đại diện có thẩm quyền của hai bên."),
+            new MiniClause("Điều 2", "Chính sách giá và Chiết khấu thương mại", "Đơn giá được áp dụng theo Bảng giá niêm yết hiện hành của Bên A trừ đi tỷ lệ chiết khấu theo phân hạng Đại lý Cấp 1 quy định chi tiết trong phụ lục hợp tác."),
+            new MiniClause("Điều 3", "Hạn mức công nợ và Thời hạn thanh toán", "Bên A cấp cho Bên B hạn mức tín dụng công nợ tối đa là 500.000.000 VNĐ với thời hạn thanh toán không quá 30 ngày kể từ ngày xuất hóa đơn GTGT."),
+            new MiniClause("Điều 4", "Thời hạn hiệu lực của Hợp đồng nguyên tắc", "Hợp đồng này có hiệu lực 01 năm kể từ ngày ký và tự động gia hạn thêm 01 năm tiếp theo nếu không bên nào có văn bản chấm dứt trước 30 ngày.")
+        },
+        "DEPOSIT_AGREEMENT" => new[]
+        {
+            new MiniClause("Điều 1", "Mục đích đặt cọc", "Bên B tự nguyện đặt cọc cho Bên A một khoản tiền để đảm bảo quyền ưu tiên mua và giữ giá lô thiết bị vệ sinh LACASA theo danh mục đính kèm trong thời gian chuẩn bị ký kết Hợp đồng mua bán chính thức."),
+            new MiniClause("Điều 2", "Số tiền đặt cọc và Phương thức giao nhận", "Số tiền đặt cọc được xác định tương ứng 20% tổng giá trị dự kiến của lô hàng, được chuyển khoản trực tiếp vào tài khoản ngân hàng của Bên A."),
+            new MiniClause("Điều 3", "Thời hạn đặt cọc và Ký hợp đồng chính thức", "Thời hạn đặt cọc có hiệu lực trong vòng 30 ngày kể từ ngày Bên A nhận được tiền cọc. Hai bên cam kết ký kết Hợp đồng mua bán chính thức trước khi hết hạn đặt cọc."),
+            new MiniClause("Điều 4", "Xử lý tiền đặt cọc (Theo Điều 328 Bộ luật Dân sự)", "Khi Hợp đồng chính thức được giao kết, tiền đặt cọc sẽ được cấn trừ vào đợt thanh toán đầu tiên. Nếu Bên B từ chối ký hợp đồng thì mất tiền đặt cọc; nếu Bên A từ chối bán hoặc không có hàng cung cấp theo thỏa thuận thì phải trả lại tiền đặt cọc và bồi thường một khoản tiền tương đương giá trị tiền cọc cho Bên B.")
+        },
+        "CONTRACT_LIQUIDATION" => new[]
+        {
+            new MiniClause("Điều 1", "Căn cứ và Phạm vi thanh lý", "Hai bên cùng xác nhận đã thực hiện đầy đủ nghĩa vụ cung cấp, lắp đặt và nghiệm thu toàn bộ khối lượng thiết bị vệ sinh theo Hợp đồng gốc đã ký kết."),
+            new MiniClause("Điều 2", "Quyết toán giá trị hợp đồng và Công nợ", "Tổng giá trị hợp đồng thực tế sau quyết toán là 307.500.000 VNĐ. Bên B đã thanh toán đầy đủ 100% giá trị hợp đồng cho Bên A. Hai bên xác nhận không còn bất kỳ tranh chấp công nợ nào."),
+            new MiniClause("Điều 3", "Nghĩa vụ bảo hành sau thanh lý", "Việc thanh lý hợp đồng không làm chấm dứt trách nhiệm bảo hành thiết bị của Bên A theo đúng thời hạn và chính sách bảo hành đã cam kết."),
+            new MiniClause("Điều 4", "Chấm dứt hiệu lực hợp đồng", "Kể từ ngày ký Biên bản này, Hợp đồng gốc chính thức hết hiệu lực thi hành, hai bên không còn bất kỳ khiếu nại hay ràng buộc pháp lý nào khác đối với nhau.")
+        },
+        "CONTRACT_APPENDIX" => new[]
+        {
+            new MiniClause("Điều 1", "Căn cứ lập phụ lục hợp đồng", "Phụ lục này được lập căn cứ theo Hợp đồng gốc đã ký kết giữa hai bên và nhu cầu thực tế về việc bổ sung chủng loại, số lượng thiết bị vệ sinh của Bên B."),
+            new MiniClause("Điều 2", "Nội dung bổ sung và Điều chỉnh", "Bổ sung danh mục thiết bị và điều chỉnh khối lượng theo Bảng chi tiết đính kèm. Tiến độ giao hàng đối với phần khối lượng bổ sung là trong vòng 10 ngày kể từ ngày ký phụ lục này."),
+            new MiniClause("Điều 3", "Giá trị phụ lục và Tiến độ thanh toán", "Giá trị phát sinh bổ sung theo Phụ lục này là 45.500.000 VNĐ. Bên B tiến hành thanh toán tương ứng theo tiến độ giao nhận phần hàng hóa bổ sung."),
+            new MiniClause("Điều 4", "Hiệu lực của Phụ lục", "Phụ lục này là một bộ phận cấu thành không thể tách rời của Hợp đồng gốc. Các điều khoản khác không được đề cập trong Phụ lục này vẫn giữ nguyên giá trị pháp lý.")
+        },
+        _ => Array.Empty<MiniClause>()
+    };
+
+    private string GetPartyBSigLabel(string code) => code switch
+    {
+        "B2B_SALE" => "ĐẠI DIỆN BÊN B",
+        "B2C_RETAIL" => "ĐẠI DIỆN BÊN MUA",
+        "SUPPLY_INSTALL" => "ĐẠI DIỆN CHỦ ĐẦU TƯ",
+        "PRINCIPLE_AGREEMENT" => "ĐẠI DIỆN BÊN B",
+        "DEPOSIT_AGREEMENT" => "BÊN ĐẶT CỌC (BÊN B)",
+        "CONTRACT_LIQUIDATION" => "ĐẠI DIỆN BÊN B",
+        "CONTRACT_APPENDIX" => "ĐẠI DIỆN BÊN B",
+        _ => "ĐẠI DIỆN BÊN B"
+    };
+
+    private string GetPartyBSigName(string code) => code switch
+    {
+        "B2B_SALE" => "Trần Minh Đức",
+        "B2C_RETAIL" => "Nguyễn Hoàng Long",
+        "SUPPLY_INSTALL" => "Lê Hoàng Quân",
+        "PRINCIPLE_AGREEMENT" => "Phạm Đại Tín",
+        "DEPOSIT_AGREEMENT" => "Phạm Văn Thành",
+        "CONTRACT_LIQUIDATION" => "Trần Minh Đức",
+        "CONTRACT_APPENDIX" => "Trần Minh Đức",
+        _ => "Đại diện Bên B"
+    };
+}

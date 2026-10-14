@@ -1,0 +1,96 @@
+@using TradeFlow.Application.Common.Interfaces
+@inject IContractService ContractService
+
+@if (IsOpen)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5); z-index: 1060;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-dark text-white py-3">
+                    <h5 class="modal-title fs-6 fw-bold d-flex align-items-center gap-2">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        Xác nhận Thanh lý Hợp đồng (@ContractNumber)
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseAsync"></button>
+                </div>
+                <div class="modal-body p-4">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger py-2 px-3 small mb-3">@errorMessage</div>
+                    }
+
+                    <p class="text-secondary small mb-3">
+                        Thanh lý hợp đồng sẽ chuyển trạng thái văn bản sang <strong>Đã thanh lý (Liquidated)</strong>. Căn cứ theo Điều 422, Điều 424 Bộ luật Dân sự 2015, việc thanh lý xác nhận hai bên hoàn tất quyền, nghĩa vụ và không còn khiếu nại công nợ đối với hợp đồng này.
+                    </p>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-secondary">Lý do / Căn cứ thanh lý <span class="text-danger">*</span></label>
+                        <textarea class="form-control form-control-sm" rows="3" @bind="reason" placeholder="Ví dụ: Hai bên đã hoàn thành 100% công tác giao nhận, nghiệm thu và đối trừ công nợ dứt điểm..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick="CloseAsync">Hủy</button>
+                    <button type="button" class="btn btn-sm btn-success px-3" @onclick="ExecuteLiquidateAsync" disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                            <span>Đang thanh lý...</span>
+                        }
+                        else
+                        {
+                            <span>Xác nhận Thanh lý</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public int ContractId { get; set; }
+    [Parameter] public string ContractNumber { get; set; } = string.Empty;
+    [Parameter] public EventCallback OnLiquidated { get; set; }
+
+    private string reason = "Hai bên đã hoàn thành đầy đủ các quyền, nghĩa vụ giao nhận hàng hóa, nghiệm thu kỹ thuật và quyết toán thanh toán 100% giá trị hợp đồng.";
+    private bool isSubmitting = false;
+    private string? errorMessage;
+
+    private async Task ExecuteLiquidateAsync()
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            errorMessage = "Vui lòng nhập căn cứ / lý do thanh lý hợp đồng.";
+            return;
+        }
+
+        isSubmitting = true;
+        errorMessage = null;
+
+        try
+        {
+            await ContractService.LiquidateContractAsync(ContractId, reason.Trim(), "currentUser", "Quản lý");
+            await OnLiquidated.InvokeAsync();
+            await CloseAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Lỗi khi thanh lý: " + ex.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+}

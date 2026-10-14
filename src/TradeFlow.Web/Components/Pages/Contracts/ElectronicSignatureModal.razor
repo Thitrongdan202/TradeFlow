@@ -1,0 +1,312 @@
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Contracts
+@inject IContractService ContractService
+@inject IJSRuntime JS
+
+@if (IsOpen)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.55); z-index: 1060;">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-primary text-white py-3">
+                    <h5 class="modal-title fs-6 fw-bold d-flex align-items-center gap-2">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <path d="M12 18v-6"/>
+                            <path d="M9 15l3 3 3-3"/>
+                        </svg>
+                        Xác nhận Ký Điện Tử Hợp Đồng (@ContractNumber)
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseAsync"></button>
+                </div>
+                <div class="modal-body p-4">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger py-2 px-3 small mb-3">@errorMessage</div>
+                    }
+
+                    <!-- Legal compliance notice -->
+                    <div class="alert alert-info border-info-subtle py-2 px-3 small mb-3">
+                        <div class="fw-bold mb-1">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="12" y1="16" x2="12" y2="12"/>
+                                <line x1="12" y1="8" x2="12.01" y8"/>
+                            </svg>
+                            Căn cứ Luật Giao dịch điện tử số 20/2023/QH15:
+                        </div>
+                        <div>
+                            Hệ thống TradeFlow ERP chứng thực giao dịch điện tử nội bộ, ghi nhận danh tính, dấu thời gian ký và mã băm SHA-256 toàn vẹn văn bản hợp đồng.
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold text-secondary">Chủ thể ký kết <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-sm" @bind="signerParty" @bind:after="OnPartyChanged">
+                                <option value="PartyA">Đại diện Bên A (Đơn vị bán hàng)</option>
+                                <option value="PartyB">Đại diện Bên B (Khách hàng / Bên mua)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold text-secondary">Họ và tên người ký <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-sm" @bind="signerName" @bind:after="OnNameChanged" placeholder="Nhập họ và tên người đại diện..." />
+                        </div>
+
+                        <!-- Signature Method Tabs -->
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold text-secondary">Hình thức tạo chữ ký</label>
+                            <div class="btn-group w-100" role="group">
+                                <button type="button" class="btn btn-sm @(sigMethod == "cursive" ? "btn-primary" : "btn-outline-secondary")" @onclick='() => SetMethod("cursive")'>
+                                    Tạo tự động theo họ tên
+                                </button>
+                                <button type="button" class="btn btn-sm @(sigMethod == "sample" ? "btn-primary" : "btn-outline-secondary")" @onclick='() => SetMethod("sample")'>
+                                    Mẫu chữ ký doanh nhân
+                                </button>
+                                <button type="button" class="btn btn-sm @(sigMethod == "canvas" ? "btn-primary" : "btn-outline-secondary")" @onclick='() => SetMethod("canvas")'>
+                                    Vẽ chữ ký trực tiếp
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Signature Preview / Canvas Area -->
+                        <div class="col-12">
+                            <div class="border rounded p-3 bg-light text-center">
+                                @if (sigMethod == "canvas")
+                                {
+                                    <div class="mb-2 text-muted small">Dùng chuột hoặc ngón tay vẽ chữ ký vào khung dưới đây:</div>
+                                    <canvas id="contractSigCanvas" width="500" height="130"
+                                            style="border: 1px dashed #94a3b8; background: #fff; cursor: crosshair; touch-action: none; max-width: 100%;">
+                                    </canvas>
+                                    <div class="mt-2 d-flex justify-content-center gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClearCanvasAsync">Xóa khung vẽ</button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="mb-2 text-muted small">Bản xem trước hình ảnh chữ ký:</div>
+                                    <div class="d-flex align-items-center justify-content-center p-2 bg-white rounded border" style="min-height: 120px;">
+                                        @if (!string.IsNullOrEmpty(signatureData))
+                                        {
+                                            <img src="@signatureData" alt="Chữ ký xem trước" style="max-height: 100px; max-width: 380px; object-fit: contain;" />
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">Chưa có chữ ký</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick="CloseAsync">Hủy bỏ</button>
+                    <button type="button" class="btn btn-sm btn-primary px-3 fw-semibold" @onclick="ExecuteSignAsync" disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                            <span>Đang xử lý ký...</span>
+                        }
+                        else
+                        {
+                            <span>Xác nhận Ký số Điện tử</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public int ContractId { get; set; }
+    [Parameter] public string ContractNumber { get; set; } = string.Empty;
+    [Parameter] public string DefaultPartyASigner { get; set; } = string.Empty;
+    [Parameter] public string DefaultPartyBSigner { get; set; } = string.Empty;
+    [Parameter] public EventCallback OnSigned { get; set; }
+
+    private string signerParty = "PartyA";
+    private string signerName = string.Empty;
+    private string sigMethod = "cursive";
+    private string signatureData = string.Empty;
+    private bool isSubmitting = false;
+    private string? errorMessage;
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen)
+        {
+            if (string.IsNullOrEmpty(signerName))
+            {
+                signerName = signerParty == "PartyA" ? DefaultPartyASigner : DefaultPartyBSigner;
+            }
+            if (string.IsNullOrEmpty(signatureData) && !string.IsNullOrEmpty(signerName))
+            {
+                GenerateCursiveSignature();
+            }
+        }
+    }
+
+    private void OnPartyChanged()
+    {
+        signerName = signerParty == "PartyA" ? DefaultPartyASigner : DefaultPartyBSigner;
+        OnNameChanged();
+    }
+
+    private void OnNameChanged()
+    {
+        if (sigMethod == "cursive")
+        {
+            GenerateCursiveSignature();
+        }
+    }
+
+    private async Task SetMethod(string method)
+    {
+        sigMethod = method;
+        errorMessage = null;
+
+        if (sigMethod == "cursive")
+        {
+            GenerateCursiveSignature();
+        }
+        else if (sigMethod == "sample")
+        {
+            GenerateSampleSignature();
+        }
+        else if (sigMethod == "canvas")
+        {
+            await Task.Delay(100);
+            await InitCanvasJsAsync();
+        }
+    }
+
+    private void GenerateCursiveSignature()
+    {
+        var name = string.IsNullOrWhiteSpace(signerName) ? "LACASA Signer" : signerName.Trim();
+        var encoded = System.Net.WebUtility.HtmlEncode(name);
+        signatureData = $"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 360 90' width='360' height='90'><path d='M10 65 Q 40 20, 80 50 T 150 35 T 230 65' fill='none' stroke='%23003366' stroke-width='2.5' stroke-linecap='round'/><text x='35' y='60' font-family='Brush Script MT, Segoe Script, cursive' font-size='32' font-style='italic' fill='%23002244'>{encoded}</text></svg>";
+    }
+
+    private void GenerateSampleSignature()
+    {
+        signatureData = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 90' width='320' height='90'><path d='M25 65 Q 70 10, 110 55 T 180 35 T 260 65 M50 50 Q 120 80, 210 20 M140 30 L 230 80' fill='none' stroke='%23002f6c' stroke-width='3' stroke-linecap='round'/></svg>";
+    }
+
+    private async Task InitCanvasJsAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("eval", @"
+                (function() {
+                    var c = document.getElementById('contractSigCanvas');
+                    if (!c) return;
+                    var ctx = c.getContext('2d');
+                    ctx.strokeStyle = '#002f6c';
+                    ctx.lineWidth = 2.5;
+                    ctx.lineCap = 'round';
+                    var drawing = false;
+
+                    function getPos(e) {
+                        var rect = c.getBoundingClientRect();
+                        var clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                        var clientY = e.clientY || (e.touches && e.touches[0].clientY);
+                        return { x: clientX - rect.left, y: clientY - rect.top };
+                    }
+
+                    c.onpointerdown = function(e) {
+                        drawing = true;
+                        var pos = getPos(e);
+                        ctx.beginPath();
+                        ctx.moveTo(pos.x, pos.y);
+                    };
+                    c.onpointermove = function(e) {
+                        if (!drawing) return;
+                        var pos = getPos(e);
+                        ctx.lineTo(pos.x, pos.y);
+                        ctx.stroke();
+                    };
+                    c.onpointerup = c.onpointercancel = function() {
+                        drawing = false;
+                    };
+                })();
+            ");
+        }
+        catch { }
+    }
+
+    private async Task ClearCanvasAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("eval", @"
+                (function() {
+                    var c = document.getElementById('contractSigCanvas');
+                    if (c) {
+                        var ctx = c.getContext('2d');
+                        ctx.clearRect(0, 0, c.width, c.height);
+                    }
+                })();
+            ");
+        }
+        catch { }
+    }
+
+    private async Task ExecuteSignAsync()
+    {
+        if (string.IsNullOrWhiteSpace(signerName))
+        {
+            errorMessage = "Vui lòng nhập họ và tên người ký xác nhận.";
+            return;
+        }
+
+        isSubmitting = true;
+        errorMessage = null;
+
+        try
+        {
+            if (sigMethod == "canvas")
+            {
+                var canvasData = await JS.InvokeAsync<string>("eval", @"
+                    (function() {
+                        var c = document.getElementById('contractSigCanvas');
+                        return c ? c.toDataURL('image/png') : '';
+                    })();
+                ");
+                if (!string.IsNullOrEmpty(canvasData))
+                {
+                    signatureData = canvasData;
+                }
+            }
+
+            var signDto = new SignContractDto
+            {
+                SignerParty = signerParty,
+                SignerName = signerName.Trim(),
+                SignatureData = signatureData
+            };
+
+            await ContractService.SignContractAsync(ContractId, signDto, "currentUser", signerName.Trim());
+
+            await OnSigned.InvokeAsync();
+            await CloseAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Lỗi khi thực hiện ký điện tử: " + ex.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+}

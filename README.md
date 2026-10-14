@@ -12,6 +12,7 @@ Hệ thống quản lý thương mại toàn diện (ERP/CRM) xây dựng trên 
 - [x] **Phase 4**: Bảng giá + Excel + hình ảnh + lịch sử giá
 - [x] **Phase 5**: Bán hàng + Đơn bán hàng + Hóa đơn + PDF
 - [x] **Phase 6**: Báo giá + tài liệu/chứng từ (Đã dời từ Phase 5)
+- [x] **Phase 6.5**: Quản lý Hợp đồng Thương mại & Ký điện tử (Vietnamese Contract Management & E-Sign)
 - [ ] **Phase 7**: Mua hàng
 - [ ] **Phase 8**: Kho
 - [x] **Phase 8.5**: Quản lý Nhân sự & Nhân viên (Employee Management)
@@ -260,9 +261,84 @@ Tất cả thành phần dùng chung được khai báo toàn cục tại `_Impo
 - **Quản trị**: Người dùng (`/cai-dat/nguoi-dung`), Vai trò (`/cai-dat/vai-tro`).
 
 ### 4. Kiểm thử Hồi quy & Đảm bảo Chất lượng (Regression Testing)
-- 100% Unit Tests & Integration Tests vượt qua thành công: **155/155 Passed** (152 Unit Tests, 3 Integration Tests).
+- 100% Unit Tests & Integration Tests vượt qua thành công: **201/201 Passed** (100% thành công).
 - 0 lỗi biên dịch C# / Blazor.
 - Giữ nguyên vẹn 100% cơ chế bảo mật RBAC, chính sách truy cập, endpoint API và giao thức lưu trữ dữ liệu.
+
+---
+
+## Quản lý Hợp đồng Thương mại & Ký điện tử (Phase 6.5 — Vietnamese Contract Management & E-Sign)
+
+Phân hệ Hợp đồng cung cấp giải pháp toàn diện cho việc lập, quản lý, ký kết điện tử, xuất bản in PDF và lưu trữ chứng từ hợp đồng mua bán thiết bị vệ sinh cao cấp LACASA, tuân thủ nghiêm ngặt hệ thống pháp luật Việt Nam.
+
+### 1. Căn cứ Pháp lý & Chuẩn mực Soạn thảo
+- **Bộ luật Dân sự số 91/2015/QH13**: Quy định về hợp đồng dân sự/thương mại, năng lực chủ thể (Pháp nhân vs Cá nhân/Hộ gia đình), giao kết hợp đồng, quyền và nghĩa vụ các bên, giải quyết tranh chấp.
+- **Luật Thương mại số 36/2005/QH11**: Áp dụng cho các quan hệ mua bán hàng hóa và cung ứng dịch vụ giữa các thương nhân (B2B); **áp dụng giới hạn mức phạt vi phạm hợp đồng tối đa 8%** giá trị phần nghĩa vụ hợp đồng bị vi phạm theo Điều 301.
+- **Luật Giao dịch điện tử số 20/2023/QH15** (Hiệu lực từ 01/07/2024): Thừa nhận giá trị pháp lý của hợp đồng điện tử, chữ ký điện tử nội bộ, chứng nhận thời gian và mã băm toàn vẹn SHA-256 bảo đảm văn bản không bị sửa đổi sau khi ký.
+- **Nghị định 30/2020/NĐ-CP**: Quy chuẩn về thể thức văn bản hành chính; áp dụng mặc định phông chữ **Times New Roman** trên toàn bộ văn bản xem trước và bản xuất PDF khổ A4.
+
+### 2. Thư viện 7 Mẫu Hợp đồng Chuẩn hóa Ngành Thiết bị Vệ sinh LACASA
+1. **Hợp đồng Mua bán Thiết bị Vệ sinh (B2B)** (`B2B_SALE`): Dành cho đại lý, nhà thầu xây dựng, đối tác thương mại; bao gồm điều khoản thanh toán, bảo hành men sứ 10 năm, phụ kiện 3 năm, phạt vi phạm tối đa 8%.
+2. **Hợp đồng Mua bán Lẻ Thiết bị Vệ sinh (B2C)** (`B2C_RETAIL`): Dành cho khách hàng cá nhân, chủ nhà; xác nhận theo số CCCD/ngày cấp/nơi cấp; cam kết bảo hành chính hãng và bảo vệ quyền lợi người tiêu dùng.
+3. **Hợp đồng Cung cấp & Lắp đặt Thiết bị Vệ sinh** (`SUPPLY_INSTALL`): Dành cho các công trình, dự án căn hộ, biệt thự; quy định chi tiết nghiệm thu kỹ thuật, kiểm tra cấp thoát nước, chạy thử không rò rỉ.
+4. **Hợp đồng Nguyên tắc Mua bán Hàng hóa** (`PRINCIPLE_AGREEMENT`): Khung thỏa thuận dài hạn cho đại lý/nhà phân phối cấp 1; từng lô hàng cụ thể sẽ căn cứ theo Đơn đặt hàng (PO).
+5. **Thỏa thuận Đặt cọc Mua Thiết bị Vệ sinh** (`DEPOSIT_AGREEMENT`): Căn cứ Điều 328 BLDS 2015; xác định số tiền cọc, mục đích bảo đảm giao kết hợp đồng mua bán và xử lý tiền cọc khi vi phạm.
+6. **Biên bản Thanh lý Hợp đồng** (`CONTRACT_LIQUIDATION`): Xác nhận hoàn tất 100% nghĩa vụ giao nhận hàng, quyết toán tài chính, thanh toán dứt điểm công nợ và chuyển sang giai đoạn bảo hành.
+7. **Phụ lục Hợp đồng** (`CONTRACT_APPENDIX`): Điều chỉnh phát sinh số lượng, chủng loại sản phẩm, gia hạn tiến độ giao nhận hoặc thay đổi điều khoản thanh toán.
+
+### 3. Các Tính năng & Quy trình Nghiệp vụ Cốt lõi
+- **Thanh điều hướng Độc lập**: Mục menu **"Hợp đồng"** nằm độc lập trực tiếp giữa **"Đối tác"** và **"Chứng từ"** trên thanh Sidebar; nhấp chuột trực tiếp mở `/hop-dong` mà không mở menu con phiền phức.
+- **Thiết lập Bên A Mặc định (`PartyASettingsModal`)**: Cấu hình thông tin pháp lý doanh nghiệp LACASA (Tên công ty, MST, số ĐKKD, địa chỉ trụ sở, người đại diện theo pháp luật, chức vụ, tài khoản ngân hàng, điều khoản giao nhận và bảo hành mặc định). Lưu trữ trong cơ sở dữ liệu và tự động snapshot bất biến vào từng hợp đồng tạo mới.
+- **Quy trình Soạn thảo Hợp đồng 5 Bước (`/hop-dong/tao-moi`)**:
+  - *Bước 1: Chọn Mẫu*: Chọn trực quan dạng thẻ bài từ 7 mẫu pháp lý.
+  - *Bước 2: Bên A*: Tự động điền và cho phép điều chỉnh thông tin đơn vị bán.
+  - *Bước 3: Bên B*: Hỗ trợ chọn nhanh khách hàng từ danh bạ ERP hoặc nhập mới (phân tách Pháp nhân Doanh nghiệp và Cá nhân có CCCD).
+  - *Bước 4: Hàng hóa & Điều khoản*: Thêm dòng sản phẩm thiết bị vệ sinh, tự động tính tiền hàng, thuế VAT, tổng giá trị hợp đồng và chuyển đổi thành chữ tiếng Việt (`VietnameseNumberToWords`).
+  - *Bước 5: Xem trước Văn bản*: Hiển thị trực quan theo chuẩn thể thức văn bản Việt Nam với phông chữ **Times New Roman**, quốc hiệu, tiêu ngữ, bảng hàng hóa và khung ký tên.
+- **Xác nhận Ký kết & Ký Điện tử (`ElectronicSignatureModal`)**:
+  - Hỗ trợ ký điện tử với HTML5 Canvas vẽ tay hoặc tự động tạo nét ký doanh nhân.
+  - Tự động sinh mã băm SHA-256 toàn vẹn văn bản (`IntegrityHash`), lưu trữ dấu thời gian (`SignedAt`), họ tên người ký, chức vụ và số định danh.
+  - Hỗ trợ ghi nhận ký trên bản in giấy truyền thống (`RecordPrintedAsync`).
+- **Xuất PDF Khổ A4 Chuẩn Pháp lý (`/api/contracts/{id}/export-pdf`)**:
+  - Tích hợp QuestPDF với phông chữ **Times New Roman**, hỗ trợ ngắt trang thông minh, bảng biểu hàng hóa rõ ràng, điều khoản thương mại đầy đủ và chữ ký số.
+- **Tích hợp Module Chứng từ (`/tai-lieu`)**:
+  - Tự động tạo bản ghi đính kèm chứng từ (`DocumentAttachment`) khi hợp đồng được khởi tạo và ký kết.
+  - Bổ sung nút "Hợp đồng đã tạo" và liên kết hai chiều giữa module Chứng từ và trang chi tiết hợp đồng `/hop-dong/{id}`.
+- **Kiểm toán Hoàn chỉnh (Audit Trail)**: Mọi thao tác lập, cập nhật, chốt duyệt, ký điện tử, ghi nhận bản in, thanh lý và xóa hợp đồng đều được lưu vết đầy đủ trong `AuditLog` với `ResourceType.Contracts`.
+
+### 4. Giao diện Bộ sưu tập Xem trước Mẫu Hợp đồng A4 Chuẩn Mực (Real A4 Contract Document Preview Gallery)
+- **Bản Xem trước Tài liệu A4 Thu nhỏ Trực quan (Real Miniature A4 Contract Sheet)**: Mỗi thẻ hợp đồng hiển thị một trang tài liệu giấy trắng khổ A4 (tỷ lệ chuẩn 210:297) chân thực, thể hiện chính xác bố cục văn bản hành chính Việt Nam thay vì sử dụng các biểu tượng đồ họa trừu tượng.
+- **Giao diện Nền Sáng Hiện đại (Clean & Professional Light Theme)**:
+  - Khung giao diện, thanh công cụ tìm kiếm và cửa sổ modal sử dụng gam màu trắng và xám sáng thanh lịch (`#ffffff` và `#f8fafc`).
+  - Đường viền xám nhẹ tinh tế (`#e2e8f0`) cùng hiệu ứng đổ bóng giấy tự nhiên (`natural paper shadow`), mang lại cảm giác chân thực như đang duyệt tập hồ sơ văn bản A4.
+- **Nội dung Văn bản Thực tế Chuẩn Phông Times New Roman**:
+  - Từng mẫu hợp đồng hiển thị đúng Quốc hiệu ("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM"), Tiêu ngữ, ngày tháng địa điểm.
+  - Tên hợp đồng in hoa đậm (Vd: *HỢP ĐỒNG MUA BÁN THIẾT BỊ VỆ SINH (B2B)*, *HỢP ĐỒNG BÁN LẺ THIẾT BỊ VỆ SINH (B2C)*...).
+  - Các căn cứ pháp lý tương ứng (Bộ luật Dân sự 2015, Luật Thương mại 2005, Luật Bảo vệ quyền lợi người tiêu dùng 2023...).
+  - Thông tin Bên A (LACASA) và Bên B tương ứng với đối tượng khách hàng (Doanh nghiệp hoặc Cá nhân có CCCD).
+  - Bảng kê sản phẩm / công tác kỹ thuật mẫu với các dòng kẻ bảng rõ ràng.
+  - Các điều khoản được đánh số (Điều 1, Điều 2, Điều 3...) và khung ký tên hai bên ở cuối trang.
+- **Công nghệ Co giãn Đơn vị Container Queries (`cqw`)**:
+  - Toàn bộ cỡ chữ và khoảng cách trong trang A4 được tính toán theo tỷ lệ chiều rộng khung chứa (`cqw`), tự động co giãn sắc nét trên mọi độ phân giải mà không bị nhòe vỡ hay phụ thuộc vào JavaScript.
+- **Tương tác Di chuột Thông minh & Không Che khuất Văn bản (Non-Obtrusive Hover Interaction)**:
+  - Khi di chuột (Hover): Thẻ bài nâng nhẹ (`transform: translateY(-4px)`), viền chuyển sang màu xanh thương hiệu (`#3b82f6`).
+  - Thanh thao tác nhanh trượt lên tinh tế ở mép dưới trang tài liệu gồm: **"👁 Xem mẫu"** và **"Soạn hợp đồng →"** mà vẫn giữ trọn vẹn khả năng đọc toàn bộ nội dung văn bản bên dưới.
+- **Cửa sổ Xem trước Toàn văn Khổ lớn (High-Resolution A4 Inspection Modal)**:
+  - Nhấp vào **"Xem mẫu"** sẽ mở cửa sổ modal kích thước lớn hiển thị toàn văn tài liệu A4 với phông chữ Times New Roman 14.5pt sắc nét, cho phép người dùng đọc kỹ từng câu chữ, điều khoản pháp lý và bảng giá mẫu trước khi bấm **"Soạn hợp đồng từ mẫu này"**.
+- **Thanh Công cụ Lọc & Tìm kiếm Nhanh**:
+  - Hộp tìm kiếm tức thì theo từ khóa tên hoặc mã hợp đồng, hỗ trợ nút xóa nhanh 1 chạm.
+  - Thanh nút lọc danh mục (Pill filter buttons) với bộ đếm số lượng mẫu tương ứng cho từng nhóm.
+- **Độ nhạy Cảm ứng & Khả năng Tiếp cận Toàn diện (Accessibility & Responsive)**:
+  - Tự động thích ứng trên mọi màn hình: 5–6 thẻ trên Desktop rộng ($\ge 1280$px), 4 thẻ trên Desktop chuẩn (992–1279px), 3 thẻ trên Tablet (640–991px), và 2 thẻ trên Mobile ($< 640$px).
+  - Hỗ trợ thao tác cảm ứng tự nhiên trên điện thoại/máy tính bảng và phím tắt bàn phím hoàn chỉnh (`tabindex="0"`, phím `Enter` / `Space` để chọn, phím `Escape` để hủy lựa chọn).
+  - Tự động tắt hoạt ảnh chuyển động khi người dùng kích hoạt cấu hình hệ thống `prefers-reduced-motion`.
+- **Tích hợp Đồng bộ Khắp Hệ thống**:
+  - Tái sử dụng trong Hộp thoại chọn mẫu (`TemplateSelectorModal.razor`) mở từ màn hình Danh sách Hợp đồng `/hop-dong`.
+  - Nhúng trực tiếp tại Bước 1 của Trang Soạn thảo Hợp đồng `/hop-dong/tao-moi`.
+  - Cung cấp trang Thư viện Mẫu độc lập tại đường dẫn `/hop-dong/thu-vien-mau` (hoặc `/hop-dong/mau-hop-dong`).
+
+
+
 
 
 

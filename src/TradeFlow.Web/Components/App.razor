@@ -20,6 +20,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            background-color: #f8fafc;
             opacity: 1;
             visibility: visible;
             pointer-events: auto;
@@ -37,12 +38,8 @@
         .tf-loading-backdrop {
             position: absolute;
             inset: 0;
-            background-color: rgba(248, 250, 252, 0.72);
-            backdrop-filter: blur(2px);
-            -webkit-backdrop-filter: blur(2px);
+            background-color: #f8fafc;
             pointer-events: none;
-            transform: translate3d(0, 0, 0);
-            backface-visibility: hidden;
         }
 
         .tf-loading-container {
@@ -67,7 +64,7 @@
             contain: layout size;
         }
 
-        .tf-loading-ring-wrapper {
+        .tf-startup-ring {
             position: absolute;
             inset: 0;
             width: 100%;
@@ -75,9 +72,7 @@
             pointer-events: none;
             transform-origin: 50% 50%;
             will-change: transform;
-            transform: translate3d(0, 0, 0);
-            backface-visibility: hidden;
-            animation: tf-spin-ring 1.4s linear infinite;
+            animation: tf-startup-ring-spin 1.4s linear infinite;
         }
 
         .tf-loading-ring-svg {
@@ -97,8 +92,6 @@
             align-items: center;
             justify-content: center;
             padding: 6px;
-            transform: translate3d(0, 0, 0);
-            backface-visibility: hidden;
         }
 
         .tf-loading-logo-img {
@@ -132,7 +125,60 @@
             line-height: 1.4;
         }
 
-        @@keyframes tf-spin-ring {
+        .tf-startup-error-box {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            max-width: 380px;
+            padding: 24px;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+            border: 1px solid #fee2e2;
+        }
+
+        .tf-startup-error-icon {
+            margin-bottom: 12px;
+        }
+
+        .tf-startup-error-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #b91c1c;
+            margin-bottom: 6px;
+        }
+
+        .tf-startup-error-message {
+            font-size: 13.5px;
+            color: #64748b;
+            line-height: 1.5;
+            margin-bottom: 18px;
+        }
+
+        .tf-startup-retry-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 20px;
+            background-color: #059669;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-size: 13.5px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+
+        .tf-startup-retry-btn:hover {
+            background-color: #047857;
+        }
+
+        @@keyframes tf-startup-ring-spin {
             0% {
                 transform: rotate(0deg);
             }
@@ -142,7 +188,7 @@
         }
 
         @@media (prefers-reduced-motion: reduce) {
-            .tf-loading-ring-wrapper {
+            .tf-startup-ring {
                 animation: none !important;
             }
         }
@@ -162,9 +208,9 @@
     {
         <div id="tf-startup-loader" class="tf-loading-overlay is-active" role="status" aria-busy="true" aria-live="polite" aria-label="Đang tải...">
             <div class="tf-loading-backdrop"></div>
-            <div class="tf-loading-container">
+            <div class="tf-loading-container" id="tf-startup-normal-content">
                 <div class="tf-loading-brand-visual">
-                    <div class="tf-loading-ring-wrapper" style="animation-duration: @GetSpeedDuration(_branding.SpinnerSpeed);">
+                    <div class="tf-startup-ring" style="animation-duration: @GetSpeedDuration(_branding.SpinnerSpeed);">
                         <svg class="tf-loading-ring-svg"
                              viewBox="0 0 100 100"
                              aria-hidden="true">
@@ -215,6 +261,25 @@
                     Đang tải...
                 </div>
             </div>
+
+            <div class="tf-startup-error-box" id="tf-startup-error-box" style="display: none;" role="alert">
+                <div class="tf-startup-error-icon">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                </div>
+                <div class="tf-startup-error-title">Không thể kết nối đến hệ thống</div>
+                <div class="tf-startup-error-message">Đã xảy ra sự cố trong quá trình khởi tạo ứng dụng. Vui lòng thử lại.</div>
+                <button type="button" class="tf-startup-retry-btn" onclick="window.location.reload()">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                    </svg>
+                    Thử lại
+                </button>
+            </div>
         </div>
     }
 
@@ -246,9 +311,56 @@
 
             window.tfDismissStartupLoader = dismissStartupLoader;
 
-            // Primary dismissal is invoked by MainLayout.razor OnAfterRenderAsync (firstRender = true)
-            // Safety fallback: dismiss after 3.5s if Blazor interactive circuit fails to mount
-            setTimeout(dismissStartupLoader, 3500);
+            function showStartupError() {
+                if (dismissed) return;
+                var normalContent = document.getElementById('tf-startup-normal-content');
+                var errorBox = document.getElementById('tf-startup-error-box');
+                if (normalContent) normalContent.style.display = 'none';
+                if (errorBox) {
+                    errorBox.style.display = 'flex';
+                    loader.setAttribute('aria-busy', 'false');
+                }
+            }
+
+            window.tfShowStartupError = showStartupError;
+
+            // Fast dismissal on static pages (e.g. login)
+            function checkStaticPage() {
+                if (document.querySelector('.tf-login-page')) {
+                    dismissStartupLoader();
+                    return true;
+                }
+                return false;
+            }
+
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                checkStaticPage();
+            } else {
+                document.addEventListener('DOMContentLoaded', checkStaticPage);
+            }
+
+            // Watch for Blazor circuit errors
+            var blazorErrorUi = document.getElementById('blazor-error-ui');
+            if (blazorErrorUi) {
+                var observer = new MutationObserver(function () {
+                    var display = window.getComputedStyle(blazorErrorUi).display;
+                    if (display !== 'none' && !dismissed) {
+                        showStartupError();
+                    }
+                });
+                observer.observe(blazorErrorUi, { attributes: true, attributeFilter: ['style', 'class'] });
+            }
+
+            // Safety fallback: if interactive circuit mounts, dismiss; if after 3.5s still not dismissed, dismiss if app content is present, else show error
+            setTimeout(function () {
+                if (!dismissed) {
+                    if (document.querySelector('.tf-app') || document.querySelector('.tf-sales-workspace') || document.querySelector('.tf-content')) {
+                        dismissStartupLoader();
+                    } else {
+                        showStartupError();
+                    }
+                }
+            }, 3500);
         })();
 
         window.tradeflow = {
@@ -477,15 +589,15 @@
         SpinnerSpeed = "normal"
     };
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
         try
         {
-            _branding = await BrandingService.GetBrandingAsync();
+            _branding = BrandingService.GetCachedBranding();
         }
         catch
         {
-            // Fail-safe: use defaults if DB query fails or times out
+            // Fail-safe: use defaults if cache lookup fails
         }
     }
 

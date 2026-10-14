@@ -303,6 +303,27 @@
             </div>
         </div>
 
+        @* HỢP ĐỒNG (STANDALONE DIRECT LINK) *@
+        <AuthorizeView Policy="Permission:Contracts:View">
+            <div class="tf-nav-item @(IsSectionActive("hop-dong") ? "is-active" : "")">
+                <NavLink class="tf-nav-link" href="/hop-dong" Match="NavLinkMatch.Prefix" ActiveClass="active" @onclick="HandleLinkClick" title="Hợp đồng">
+                    <span class="tf-nav-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline points="10 9 9 9 8 9"/>
+                        </svg>
+                    </span>
+                    <span class="tf-nav-label">Hợp đồng</span>
+                </NavLink>
+                <div class="tf-nav-flyout tf-nav-flyout-single">
+                    <div class="tf-nav-flyout-header" style="border-bottom:none; margin-bottom:0; padding:6px 12px; font-size:12px; font-weight:600; color:#1e293b; text-transform:none;">Hợp đồng</div>
+                </div>
+            </div>
+        </AuthorizeView>
+
         @* 8. HỒ SƠ & CHỨNG TỪ *@
         <div class="tf-nav-item @(IsSectionActive("tai-lieu") ? "is-active" : "")">
             <button type="button" class="tf-nav-link @(IsSectionActive("tai-lieu") ? "active" : "")" @onclick="ToggleDocuments" title="Hồ sơ &amp; Chứng từ">

@@ -1,0 +1,31 @@
+using TradeFlow.Domain.Enums;
+
+namespace TradeFlow.Application.Common.Models.Contracts;
+
+public class ContractClauseDto
+{
+    public string ClauseNumber { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+}
+
+public class ContractTemplateDto
+{
+    public int Id { get; set; }
+    public string Code { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string Category { get; set; } = "Thương mại";
+    public string Description { get; set; } = string.Empty;
+    public string TypicalUseCase { get; set; } = string.Empty;
+    public ContractPartyBType? TargetPartyType { get; set; }
+    public string RequiredInfo { get; set; } = string.Empty;
+    public string Icon { get; set; } = "file-text";
+    public string Version { get; set; } = "1.0";
+    public bool IsActive { get; set; } = true;
+    public int DisplayOrder { get; set; }
+    public string LegalBasis { get; set; } = string.Empty;
+    public string KnownLimitations { get; set; } = string.Empty;
+    public bool IsReviewedByLegal { get; set; } = false;
+    public string DefaultClausesJson { get; set; } = "[]";
+    public List<ContractClauseDto> Clauses { get; set; } = new();
+}

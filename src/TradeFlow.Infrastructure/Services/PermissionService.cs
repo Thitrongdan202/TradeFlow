@@ -120,7 +120,7 @@ public class PermissionService : IPermissionService
                 return cachedPerms;
             }
 
-            cachedPerms = LoadPermissionsFromDbAsync(userId).GetAwaiter().GetResult();
+            cachedPerms = Task.Run(async () => await LoadPermissionsFromDbAsync(userId)).GetAwaiter().GetResult();
 
             _cache.Set(cacheKey, cachedPerms, new MemoryCacheEntryOptions
             {

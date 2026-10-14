@@ -1,0 +1,93 @@
+@page "/hop-dong/thu-vien-mau"
+@page "/hop-dong/mau-hop-dong"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permission:Contracts:View")]
+@using Microsoft.AspNetCore.Authorization
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Contracts
+@using TradeFlow.Domain.Enums
+@inject IContractService ContractService
+@inject NavigationManager Nav
+
+<PageTitle>Thư viện Mẫu Hợp đồng — TradeFlow</PageTitle>
+
+<div class="container-fluid p-2 p-sm-4">
+    <!-- Header Section -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3 mb-sm-4">
+        <div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <a href="/hop-dong" class="btn btn-sm btn-outline-secondary" title="Quay lại danh sách hợp đồng">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"/>
+                    </svg>
+                </a>
+                <h1 class="h4 mb-0 fw-bold text-dark">Thư viện Mẫu Hợp đồng Thương mại &amp; Dân sự</h1>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 small">
+                    BLDS 2015 &amp; Luật GDĐT 2023
+                </span>
+            </div>
+            <p class="text-muted small mb-0 mt-1">
+                Tuyển tập 7 mẫu văn bản chuẩn hóa ngành thiết bị vệ sinh LACASA. Di chuột lên thẻ bài để xem chi tiết điều khoản, đối tượng và phạm vi áp dụng.
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="/hop-dong" class="btn btn-sm btn-outline-secondary">
+                Quản lý Hợp đồng
+            </a>
+            <AuthorizeView Policy="Permission:Contracts:Create">
+                <a href="/hop-dong/tao-moi" class="btn btn-sm btn-primary">
+                    + Tạo Hợp đồng mới
+                </a>
+            </AuthorizeView>
+        </div>
+    </div>
+
+    <!-- Gallery Container (Light Theme) -->
+    <div class="card border shadow-sm bg-white rounded-3">
+        <div class="card-body p-2 p-sm-4 bg-light bg-opacity-25">
+            @if (isLoading)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <div class="text-muted small mt-3">Đang tải danh mục mẫu hợp đồng...</div>
+                </div>
+            }
+            else
+            {
+                <ContractTemplateGallery Templates="@templates"
+                                        OnSelect="SelectTemplate"
+                                        ActionButtonText="Soạn hợp đồng" />
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<ContractTemplateDto> templates = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTemplatesAsync();
+    }
+
+    private async Task LoadTemplatesAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var result = await ContractService.GetTemplatesAsync();
+            templates = result.ToList();
+        }
+        catch (Exception) { }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void SelectTemplate(ContractTemplateDto t)
+    {
+        Nav.NavigateTo($"/hop-dong/tao-moi/{t.Code}");
+    }
+}

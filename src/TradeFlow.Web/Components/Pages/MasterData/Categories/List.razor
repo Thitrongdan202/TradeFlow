@@ -152,6 +152,7 @@ else
                           PageSize="@_pageSize"
                           TotalCount="@FilteredItems.Count()"
                           ItemName="danh mục"
+                          PreferenceKey="categories"
                           CurrentPageChanged="@(p => _currentPage = p)"
                           PageSizeChanged="@(s => { _pageSize = s; _currentPage = 1; })" />
         }

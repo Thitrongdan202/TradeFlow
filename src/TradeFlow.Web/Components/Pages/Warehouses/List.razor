@@ -187,6 +187,7 @@ else
                           PageSize="@_pageSize"
                           TotalCount="@FilteredItems.Count()"
                           ItemName="kho hàng"
+                          PreferenceKey="warehouses"
                           CurrentPageChanged="@(p => _currentPage = p)"
                           PageSizeChanged="@(s => { _pageSize = s; _currentPage = 1; })" />
         }

@@ -420,11 +420,12 @@
     padding: 12px 14px;
 }
 
-/* Regular Mode Layout (No Horizontal Scrollbar, Rebalanced Split) */
+/* Regular Mode Layout (Stable Two-Column Grid: ~38% Cart, 100% Remaining Space for Catalog) */
 .tf-layout-regular {
     flex: 1;
     display: grid;
-    grid-template-columns: minmax(380px, 420px) 1fr;
+    grid-template-columns: clamp(420px, 38%, 520px) 1fr;
+    width: 100%;
     height: 100%;
     min-width: 0;
     overflow: hidden;
@@ -1761,15 +1762,16 @@
    (Matching media_1791897987304_1811b721.png, media_1791897987339_f8a0825b.png, media_1791897987355_8ec5fa03.png)
    ============================================================ */
 
-/* Left Order Panel (Selected Order Items) */
+/* Left Order Panel (Selected Order Items) - Stable Fixed Desktop Width */
 .tf-order-panel {
     display: flex;
     flex-direction: column;
     background-color: #ffffff;
-    border-right: 1px solid var(--tf-border, #e2e8f0);
     height: 100%;
+    width: 100%;
     min-width: 0;
     overflow: hidden;
+    border-right: 1px solid var(--tf-border, #e2e8f0);
 }
 
 .tf-order-panel-header {
@@ -2589,6 +2591,7 @@
     flex-direction: column;
     background-color: #f1f5f9;
     height: 100%;
+    width: 100%;
     min-width: 0;
     overflow: hidden;
 }
@@ -2602,14 +2605,17 @@
     border-bottom: 1px solid var(--tf-border, #e2e8f0);
     gap: 12px;
     flex-shrink: 0;
+    width: 100%;
+    flex-wrap: wrap;
+    row-gap: 8px;
 }
 
 .tf-cat-toolbar-left {
     display: flex;
     align-items: center;
     flex: 1;
-    max-width: 420px;
-    min-width: 220px;
+    max-width: 520px;
+    min-width: 180px;
 }
 
 .tf-pos-cat-search {
@@ -2759,23 +2765,11 @@
     min-height: 0;
 }
 
-/* 4/5-Columns Compact Grid View (Matching media_1791897987339_f8a0825b.png) */
+/* Responsive Compact Grid View (adapts dynamically as cart/catalog width changes) */
 .tf-pos-grid-layout {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
     gap: 8px;
-}
-
-@media (min-width: 1500px) {
-    .tf-pos-grid-layout {
-        grid-template-columns: repeat(5, 1fr);
-    }
-}
-
-@media (max-width: 1100px) {
-    .tf-pos-grid-layout {
-        grid-template-columns: repeat(3, 1fr);
-    }
 }
 
 .tf-pos-grid-card {
@@ -2799,8 +2793,8 @@
 .tf-pos-card-media {
     position: relative;
     width: 100%;
-    height: 92px;
-    max-height: 92px;
+    height: 80px;
+    max-height: 80px;
     background-color: #f8fafc;
     display: flex;
     align-items: center;
@@ -2868,17 +2862,11 @@
     text-overflow: ellipsis;
 }
 
-/* 3-Columns List View (Matching media_1791897987355_8ec5fa03.png) */
+/* Responsive List View */
 .tf-pos-list-layout {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-}
-
-@media (max-width: 1200px) {
-    .tf-pos-list-layout {
-        grid-template-columns: repeat(2, 1fr);
-    }
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 8px;
 }
 
 .tf-pos-list-item {
@@ -2965,6 +2953,38 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    flex-wrap: wrap;
+}
+
+.tf-pos-page-size-wrap {
+    display: flex;
+    align-items: center;
+    margin-left: 6px;
+}
+
+.tf-pos-page-size-select {
+    height: 28px;
+    padding: 0 6px;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--tf-gray-700, #334155);
+    background-color: #ffffff;
+    border: 1px solid var(--tf-border, #cbd5e1);
+    border-radius: 5px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.tf-pos-page-size-select:focus {
+    border-color: var(--tf-primary, #2563eb);
+}
+
+.tf-pos-total-count-text {
+    font-size: 11.5px;
+    color: var(--tf-gray-500, #64748b);
+    margin-left: 6px;
+    white-space: nowrap;
 }
 
 .tf-btn-pos-checkout {
@@ -3594,5 +3614,29 @@
     color: #0f172a !important;
     border-color: #94a3b8 !important;
     background: #f8fafc !important;
+}
+
+/* Responsive Fallback for Small/Narrow Screens */
+@media (max-width: 768px) {
+    .tf-layout-regular {
+        display: flex !important;
+        flex-direction: column !important;
+        overflow-y: auto !important;
+    }
+    .tf-order-panel {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        height: auto !important;
+        min-height: 320px;
+        border-right: none !important;
+        border-bottom: 1px solid var(--tf-border, #e2e8f0) !important;
+    }
+    .tf-catalog-panel {
+        width: 100% !important;
+        min-width: 0 !important;
+        height: auto !important;
+        flex: none !important;
+    }
 }
 

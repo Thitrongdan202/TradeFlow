@@ -1,4 +1,5 @@
 @namespace TradeFlow.Web.Components.Shared.Display
+@inject IJSRuntime JS
 
 @if (TotalCount > 0)
 {
@@ -11,12 +12,18 @@
             {
                 <div class="tf-pagination-size-selector">
                     <select class="tf-input tf-pagination-select"
-                            value="@PageSize"
+                            value="@EffectivePageSizeValue"
                             @onchange="HandlePageSizeChange"
                             aria-label="Số bản ghi trên mỗi trang">
                         @foreach (var size in PageSizes)
                         {
                             <option value="@size">@size dòng / trang</option>
+                        }
+                        @if (AllowAll)
+                        {
+                            <option value="@AllPageSizeValue">
+                                Tất cả@(TotalCount > MaxAllSize ? $" (tối đa {MaxAllSize})" : "")
+                            </option>
                         }
                     </select>
                 </div>
@@ -74,14 +81,50 @@
     [Parameter] public string ItemName { get; set; } = "mục";
     [Parameter] public bool ShowPageSizeSelector { get; set; } = true;
     [Parameter] public int[] PageSizes { get; set; } = new[] { 10, 20, 50, 100 };
+    [Parameter] public bool AllowAll { get; set; } = true;
+    [Parameter] public int MaxAllSize { get; set; } = 500;
+    [Parameter] public string? PreferenceKey { get; set; }
     [Parameter] public EventCallback<int> CurrentPageChanged { get; set; }
     [Parameter] public EventCallback<int> PageSizeChanged { get; set; }
     [Parameter] public string? Class { get; set; }
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
+    public int AllPageSizeValue => MaxAllSize;
+    public int EffectivePageSizeValue => PageSize >= MaxAllSize ? AllPageSizeValue : PageSize;
+
     public int TotalPages => Math.Max(1, (int)Math.Ceiling((double)TotalCount / (PageSize > 0 ? PageSize : 20)));
     public int StartRecord => TotalCount == 0 ? 0 : (CurrentPage - 1) * PageSize + 1;
     public int EndRecord => Math.Min(CurrentPage * PageSize, TotalCount);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !string.IsNullOrEmpty(PreferenceKey))
+        {
+            try
+            {
+                var stored = await JS.InvokeAsync<string?>("localStorage.getItem", $"tf_pagesize_{PreferenceKey}");
+                if (int.TryParse(stored, out int savedSize) && savedSize > 0)
+                {
+                    if (PageSizes.Contains(savedSize) || (AllowAll && savedSize >= MaxAllSize))
+                    {
+                        if (savedSize != PageSize)
+                        {
+                            PageSize = savedSize;
+                            if (PageSizeChanged.HasDelegate)
+                            {
+                                await PageSizeChanged.InvokeAsync(savedSize);
+                            }
+                            StateHasChanged();
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore JS interop errors in non-browser/test environments
+            }
+        }
+    }
 
     private IEnumerable<int> VisiblePages
     {
@@ -149,6 +192,14 @@
         if (int.TryParse(e.Value?.ToString(), out int newSize) && newSize > 0)
         {
             PageSize = newSize;
+            if (!string.IsNullOrEmpty(PreferenceKey))
+            {
+                try
+                {
+                    await JS.InvokeVoidAsync("localStorage.setItem", $"tf_pagesize_{PreferenceKey}", newSize.ToString());
+                }
+                catch { }
+            }
             if (PageSizeChanged.HasDelegate)
             {
                 await PageSizeChanged.InvokeAsync(newSize);

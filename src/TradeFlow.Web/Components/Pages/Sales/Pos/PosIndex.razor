@@ -578,7 +578,7 @@
                                 <button type="button"
                                         class="tf-view-switch-btn @(!_isGridView ? "active" : "")"
                                         title="Dạng danh sách"
-                                        @onclick="() => _isGridView = false">
+                                        @onclick="() => SetDisplayMode(false, _showImages)">
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <line x1="8" y1="6" x2="21" y2="6"></line>
                                         <line x1="8" y1="12" x2="21" y2="12"></line>
@@ -591,7 +591,7 @@
                                 <button type="button"
                                         class="tf-view-switch-btn @(_isGridView ? "active" : "")"
                                         title="Dạng lưới"
-                                        @onclick="() => _isGridView = true">
+                                        @onclick="() => SetDisplayMode(true, _showImages)">
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <rect x="3" y="3" width="7" height="7"></rect>
                                         <rect x="14" y="3" width="7" height="7"></rect>
@@ -602,7 +602,7 @@
                                 <button type="button"
                                         class="tf-view-switch-btn @(_showImages ? "active" : "")"
                                         title="Bật/Tắt hình ảnh"
-                                        @onclick="() => _showImages = !_showImages">
+                                        @onclick="() => SetDisplayMode(_isGridView, !_showImages)">
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                                         <circle cx="8.5" cy="8.5" r="1.5"></circle>
@@ -751,6 +751,21 @@
                                     @onclick="() => ChangeCatalogPage(_catalogPage + 1)">
                                 ›
                             </button>
+
+                            <div class="tf-pos-page-size-wrap">
+                                <select class="tf-pos-page-size-select"
+                                        value="@_catalogPageSize"
+                                        @onchange="OnCatalogPageSizeChanged"
+                                        title="Số sản phẩm trên trang"
+                                        aria-label="Số sản phẩm trên mỗi trang">
+                                    <option value="10">10 / trang</option>
+                                    <option value="20">20 / trang</option>
+                                    <option value="50">50 / trang</option>
+                                    <option value="100">100 / trang</option>
+                                    <option value="500">Tất cả@( _catalogTotalCount > 500 ? " (tối đa 500)" : "" )</option>
+                                </select>
+                            </div>
+                            <span class="tf-pos-total-count-text">(@_catalogTotalCount SP)</span>
                         </div>
 
                         <button type="button"
@@ -2192,7 +2207,7 @@
     private List<Product> _catalogProducts = new();
     private string _catalogSearch = string.Empty;
     private int _catalogPage = 1;
-    private int _catalogPageSize = 12;
+    private int _catalogPageSize = 20;
     private int _catalogTotalCount = 0;
     private int _catalogTotalPages => (int)Math.Ceiling((double)_catalogTotalCount / _catalogPageSize);
     private bool _showImages = true;
@@ -2271,6 +2286,69 @@
         catch (Exception ex)
         {
             Console.WriteLine($"[POS Initialization Error]: {ex.Message}");
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var savedPageSize = await JS.InvokeAsync<string?>("localStorage.getItem", "tf_pos_catalog_page_size");
+                if (int.TryParse(savedPageSize, out int ps) && ps > 0 && ps != _catalogPageSize)
+                {
+                    _catalogPageSize = ps;
+                    _catalogPage = 1;
+                    await LoadCatalogPageAsync();
+                    StateHasChanged();
+                }
+
+                var savedGridView = await JS.InvokeAsync<string?>("localStorage.getItem", "tf_pos_grid_view");
+                if (bool.TryParse(savedGridView, out bool gv) && gv != _isGridView)
+                {
+                    _isGridView = gv;
+                    StateHasChanged();
+                }
+
+                var savedShowImg = await JS.InvokeAsync<string?>("localStorage.getItem", "tf_pos_show_images");
+                if (bool.TryParse(savedShowImg, out bool si) && si != _showImages)
+                {
+                    _showImages = si;
+                    StateHasChanged();
+                }
+            }
+            catch
+            {
+                // Ignore JS interop errors in test or SSR environments
+            }
+        }
+    }
+
+    private async Task SetDisplayMode(bool isGrid, bool showImages)
+    {
+        _isGridView = isGrid;
+        _showImages = showImages;
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", "tf_pos_grid_view", isGrid.ToString().ToLowerInvariant());
+            await JS.InvokeVoidAsync("localStorage.setItem", "tf_pos_show_images", showImages.ToString().ToLowerInvariant());
+        }
+        catch { }
+    }
+
+    private async Task OnCatalogPageSizeChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newSize) && newSize > 0)
+        {
+            _catalogPageSize = newSize;
+            _catalogPage = 1;
+            await LoadCatalogPageAsync();
+            try
+            {
+                await JS.InvokeVoidAsync("localStorage.setItem", "tf_pos_catalog_page_size", newSize.ToString());
+            }
+            catch { }
         }
     }
 

@@ -106,6 +106,7 @@ else
                           PageSize="@_pageSize"
                           TotalCount="@_invoices.Count"
                           ItemName="hóa đơn"
+                          PreferenceKey="invoices"
                           CurrentPageChanged="@(p => _currentPage = p)"
                           PageSizeChanged="@(s => { _pageSize = s; _currentPage = 1; })" />
         }

@@ -298,6 +298,7 @@
                           PageSize="@_pageSize"
                           TotalCount="@FilteredList.Count()"
                           ItemName="bảng giá"
+                          PreferenceKey="pricing"
                           CurrentPageChanged="@(p => _currentPage = p)"
                           PageSizeChanged="@(s => { _pageSize = s; _currentPage = 1; })" />
         }

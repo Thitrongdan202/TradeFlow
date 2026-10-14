@@ -1,0 +1,239 @@
+.tf-modal-dialog.payment {
+    max-width: 580px;
+}
+
+.tf-modal-header.customer-header {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    color: #ffffff;
+}
+
+.tf-modal-header.customer-header .tf-modal-title {
+    color: #ffffff;
+}
+
+.tf-modal-header.supplier-header {
+    background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+    color: #ffffff;
+}
+
+.tf-modal-header.supplier-header .tf-modal-title {
+    color: #ffffff;
+}
+
+.tf-modal-subtitle {
+    margin: 4px 0 0 0;
+    font-size: 12.5px;
+    color: #94a3b8;
+}
+
+.tf-modal-header.customer-header .tf-modal-close,
+.tf-modal-header.supplier-header .tf-modal-close {
+    color: #cbd5e1;
+}
+
+.tf-modal-header.customer-header .tf-modal-close:hover,
+.tf-modal-header.supplier-header .tf-modal-close:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* Partner Debt Card */
+.tf-partner-debt-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.tf-partner-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.tf-partner-code {
+    font-size: 12px;
+    font-family: monospace;
+    font-weight: 700;
+    color: #0284c7;
+}
+
+.tf-partner-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.tf-partner-balance-box {
+    text-align: right;
+}
+
+.tf-balance-label {
+    display: block;
+    font-size: 11.5px;
+    color: #64748b;
+}
+
+.tf-balance-val {
+    font-size: 1.15rem;
+    font-weight: 800;
+    font-family: monospace;
+}
+
+.tf-balance-val.danger {
+    color: #dc2626;
+}
+
+.tf-balance-val.warning {
+    color: #d97706;
+}
+
+.tf-balance-val.neutral {
+    color: #16a34a;
+}
+
+/* Form */
+.tf-payment-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.tf-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.tf-field-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.tf-field-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+}
+
+.tf-btn-quick-fill {
+    background: #e0f2fe;
+    border: 1px solid #bae6fd;
+    color: #0284c7;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.tf-btn-quick-fill:hover {
+    background: #0284c7;
+    color: #ffffff;
+}
+
+.tf-type-pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.tf-type-pill {
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.tf-type-pill.active {
+    background: #0284c7;
+    border-color: #0284c7;
+    color: #ffffff;
+}
+
+.tf-input-lg {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 1.25rem;
+    border: 2px solid #cbd5e1;
+    border-radius: 8px;
+    color: #0f172a;
+    transition: border-color 0.15s ease;
+}
+
+.tf-input-lg:focus {
+    outline: none;
+    border-color: #0284c7;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+.tf-form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.tf-select,
+.tf-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 13.5px;
+    color: #0f172a;
+}
+
+.tf-select:focus,
+.tf-input:focus,
+.tf-textarea:focus {
+    outline: none;
+    border-color: #0284c7;
+    box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+}
+
+.tf-textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #0f172a;
+    resize: vertical;
+}
+
+.tf-field-hint {
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.tf-field-hint.warning {
+    color: #d97706;
+}
+
+.tf-btn-primary.customer-btn {
+    background: #0284c7;
+    border-color: #0284c7;
+}
+
+.tf-btn-primary.customer-btn:hover:not(:disabled) {
+    background: #0369a1;
+}
+
+.tf-btn-primary.supplier-btn {
+    background: #475569;
+    border-color: #475569;
+}
+
+.tf-btn-primary.supplier-btn:hover:not(:disabled) {
+    background: #334155;
+}

@@ -10,6 +10,7 @@ using TradeFlow.Domain.Entities.Sales;
 using TradeFlow.Domain.Entities.Documents;
 using TradeFlow.Domain.Entities.Security;
 using TradeFlow.Domain.Entities.Employees;
+using TradeFlow.Domain.Entities.Partners;
 
 namespace TradeFlow.Infrastructure.Persistence;
 
@@ -53,6 +54,9 @@ public class TradeFlowDbContext
     public DbSet<SalesOrderItem> SalesOrderItems => Set<SalesOrderItem>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
+
+    // === Quản lý Công nợ & Thanh toán Đối tác ===
+    public DbSet<PartnerPayment> PartnerPayments => Set<PartnerPayment>();
 
     // === Phase 6 - Báo giá & Hồ sơ chứng từ ===
     public DbSet<Quotation> Quotations => Set<Quotation>();

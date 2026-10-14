@@ -1,0 +1,398 @@
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Partners
+@inject IPartnerDebtService DebtService
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthStateProvider
+
+@if (IsOpen)
+{
+    <div class="tf-modal-backdrop" @onclick="HandleCancel">
+        <div class="tf-modal-dialog" @onclick:stopPropagation="true">
+            @* Modal Header *@
+            <div class="tf-modal-header">
+                <h3 class="tf-modal-title">@(IsManagementExport ? "Xuất file quản lý công nợ Excel" : "Xuất file công nợ")</h3>
+                <button type="button" class="tf-modal-close" @onclick="HandleCancel" title="Đóng">
+                    &times;
+                </button>
+            </div>
+
+            @* Modal Body *@
+            <div class="tf-modal-body">
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="tf-modal-alert danger">@_errorMessage</div>
+                }
+
+                @* SECTION 0: Phạm vi đối tác nếu có nhiều lựa chọn *@
+                @if (SelectedPartnerCount > 1 || ShowScopeSelector)
+                {
+                    <div class="tf-export-section">
+                        <label class="tf-section-label">Phạm vi đối tác xuất file</label>
+                        <div class="tf-scope-options">
+                            @if (SinglePartnerId.HasValue)
+                            {
+                                <label class="tf-radio-label">
+                                    <input type="radio" name="exportScope" checked="@(_scope == DebtExportScope.CurrentPartner)" @onchange="() => _scope = DebtExportScope.CurrentPartner" />
+                                    <span>Đối tác đang xem: <strong>@PartnerCodeDisplay</strong></span>
+                                </label>
+                            }
+                            @if (SelectedPartnerCount > 0)
+                            {
+                                <label class="tf-radio-label">
+                                    <input type="radio" name="exportScope" checked="@(_scope == DebtExportScope.SelectedPartners)" @onchange="() => _scope = DebtExportScope.SelectedPartners" />
+                                    <span>Các đối tác đã chọn trong bảng: <strong>(@SelectedPartnerCount đối tác)</strong></span>
+                                </label>
+                            }
+                            <label class="tf-radio-label">
+                                <input type="radio" name="exportScope" checked="@(_scope == DebtExportScope.AllFiltered)" @onchange="() => _scope = DebtExportScope.AllFiltered" />
+                                <span>Tất cả đối tác theo điều kiện lọc hiện tại</span>
+                            </label>
+                        </div>
+                    </div>
+                }
+
+                @* SECTION 1: Thời gian *@
+                <div class="tf-export-section">
+                    <label class="tf-section-label">Thời gian</label>
+                    <div class="tf-pills-wrap">
+                        <button type="button" class="tf-pill @(_selectedPreset == "today" ? "active" : "")" @onclick='() => SetPreset("today")'>Hôm nay</button>
+                        <button type="button" class="tf-pill @(_selectedPreset == "this_week" ? "active" : "")" @onclick='() => SetPreset("this_week")'>Tuần này</button>
+                        <button type="button" class="tf-pill @(_selectedPreset == "7_days" ? "active" : "")" @onclick='() => SetPreset("7_days")'>7 ngày qua</button>
+                        <button type="button" class="tf-pill @(_selectedPreset == "30_days" ? "active" : "")" @onclick='() => SetPreset("30_days")'>30 ngày qua</button>
+                        <button type="button" class="tf-pill @(_selectedPreset == "this_month" ? "active" : "")" @onclick='() => SetPreset("this_month")'>Tháng này</button>
+                        <button type="button" class="tf-pill @(_selectedPreset == "last_month" ? "active" : "")" @onclick='() => SetPreset("last_month")'>Tháng trước</button>
+                        <button type="button" class="tf-pill @(_selectedPreset == "this_lunar_month" ? "active" : "")" @onclick='() => SetPreset("this_lunar_month")'>Tháng này (âm lịch)</button>
+                        <button type="button" class="tf-pill @(_selectedPreset == "last_lunar_month" ? "active" : "")" @onclick='() => SetPreset("last_lunar_month")'>Tháng trước (âm lịch)</button>
+                        <button type="button" class="tf-pill @(_selectedPreset == "this_quarter" ? "active" : "")" @onclick='() => SetPreset("this_quarter")'>Quý này</button>
+                        <button type="button" class="tf-pill @(_selectedPreset == "this_year" ? "active" : "")" @onclick='() => SetPreset("this_year")'>Năm nay</button>
+                        <button type="button" class="tf-pill @(_selectedPreset == "this_lunar_year" ? "active" : "")" @onclick='() => SetPreset("this_lunar_year")'>Năm nay (âm lịch)</button>
+                        <button type="button" class="tf-pill @(_selectedPreset == "all_time" ? "active" : "")" @onclick='() => SetPreset("all_time")'>Toàn thời gian</button>
+                        <button type="button" class="tf-pill @(_selectedPreset == "custom" ? "active" : "")" @onclick='() => SetPreset("custom")'>Lựa chọn khác</button>
+                    </div>
+
+                    @if (_selectedPreset == "custom")
+                    {
+                        <div class="tf-custom-dates-grid">
+                            <div class="tf-form-group">
+                                <label class="tf-sub-label">Từ ngày:</label>
+                                <input type="date" class="tf-date-input" @bind="_fromDate" />
+                            </div>
+                            <div class="tf-form-group">
+                                <label class="tf-sub-label">Đến ngày:</label>
+                                <input type="date" class="tf-date-input" @bind="_toDate" />
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                @* SECTION 2: Thông tin xuất file *@
+                <div class="tf-export-section">
+                    <label class="tf-section-label">Thông tin xuất file</label>
+
+                    @* Always present overview *@
+                    <div class="tf-info-box-overview">
+                        <div class="tf-overview-title">Dữ liệu tổng quan (luôn có)</div>
+                        <div class="tf-overview-sub">Thời gian, Mã, Ghi nợ, Ghi có</div>
+                    </div>
+
+                    @* Expandable Line items detail *@
+                    <div class="tf-line-details-card">
+                        <div class="tf-line-details-header">
+                            <label class="tf-checkbox-main">
+                                <input type="checkbox" @bind="_includeLineDetails" />
+                                <span class="tf-chk-label-bold">Chi tiết từng hàng giao dịch</span>
+                            </label>
+                            <span class="tf-chk-subtext">Diễn giải chi tiết từng dòng sản phẩm/dịch vụ</span>
+                        </div>
+
+                        @if (_includeLineDetails)
+                        {
+                            <div class="tf-nested-checkboxes">
+                                <label class="tf-chk-row">
+                                    <input type="checkbox" @bind="_includeUnit" />
+                                    <span>ĐVT</span>
+                                </label>
+                                <label class="tf-chk-row">
+                                    <input type="checkbox" @bind="_includeQuantity" />
+                                    <span>Số lượng</span>
+                                </label>
+                                <label class="tf-chk-row">
+                                    <input type="checkbox" @bind="_includeUnitPrice" />
+                                    <span>Đơn giá</span>
+                                </label>
+                                <label class="tf-chk-row">
+                                    <input type="checkbox" @bind="_includeDiscount" />
+                                    <span>Giảm giá</span>
+                                </label>
+                                <label class="tf-chk-row">
+                                    <input type="checkbox" @bind="_includeVat" />
+                                    <span>VAT</span>
+                                </label>
+                                <label class="tf-chk-row">
+                                    <input type="checkbox" @bind="_includeCostOrPurchasePrice" />
+                                    <span>Giá nhập/trả</span>
+                                </label>
+                                <label class="tf-chk-row">
+                                    <input type="checkbox" @bind="_includeLineTotal" />
+                                    <span>Thành tiền</span>
+                                </label>
+                            </div>
+                        }
+                    </div>
+
+                    @if (IsManagementExport)
+                    {
+                        <div class="tf-mt-3">
+                            <label class="tf-checkbox-main">
+                                <input type="checkbox" @bind="_includeIndividualPartnerSheets" />
+                                <span>Kèm theo các trang chi tiết riêng cho từng đối tác được chọn</span>
+                            </label>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @* Modal Footer *@
+            <div class="tf-modal-footer">
+                <button type="button" class="tf-btn-secondary" @onclick="HandleCancel" disabled="@_isExporting">
+                    Bỏ qua
+                </button>
+                <button type="button" class="tf-btn-primary" @onclick="ExecuteExportAsync" disabled="@_isExporting">
+                    @if (_isExporting)
+                    {
+                        <span class="tf-spinner-sm"></span>
+                        <span>Đang xuất file...</span>
+                    }
+                    else
+                    {
+                        <span>Đồng ý</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public bool IsManagementExport { get; set; } = false;
+    [Parameter] public PartnerType? PartnerType { get; set; }
+    [Parameter] public int? SinglePartnerId { get; set; }
+    [Parameter] public string? PartnerCodeDisplay { get; set; }
+    [Parameter] public List<int> SelectedPartnerIds { get; set; } = new();
+    [Parameter] public bool ShowScopeSelector { get; set; } = false;
+    [Parameter] public DebtFilterDto? CurrentFilter { get; set; }
+
+    private DebtExportScope _scope = DebtExportScope.CurrentPartner;
+    private string _selectedPreset = "this_month";
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+    private string _presetTitle = "Tháng này";
+
+    private bool _includeLineDetails = true;
+    private bool _includeUnit = true;
+    private bool _includeQuantity = true;
+    private bool _includeUnitPrice = true;
+    private bool _includeDiscount = true;
+    private bool _includeVat = true;
+    private bool _includeCostOrPurchasePrice = true;
+    private bool _includeLineTotal = true;
+    private bool _includeIndividualPartnerSheets = true;
+
+    private bool _isExporting = false;
+    private string? _errorMessage;
+
+    private int SelectedPartnerCount => SelectedPartnerIds?.Count ?? 0;
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen)
+        {
+            _errorMessage = null;
+            if (SinglePartnerId.HasValue)
+            {
+                _scope = DebtExportScope.CurrentPartner;
+            }
+            else if (SelectedPartnerCount > 0)
+            {
+                _scope = DebtExportScope.SelectedPartners;
+            }
+            else
+            {
+                _scope = DebtExportScope.AllFiltered;
+            }
+
+            if (_selectedPreset == "this_month")
+            {
+                SetPreset("this_month");
+            }
+        }
+    }
+
+    private void SetPreset(string preset)
+    {
+        _selectedPreset = preset;
+        var today = DateTime.Today;
+
+        switch (preset)
+        {
+            case "today":
+                _fromDate = today;
+                _toDate = today;
+                _presetTitle = $"Hôm nay ({today:dd/MM/yyyy})";
+                break;
+            case "this_week":
+                int diff = (7 + (today.DayOfWeek - DayOfWeek.Monday)) % 7;
+                _fromDate = today.AddDays(-1 * diff);
+                _toDate = today;
+                _presetTitle = $"Tuần này ({_fromDate:dd/MM} - {_toDate:dd/MM/yyyy})";
+                break;
+            case "7_days":
+                _fromDate = today.AddDays(-7);
+                _toDate = today;
+                _presetTitle = "7 ngày qua";
+                break;
+            case "30_days":
+                _fromDate = today.AddDays(-30);
+                _toDate = today;
+                _presetTitle = "30 ngày qua";
+                break;
+            case "this_month":
+            case "this_lunar_month":
+                _fromDate = new DateTime(today.Year, today.Month, 1);
+                _toDate = today;
+                _presetTitle = $"Tháng {today.Month}/{today.Year}";
+                break;
+            case "last_month":
+            case "last_lunar_month":
+                var lastMonth = today.AddMonths(-1);
+                _fromDate = new DateTime(lastMonth.Year, lastMonth.Month, 1);
+                _toDate = new DateTime(today.Year, today.Month, 1).AddDays(-1);
+                _presetTitle = $"Tháng trước ({lastMonth.Month}/{lastMonth.Year})";
+                break;
+            case "this_quarter":
+                int quarter = (today.Month - 1) / 3 + 1;
+                _fromDate = new DateTime(today.Year, (quarter - 1) * 3 + 1, 1);
+                _toDate = today;
+                _presetTitle = $"Quý {quarter}/{today.Year}";
+                break;
+            case "this_year":
+            case "this_lunar_year":
+                _fromDate = new DateTime(today.Year, 1, 1);
+                _toDate = today;
+                _presetTitle = $"Năm {today.Year}";
+                break;
+            case "all_time":
+                _fromDate = null;
+                _toDate = null;
+                _presetTitle = "Toàn thời gian";
+                break;
+            case "custom":
+                _presetTitle = "Tùy chọn thời gian";
+                break;
+        }
+    }
+
+    private async Task ExecuteExportAsync()
+    {
+        _isExporting = true;
+        _errorMessage = null;
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            byte[] bytes;
+            string fileName;
+
+            if (IsManagementExport)
+            {
+                var req = new DebtManagementExportRequest
+                {
+                    Scope = _scope,
+                    PartnerType = PartnerType,
+                    SelectedCustomerIds = _scope == DebtExportScope.SelectedPartners
+                        ? (PartnerType != Application.Common.Models.Partners.PartnerType.Supplier ? SelectedPartnerIds : new())
+                        : new(),
+                    SelectedSupplierIds = _scope == DebtExportScope.SelectedPartners
+                        ? (PartnerType == Application.Common.Models.Partners.PartnerType.Supplier ? SelectedPartnerIds : new())
+                        : new(),
+                    Filter = CurrentFilter,
+                    FromDate = _fromDate,
+                    ToDate = _toDate,
+                    DatePresetTitle = _presetTitle,
+                    IncludeIndividualPartnerSheets = _includeIndividualPartnerSheets
+                };
+
+                bytes = await DebtService.ExportDebtManagementWorkbookAsync(req, user);
+                fileName = $"QuanLyCongNo_TradeFlow_{DateTime.Now:yyyyMMdd_HHmm}.xlsx";
+            }
+            else
+            {
+                var partnerIds = new List<int>();
+                if (_scope == DebtExportScope.CurrentPartner && SinglePartnerId.HasValue)
+                {
+                    partnerIds.Add(SinglePartnerId.Value);
+                }
+                else if (_scope == DebtExportScope.SelectedPartners && SelectedPartnerIds.Any())
+                {
+                    partnerIds.AddRange(SelectedPartnerIds);
+                }
+
+                var req = new PartnerDebtStatementExportRequest
+                {
+                    Scope = _scope,
+                    PartnerType = PartnerType,
+                    PartnerIds = partnerIds,
+                    FromDate = _fromDate,
+                    ToDate = _toDate,
+                    DatePresetTitle = _presetTitle,
+                    IncludeLineDetails = _includeLineDetails,
+                    IncludeUnit = _includeUnit,
+                    IncludeQuantity = _includeQuantity,
+                    IncludeUnitPrice = _includeUnitPrice,
+                    IncludeDiscount = _includeDiscount,
+                    IncludeVat = _includeVat,
+                    IncludeCostOrPurchasePrice = _includeCostOrPurchasePrice,
+                    IncludeLineTotal = _includeLineTotal
+                };
+
+                bytes = await DebtService.ExportPartnerDebtStatementAsync(req, user);
+                string codeSuffix = !string.IsNullOrEmpty(PartnerCodeDisplay) ? $"_{PartnerCodeDisplay}" : "";
+                fileName = $"BaoCaoCongNo{codeSuffix}_{DateTime.Now:yyyyMMdd_HHmm}.xlsx";
+            }
+
+            // Trigger file download via JS base64
+            string base64 = Convert.ToBase64String(bytes);
+            await JS.InvokeVoidAsync("eval", $@"
+                var link = document.createElement('a');
+                link.download = '{fileName}';
+                link.href = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{base64}';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            ");
+
+            await HandleCancel();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Lỗi khi tạo tệp Excel: {ex.Message}";
+        }
+        finally
+        {
+            _isExporting = false;
+        }
+    }
+
+    private async Task HandleCancel()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+}

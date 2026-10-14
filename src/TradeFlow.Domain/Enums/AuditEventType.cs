@@ -128,5 +128,11 @@ public enum AuditEventType
     EmployeeLinkedToUser = 177,
     EmployeeUnlinkedFromUser = 178,
     DepartmentCreated = 179,
-    PositionCreated = 180
+    PositionCreated = 180,
+
+    // === Quản lý Công nợ & Thanh toán Đối tác ===
+    DebtPaymentRecorded = 190,
+    DebtAdjustmentRecorded = 191,
+    DebtDiscountRecorded = 192,
+    DebtExported = 193
 }

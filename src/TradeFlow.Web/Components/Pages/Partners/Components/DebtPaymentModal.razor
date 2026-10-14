@@ -1,0 +1,250 @@
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Partners
+@using TradeFlow.Domain.Enums
+@inject IPartnerDebtService DebtService
+@inject AuthenticationStateProvider AuthStateProvider
+
+@if (IsOpen)
+{
+    <div class="tf-modal-backdrop" @onclick="HandleCancel">
+        <div class="tf-modal-dialog payment" @onclick:stopPropagation="true">
+            @* Modal Header *@
+            <div class="tf-modal-header @(PartnerType == PartnerType.Customer ? "customer-header" : "supplier-header")">
+                <div class="tf-header-content">
+                    <h3 class="tf-modal-title">
+                        @(PartnerType == PartnerType.Customer ? "Thu tiền khách hàng" : "Thanh toán nhà cung cấp")
+                    </h3>
+                    <p class="tf-modal-subtitle">
+                        @(PartnerType == PartnerType.Customer
+                            ? "Lập phiếu thu ghi nhận tiền khách trả hoặc ghi nhận chiết khấu, điều chỉnh giảm nợ"
+                            : "Lập phiếu chi thanh toán nợ nhà cung cấp hoặc ghi nhận điều chỉnh giảm phải trả")
+                    </p>
+                </div>
+                <button type="button" class="tf-modal-close" @onclick="HandleCancel" title="Đóng">
+                    &times;
+                </button>
+            </div>
+
+            @* Modal Body *@
+            <div class="tf-modal-body">
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="tf-modal-alert danger">@_errorMessage</div>
+                }
+
+                @* Partner Overview Card *@
+                <div class="tf-partner-debt-card">
+                    <div class="tf-partner-meta">
+                        <span class="tf-partner-code">@PartnerCode</span>
+                        <span class="tf-partner-name">@PartnerName</span>
+                    </div>
+                    <div class="tf-partner-balance-box">
+                        <span class="tf-balance-label">@(PartnerType == PartnerType.Customer ? "Nợ cần thu hiện tại:" : "Nợ cần trả hiện tại:")</span>
+                        <span class="tf-balance-val @(CurrentBalance > 0 ? (PartnerType == PartnerType.Customer ? "danger" : "warning") : "neutral")">
+                            @CurrentBalance.ToString("N0") ₫
+                        </span>
+                    </div>
+                </div>
+
+                @* Form Controls *@
+                <div class="tf-payment-form">
+                    @* Transaction Type Tabs *@
+                    <div class="tf-form-group">
+                        <label class="tf-field-label">Loại giao dịch:</label>
+                        <div class="tf-type-pills">
+                            <button type="button" class="tf-type-pill @(_transactionType == DebtTransactionType.Payment ? "active" : "")"
+                                    @onclick="() => _transactionType = DebtTransactionType.Payment">
+                                @(PartnerType == PartnerType.Customer ? "Thu tiền (Phiếu thu)" : "Thanh toán (Phiếu chi)")
+                            </button>
+                            <button type="button" class="tf-type-pill @(_transactionType == DebtTransactionType.Adjustment ? "active" : "")"
+                                    @onclick="() => _transactionType = DebtTransactionType.Adjustment">
+                                Điều chỉnh công nợ
+                            </button>
+                            @if (PartnerType == PartnerType.Customer)
+                            {
+                                <button type="button" class="tf-type-pill @(_transactionType == DebtTransactionType.PaymentDiscount ? "active" : "")"
+                                        @onclick="() => _transactionType = DebtTransactionType.PaymentDiscount">
+                                    Chiết khấu thanh toán
+                                </button>
+                            }
+                        </div>
+                    </div>
+
+                    @* Payment Amount *@
+                    <div class="tf-form-group">
+                        <div class="tf-field-label-row">
+                            <label class="tf-field-label" for="txtAmount">Số tiền giao dịch (₫) *:</label>
+                            @if (CurrentBalance > 0)
+                            {
+                                <button type="button" class="tf-btn-quick-fill" @onclick="FillFullBalance">
+                                    Thanh toán toàn bộ (@CurrentBalance.ToString("N0") ₫)
+                                </button>
+                            }
+                        </div>
+                        <input id="txtAmount" type="number" step="1000" min="1" class="tf-input-lg font-mono font-bold"
+                               placeholder="0" @bind="_amount" @bind:event="oninput" />
+                        @if (_amount > CurrentBalance && CurrentBalance > 0 && _transactionType == DebtTransactionType.Payment)
+                        {
+                            <span class="tf-field-hint warning">
+                                ⚠ Số tiền lớn hơn dư nợ hiện tại (@CurrentBalance.ToString("N0") ₫). Phần thừa sẽ ghi nhận vào khoản trả trước của đối tác.
+                            </span>
+                        }
+                    </div>
+
+                    @* Payment Method & Payment Date *@
+                    <div class="tf-form-grid-2">
+                        <div class="tf-form-group">
+                            <label class="tf-field-label">Phương thức thanh toán:</label>
+                            <select class="tf-select" @bind="_paymentMethod">
+                                <option value="Tiền mặt">Tiền mặt (Sổ quỹ)</option>
+                                <option value="Chuyển khoản">Chuyển khoản ngân hàng</option>
+                                <option value="Quẹt thẻ POS">Quẹt thẻ ngân hàng (POS)</option>
+                                <option value="Ví điện tử / QR">Ví điện tử / QR chuyển khoản</option>
+                                <option value="Bù trừ công nợ">Bù trừ công nợ</option>
+                            </select>
+                        </div>
+                        <div class="tf-form-group">
+                            <label class="tf-field-label">Ngày giao dịch:</label>
+                            <input type="datetime-local" class="tf-input" @bind="_paymentDate" />
+                        </div>
+                    </div>
+
+                    @* Reference Document Code *@
+                    <div class="tf-form-group">
+                        <label class="tf-field-label">Chứng từ gốc liên quan (Hóa đơn / Đơn hàng):</label>
+                        <input type="text" class="tf-input" placeholder="Ví dụ: HD001366, DH-0001, hoặc để trống" @bind="_referenceCode" />
+                    </div>
+
+                    @* Notes *@
+                    <div class="tf-form-group">
+                        <label class="tf-field-label">Ghi chú đối soát:</label>
+                        <textarea class="tf-textarea" rows="2" placeholder="Ghi chú thêm về nội dung thanh toán, người nộp tiền, số tài khoản..." @bind="_notes"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            @* Modal Footer *@
+            <div class="tf-modal-footer">
+                <button type="button" class="tf-btn-secondary" @onclick="HandleCancel" disabled="@_isSubmitting">
+                    Hủy bỏ
+                </button>
+                <button type="button" class="tf-btn-primary @(PartnerType == PartnerType.Customer ? "customer-btn" : "supplier-btn")"
+                        @onclick="SubmitPaymentAsync" disabled="@_isSubmitting">
+                    @if (_isSubmitting)
+                    {
+                        <span class="tf-spinner-sm"></span>
+                        <span>Đang xử lý...</span>
+                    }
+                    else
+                    {
+                        <span>@(PartnerType == PartnerType.Customer ? "Xác nhận thu tiền" : "Xác nhận chi tiền")</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public PartnerType PartnerType { get; set; } = PartnerType.Customer;
+    [Parameter] public int PartnerId { get; set; }
+    [Parameter] public string PartnerCode { get; set; } = string.Empty;
+    [Parameter] public string PartnerName { get; set; } = string.Empty;
+    [Parameter] public decimal CurrentBalance { get; set; }
+    [Parameter] public int? TargetInvoiceId { get; set; }
+    [Parameter] public string? TargetDocumentCode { get; set; }
+    [Parameter] public DebtTransactionType InitialTransactionType { get; set; } = DebtTransactionType.Payment;
+    [Parameter] public EventCallback<RecordDebtPaymentResult> OnPaymentRecorded { get; set; }
+
+    private DebtTransactionType _transactionType = DebtTransactionType.Payment;
+    private decimal _amount;
+    private string _paymentMethod = "Tiền mặt";
+    private DateTime _paymentDate = DateTime.Now;
+    private string? _referenceCode;
+    private string? _notes;
+    private bool _isSubmitting = false;
+    private string? _errorMessage;
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen)
+        {
+            _errorMessage = null;
+            _transactionType = InitialTransactionType;
+            _amount = CurrentBalance > 0 ? CurrentBalance : 0m;
+            _paymentDate = DateTime.Now;
+            _paymentMethod = "Tiền mặt";
+            _referenceCode = TargetDocumentCode;
+            _notes = null;
+        }
+    }
+
+    private void FillFullBalance()
+    {
+        if (CurrentBalance > 0)
+        {
+            _amount = CurrentBalance;
+        }
+    }
+
+    private async Task SubmitPaymentAsync()
+    {
+        if (_amount <= 0)
+        {
+            _errorMessage = "Vui lòng nhập số tiền thanh toán lớn hơn 0 ₫.";
+            return;
+        }
+
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            var dto = new RecordDebtPaymentDto
+            {
+                PartnerType = PartnerType,
+                PartnerId = PartnerId,
+                TransactionType = _transactionType,
+                Amount = _amount,
+                PaymentDate = _paymentDate,
+                PaymentMethod = _paymentMethod,
+                ReferenceCode = _referenceCode,
+                InvoiceId = TargetInvoiceId,
+                Notes = _notes
+            };
+
+            var result = await DebtService.RecordPaymentAsync(dto, user);
+            if (result.Succeeded)
+            {
+                await OnPaymentRecorded.InvokeAsync(result);
+                await HandleCancel();
+            }
+            else
+            {
+                _errorMessage = result.ErrorMessage ?? "Có lỗi xảy ra khi lưu phiếu thanh toán.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Lỗi xử lý thanh toán: {ex.Message}";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task HandleCancel()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+}

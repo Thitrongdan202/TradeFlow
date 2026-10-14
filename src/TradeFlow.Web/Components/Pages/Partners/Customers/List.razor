@@ -403,7 +403,8 @@
 <PartnerDetailDrawer @bind-IsOpen="_isDrawerOpen"
                      PartnerType="PartnerType.Customer"
                      PartnerId="@_selectedCustomerId"
-                     OnClose="() => _selectedCustomerId = null" />
+                     OnClose="() => _selectedCustomerId = null"
+                     OnDebtUpdated="LoadDataAsync" />
 
 @* 6. Deletion Confirmation Modal *@
 <TfModal IsOpen="@(_customerToDeleteId.HasValue)"

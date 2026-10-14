@@ -1106,6 +1106,92 @@ namespace TradeFlow.Infrastructure.Migrations
                     b.ToTable("Warehouses", (string)null);
                 });
 
+            modelBuilder.Entity("TradeFlow.Domain.Entities.Partners.PartnerPayment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("CustomerId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("InvoiceId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("PartnerId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PartnerType")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PaymentCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("PaymentDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ReferenceCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int?>("SalesOrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SupplierId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TransactionType")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("InvoiceId");
+
+                    b.HasIndex("PaymentCode")
+                        .IsUnique();
+
+                    b.HasIndex("PaymentDate");
+
+                    b.HasIndex("SalesOrderId");
+
+                    b.HasIndex("SupplierId");
+
+                    b.HasIndex("PartnerType", "PartnerId");
+
+                    b.ToTable("PartnerPayments", (string)null);
+                });
+
             modelBuilder.Entity("TradeFlow.Domain.Entities.Pricing.PriceList", b =>
                 {
                     b.Property<int>("Id")
@@ -2895,6 +2981,37 @@ namespace TradeFlow.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("TradeFlow.Domain.Entities.Partners.PartnerPayment", b =>
+                {
+                    b.HasOne("TradeFlow.Domain.Entities.MasterData.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("TradeFlow.Domain.Entities.Sales.Invoice", "Invoice")
+                        .WithMany()
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("TradeFlow.Domain.Entities.Sales.SalesOrder", "SalesOrder")
+                        .WithMany()
+                        .HasForeignKey("SalesOrderId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("TradeFlow.Domain.Entities.MasterData.Supplier", "Supplier")
+                        .WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Invoice");
+
+                    b.Navigation("SalesOrder");
+
+                    b.Navigation("Supplier");
                 });
 
             modelBuilder.Entity("TradeFlow.Domain.Entities.Pricing.PriceListItem", b =>

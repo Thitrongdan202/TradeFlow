@@ -107,6 +107,7 @@ public static class InfrastructureServiceExtensions
         // Register Partner & Debt Management services
         services.AddScoped<IPartnerService, Services.PartnerService>();
         services.AddScoped<IPartnerDebtService, Services.PartnerDebtService>();
+        services.AddScoped<IPartnerDebtExportService, Services.PartnerDebtExportService>();
 
         return services;
     }

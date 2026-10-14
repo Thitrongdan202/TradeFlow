@@ -1,6 +1,7 @@
 @using Microsoft.AspNetCore.Components
 @using TradeFlow.Application.Common.Interfaces
 @using TradeFlow.Application.Common.Models.Partners
+@using TradeFlow.Domain.Enums
 @inject IPartnerService PartnerService
 @inject NavigationManager Nav
 
@@ -175,58 +176,133 @@
                         </div>
                     }
 
-                    @* TAB 2: TRANSACTIONS *@
+                    @* TAB 2: TRANSACTIONS & DEBT *@
                     @if (_activeTab == DrawerTab.Transactions)
                     {
-                        <div class="tf-drawer-section">
-                            <h4 class="tf-drawer-section-title">Lịch sử giao dịch &amp; Chứng từ gắn kết</h4>
-                            @if (!_customer.RecentTransactions.Any())
-                            {
-                                <div class="tf-drawer-empty-table">
-                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <div class="tf-drawer-debt-section">
+                            @* Balance Header Summary Card *@
+                            <div class="tf-drawer-debt-header-card">
+                                <div class="tf-debt-header-stat">
+                                    <span class="tf-stat-label">Nợ cần thu từ khách:</span>
+                                    <span class="tf-stat-val text-danger">@_customer.CurrentReceivable.ToString("N0") ₫</span>
+                                </div>
+                                <div class="tf-debt-header-stat secondary">
+                                    <span class="tf-stat-label">Tổng doanh số bán:</span>
+                                    <span class="tf-stat-val">@_customer.TotalSales.ToString("N0") ₫</span>
+                                </div>
+                            </div>
+
+                            @* Action Toolbar (matching screenshot reference) *@
+                            <div class="tf-drawer-debt-actions">
+                                <button type="button" class="tf-debt-action-btn" @onclick="() => OpenExportModal(false)" title="Xuất bảng đối soát công nợ chi tiết">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="7 10 12 15 17 10"></polyline>
+                                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                                    </svg>
+                                    <span>Xuất file công nợ</span>
+                                </button>
+                                <button type="button" class="tf-debt-action-btn" @onclick="() => OpenExportModal(true)" title="Xuất báo cáo tổng quan quản lý công nợ">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                         <polyline points="14 2 14 8 20 8"></polyline>
                                     </svg>
-                                    <p>Khách hàng chưa phát sinh đơn bán hàng hay hóa đơn nào.</p>
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="tf-drawer-table-wrap">
-                                    <table class="tf-drawer-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Mã chứng từ</th>
-                                                <th>Ngày</th>
-                                                <th style="text-align:right;">Tổng tiền</th>
-                                                <th style="text-align:right;">Còn nợ</th>
-                                                <th style="text-align:center;">Trạng thái</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach (var t in _customer.RecentTransactions)
-                                            {
+                                    <span>Xuất file</span>
+                                </button>
+                                <button type="button" class="tf-debt-action-btn primary" @onclick="() => OpenPaymentModal(DebtTransactionType.Payment)" title="Thu tiền khách hàng (Lập phiếu thu)">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="1" x2="12" y2="23"></line>
+                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                    </svg>
+                                    <span>Thanh toán</span>
+                                </button>
+                                <button type="button" class="tf-debt-action-btn" @onclick="() => OpenPaymentModal(DebtTransactionType.Adjustment)" title="Lập phiếu điều chỉnh dư nợ">
+                                    <span>Điều chỉnh</span>
+                                </button>
+                                <button type="button" class="tf-debt-action-btn" @onclick="() => OpenPaymentModal(DebtTransactionType.PaymentDiscount)" title="Ghi nhận chiết khấu thanh toán">
+                                    <span>Chiết khấu thanh toán</span>
+                                </button>
+                                @if (_customer.CurrentReceivable > 0)
+                                {
+                                    <button type="button" class="tf-debt-action-btn qr" @onclick="OpenQrModal" title="Tạo mã QR chuyển khoản nhanh VietQR">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="3" y="3" width="7" height="7"></rect>
+                                            <rect x="14" y="3" width="7" height="7"></rect>
+                                            <rect x="14" y="14" width="7" height="7"></rect>
+                                            <rect x="3" y="14" width="7" height="7"></rect>
+                                        </svg>
+                                        <span>Tạo QR</span>
+                                    </button>
+                                }
+                            </div>
+
+                            @* Transaction Table *@
+                            <div class="tf-drawer-section">
+                                <h4 class="tf-drawer-section-title">Lịch sử giao dịch &amp; Chứng từ gắn kết</h4>
+                                @if (!_customer.RecentTransactions.Any())
+                                {
+                                    <div class="tf-drawer-empty-table">
+                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                            <polyline points="14 2 14 8 20 8"></polyline>
+                                        </svg>
+                                        <p>Khách hàng chưa phát sinh đơn bán hàng, hóa đơn hay phiếu thu nào.</p>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="tf-drawer-table-wrap">
+                                        <table class="tf-drawer-table">
+                                            <thead>
                                                 <tr>
-                                                    <td>
-                                                        <a href="@t.LinkUrl" class="tf-drawer-link" title="Xem chi tiết @t.DocumentType">
-                                                            @t.DocumentCode
-                                                        </a>
-                                                        <div class="tf-drawer-doc-sub">@t.DocumentType</div>
-                                                    </td>
-                                                    <td>@t.DocumentDate.ToString("dd/MM/yyyy")</td>
-                                                    <td style="text-align:right; font-weight:600;">@t.Amount.ToString("N0") ₫</td>
-                                                    <td style="text-align:right; font-weight:600; color:@(t.OutstandingAmount > 0 ? "var(--tf-danger)" : "var(--tf-success)");">
-                                                        @t.OutstandingAmount.ToString("N0") ₫
-                                                    </td>
-                                                    <td style="text-align:center;">
-                                                        <span class="tf-badge-doc-status">@t.Status</span>
-                                                    </td>
+                                                    <th>Mã chứng từ</th>
+                                                    <th>Thời gian</th>
+                                                    <th>Loại</th>
+                                                    <th style="text-align:right;">Ghi nợ</th>
+                                                    <th style="text-align:right;">Ghi có</th>
+                                                    <th style="text-align:right;">Còn nợ</th>
+                                                    <th style="text-align:center;">Trạng thái</th>
                                                 </tr>
-                                            }
-                                        </tbody>
-                                    </table>
-                                </div>
-                            }
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var t in _customer.RecentTransactions)
+                                                {
+                                                    <tr>
+                                                        <td>
+                                                            @if (!string.IsNullOrEmpty(t.LinkUrl))
+                                                            {
+                                                                <a href="@t.LinkUrl" class="tf-drawer-link" title="Xem chi tiết @t.DocumentType">
+                                                                    @t.DocumentCode
+                                                                </a>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="font-mono font-semibold">@t.DocumentCode</span>
+                                                            }
+                                                        </td>
+                                                        <td>@t.DocumentDate.ToString("dd/MM/yyyy HH:mm")</td>
+                                                        <td>
+                                                            <span class="tf-drawer-doc-type">@t.DocumentType</span>
+                                                        </td>
+                                                        <td style="text-align:right; font-weight:600;">
+                                                            @(t.DebitAmount > 0 ? t.DebitAmount.ToString("N0") + " ₫" : "-")
+                                                        </td>
+                                                        <td style="text-align:right; font-weight:600; color:#16a34a;">
+                                                            @(t.CreditAmount > 0 ? t.CreditAmount.ToString("N0") + " ₫" : "-")
+                                                        </td>
+                                                        <td style="text-align:right; font-weight:600; color:@(t.OutstandingAmount > 0 ? "#dc2626" : "#475569");">
+                                                            @t.OutstandingAmount.ToString("N0") ₫
+                                                        </td>
+                                                        <td style="text-align:center;">
+                                                            <span class="tf-badge-doc-status">@t.Status</span>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                            </div>
                         </div>
                     }
 
@@ -358,16 +434,130 @@
                         </div>
                     }
 
+                    @* TAB 2: SUPPLIER TRANSACTIONS & PAYABLES *@
                     @if (_activeTab == DrawerTab.Transactions)
                     {
-                        <div class="tf-drawer-section">
-                            <h4 class="tf-drawer-section-title">Chứng từ Mua hàng &amp; Công nợ phải trả</h4>
-                            <div class="tf-drawer-empty-table">
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                    <polyline points="14 2 14 8 20 8"></polyline>
-                                </svg>
-                                <p>Phân hệ Mua hàng (Phase 6) đang chuẩn bị kích hoạt. Hiện chưa có chứng từ mua hàng phát sinh nợ phải trả cho nhà cung cấp này.</p>
+                        <div class="tf-drawer-debt-section">
+                            @* Balance Header Summary Card *@
+                            <div class="tf-drawer-debt-header-card">
+                                <div class="tf-debt-header-stat">
+                                    <span class="tf-stat-label">Nợ cần trả nhà cung cấp:</span>
+                                    <span class="tf-stat-val text-warning">@_supplier.CurrentPayable.ToString("N0") ₫</span>
+                                </div>
+                                <div class="tf-debt-header-stat secondary">
+                                    <span class="tf-stat-label">Tổng mua:</span>
+                                    <span class="tf-stat-val">@_supplier.TotalPurchases.ToString("N0") ₫</span>
+                                </div>
+                            </div>
+
+                            @* Action Toolbar (matching screenshot reference) *@
+                            <div class="tf-drawer-debt-actions">
+                                <button type="button" class="tf-debt-action-btn" @onclick="() => OpenExportModal(false)" title="Xuất bảng đối soát công nợ chi tiết">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="7 10 12 15 17 10"></polyline>
+                                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                                    </svg>
+                                    <span>Xuất file công nợ</span>
+                                </button>
+                                <button type="button" class="tf-debt-action-btn" @onclick="() => OpenExportModal(true)" title="Xuất báo cáo tổng quan quản lý công nợ">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                    </svg>
+                                    <span>Xuất file</span>
+                                </button>
+                                <button type="button" class="tf-debt-action-btn primary" @onclick="() => OpenPaymentModal(DebtTransactionType.Payment)" title="Thanh toán nợ nhà cung cấp (Lập phiếu chi)">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                    </svg>
+                                    <span>Thanh toán</span>
+                                </button>
+                                <button type="button" class="tf-debt-action-btn" @onclick="() => OpenPaymentModal(DebtTransactionType.Adjustment)" title="Lập phiếu điều chỉnh dư nợ">
+                                    <span>Điều chỉnh</span>
+                                </button>
+                                @if (_supplier.CurrentPayable > 0)
+                                {
+                                    <button type="button" class="tf-debt-action-btn qr" @onclick="OpenQrModal" title="Tạo mã QR thanh toán nhanh VietQR">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="3" y="3" width="7" height="7"></rect>
+                                            <rect x="14" y="3" width="7" height="7"></rect>
+                                            <rect x="14" y="14" width="7" height="7"></rect>
+                                            <rect x="3" y="14" width="7" height="7"></rect>
+                                        </svg>
+                                        <span>Tạo QR</span>
+                                    </button>
+                                }
+                            </div>
+
+                            @* Transaction Table *@
+                            <div class="tf-drawer-section">
+                                <h4 class="tf-drawer-section-title">Chứng từ Mua hàng &amp; Công nợ phải trả</h4>
+                                @if (!_supplier.RecentTransactions.Any())
+                                {
+                                    <div class="tf-drawer-empty-table">
+                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                            <polyline points="14 2 14 8 20 8"></polyline>
+                                        </svg>
+                                        <p>Hiện chưa có chứng từ mua hàng hay phiếu chi phát sinh nợ phải trả cho nhà cung cấp này.</p>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="tf-drawer-table-wrap">
+                                        <table class="tf-drawer-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Mã chứng từ</th>
+                                                    <th>Thời gian</th>
+                                                    <th>Loại</th>
+                                                    <th style="text-align:right;">Ghi nợ</th>
+                                                    <th style="text-align:right;">Ghi có</th>
+                                                    <th style="text-align:right;">Còn nợ</th>
+                                                    <th style="text-align:center;">Trạng thái</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var t in _supplier.RecentTransactions)
+                                                {
+                                                    <tr>
+                                                        <td>
+                                                            @if (!string.IsNullOrEmpty(t.LinkUrl))
+                                                            {
+                                                                <a href="@t.LinkUrl" class="tf-drawer-link" title="Xem chi tiết @t.DocumentType">
+                                                                    @t.DocumentCode
+                                                                </a>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="font-mono font-semibold">@t.DocumentCode</span>
+                                                            }
+                                                        </td>
+                                                        <td>@t.DocumentDate.ToString("dd/MM/yyyy HH:mm")</td>
+                                                        <td>
+                                                            <span class="tf-drawer-doc-type">@t.DocumentType</span>
+                                                        </td>
+                                                        <td style="text-align:right; font-weight:600;">
+                                                            @(t.DebitAmount > 0 ? t.DebitAmount.ToString("N0") + " ₫" : "-")
+                                                        </td>
+                                                        <td style="text-align:right; font-weight:600; color:#16a34a;">
+                                                            @(t.CreditAmount > 0 ? t.CreditAmount.ToString("N0") + " ₫" : "-")
+                                                        </td>
+                                                        <td style="text-align:right; font-weight:600; color:@(t.OutstandingAmount > 0 ? "#d97706" : "#475569");">
+                                                            @t.OutstandingAmount.ToString("N0") ₫
+                                                        </td>
+                                                        <td style="text-align:center;">
+                                                            <span class="tf-badge-doc-status">@t.Status</span>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
                             </div>
                         </div>
                     }
@@ -453,6 +643,7 @@
     [Parameter] public PartnerType PartnerType { get; set; } = PartnerType.Customer;
     [Parameter] public int? PartnerId { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnDebtUpdated { get; set; }
 
     private enum DrawerTab { Overview, Transactions, Audit }
     private DrawerTab _activeTab = DrawerTab.Overview;
@@ -462,6 +653,36 @@
     private SupplierDetailDto? _supplier;
     private int? _lastLoadedId;
     private PartnerType _lastLoadedType;
+
+    // Debt Action Modals
+    private bool _isExportModalOpen = false;
+    private bool _isManagementExport = false;
+    private bool _isPaymentModalOpen = false;
+    private DebtTransactionType _modalTransactionType = DebtTransactionType.Payment;
+    private bool _isQrModalOpen = false;
+
+    private void OpenExportModal(bool isManagement)
+    {
+        _isManagementExport = isManagement;
+        _isExportModalOpen = true;
+    }
+
+    private void OpenPaymentModal(DebtTransactionType type)
+    {
+        _modalTransactionType = type;
+        _isPaymentModalOpen = true;
+    }
+
+    private void OpenQrModal()
+    {
+        _isQrModalOpen = true;
+    }
+
+    private async Task HandlePaymentRecorded(RecordDebtPaymentResult result)
+    {
+        await LoadPartnerDetailAsync();
+        await OnDebtUpdated.InvokeAsync();
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -476,7 +697,6 @@
         if (!PartnerId.HasValue) return;
 
         _isLoading = true;
-        _activeTab = DrawerTab.Overview;
         _customer = null;
         _supplier = null;
 
@@ -525,3 +745,25 @@
         await LoadPartnerDetailAsync();
     }
 }
+
+@* Modal Dialogs for Debt Operations *@
+<DebtExportModal @bind-IsOpen="_isExportModalOpen"
+                 IsManagementExport="_isManagementExport"
+                 PartnerType="PartnerType"
+                 SinglePartnerId="@(PartnerType == PartnerType.Customer ? _customer?.Id : _supplier?.Id)"
+                 PartnerCodeDisplay="@(PartnerType == PartnerType.Customer ? _customer?.Code : _supplier?.Code)" />
+
+<DebtPaymentModal @bind-IsOpen="_isPaymentModalOpen"
+                  PartnerType="PartnerType"
+                  PartnerId="@(PartnerType == PartnerType.Customer ? (_customer?.Id ?? 0) : (_supplier?.Id ?? 0))"
+                  PartnerCode="@(PartnerType == PartnerType.Customer ? (_customer?.Code ?? "") : (_supplier?.Code ?? ""))"
+                  PartnerName="@(PartnerType == PartnerType.Customer ? (_customer?.Name ?? "") : (_supplier?.Name ?? ""))"
+                  CurrentBalance="@(PartnerType == PartnerType.Customer ? (_customer?.CurrentReceivable ?? 0) : (_supplier?.CurrentPayable ?? 0))"
+                  InitialTransactionType="_modalTransactionType"
+                  OnPaymentRecorded="HandlePaymentRecorded" />
+
+<DebtQrModal @bind-IsOpen="_isQrModalOpen"
+             PartnerCode="@(PartnerType == PartnerType.Customer ? (_customer?.Code ?? "") : (_supplier?.Code ?? ""))"
+             PartnerName="@(PartnerType == PartnerType.Customer ? (_customer?.Name ?? "") : (_supplier?.Name ?? ""))"
+             Amount="@(PartnerType == PartnerType.Customer ? (_customer?.CurrentReceivable ?? 0) : (_supplier?.CurrentPayable ?? 0))"
+             ReferenceCode="@(PartnerType == PartnerType.Customer ? "TT CN" : "CN NCC")" />

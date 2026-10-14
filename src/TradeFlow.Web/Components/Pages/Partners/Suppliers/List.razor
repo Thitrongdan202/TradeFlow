@@ -397,7 +397,8 @@
 <PartnerDetailDrawer @bind-IsOpen="_isDrawerOpen"
                      PartnerType="PartnerType.Supplier"
                      PartnerId="@_selectedSupplierId"
-                     OnClose="() => _selectedSupplierId = null" />
+                     OnClose="() => _selectedSupplierId = null"
+                     OnDebtUpdated="LoadDataAsync" />
 
 @* 6. Deletion Confirmation Modal *@
 <TfModal IsOpen="@(_supplierToDeleteId.HasValue)"
@@ -528,8 +529,13 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadAggregatesAsync();
+        await LoadDataAsync();
         _creators = await PartnerService.GetSupplierCreatorsAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        await LoadAggregatesAsync();
         await LoadSuppliersAsync();
     }
 

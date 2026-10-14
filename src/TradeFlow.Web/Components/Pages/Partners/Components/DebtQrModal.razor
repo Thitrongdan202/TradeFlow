@@ -1,0 +1,98 @@
+@using Microsoft.AspNetCore.Components
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Domain.Entities.Settings
+@using TradeFlow.Infrastructure.Persistence
+@inject TradeFlowDbContext DbContext
+@inject IJSRuntime JS
+
+@if (IsOpen)
+{
+    <div class="tf-modal-backdrop" @onclick="HandleClose">
+        <div class="tf-modal-dialog qr" @onclick:stopPropagation="true">
+            <div class="tf-modal-header">
+                <h3 class="tf-modal-title">Mã QR Thanh toán Công nợ</h3>
+                <button type="button" class="tf-modal-close" @onclick="HandleClose" title="Đóng">&times;</button>
+            </div>
+            <div class="tf-modal-body text-center">
+                <div class="tf-qr-badge">Chuyển khoản nhanh qua VietQR (24/7)</div>
+
+                <div class="tf-qr-box">
+                    @* VietQR quick image format *@
+                    @if (!string.IsNullOrEmpty(_company?.BankName) && !string.IsNullOrEmpty(_company?.BankAccount))
+                    {
+                        var sanitizedBank = System.Net.WebUtility.UrlEncode(_company.BankName.Split(' ')[0]);
+                        var qrUrl = $"https://img.vietqr.io/image/{sanitizedBank}-{_company.BankAccount}-compact2.png?amount={(long)Amount}&addInfo={System.Net.WebUtility.UrlEncode($"{PartnerCode} {ReferenceCode}")}&accountName={System.Net.WebUtility.UrlEncode(_company.BankAccountHolder ?? "")}";
+                        <img src="@qrUrl" alt="Mã VietQR thanh toán" class="tf-qr-img" />
+                    }
+                    else
+                    {
+                        <div class="tf-qr-placeholder">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <rect x="3" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="14" width="7" height="7"></rect>
+                                <rect x="3" y="14" width="7" height="7"></rect>
+                            </svg>
+                            <p>Chưa cấu hình tài khoản ngân hàng công ty trong Cài đặt hệ thống.</p>
+                        </div>
+                    }
+                </div>
+
+                <div class="tf-qr-details">
+                    <div class="tf-qr-row">
+                        <span class="tf-qr-label">Khách hàng:</span>
+                        <span class="tf-qr-val font-semibold">@PartnerName (@PartnerCode)</span>
+                    </div>
+                    <div class="tf-qr-row">
+                        <span class="tf-qr-label">Số tiền thanh toán:</span>
+                        <span class="tf-qr-val font-bold text-danger">@Amount.ToString("N0") ₫</span>
+                    </div>
+                    <div class="tf-qr-row">
+                        <span class="tf-qr-label">Ngân hàng thụ hưởng:</span>
+                        <span class="tf-qr-val">@(!string.IsNullOrEmpty(_company?.BankName) ? _company.BankName : "Chưa thiết lập")</span>
+                    </div>
+                    <div class="tf-qr-row">
+                        <span class="tf-qr-label">Số tài khoản:</span>
+                        <span class="tf-qr-val font-mono font-bold">@(!string.IsNullOrEmpty(_company?.BankAccount) ? _company.BankAccount : "Chưa thiết lập")</span>
+                    </div>
+                    <div class="tf-qr-row">
+                        <span class="tf-qr-label">Chủ tài khoản:</span>
+                        <span class="tf-qr-val uppercase font-semibold">@(!string.IsNullOrEmpty(_company?.BankAccountHolder) ? _company.BankAccountHolder : _company?.CompanyName)</span>
+                    </div>
+                    <div class="tf-qr-row">
+                        <span class="tf-qr-label">Nội dung chuyển khoản:</span>
+                        <span class="tf-qr-val font-mono text-primary font-bold">@PartnerCode @ReferenceCode</span>
+                    </div>
+                </div>
+            </div>
+            <div class="tf-modal-footer">
+                <button type="button" class="tf-btn-secondary" @onclick="HandleClose">Đóng</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public string PartnerCode { get; set; } = string.Empty;
+    [Parameter] public string PartnerName { get; set; } = string.Empty;
+    [Parameter] public decimal Amount { get; set; }
+    [Parameter] public string? ReferenceCode { get; set; }
+
+    private CompanySettings? _company;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && _company == null)
+        {
+            _company = await DbContext.CompanySettings.AsNoTracking().FirstOrDefaultAsync();
+        }
+    }
+
+    private async Task HandleClose()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+}

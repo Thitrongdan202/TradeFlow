@@ -594,3 +594,59 @@
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+/* Bulk Selection Action Bar */
+.tf-bulk-selection-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: #eef2ff;
+    border-bottom: 1px solid #c7d2fe;
+    gap: 12px;
+}
+
+.tf-bulk-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #3730a3;
+    font-size: 13px;
+}
+
+.tf-bulk-info strong {
+    color: #1e1b4b;
+}
+
+.tf-bulk-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Inline Pay Action Button */
+.tf-btn-action.pay-action {
+    background: #2563eb;
+    border-color: #1d4ed8;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.tf-btn-action.pay-action:hover {
+    background: #1d4ed8;
+    color: #ffffff;
+}
+
+.tf-btn-action.pay-action.supplier {
+    background: #d97706;
+    border-color: #b45309;
+    color: #ffffff;
+}
+
+.tf-btn-action.pay-action.supplier:hover {
+    background: #b45309;
+    color: #ffffff;
+}
+

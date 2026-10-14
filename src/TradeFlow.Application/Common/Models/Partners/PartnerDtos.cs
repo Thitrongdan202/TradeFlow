@@ -175,15 +175,36 @@ public class SupplierFilterDto
 
 public class PartnerLinkedTransactionDto
 {
-    public string DocumentType { get; set; } = string.Empty; // "Đơn bán hàng" / "Hóa đơn" / "Đơn mua hàng"
+    public int? DocumentId { get; set; }
+    public string DocumentType { get; set; } = string.Empty; // "Đơn bán hàng" / "Hóa đơn VAT" / "Hóa đơn bán lẻ" / "Thanh toán (Sổ quỹ)" / "Điều chỉnh" / "Chiết khấu"
     public string DocumentCode { get; set; } = string.Empty;
     public DateTime DocumentDate { get; set; }
-    public decimal Amount { get; set; }
+    public decimal Amount { get; set; } // Giá trị chứng từ
     public decimal PaidAmount { get; set; }
     public decimal OutstandingAmount { get; set; }
+    public decimal DebitAmount { get; set; } // Phát sinh tăng (Nợ)
+    public decimal CreditAmount { get; set; } // Phát sinh giảm (Có / Thanh toán)
+    public decimal RunningBalance { get; set; } // Dư nợ lũy kế sau giao dịch
     public string Status { get; set; } = string.Empty;
     public string? PaymentMethod { get; set; }
+    public string? ReferenceCode { get; set; }
+    public string? Notes { get; set; }
     public string? LinkUrl { get; set; }
+    public List<PartnerTransactionLineItemDto> LineItems { get; set; } = new();
+}
+
+public class PartnerTransactionLineItemDto
+{
+    public int SortOrder { get; set; }
+    public string ProductCode { get; set; } = string.Empty;
+    public string ProductName { get; set; } = string.Empty;
+    public string UnitName { get; set; } = string.Empty;
+    public decimal Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public decimal TaxRate { get; set; }
+    public decimal TaxAmount { get; set; }
+    public decimal LineTotal { get; set; }
 }
 
 public class DeletePartnerResult
@@ -248,6 +269,7 @@ public class DebtRecordDto
     public DebtStatus DebtStatus { get; set; }
     public string? PaymentMethod { get; set; }
     public string? LinkUrl { get; set; }
+    public int? DocumentId => Id;
 }
 
 public class DebtFilterDto
@@ -270,4 +292,86 @@ public class PagedResult<T>
     public int PageIndex { get; set; }
     public int PageSize { get; set; }
     public int TotalPages => PageSize > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 0;
+}
+
+public enum DebtExportScope
+{
+    CurrentPartner = 1,
+    SelectedPartners = 2,
+    AllFiltered = 3
+}
+
+public class RecordDebtPaymentDto
+{
+    public PartnerType PartnerType { get; set; } = PartnerType.Customer;
+    public int PartnerId { get; set; }
+    public DebtTransactionType TransactionType { get; set; } = DebtTransactionType.Payment;
+    public decimal Amount { get; set; }
+    public DateTime PaymentDate { get; set; } = DateTime.UtcNow;
+    public string PaymentMethod { get; set; } = "Tiền mặt";
+    public string? ReferenceCode { get; set; }
+    public int? InvoiceId { get; set; }
+    public int? SalesOrderId { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class RecordDebtPaymentResult
+{
+    public bool Succeeded { get; set; }
+    public int? PaymentId { get; set; }
+    public string? PaymentCode { get; set; }
+    public string? ErrorMessage { get; set; }
+    public decimal UpdatedBalance { get; set; }
+    public decimal NewRemainingBalance => UpdatedBalance;
+}
+
+public class PartnerDebtStatementExportRequest
+{
+    public DebtExportScope Scope { get; set; } = DebtExportScope.CurrentPartner;
+    public PartnerType? PartnerType { get; set; }
+    public List<int> PartnerIds { get; set; } = new();
+    public DateTime? FromDate { get; set; }
+    public DateTime? ToDate { get; set; }
+    public string? DatePresetTitle { get; set; }
+    public bool IncludeLineDetails { get; set; } = true;
+    public bool IncludeUnit { get; set; } = true;
+    public bool IncludeQuantity { get; set; } = true;
+    public bool IncludeUnitPrice { get; set; } = true;
+    public bool IncludeDiscount { get; set; } = true;
+    public bool IncludeVat { get; set; } = true;
+    public bool IncludeCostOrPurchasePrice { get; set; } = true;
+    public bool IncludeLineTotal { get; set; } = true;
+}
+
+public class DebtManagementExportRequest
+{
+    public DebtExportScope Scope { get; set; } = DebtExportScope.AllFiltered;
+    public PartnerType? PartnerType { get; set; }
+    public List<int> SelectedCustomerIds { get; set; } = new();
+    public List<int> SelectedSupplierIds { get; set; } = new();
+    public DebtFilterDto? Filter { get; set; }
+    public DateTime? FromDate { get; set; }
+    public DateTime? ToDate { get; set; }
+    public string? DatePresetTitle { get; set; }
+    public bool IncludeIndividualPartnerSheets { get; set; } = true;
+}
+
+public class PartnerStatementSummaryDto
+{
+    public int PartnerId { get; set; }
+    public PartnerType PartnerType { get; set; }
+    public string Code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? CompanyName { get; set; }
+    public string? TaxCode { get; set; }
+    public string? Phone { get; set; }
+    public string? Email { get; set; }
+    public string? Address { get; set; }
+    public decimal OpeningBalance { get; set; }
+    public decimal TotalDebits { get; set; }
+    public decimal TotalCredits { get; set; }
+    public decimal TotalDiscounts { get; set; }
+    public decimal ClosingBalance { get; set; }
+    public string BalanceDirectionDescription { get; set; } = string.Empty;
+    public List<PartnerLinkedTransactionDto> Transactions { get; set; } = new();
 }

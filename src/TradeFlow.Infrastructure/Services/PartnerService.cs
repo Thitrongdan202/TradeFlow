@@ -153,6 +153,13 @@ public class PartnerService : IPartnerService
             })
             .ToDictionaryAsync(x => x.CustomerId, cancellationToken);
 
+        // Fetch customer payments
+        var customerPayments = await _context.PartnerPayments.AsNoTracking()
+            .Where(p => p.PartnerType == (int)PartnerType.Customer && customerIds.Contains(p.PartnerId))
+            .GroupBy(p => p.PartnerId)
+            .Select(g => new { CustomerId = g.Key, TotalPaid = g.Sum(x => x.Amount) })
+            .ToDictionaryAsync(x => x.CustomerId, x => x.TotalPaid, cancellationToken);
+
         // Cross-role matching suppliers (by tax code or phone)
         var taxCodes = customers.Where(c => !string.IsNullOrEmpty(c.TaxCode)).Select(c => c.TaxCode!).Distinct().ToList();
         var phones = customers.Where(c => !string.IsNullOrEmpty(c.Phone)).Select(c => c.Phone!).Distinct().ToList();
@@ -167,9 +174,11 @@ public class PartnerService : IPartnerService
         {
             invoiceStats.TryGetValue(c.Id, out var invStat);
             uninvoicedOrders.TryGetValue(c.Id, out var ordStat);
+            customerPayments.TryGetValue(c.Id, out var paidAmount);
 
             decimal totalSales = (invStat?.TotalSales ?? 0m) + (ordStat?.TotalOrderSales ?? 0m);
-            decimal receivable = (invStat?.Receivables ?? 0m) + (ordStat?.TotalOrderSales ?? 0m);
+            decimal grossReceivable = (invStat?.Receivables ?? 0m) + (ordStat?.TotalOrderSales ?? 0m);
+            decimal receivable = Math.Max(0m, grossReceivable - paidAmount);
 
             DateTime? lastDate = invStat?.LastInvoiceDate;
             if (ordStat?.LastOrderDate != null && (lastDate == null || ordStat.LastOrderDate > lastDate))
@@ -251,33 +260,44 @@ public class PartnerService : IPartnerService
         // Map recent transactions
         var recentTransactions = new List<PartnerLinkedTransactionDto>();
 
+        // Fetch customer payments
+        var payments = await _context.PartnerPayments.AsNoTracking()
+            .Where(p => p.PartnerType == (int)PartnerType.Customer && p.PartnerId == id)
+            .OrderByDescending(p => p.PaymentDate)
+            .Take(20)
+            .ToListAsync(cancellationToken);
+
+        var paymentsByInv = payments.Where(p => p.InvoiceId.HasValue).ToLookup(p => p.InvoiceId!.Value);
+
         foreach (var inv in invoices)
         {
+            var invPayments = paymentsByInv[inv.Id].ToList();
+            decimal specificPaid = invPayments.Sum(x => x.Amount);
+
             bool isUnpaid = inv.PaymentMethod != null && 
                             (inv.PaymentMethod.Contains("Công nợ") || 
                              inv.PaymentMethod.Contains("Ghi nợ") || 
                              inv.PaymentMethod.Contains("Chưa thanh toán") || 
                              inv.Status == InvoiceStatus.Pending);
 
-            decimal paid = isUnpaid ? 0m : inv.GrandTotal;
-            decimal debt = isUnpaid ? inv.GrandTotal : 0m;
+            decimal paid = !isUnpaid ? inv.GrandTotal : specificPaid;
+            decimal debt = Math.Max(0m, inv.GrandTotal - paid);
 
             recentTransactions.Add(new PartnerLinkedTransactionDto
             {
+                DocumentId = inv.Id,
                 DocumentType = inv.Type == InvoiceType.VatInvoice ? "Hóa đơn VAT" : "Hóa đơn bán hàng",
                 DocumentCode = !string.IsNullOrEmpty(inv.InvoiceNo) ? inv.InvoiceNo : inv.InvoiceNumber,
                 DocumentDate = inv.InvoiceDate,
                 Amount = inv.GrandTotal,
+                DebitAmount = inv.GrandTotal,
+                CreditAmount = 0m,
                 PaidAmount = paid,
                 OutstandingAmount = debt,
-                Status = inv.Status switch
-                {
-                    InvoiceStatus.Issued => "Đã phát hành",
-                    InvoiceStatus.Pending => "Chờ thanh toán",
-                    InvoiceStatus.Draft => "Bản nháp",
-                    _ => inv.Status.ToString()
-                },
+                Status = debt == 0m ? "Đã thanh toán" : (paid > 0 ? "Nợ một phần" : (inv.Status == InvoiceStatus.Issued ? "Đã phát hành" : "Chờ thanh toán")),
                 PaymentMethod = inv.PaymentMethod,
+                ReferenceCode = inv.SalesOrderId.HasValue ? $"DH-{inv.SalesOrderId}" : null,
+                Notes = inv.Notes,
                 LinkUrl = $"/hoa-don/chi-tiet/{inv.Id}"
             });
         }
@@ -288,22 +308,65 @@ public class PartnerService : IPartnerService
         {
             recentTransactions.Add(new PartnerLinkedTransactionDto
             {
+                DocumentId = ord.Id,
                 DocumentType = "Đơn bán hàng",
                 DocumentCode = ord.Code,
                 DocumentDate = ord.OrderDate,
                 Amount = ord.GrandTotal,
+                DebitAmount = ord.GrandTotal,
+                CreditAmount = 0m,
                 PaidAmount = 0m,
                 OutstandingAmount = ord.GrandTotal,
                 Status = ord.Status == SalesOrderStatus.Confirmed ? "Đã xác nhận" : "Bản nháp",
                 PaymentMethod = "Chờ xuất hóa đơn",
-                LinkUrl = $"/ban-hang/don-ban-hang/chi-tiet/{ord.Id}"
+                LinkUrl = $"/ban-hang/don-ban-hang/chi-tiet/{ord.Id}",
+                Notes = ord.Notes
             });
         }
 
-        recentTransactions = recentTransactions.OrderByDescending(t => t.DocumentDate).ToList();
+        // Add payments, adjustments, and discounts
+        foreach (var pay in payments)
+        {
+            string docType = pay.TransactionType switch
+            {
+                DebtTransactionType.Payment => "Phiếu thu tiền",
+                DebtTransactionType.Adjustment => "Điều chỉnh công nợ",
+                DebtTransactionType.PaymentDiscount => "Chiết khấu thanh toán",
+                _ => "Phiếu thu"
+            };
 
-        decimal totalSales = recentTransactions.Sum(x => x.Amount);
-        decimal receivable = recentTransactions.Sum(x => x.OutstandingAmount);
+            recentTransactions.Add(new PartnerLinkedTransactionDto
+            {
+                DocumentId = pay.Id,
+                DocumentType = docType,
+                DocumentCode = pay.PaymentCode,
+                DocumentDate = pay.PaymentDate,
+                Amount = pay.Amount,
+                DebitAmount = 0m,
+                CreditAmount = pay.Amount,
+                PaidAmount = pay.Amount,
+                OutstandingAmount = 0m,
+                Status = "Đã ghi nhận",
+                PaymentMethod = pay.PaymentMethod,
+                ReferenceCode = pay.ReferenceCode,
+                Notes = pay.Notes
+            });
+        }
+
+        // Calculate running balance in chronological order
+        var chrono = recentTransactions.OrderBy(t => t.DocumentDate).ToList();
+        decimal running = 0m;
+        foreach (var item in chrono)
+        {
+            running += item.DebitAmount - item.CreditAmount;
+            item.RunningBalance = running;
+        }
+
+        recentTransactions = chrono.OrderByDescending(t => t.DocumentDate).ToList();
+
+        decimal totalSales = invoices.Sum(x => x.GrandTotal) + orders.Where(o => !invoicedOrderIds.Contains(o.Id)).Sum(x => x.GrandTotal);
+        decimal totalPaidAll = payments.Sum(x => x.Amount);
+        decimal receivable = Math.Max(0m, running);
         DateTime? lastDate = recentTransactions.FirstOrDefault()?.DocumentDate;
 
         // Check matching supplier overlap
@@ -577,6 +640,30 @@ public class PartnerService : IPartnerService
             .Select(c => new { c.Id, c.Code })
             .FirstOrDefaultAsync(cancellationToken);
 
+        var supPayments = await _context.PartnerPayments.AsNoTracking()
+            .Where(p => p.PartnerType == (int)PartnerType.Supplier && p.PartnerId == id)
+            .OrderByDescending(p => p.PaymentDate)
+            .Take(20)
+            .ToListAsync(cancellationToken);
+
+        var supTransactions = supPayments.Select(p => new PartnerLinkedTransactionDto
+        {
+            DocumentId = p.Id,
+            DocumentType = p.TransactionType == DebtTransactionType.Payment ? "Thanh toán (Sổ quỹ)" : "Điều chỉnh nợ NCC",
+            DocumentCode = p.PaymentCode,
+            DocumentDate = p.PaymentDate,
+            Amount = p.Amount,
+            DebitAmount = 0m,
+            CreditAmount = p.Amount,
+            PaidAmount = p.Amount,
+            OutstandingAmount = 0m,
+            RunningBalance = -p.Amount,
+            Status = "Đã chi tiền",
+            PaymentMethod = p.PaymentMethod,
+            ReferenceCode = p.ReferenceCode,
+            Notes = p.Notes
+        }).ToList();
+
         return new SupplierDetailDto
         {
             Id = s.Id,
@@ -593,14 +680,14 @@ public class PartnerService : IPartnerService
             IsActive = s.IsActive,
             CurrentPayable = 0m,
             TotalPurchases = 0m,
-            LastTransactionDate = null,
+            LastTransactionDate = supTransactions.FirstOrDefault()?.DocumentDate,
             CreatedAt = s.CreatedAt,
             CreatedBy = s.CreatedBy,
             UpdatedAt = s.UpdatedAt,
             UpdatedBy = s.UpdatedBy,
             MatchingCustomerId = matchCust?.Id,
             MatchingCustomerCode = matchCust?.Code,
-            RecentTransactions = new List<PartnerLinkedTransactionDto>()
+            RecentTransactions = supTransactions
         };
     }
 

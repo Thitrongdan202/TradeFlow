@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using ClosedXML.Excel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -10,6 +12,7 @@ using Moq;
 using TradeFlow.Application.Common.Interfaces;
 using TradeFlow.Application.Common.Models.Partners;
 using TradeFlow.Domain.Entities.MasterData;
+using TradeFlow.Domain.Entities.Partners;
 using TradeFlow.Domain.Entities.Sales;
 using TradeFlow.Domain.Entities.Settings;
 using TradeFlow.Domain.Enums;
@@ -21,6 +24,26 @@ namespace TradeFlow.UnitTests.Partners;
 
 public class PartnerAndDebtManagementTests
 {
+    private PartnerDebtService CreatePartnerDebtService(
+        TradeFlowDbContext context,
+        IPartnerDebtExportService? exportService = null,
+        IAuthorizationService? authService = null)
+    {
+        var mockLogger = new Mock<ILogger<PartnerDebtService>>();
+        var mockAuth = new Mock<IAuthorizationService>();
+        mockAuth.Setup(a => a.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object?>(), It.IsAny<string>()))
+            .ReturnsAsync(AuthorizationResult.Success());
+        var auth = authService ?? mockAuth.Object;
+
+        var mockAudit = new Mock<IAuditService>();
+        var export = exportService ?? new PartnerDebtExportService(context, auth, mockAudit.Object, new Mock<ILogger<PartnerDebtExportService>>().Object);
+
+        var mockCurrentUser = new Mock<ICurrentUserService>();
+        mockCurrentUser.Setup(u => u.UserId).Returns("admin-id");
+        mockCurrentUser.Setup(u => u.UserName).Returns("admin");
+
+        return new PartnerDebtService(context, export, auth, mockAudit.Object, mockCurrentUser.Object, mockLogger.Object);
+    }
     private TradeFlowDbContext CreateInMemoryDbContext()
     {
         var options = new DbContextOptionsBuilder<TradeFlowDbContext>()
@@ -314,8 +337,7 @@ public class PartnerAndDebtManagementTests
     public async Task SingleObligationDebt_SettledPosTransaction_HasZeroOutstandingDebt()
     {
         using var context = CreateInMemoryDbContext();
-        var mockDebtLogger = new Mock<ILogger<PartnerDebtService>>();
-        var debtService = new PartnerDebtService(context, mockDebtLogger.Object);
+        var debtService = CreatePartnerDebtService(context);
 
         var customer = new Customer
         {
@@ -360,8 +382,7 @@ public class PartnerAndDebtManagementTests
     public async Task SingleObligationDebt_CreditInvoice_GeneratesOutstandingReceivableWithoutDoubleCounting()
     {
         using var context = CreateInMemoryDbContext();
-        var mockDebtLogger = new Mock<ILogger<PartnerDebtService>>();
-        var debtService = new PartnerDebtService(context, mockDebtLogger.Object);
+        var debtService = CreatePartnerDebtService(context);
 
         var customer = new Customer
         {
@@ -425,5 +446,365 @@ public class PartnerAndDebtManagementTests
         Assert.Equal(20000000m, summary.NetDifference);
         Assert.Equal(1, summary.CustomersWithDebtCount);
         Assert.Equal(0, summary.SuppliersWithDebtCount);
+    }
+
+    [Fact]
+    public async Task SinglePartnerDebtStatement_ExcelExport_GeneratesProfessionalWorkbookWithRealNumbers()
+    {
+        using var context = CreateInMemoryDbContext();
+        var debtService = CreatePartnerDebtService(context);
+
+        var customer = new Customer
+        {
+            Code = "KH-EXPORT-01",
+            Name = "Công ty TNHH Vật Liệu XD An Phát",
+            Phone = "0912345678",
+            TaxCode = "0311223344",
+            Address = "Số 10 Đường 3/2, Q.10, TP.HCM",
+            IsActive = true
+        };
+        context.Customers.Add(customer);
+        await context.SaveChangesAsync();
+
+        var invoice = new Invoice
+        {
+            InvoiceNumber = "HD-2026-0088",
+            CustomerId = customer.Id,
+            CustomerName = customer.Name,
+            InvoiceDate = DateTime.UtcNow.AddDays(-10),
+            SubTotal = 15000000m,
+            GrandTotal = 15000000m,
+            PaymentMethod = "Chuyển khoản",
+            Status = InvoiceStatus.Issued
+        };
+        context.Invoices.Add(invoice);
+        await context.SaveChangesAsync();
+
+        var adminUser = CreateAdminUser();
+        var exportRequest = new PartnerDebtStatementExportRequest
+        {
+            PartnerType = PartnerType.Customer,
+            PartnerIds = new List<int> { customer.Id },
+            IncludeLineDetails = true,
+            DatePresetTitle = "Tháng này"
+        };
+
+        var bytes = await debtService.ExportPartnerDebtStatementAsync(exportRequest, adminUser);
+        Assert.NotNull(bytes);
+        Assert.True(bytes.Length > 0);
+
+        // Verify with ClosedXML
+        using var stream = new MemoryStream(bytes);
+        using var workbook = new XLWorkbook(stream);
+
+        // Single partner statement must contain 2 worksheets: "Tổng hợp công nợ" and "Chi tiết giao dịch"
+        Assert.True(workbook.Worksheets.Count >= 2);
+        var summarySheet = workbook.Worksheet("Tổng hợp công nợ");
+        Assert.NotNull(summarySheet);
+        Assert.Contains(customer.Code, summarySheet.Cell(8, 2).GetString());
+
+        var detailSheet = workbook.Worksheet("Chi tiết giao dịch");
+        Assert.NotNull(detailSheet);
+
+        // Verify financial cells contain real numeric values (not plain strings)
+        var closingCell = summarySheet.Cell("C16");
+        Assert.Equal(XLDataType.Number, closingCell.DataType);
+        Assert.Equal(15000000d, closingCell.GetDouble());
+    }
+
+    [Fact]
+    public async Task MultiPartnerDebtStatement_ExcelExport_CombinesIntoSingleWorkbookWithSafeSheetNames()
+    {
+        using var context = CreateInMemoryDbContext();
+        var debtService = CreatePartnerDebtService(context);
+
+        var customer1 = new Customer { Code = "KH-SAFE-01", Name = "Khách Hàng Một", IsActive = true };
+        var customer2 = new Customer { Code = "KH/SPECIAL*CHARS:TEST?[02]", Name = "Khách Hàng Hai", IsActive = true };
+        context.Customers.AddRange(customer1, customer2);
+        await context.SaveChangesAsync();
+
+        var adminUser = CreateAdminUser();
+        var exportRequest = new PartnerDebtStatementExportRequest
+        {
+            PartnerType = PartnerType.Customer,
+            PartnerIds = new List<int> { customer1.Id, customer2.Id },
+            DatePresetTitle = "Toàn thời gian"
+        };
+
+        var bytes = await debtService.ExportPartnerDebtStatementAsync(exportRequest, adminUser);
+        Assert.NotNull(bytes);
+
+        using var stream = new MemoryStream(bytes);
+        using var workbook = new XLWorkbook(stream);
+
+        // Multi-partner export must produce exactly 1 summary sheet + 1 detail sheet per partner
+        Assert.Equal(3, workbook.Worksheets.Count);
+        Assert.NotNull(workbook.Worksheet("Tổng hợp công nợ"));
+
+        // Verify safe sheet names: prohibited characters \ / ? * [ ] : must be cleaned
+        foreach (var ws in workbook.Worksheets)
+        {
+            Assert.True(ws.Name.Length <= 31, $"Worksheet name '{ws.Name}' exceeds 31 characters");
+            Assert.DoesNotContain("/", ws.Name);
+            Assert.DoesNotContain("\\", ws.Name);
+            Assert.DoesNotContain("?", ws.Name);
+            Assert.DoesNotContain("*", ws.Name);
+            Assert.DoesNotContain("[", ws.Name);
+            Assert.DoesNotContain("]", ws.Name);
+            Assert.DoesNotContain(":", ws.Name);
+        }
+    }
+
+    [Fact]
+    public async Task ConsolidatedDebtManagementWorkbook_ExcelExport_Contains4SheetsWithValidTotals()
+    {
+        using var context = CreateInMemoryDbContext();
+        var debtService = CreatePartnerDebtService(context);
+
+        var customer = new Customer { Code = "KH-MGT-01", Name = "Công ty Quản Lý", IsActive = true };
+        context.Customers.Add(customer);
+
+        var supplier = new Supplier { Code = "NCC-MGT-01", Name = "Nhà Cung Cấp Tổng", IsActive = true };
+        context.Suppliers.Add(supplier);
+        await context.SaveChangesAsync();
+
+        var invoice = new Invoice
+        {
+            InvoiceNumber = "HD-MGT-001",
+            CustomerId = customer.Id,
+            CustomerName = customer.Name,
+            InvoiceDate = DateTime.UtcNow,
+            SubTotal = 5000000m,
+            GrandTotal = 5000000m,
+            PaymentMethod = "Công nợ",
+            Status = InvoiceStatus.Issued
+        };
+        context.Invoices.Add(invoice);
+        await context.SaveChangesAsync();
+
+        var adminUser = CreateAdminUser();
+        var req = new DebtManagementExportRequest
+        {
+            Scope = DebtExportScope.AllFiltered,
+            DatePresetTitle = "Tháng này"
+        };
+
+        var bytes = await debtService.ExportDebtManagementWorkbookAsync(req, adminUser);
+        Assert.NotNull(bytes);
+
+        using var stream = new MemoryStream(bytes);
+        using var workbook = new XLWorkbook(stream);
+
+        // Consolidated management workbook must contain 4 core sheets:
+        Assert.NotNull(workbook.Worksheet("Tổng quan công nợ"));
+        Assert.NotNull(workbook.Worksheet("Tổng hợp phải thu KH"));
+        Assert.NotNull(workbook.Worksheet("Tổng hợp phải trả NCC"));
+        Assert.NotNull(workbook.Worksheet("Chi tiết giao dịch"));
+
+        var overviewSheet = workbook.Worksheet("Tổng quan công nợ");
+        var customerReceivableCell = overviewSheet.Cell(6, 3);
+        Assert.Equal(XLDataType.Number, customerReceivableCell.DataType);
+        Assert.Equal(5000000d, customerReceivableCell.GetDouble());
+    }
+
+    [Fact]
+    public async Task RecordDebtPayment_CustomerPartialPayment_ReducesOutstandingBalanceAndCreatesPTSequence()
+    {
+        using var context = CreateInMemoryDbContext();
+        var debtService = CreatePartnerDebtService(context);
+
+        var customer = new Customer
+        {
+            Code = "KH-PAY-01",
+            Name = "Công ty TNHH Cơ Khí Đại Việt",
+            IsActive = true
+        };
+        context.Customers.Add(customer);
+        await context.SaveChangesAsync();
+
+        var invoice = new Invoice
+        {
+            InvoiceNumber = "HD-PAY-001",
+            CustomerId = customer.Id,
+            CustomerName = customer.Name,
+            InvoiceDate = DateTime.UtcNow.AddDays(-5),
+            SubTotal = 10000000m,
+            GrandTotal = 10000000m,
+            PaymentMethod = "Công nợ",
+            Status = InvoiceStatus.Issued
+        };
+        context.Invoices.Add(invoice);
+        await context.SaveChangesAsync();
+
+        // Record a partial payment of 4,000,000 VND
+        var adminUser = CreateAdminUser();
+        var paymentDto = new RecordDebtPaymentDto
+        {
+            PartnerType = PartnerType.Customer,
+            PartnerId = customer.Id,
+            TransactionType = DebtTransactionType.Payment,
+            Amount = 4000000m,
+            PaymentDate = DateTime.UtcNow,
+            PaymentMethod = "Chuyển khoản Vietcombank",
+            ReferenceCode = "UNC-10029",
+            InvoiceId = invoice.Id,
+            Notes = "Thanh toán đợt 1 hóa đơn HD-PAY-001"
+        };
+
+        var result = await debtService.RecordPaymentAsync(paymentDto, adminUser);
+        Assert.True(result.Succeeded);
+        Assert.StartsWith("PT", result.PaymentCode);
+        Assert.Equal(6000000m, result.NewRemainingBalance);
+
+        // Check PartnerPayment entity was recorded
+        var paymentRecord = await context.PartnerPayments.FindAsync(result.PaymentId);
+        Assert.NotNull(paymentRecord);
+        Assert.Equal(4000000m, paymentRecord.Amount);
+        Assert.Equal(DebtTransactionType.Payment, paymentRecord.TransactionType);
+
+        // Check debt summary recalculation
+        var summary = await debtService.GetDebtSummaryAsync();
+        Assert.Equal(6000000m, summary.TotalCustomerReceivables);
+
+        // Check invoice debt status changed to PartiallyPaid
+        var debtRecords = await debtService.GetDebtRecordsAsync(new DebtFilterDto { SearchTerm = customer.Code });
+        Assert.Single(debtRecords.Items);
+        Assert.Equal(6000000m, debtRecords.Items[0].OutstandingAmount);
+        Assert.Equal(4000000m, debtRecords.Items[0].PaidAmount);
+        Assert.Equal(DebtStatus.PartiallyPaid, debtRecords.Items[0].DebtStatus);
+    }
+
+    [Fact]
+    public async Task RecordDebtPayment_SupplierPayment_ReducesPayableAndCreatesPCSequence()
+    {
+        using var context = CreateInMemoryDbContext();
+        var debtService = CreatePartnerDebtService(context);
+
+        var supplier = new Supplier
+        {
+            Code = "NCC-PAY-01",
+            Name = "Công ty TNHH Thép Việt Nhật",
+            IsActive = true
+        };
+        context.Suppliers.Add(supplier);
+        await context.SaveChangesAsync();
+
+        // Record an initial payable increase via adjustment or legacy balance
+        var adminUser = CreateAdminUser();
+        var initialDebt = new PartnerPayment
+        {
+            PaymentCode = "DC-0001",
+            PartnerType = (int)PartnerType.Supplier,
+            PartnerId = supplier.Id,
+            SupplierId = supplier.Id,
+            TransactionType = DebtTransactionType.Adjustment,
+            Amount = 25000000m,
+            PaymentDate = DateTime.UtcNow.AddDays(-10),
+            PaymentMethod = "Chứng từ kế toán",
+            Notes = "Số dư nợ đầu kỳ nhà cung cấp"
+        };
+        context.PartnerPayments.Add(initialDebt);
+        await context.SaveChangesAsync();
+
+        // Record supplier payment of 10,000,000 VND
+        var payDto = new RecordDebtPaymentDto
+        {
+            PartnerType = PartnerType.Supplier,
+            PartnerId = supplier.Id,
+            TransactionType = DebtTransactionType.Payment,
+            Amount = 10000000m,
+            PaymentDate = DateTime.UtcNow,
+            PaymentMethod = "Chuyển khoản",
+            Notes = "Thanh toán tiền mua thép đợt 1"
+        };
+
+        var payResult = await debtService.RecordPaymentAsync(payDto, adminUser);
+        Assert.True(payResult.Succeeded);
+        Assert.StartsWith("PC", payResult.PaymentCode);
+
+        // Summary verify
+        var summary = await debtService.GetDebtSummaryAsync();
+        Assert.Equal(15000000m, summary.TotalSupplierPayables);
+    }
+
+    [Fact]
+    public async Task RecordDebtPayment_CustomerDiscount_CreatesCKSequenceAndReducesReceivable()
+    {
+        using var context = CreateInMemoryDbContext();
+        var debtService = CreatePartnerDebtService(context);
+
+        var customer = new Customer
+        {
+            Code = "KH-DISC-01",
+            Name = "Đại Lý Cấp 1 Sao Mai",
+            IsActive = true
+        };
+        context.Customers.Add(customer);
+        await context.SaveChangesAsync();
+
+        var invoice = new Invoice
+        {
+            InvoiceNumber = "HD-DISC-001",
+            CustomerId = customer.Id,
+            CustomerName = customer.Name,
+            InvoiceDate = DateTime.UtcNow.AddDays(-3),
+            SubTotal = 50000000m,
+            GrandTotal = 50000000m,
+            PaymentMethod = "Công nợ",
+            Status = InvoiceStatus.Issued
+        };
+        context.Invoices.Add(invoice);
+        await context.SaveChangesAsync();
+
+        // Record 1% payment discount = 500,000 VND
+        var adminUser = CreateAdminUser();
+        var discountDto = new RecordDebtPaymentDto
+        {
+            PartnerType = PartnerType.Customer,
+            PartnerId = customer.Id,
+            TransactionType = DebtTransactionType.PaymentDiscount,
+            Amount = 500000m,
+            PaymentDate = DateTime.UtcNow,
+            Notes = "Chiết khấu thanh toán 1% do thanh toán trước hạn"
+        };
+
+        var result = await debtService.RecordPaymentAsync(discountDto, adminUser);
+        Assert.True(result.Succeeded);
+        Assert.StartsWith("CK", result.PaymentCode);
+
+        var summary = await debtService.GetDebtSummaryAsync();
+        Assert.Equal(49500000m, summary.TotalCustomerReceivables);
+    }
+
+    [Fact]
+    public async Task RecordDebtPayment_Validation_RejectsNegativeOrZeroAmount()
+    {
+        using var context = CreateInMemoryDbContext();
+        var debtService = CreatePartnerDebtService(context);
+        var adminUser = CreateAdminUser();
+
+        var zeroDto = new RecordDebtPaymentDto
+        {
+            PartnerType = PartnerType.Customer,
+            PartnerId = 999,
+            TransactionType = DebtTransactionType.Payment,
+            Amount = 0m
+        };
+
+        var zeroResult = await debtService.RecordPaymentAsync(zeroDto, adminUser);
+        Assert.False(zeroResult.Succeeded);
+        Assert.Contains("lớn hơn 0", zeroResult.ErrorMessage);
+
+        var negDto = new RecordDebtPaymentDto
+        {
+            PartnerType = PartnerType.Customer,
+            PartnerId = 999,
+            TransactionType = DebtTransactionType.Payment,
+            Amount = -500000m
+        };
+
+        var negResult = await debtService.RecordPaymentAsync(negDto, adminUser);
+        Assert.False(negResult.Succeeded);
+        Assert.Contains("lớn hơn 0", negResult.ErrorMessage);
     }
 }

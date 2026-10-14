@@ -37,6 +37,23 @@
                     <span class="tf-filter-active-count">@ActiveFilterCount</span>
                 }
             </button>
+
+            <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => OpenExportModal(false)" title="Xuất bảng đối soát chi tiết công nợ đối tác">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span>Xuất file công nợ</span>
+            </button>
+
+            <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => OpenExportModal(true)" title="Xuất báo cáo tổng quan quản lý công nợ toàn hệ thống ra Excel">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <span>Xuất file quản lý Excel</span>
+            </button>
         </div>
     </div>
 
@@ -264,9 +281,37 @@
                     }
                     else
                     {
+                        @if (_selectedPartnerIds.Any())
+                        {
+                            <div class="tf-bulk-selection-bar">
+                                <div class="tf-bulk-info">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                    <span>Đã chọn <strong>@_selectedPartnerIds.Count</strong> đối tác trong bảng</span>
+                                </div>
+                                <div class="tf-bulk-actions">
+                                    <button type="button" class="tf-btn tf-btn-sm tf-btn-primary" @onclick="OpenSelectedPartnersExport">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="7 10 12 15 17 10"></polyline>
+                                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                                        </svg>
+                                        <span>Xuất file công nợ đã chọn (@_selectedPartnerIds.Count)</span>
+                                    </button>
+                                    <button type="button" class="tf-btn tf-btn-sm tf-btn-secondary" @onclick="ClearSelection">
+                                        Bỏ chọn
+                                    </button>
+                                </div>
+                            </div>
+                        }
+
                         <table class="tf-table">
                             <thead>
                                 <tr>
+                                    <th style="width: 40px; text-align: center;">
+                                        <input type="checkbox" checked="@IsAllSelected" @onchange="ToggleSelectAll" title="Chọn tất cả trang này" />
+                                    </th>
                                     <th style="min-width: 170px;">Hướng công nợ</th>
                                     <th style="min-width: 110px;">Mã đối tác</th>
                                     <th style="min-width: 200px;">Tên đối tác</th>
@@ -275,13 +320,17 @@
                                     <th style="min-width: 130px; text-align: right;">Đã trả</th>
                                     <th style="min-width: 140px; text-align: right;">Còn phải thu / trả</th>
                                     <th style="min-width: 120px; text-align: center;">Trạng thái</th>
-                                    <th style="min-width: 120px; text-align: right;">Thao tác</th>
+                                    <th style="min-width: 150px; text-align: right;">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach (var item in _pagedResult.Items)
                                 {
                                     <tr>
+                                        <td style="text-align: center;">
+                                            <input type="checkbox" checked="@_selectedPartnerIds.Contains(item.PartnerId)"
+                                                   @onchange="() => ToggleSelectPartner(item.PartnerId)" />
+                                        </td>
                                         <td>
                                             @if (item.Direction == DebtDirection.Receivable)
                                             {
@@ -372,6 +421,30 @@
                                         </td>
                                         <td style="text-align: right;">
                                             <div class="tf-row-actions">
+                                                @if (item.OutstandingAmount > 0)
+                                                {
+                                                    @if (item.Direction == DebtDirection.Receivable)
+                                                    {
+                                                        <button type="button" class="tf-btn-action pay-action" title="Thu tiền khách hàng (Lập phiếu thu)" @onclick="() => OpenInlinePaymentModal(item)">
+                                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                                                <line x1="12" y1="1" x2="12" y2="23"></line>
+                                                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                                            </svg>
+                                                            <span>Thu tiền</span>
+                                                        </button>
+                                                    }
+                                                    else
+                                                    {
+                                                        <button type="button" class="tf-btn-action pay-action supplier" title="Thanh toán nợ nhà cung cấp (Lập phiếu chi)" @onclick="() => OpenInlinePaymentModal(item)">
+                                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                                                <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                                                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                                            </svg>
+                                                            <span>Chi tiền</span>
+                                                        </button>
+                                                    }
+                                                }
                                                 <button type="button" class="tf-btn-action" title="Xem hồ sơ đối tác" @onclick="() => OpenPartnerDrawer(item.PartnerType, item.PartnerId)">
                                                     Hồ sơ
                                                 </button>
@@ -408,7 +481,26 @@
 <PartnerDetailDrawer @bind-IsOpen="_isDrawerOpen"
                      PartnerType="@_drawerPartnerType"
                      PartnerId="@_drawerPartnerId"
-                     OnClose="() => _drawerPartnerId = null" />
+                     OnClose="() => _drawerPartnerId = null"
+                     OnDebtUpdated="HandleDrawerDebtUpdated" />
+
+@* 8. Debt Action Modals *@
+<DebtExportModal @bind-IsOpen="_isExportModalOpen"
+                 IsManagementExport="_isManagementExport"
+                 PartnerType="_filter.PartnerType"
+                 SelectedPartnerIds="@_selectedPartnerIds.ToList()"
+                 ShowScopeSelector="true"
+                 CurrentFilter="_filter" />
+
+<DebtPaymentModal @bind-IsOpen="_isPaymentModalOpen"
+                  PartnerType="_paymentPartnerType"
+                  PartnerId="_paymentPartnerId"
+                  PartnerCode="@_paymentPartnerCode"
+                  PartnerName="@_paymentPartnerName"
+                  CurrentBalance="_paymentCurrentBalance"
+                  TargetInvoiceId="_paymentInvoiceId"
+                  TargetDocumentCode="@_paymentDocumentCode"
+                  OnPaymentRecorded="HandlePaymentRecorded" />
 
 @code {
     private DebtFilterDto _filter = new();
@@ -422,6 +514,97 @@
     private bool _isDrawerOpen = false;
     private PartnerType _drawerPartnerType = PartnerType.Customer;
     private int? _drawerPartnerId;
+
+    // Multi-Select Partner state
+    private HashSet<int> _selectedPartnerIds = new();
+
+    private bool IsAllSelected =>
+        _pagedResult.Items.Any() && _pagedResult.Items.All(i => _selectedPartnerIds.Contains(i.PartnerId));
+
+    private void ToggleSelectAll()
+    {
+        if (IsAllSelected)
+        {
+            foreach (var item in _pagedResult.Items)
+            {
+                _selectedPartnerIds.Remove(item.PartnerId);
+            }
+        }
+        else
+        {
+            foreach (var item in _pagedResult.Items)
+            {
+                _selectedPartnerIds.Add(item.PartnerId);
+            }
+        }
+    }
+
+    private void ToggleSelectPartner(int partnerId)
+    {
+        if (_selectedPartnerIds.Contains(partnerId))
+        {
+            _selectedPartnerIds.Remove(partnerId);
+        }
+        else
+        {
+            _selectedPartnerIds.Add(partnerId);
+        }
+    }
+
+    private void ClearSelection()
+    {
+        _selectedPartnerIds.Clear();
+    }
+
+    // Debt Action Modals
+    private bool _isExportModalOpen = false;
+    private bool _isManagementExport = false;
+    private bool _isPaymentModalOpen = false;
+
+    // Inline Payment parameters
+    private PartnerType _paymentPartnerType = PartnerType.Customer;
+    private int _paymentPartnerId = 0;
+    private string _paymentPartnerCode = "";
+    private string _paymentPartnerName = "";
+    private decimal _paymentCurrentBalance = 0;
+    private int? _paymentInvoiceId;
+    private string? _paymentDocumentCode;
+
+    private void OpenExportModal(bool isManagement)
+    {
+        _isManagementExport = isManagement;
+        _isExportModalOpen = true;
+    }
+
+    private void OpenSelectedPartnersExport()
+    {
+        _isManagementExport = false;
+        _isExportModalOpen = true;
+    }
+
+    private void OpenInlinePaymentModal(DebtRecordDto item)
+    {
+        _paymentPartnerType = item.PartnerType;
+        _paymentPartnerId = item.PartnerId;
+        _paymentPartnerCode = item.PartnerCode;
+        _paymentPartnerName = item.PartnerName;
+        _paymentCurrentBalance = item.OutstandingAmount;
+        _paymentInvoiceId = item.DocumentType.Contains("Hóa đơn") ? item.DocumentId : null;
+        _paymentDocumentCode = item.DocumentCode;
+        _isPaymentModalOpen = true;
+    }
+
+    private async Task HandlePaymentRecorded(RecordDebtPaymentResult result)
+    {
+        await LoadSummaryAsync();
+        await LoadDebtRecordsAsync();
+    }
+
+    private async Task HandleDrawerDebtUpdated()
+    {
+        await LoadSummaryAsync();
+        await LoadDebtRecordsAsync();
+    }
 
     private int ActiveFilterCount
     {

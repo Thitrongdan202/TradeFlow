@@ -581,9 +581,9 @@
 .tf-card-actions {
     position: absolute;
     inset: 0;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
-    gap: 5px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
     width: 100%;
     min-width: 0;
     height: 32px;
@@ -639,22 +639,21 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 3px;
     height: 30px;
     padding: 0 5px;
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 66px;
     background: #ffffff;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 600;
     color: #334155;
     cursor: pointer;
-    width: 100%;
-    min-width: 0;
     box-sizing: border-box;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
     transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
@@ -668,36 +667,35 @@
 
 .tf-btn-preview svg {
     flex-shrink: 0;
-    width: 12px;
-    height: 12px;
+    width: 11px;
+    height: 11px;
 }
 
 .tf-btn-preview span {
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
+    overflow: visible;
 }
 
 .tf-btn-compose {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 3px;
     height: 30px;
-    padding: 0 5px;
+    padding: 0 6px;
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
     background: #2563eb;
     border: 1px solid #1d4ed8;
     border-radius: 6px;
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 600;
+    letter-spacing: -0.01em;
     color: #ffffff;
     cursor: pointer;
-    width: 100%;
-    min-width: 0;
     box-sizing: border-box;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
     transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -710,14 +708,13 @@
 
 .tf-btn-compose svg {
     flex-shrink: 0;
-    width: 12px;
-    height: 12px;
+    width: 11px;
+    height: 11px;
 }
 
 .tf-btn-compose span {
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
+    overflow: visible;
 }
 
 /* --- Selected Corner Badge --- */

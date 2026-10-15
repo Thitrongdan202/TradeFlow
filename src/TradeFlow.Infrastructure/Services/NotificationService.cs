@@ -80,7 +80,7 @@ public class NotificationService : INotificationService
                         Type = "approval",
                         CreatedAt = req.CreatedAt,
                         IsRead = readSet.Contains(id),
-                        TargetUrl = "/nhan-vien",
+                        TargetUrl = $"/nhan-vien?tab=requests&requestId={req.Id}",
                         IsApprovalRequest = true,
                         RequestType = "EmployeeRequest",
                         RequestTypeName = "Đề xuất thêm nhân sự",

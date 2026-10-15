@@ -7,10 +7,11 @@
 @using TradeFlow.Domain.Enums
 @inject IPartnerDebtService DebtService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
 
 @if (IsOpen)
 {
-    <div class="tf-modal-backdrop" @onclick="AttemptClose">
+    <div class="tf-modal-backdrop" @onclick="AttemptClose" @onkeydown="HandleKeyDown" tabindex="-1" @ref="_backdropRef">
         <div class="tf-modal-dialog voucher-dialog" @onclick:stopPropagation="true">
             @* Modal Header *@
             <div class="tf-modal-header">
@@ -152,7 +153,7 @@
                                             <span class="tf-res-name">@p.Name</span>
                                             @if (!string.IsNullOrEmpty(p.Phone))
                                             {
-                                                <span class="tf-res-phone">📞 @p.Phone</span>
+                                                <span class="tf-res-phone">SĐT: @p.Phone</span>
                                             }
                                         </div>
                                         <div class="tf-res-right">
@@ -374,16 +375,30 @@
 
     private bool _isSubmitting = false;
     private string? _errorMessage;
-    private bool _isDirty = false;
     private bool _showDiscardConfirm = false;
+
+    // Element Reference & Lifecycle Animation Flags
+    private ElementReference _backdropRef;
+    private bool _wasOpen = false;
+    private bool _hasAnimatedOpen = false;
+
+    // Baseline Tracking for Dirty State Detection
+    private int _initialPartnerId;
+    private decimal _initialAmount;
+    private DebtTransactionType _initialTransactionType;
+    private string _initialPaymentMethod = "Tiền mặt";
+    private DateTime _initialPaymentDate;
+    private string _initialReferenceCode = string.Empty;
+    private string _initialNotes = string.Empty;
 
     protected override async Task OnParametersSetAsync()
     {
-        if (IsOpen)
+        if (IsOpen && !_wasOpen)
         {
+            _wasOpen = true;
+            _hasAnimatedOpen = false;
             _errorMessage = null;
             _showDiscardConfirm = false;
-            _isDirty = false;
             _transactionType = InitialTransactionType;
             _paymentDate = DateTime.Now;
             _paymentMethod = "Tiền mặt";
@@ -417,6 +432,39 @@
                 // Load initial quick list for convenience
                 await LoadInitialPartnersAsync();
             }
+
+            // Snapshot baseline pristine state
+            _initialPartnerId = _selectedPartnerId;
+            _initialAmount = _amount;
+            _initialTransactionType = _transactionType;
+            _initialPaymentMethod = _paymentMethod;
+            _initialPaymentDate = _paymentDate;
+            _initialReferenceCode = _referenceCode ?? string.Empty;
+            _initialNotes = _notes ?? string.Empty;
+        }
+        else if (!IsOpen)
+        {
+            _wasOpen = false;
+            _hasAnimatedOpen = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsOpen && !_hasAnimatedOpen)
+        {
+            _hasAnimatedOpen = true;
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.animateModalEnter", ".voucher-dialog", ".tf-modal-backdrop");
+            }
+            catch { }
+
+            try
+            {
+                await _backdropRef.FocusAsync();
+            }
+            catch { }
         }
     }
 
@@ -466,7 +514,6 @@
         _selectedCurrentBalance = partner.CurrentBalance;
         _amount = partner.CurrentBalance > 0 ? partner.CurrentBalance : 0m;
         _searchResults.Clear();
-        _isDirty = true;
     }
 
     private async Task ClearSelectedPartner()
@@ -479,14 +526,12 @@
         _selectedPartnerTaxCode = null;
         _selectedCurrentBalance = 0m;
         _amount = 0m;
-        _isDirty = true;
         await LoadInitialPartnersAsync();
     }
 
     private void SetTransactionType(DebtTransactionType type)
     {
         _transactionType = type;
-        _isDirty = true;
     }
 
     private void FillFullBalance()
@@ -494,13 +539,39 @@
         if (_selectedCurrentBalance > 0)
         {
             _amount = _selectedCurrentBalance;
-            _isDirty = true;
         }
     }
 
     private void MarkDirty()
     {
-        _isDirty = true;
+        // Form field changed
+    }
+
+    private bool IsFormDirty()
+    {
+        if (_selectedPartnerId != _initialPartnerId) return true;
+        if (_amount != _initialAmount) return true;
+        if (_transactionType != _initialTransactionType) return true;
+        if (_paymentMethod != _initialPaymentMethod) return true;
+        if ((_referenceCode ?? string.Empty).Trim() != _initialReferenceCode.Trim()) return true;
+        if ((_notes ?? string.Empty).Trim() != _initialNotes.Trim()) return true;
+        if (Math.Abs((_paymentDate - _initialPaymentDate).TotalMinutes) > 2) return true;
+        return false;
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            if (_showDiscardConfirm)
+            {
+                _showDiscardConfirm = false;
+            }
+            else
+            {
+                await AttemptClose();
+            }
+        }
     }
 
     private async Task SubmitPaymentAsync()
@@ -541,7 +612,6 @@
             var result = await DebtService.RecordPaymentAsync(dto, user);
             if (result.Succeeded)
             {
-                _isDirty = false;
                 await OnPaymentRecorded.InvokeAsync(result);
                 await ForceClose();
             }
@@ -562,7 +632,7 @@
 
     private async Task AttemptClose()
     {
-        if (_isDirty && (_amount > 0 || !string.IsNullOrWhiteSpace(_notes) || !string.IsNullOrWhiteSpace(_referenceCode)))
+        if (IsFormDirty())
         {
             _showDiscardConfirm = true;
         }
@@ -575,7 +645,13 @@
     private async Task ForceClose()
     {
         _showDiscardConfirm = false;
-        _isDirty = false;
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.animateModalExit", ".voucher-dialog", ".tf-modal-backdrop");
+        }
+        catch { }
+        _wasOpen = false;
+        _hasAnimatedOpen = false;
         IsOpen = false;
         await IsOpenChanged.InvokeAsync(false);
     }

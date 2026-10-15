@@ -87,15 +87,8 @@ function setupCardMotion(card) {
         card._cachedRect = card.getBoundingClientRect();
         card.classList.add('is-hovered');
 
-        // Discrete elevation tween: 150ms natural lift
-        gsap.to(card, {
-            y: -3,
-            duration: 0.15,
-            ease: "power2.out",
-            overwrite: "auto"
-        });
-
-        // Initialize spot position immediately on pointer entry
+        // Stationary card: Elevation is handled by GPU-composited ::after box-shadow opacity & border-color
+        // Keep card translation at y: 0 to prevent hit-test drift or layout vibration
         if (setSpotX && setSpotY) {
             setSpotX(e.clientX - card._cachedRect.left);
             setSpotY(e.clientY - card._cachedRect.top);
@@ -129,14 +122,6 @@ function setupCardMotion(card) {
             scrollParent.removeEventListener('scroll', onScroll);
         }
         window.removeEventListener('scroll', onScroll);
-
-        // Discrete return tween: 180ms smooth settle to resting elevation
-        gsap.to(card, {
-            y: 0,
-            duration: 0.18,
-            ease: "power2.out",
-            overwrite: "auto"
-        });
     };
 
     card.addEventListener('pointerenter', onPointerEnter, { passive: true });

@@ -37,7 +37,7 @@
         </div>
 
         <AuthorizeView Policy="Permission:EmployeeRequests:View">
-            <button type="button" class="tf-btn tf-btn-outline" @onclick="() => _showRequestModal = true" style="display:flex; align-items:center; gap:6px; height:36px;">
+            <button type="button" class="tf-btn tf-btn-outline" @onclick="OpenRequestModal" style="display:flex; align-items:center; gap:6px; height:36px;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                     <polyline points="14 2 14 8 20 8"/>
@@ -90,6 +90,30 @@
 <div class="tf-employee-layout">
     @* Left Filter Sidebar *@
     <div class="tf-employee-sidebar">
+        @* Xét duyệt hồ sơ nhanh *@
+        <AuthorizeView Policy="Permission:EmployeeRequests:View">
+            <div class="tf-filter-card tf-mb-4" style="background:#f8fafc; border-color:#cbd5e1;">
+                <div class="tf-filter-header" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="tf-filter-title" style="color:#1e293b; font-weight:600;">Xét duyệt hồ sơ</span>
+                </div>
+                <div class="tf-filter-body" style="padding-top:4px;">
+                    <button type="button" class="tf-filter-option w-100 text-start" style="background:none; border:none; width:100%; cursor:pointer; display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-radius:6px;" @onclick="OpenRequestModal">
+                        <span style="font-weight:500; color:#2563eb; display:flex; align-items:center; gap:6px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <path d="M9 15l2 2 4-4"/>
+                            </svg>
+                            Yêu cầu chờ duyệt
+                        </span>
+                        @if (_pendingRequestCount > 0)
+                        {
+                            <span class="tf-badge tf-badge-warning" style="font-size:11px; padding:2px 7px;">@_pendingRequestCount</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </AuthorizeView>
+
         @* 1. Bộ lọc Trạng thái *@
         <div class="tf-filter-card tf-mb-4">
             <div class="tf-filter-header">
@@ -590,7 +614,7 @@
 
 @* Child Modals *@
 <EmployeeFormModal @bind-IsOpen="_showCreateModal" OnEmployeeSaved="HandleEmployeeSaved" />
-<EmployeeRequestModal @bind-IsOpen="_showRequestModal" OnRequestsChanged="HandleRequestsChanged" />
+<EmployeeRequestModal IsOpen="_showRequestModal" IsOpenChanged="HandleRequestModalClosed" TargetRequestId="_targetRequestId" OnRequestsChanged="HandleRequestsChanged" />
 <RetireEmployeeModal @bind-IsOpen="_showRetireModal" Employee="_selectedEmployeeForRetire" OnEmployeeRetired="HandleEmployeeRetired" />
 <QuickDepartmentModal @bind-IsOpen="_showQuickDeptModal" OnDepartmentCreated="HandleDepartmentCreated" />
 <QuickPositionModal @bind-IsOpen="_showQuickPosModal" OnPositionCreated="HandlePositionCreated" />
@@ -599,6 +623,10 @@
     [SupplyParameterFromQuery(Name = "tab")]
     public string? TabParam { get; set; }
 
+    [SupplyParameterFromQuery(Name = "requestId")]
+    public int? RequestIdParam { get; set; }
+
+    private int? _targetRequestId;
     private List<EmployeeDto> _employees = new();
     private List<DepartmentDto> _departments = new();
     private List<PositionDto> _positions = new();
@@ -638,10 +666,34 @@
         await LoadMasterDataAsync();
         await LoadEmployeesAsync();
         await LoadCountsAsync();
+    }
 
-        if (string.Equals(TabParam, "requests", StringComparison.OrdinalIgnoreCase))
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.Equals(TabParam, "requests", StringComparison.OrdinalIgnoreCase) || RequestIdParam.HasValue)
         {
+            _targetRequestId = RequestIdParam;
             _showRequestModal = true;
+            StateHasChanged();
+        }
+    }
+
+    private void OpenRequestModal()
+    {
+        _targetRequestId = null;
+        _showRequestModal = true;
+    }
+
+    private void HandleRequestModalClosed(bool isOpen)
+    {
+        _showRequestModal = isOpen;
+        if (!isOpen)
+        {
+            _targetRequestId = null;
+            if (!string.IsNullOrEmpty(TabParam) || RequestIdParam.HasValue)
+            {
+                Navigation.NavigateTo("/nhan-vien", replace: true);
+            }
         }
     }
 

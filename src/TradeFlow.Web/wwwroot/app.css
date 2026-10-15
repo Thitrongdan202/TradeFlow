@@ -7,11 +7,11 @@
    DESIGN TOKENS — CSS Custom Properties
    ============================================================ */
 :root {
-  /* --- Brand Colors --- */
-  --tf-primary:         #4338ca; /* Indigo-700 */
-  --tf-primary-hover:   #3730a3; /* Indigo-800 */
-  --tf-primary-light:   #e0e7ff; /* Indigo-100 */
-  --tf-primary-dark:    #312e81; /* Indigo-900 */
+  /* --- Brand Colors (Enterprise Blue) --- */
+  --tf-primary:         #2563eb; /* Blue-600 */
+  --tf-primary-hover:   #1d4ed8; /* Blue-700 */
+  --tf-primary-light:   #eff6ff; /* Blue-50 */
+  --tf-primary-dark:    #1e40af; /* Blue-800 */
 
   /* --- Semantic Colors --- */
   --tf-success:         #16a34a; /* Green-600 */
@@ -23,56 +23,60 @@
   --tf-info:            #0284c7; /* Sky-600 */
   --tf-info-light:      #e0f2fe;
 
-  /* --- Neutral Palette --- */
+  /* --- Neutral Palette (Refined Light Theme) --- */
   --tf-white:           #ffffff;
-  --tf-gray-50:         #f8fafc;
-  --tf-gray-100:        #f1f5f9;
-  --tf-gray-200:        #e2e8f0;
+  --tf-bg-app:          #F1F3F6; /* Cool, muted light grey app background */
+  --tf-surface-card:    #ffffff; /* Soft white primary surfaces */
+  --tf-surface-subtle:  #F7F8FA; /* Subtle cool off-white secondary surfaces */
+  --tf-gray-50:         #F7F8FA;
+  --tf-gray-100:        #F1F3F6;
+  --tf-gray-200:        #DCE2EA; /* Soft grey-blue borders */
   --tf-gray-300:        #cbd5e1;
   --tf-gray-400:        #94a3b8;
-  --tf-gray-500:        #64748b;
-  --tf-gray-600:        #475569;
+  --tf-gray-500:        #667085; /* Muted slate */
+  --tf-gray-600:        #667085;
   --tf-gray-700:        #334155;
-  --tf-gray-800:        #1e293b;
-  --tf-gray-900:        #0f172a;
+  --tf-gray-800:        #202938; /* Deep charcoal */
+  --tf-gray-900:        #202938;
 
   /* --- Text Colors --- */
-  --tf-text-primary:    var(--tf-gray-900);
-  --tf-text-secondary:  var(--tf-gray-600);
-  --tf-text-muted:      var(--tf-gray-400);
+  --tf-text-primary:    #202938; /* Deep charcoal */
+  --tf-text-secondary:  #667085; /* Muted slate */
+  --tf-text-muted:      #94a3b8;
   --tf-text-inverse:    var(--tf-white);
   --tf-text-link:       var(--tf-primary);
 
   /* --- Surface Colors --- */
-  --tf-surface:         var(--tf-white);
+  --tf-surface:         var(--tf-surface-card);
   --tf-surface-raised:  var(--tf-white);
-  --tf-surface-overlay: rgba(15, 23, 42, 0.5);
-  --tf-bg:              var(--tf-gray-50);
-  --tf-bg-sidebar:      var(--tf-gray-900);
+  --tf-surface-overlay: rgba(32, 41, 56, 0.45);
+  --tf-bg:              var(--tf-bg-app);
+  --tf-bg-sidebar:      #ffffff;
 
   /* --- Border Colors --- */
-  --tf-border:          var(--tf-gray-200);
-  --tf-border-strong:   var(--tf-gray-300);
+  --tf-border:          #DCE2EA;
+  --tf-border-subtle:   #E5E7EB;
+  --tf-border-strong:   #CBD5E1;
   --tf-border-focus:    var(--tf-primary);
 
   /* --- Sidebar Specific (Modern Light ERP/POS Theme) --- */
   --tf-sidebar-width:         224px;
   --tf-sidebar-collapsed-width: 68px;
   --tf-sidebar-bg:            #ffffff;
-  --tf-sidebar-border:        #eaecf0;
-  --tf-sidebar-text:          #344054;
+  --tf-sidebar-border:        #DCE2EA;
+  --tf-sidebar-text:          #334155;
   --tf-sidebar-text-muted:    #667085;
-  --tf-sidebar-text-hover:    #101828;
-  --tf-sidebar-text-active:   #1d4ed8;
-  --tf-sidebar-item-active:   #dbeafe;
-  --tf-sidebar-item-hover:    #f8fafc;
-  --tf-sidebar-brand-text:    #101828;
-  --tf-sidebar-section-text:  #98a2b3;
+  --tf-sidebar-text-hover:    #202938;
+  --tf-sidebar-text-active:   #2563eb;
+  --tf-sidebar-item-active:   #eff6ff;
+  --tf-sidebar-item-hover:    #F7F8FA;
+  --tf-sidebar-brand-text:    #202938;
+  --tf-sidebar-section-text:  #94a3b8;
 
   /* --- Topbar Specific --- */
   --tf-topbar-height:         56px;
   --tf-topbar-bg:             var(--tf-white);
-  --tf-topbar-border:         var(--tf-gray-200);
+  --tf-topbar-border:         #DCE2EA;
 
   /* --- Spacing --- */
   --tf-space-1: 4px;
@@ -215,6 +219,9 @@ h1:focus { outline: none; }
   display: flex;
   min-height: 100vh;
   background-color: var(--tf-bg);
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 /* --- Sidebar --- */
@@ -246,6 +253,8 @@ h1:focus { outline: none; }
   flex-direction: column;
   min-height: 100vh;
   min-width: 0;
+  width: auto;
+  max-width: none;
   transition: margin-left 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: margin-left;
 }
@@ -272,19 +281,18 @@ h1:focus { outline: none; }
 .tf-content {
   flex: 1;
   padding: var(--tf-space-6);
-  max-width: 1440px;
   width: 100%;
-  animation: tfPageEnter var(--tf-motion-content) var(--tf-ease-out) forwards;
+  min-width: 0;
+  box-sizing: border-box;
+  animation: tfPageEnter var(--tf-motion-content) var(--tf-ease-out);
 }
 
 @keyframes tfPageEnter {
   from {
     opacity: 0.88;
-    transform: translateY(3px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -531,30 +539,30 @@ h1:focus { outline: none; }
 }
 
 .tf-nav-link:hover {
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: var(--tf-sidebar-item-hover, #F7F8FA);
+  color: var(--tf-sidebar-text-hover, #202938);
   text-decoration: none;
 }
 
-/* Active Menu Item Styling — Matching the "Tổng quan" Pill in Reference Image */
+/* Active Menu Item Styling — Matching the Refined Enterprise Blue Pill */
 .tf-nav-link.active,
 .tf-nav-link.tf-nav-active,
 .tf-nav-item.is-active > .tf-nav-link {
-  background-color: #dbeafe !important;
-  color: #1d4ed8 !important;
+  background-color: var(--tf-sidebar-item-active, #eff6ff) !important;
+  color: var(--tf-sidebar-text-active, #2563eb) !important;
   font-weight: 600 !important;
 }
 
 .tf-nav-link.active .tf-nav-icon,
 .tf-nav-link.tf-nav-active .tf-nav-icon,
 .tf-nav-item.is-active > .tf-nav-link .tf-nav-icon {
-  color: #1d4ed8 !important;
+  color: var(--tf-sidebar-text-active, #2563eb) !important;
 }
 
 .tf-nav-link.active .tf-nav-chevron,
 .tf-nav-link.tf-nav-active .tf-nav-chevron,
 .tf-nav-item.is-active > .tf-nav-link .tf-nav-chevron {
-  color: #1d4ed8 !important;
+  color: var(--tf-sidebar-text-active, #2563eb) !important;
   opacity: 0.9;
 }
 
@@ -1042,7 +1050,7 @@ h1:focus { outline: none; }
 .tf-search-input:focus {
   border-color: var(--tf-primary);
   background-color: var(--tf-white);
-  box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.1);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
 /* ============================================================
@@ -1086,7 +1094,7 @@ h1:focus { outline: none; }
 .tf-input:focus,
 .tf-form-control:focus {
   border-color: var(--tf-primary);
-  box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.1);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
 .tf-input:disabled,
@@ -1249,7 +1257,7 @@ h1:focus { outline: none; }
 }
 
 .tf-btn-primary:focus-visible {
-  box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.3);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
 }
 
 .tf-btn-secondary {
@@ -2398,8 +2406,8 @@ h1:focus { outline: none; }
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #e0e7ff;
-  color: #4338ca;
+  background: #eff6ff;
+  color: #2563eb;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2440,15 +2448,15 @@ h1:focus { outline: none; }
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: #e0e7ff;
-  color: #4338ca;
+  background: #eff6ff;
+  color: #2563eb;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 20px;
   font-weight: 700;
   flex-shrink: 0;
-  box-shadow: 0 2px 4px rgba(67, 56, 202, 0.15);
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.15);
 }
 
 .tf-emp-badge-code {
@@ -3006,7 +3014,7 @@ h1:focus { outline: none; }
   display: inline-block;
   border-radius: 50%;
   border-style: solid;
-  border-color: rgba(67, 56, 202, 0.2);
+  border-color: rgba(37, 99, 235, 0.2);
   border-top-color: var(--tf-primary);
   animation: tf-spin 0.75s linear infinite;
   vertical-align: middle;
@@ -3258,7 +3266,7 @@ button.tf-search-spinner {
 
 .tf-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #4338ca, #3b82f6);
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
   border-radius: 9999px;
   transition: width 0.3s ease;
 }
@@ -3320,3 +3328,27 @@ button.tf-search-spinner {
     left: 30% !important;
   }
 }
+
+/* ============================================================
+   STRICT DOCUMENT & PRINT PROTECTION
+   Preserves 100% pure white paper background and zero UI bleeding
+   for Sales Invoices, VAT Invoices, Orders, Quotations & Contracts
+   ============================================================ */
+@media print {
+  body,
+  .tf-app,
+  .tf-main-wrapper,
+  .tf-content,
+  #print-document-area,
+  #print-area,
+  #print-quotation-area,
+  .don-dat-hang-sheet,
+  .quotation-print-sheet,
+  .tf-a4-sheet {
+    background-color: #ffffff !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+  }
+}
+

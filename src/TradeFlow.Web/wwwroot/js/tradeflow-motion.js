@@ -32,87 +32,123 @@
         return typeof window !== 'undefined' ? window.gsap : null;
     }
 
+    let scrollLockCount = 0;
+    let previousBodyOverflow = '';
+
+    function lockScroll() {
+        if (typeof document === 'undefined') return;
+        scrollLockCount++;
+        if (scrollLockCount === 1) {
+            previousBodyOverflow = document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function unlockScroll() {
+        if (typeof document === 'undefined') return;
+        scrollLockCount = Math.max(0, scrollLockCount - 1);
+        if (scrollLockCount === 0) {
+            document.body.style.overflow = previousBodyOverflow || '';
+        }
+    }
+
     /**
      * Animate a modal dialog entrance
      * @param {HTMLElement|string} dialogEl - The modal dialog element
      * @param {HTMLElement|string} backdropEl - The backdrop overlay element
      * @param {Function} [onComplete] - Callback on animation completion
+     * @returns {Promise<void>}
      */
     function animateModalEnter(dialogEl, backdropEl, onComplete) {
-        const dialog = typeof dialogEl === 'string' ? document.querySelector(dialogEl) : dialogEl;
-        const backdrop = typeof backdropEl === 'string' ? document.querySelector(backdropEl) : backdropEl;
-        const gsap = getGsap();
+        return new Promise((resolve) => {
+            lockScroll();
+            const dialog = typeof dialogEl === 'string' ? document.querySelector(dialogEl) : dialogEl;
+            const backdrop = typeof backdropEl === 'string' ? document.querySelector(backdropEl) : backdropEl;
+            const gsap = getGsap();
 
-        if (isReducedMotion() || !gsap || !dialog) {
-            if (dialog) { dialog.style.opacity = '1'; dialog.style.transform = 'none'; }
-            if (backdrop) { backdrop.style.opacity = '1'; }
-            if (onComplete) onComplete();
-            return;
-        }
+            const finish = () => {
+                if (dialog && gsap) {
+                    gsap.set(dialog, { clearProps: 'transform' });
+                }
+                if (onComplete) onComplete();
+                resolve();
+            };
 
-        const tl = gsap.timeline({
-            onComplete: onComplete,
-            defaults: { overwrite: 'auto' }
-        });
+            if (isReducedMotion() || !gsap || !dialog) {
+                if (dialog) { dialog.style.opacity = '1'; dialog.style.transform = 'none'; }
+                if (backdrop) { backdrop.style.opacity = '1'; }
+                finish();
+                return;
+            }
 
-        if (backdrop) {
-            tl.fromTo(backdrop, 
-                { opacity: 0 }, 
-                { opacity: 1, duration: 0.22, ease: 'power2.out' }, 
-                0
+            const tl = gsap.timeline({
+                onComplete: finish,
+                defaults: { overwrite: 'auto' }
+            });
+
+            if (backdrop) {
+                tl.fromTo(backdrop, 
+                    { opacity: 0 }, 
+                    { opacity: 1, duration: 0.2, ease: 'power2.out' }, 
+                    0
+                );
+            }
+
+            tl.fromTo(dialog,
+                { opacity: 0, scale: 0.96, y: 10 },
+                { opacity: 1, scale: 1, y: 0, duration: 0.24, ease: 'power3.out' },
+                0.02
             );
-        }
 
-        tl.fromTo(dialog,
-            { opacity: 0, scale: 0.96, y: 8 },
-            { opacity: 1, scale: 1, y: 0, duration: 0.26, ease: 'power3.out' },
-            0.02
-        );
-
-        dialog._tfModalTimeline = tl;
-        return tl;
+            dialog._tfModalTimeline = tl;
+        });
     }
 
     /**
      * Animate a modal dialog exit
      * @param {HTMLElement|string} dialogEl - The modal dialog element
      * @param {HTMLElement|string} backdropEl - The backdrop overlay element
-     * @param {Function} onComplete - Callback when exit animation finishes
+     * @param {Function} [onComplete] - Callback when exit animation finishes
+     * @returns {Promise<void>}
      */
     function animateModalExit(dialogEl, backdropEl, onComplete) {
-        const dialog = typeof dialogEl === 'string' ? document.querySelector(dialogEl) : dialogEl;
-        const backdrop = typeof backdropEl === 'string' ? document.querySelector(backdropEl) : backdropEl;
-        const gsap = getGsap();
+        return new Promise((resolve) => {
+            const dialog = typeof dialogEl === 'string' ? document.querySelector(dialogEl) : dialogEl;
+            const backdrop = typeof backdropEl === 'string' ? document.querySelector(backdropEl) : backdropEl;
+            const gsap = getGsap();
 
-        if (isReducedMotion() || !gsap || !dialog) {
-            if (onComplete) onComplete();
-            return;
-        }
-
-        const tl = gsap.timeline({
-            onComplete: () => {
+            const finish = () => {
+                unlockScroll();
                 if (onComplete) onComplete();
-            },
-            defaults: { overwrite: 'auto' }
-        });
+                resolve();
+            };
 
-        tl.to(dialog, {
-            opacity: 0,
-            scale: 0.97,
-            y: 6,
-            duration: 0.16,
-            ease: 'power2.in'
-        }, 0);
+            if (isReducedMotion() || !gsap || !dialog) {
+                finish();
+                return;
+            }
 
-        if (backdrop) {
-            tl.to(backdrop, {
+            const tl = gsap.timeline({
+                onComplete: finish,
+                defaults: { overwrite: 'auto' }
+            });
+
+            tl.to(dialog, {
                 opacity: 0,
-                duration: 0.18,
+                scale: 0.96,
+                y: 8,
+                duration: 0.16,
                 ease: 'power2.in'
-            }, 0.02);
-        }
+            }, 0);
 
-        return tl;
+            if (backdrop) {
+                tl.to(backdrop, {
+                    opacity: 0,
+                    duration: 0.18,
+                    ease: 'power2.in'
+                }, 0.02);
+            }
+        });
     }
 
     /**
@@ -227,6 +263,8 @@
 
     return {
         isReducedMotion,
+        lockScroll,
+        unlockScroll,
         animateModalEnter,
         animateModalExit,
         animateDropdown,

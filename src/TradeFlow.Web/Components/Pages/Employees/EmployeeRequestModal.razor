@@ -264,6 +264,7 @@
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
     [Parameter] public EventCallback OnRequestsChanged { get; set; }
+    [Parameter] public int? TargetRequestId { get; set; }
 
     private List<EmployeeRequestDto> _allRequests = new();
     private List<EmployeeRequestDto> _filteredRequests = new();
@@ -282,6 +283,16 @@
         if (IsOpen)
         {
             await LoadRequestsAsync();
+            if (TargetRequestId.HasValue)
+            {
+                var target = _allRequests.FirstOrDefault(r => r.Id == TargetRequestId.Value);
+                if (target != null)
+                {
+                    _selectedStatus = target.Status;
+                    ApplyFilter();
+                    _processingRequestId = target.Id;
+                }
+            }
         }
     }
 
@@ -389,6 +400,8 @@
 
     private async Task Close()
     {
+        _processingRequestId = null;
+        _reviewNotes = string.Empty;
         IsOpen = false;
         await IsOpenChanged.InvokeAsync(false);
     }

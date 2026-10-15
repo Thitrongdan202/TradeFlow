@@ -10,6 +10,10 @@
 
 @media (max-width: 1023px) {
     .tf-sidebar-backdrop {
+        display: none;
+    }
+    .tf-sidebar.open ~ .tf-sidebar-backdrop,
+    .tf-sidebar-backdrop.open {
         display: block;
     }
 }

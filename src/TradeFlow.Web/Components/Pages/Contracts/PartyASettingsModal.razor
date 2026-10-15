@@ -5,138 +5,195 @@
 
 @if (IsOpen)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5); z-index: 1060;">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title fs-6 fw-semibold d-flex align-items-center gap-2">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                        </svg>
-                        Thiết lập thông tin pháp nhân Bên A (Mặc định cho Hợp đồng)
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="CloseAsync"></button>
+    <div class="modal fade show d-block tf-party-a-modal-backdrop" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable tf-party-a-modal-dialog">
+            <div class="modal-content tf-party-a-modal-content">
+                <!-- Clean Light Modal Header -->
+                <div class="modal-header tf-party-a-modal-header">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="tf-modal-icon-badge">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 21h18"/>
+                                <path d="M5 21V7l8-4v18"/>
+                                <path d="M19 21V11l-6-4"/>
+                                <path d="M9 9v.01"/>
+                                <path d="M9 12v.01"/>
+                                <path d="M9 15v.01"/>
+                                <path d="M9 18v.01"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <h5 class="modal-title fs-5 fw-bold text-dark mb-0">Thiết lập thông tin pháp nhân Bên A</h5>
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 small">
+                                    Mặc định cho Hợp đồng
+                                </span>
+                            </div>
+                            <div class="text-muted small mt-1">
+                                Thông tin doanh nghiệp sẽ tự động điền vào mục Bên A (Bên bán / cung ứng) khi lập hợp đồng mới.
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" @onclick="CloseAsync" aria-label="Đóng"></button>
                 </div>
+
+                <!-- Modal Body -->
                 <div class="modal-body p-4">
                     @if (isLoading)
                     {
-                        <div class="text-center py-4">
+                        <div class="text-center py-5">
                             <div class="spinner-border text-primary" role="status"></div>
-                            <div class="text-muted small mt-2">Đang tải thông tin Bên A...</div>
+                            <div class="text-muted small mt-3">Đang tải thông tin Bên A...</div>
                         </div>
                     }
                     else if (model != null)
                     {
                         @if (!string.IsNullOrEmpty(errorMessage))
                         {
-                            <div class="alert alert-danger py-2 px-3 small mb-3">@errorMessage</div>
+                            <div class="alert alert-danger py-2 px-3 small mb-4 d-flex align-items-center gap-2">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <line x1="12" y1="8" x2="12" y2="12"/>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                                </svg>
+                                <span>@errorMessage</span>
+                            </div>
                         }
                         @if (!string.IsNullOrEmpty(successMessage))
                         {
-                            <div class="alert alert-success py-2 px-3 small mb-3">@successMessage</div>
+                            <div class="alert alert-success py-2 px-3 small mb-4 d-flex align-items-center gap-2">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                    <polyline points="22 4 12 14.01 9 11.01"/>
+                                </svg>
+                                <span>@successMessage</span>
+                            </div>
                         }
 
                         <div class="row g-3">
+                            <!-- Section 1: Business Info -->
                             <div class="col-12">
-                                <h6 class="fw-bold text-dark border-bottom pb-1 mb-2">1. Thông tin doanh nghiệp</h6>
+                                <div class="tf-form-section-title">
+                                    <span class="tf-section-pill">1</span>
+                                    <span>Thông tin doanh nghiệp &amp; Trụ sở</span>
+                                </div>
                             </div>
                             <div class="col-md-8">
                                 <label class="form-label small fw-semibold text-secondary">Tên doanh nghiệp / Đơn vị bán hàng <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control form-control-sm" @bind="model.CompanyName" placeholder="CÔNG TY TNHH..." />
+                                <input type="text" class="form-control form-control-sm tf-input" @bind="model.CompanyName" placeholder="CÔNG TY TNHH..." />
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label small fw-semibold text-secondary">Tên thương hiệu viết tắt</label>
-                                <input type="text" class="form-control form-control-sm" @bind="model.TradingName" placeholder="LACASA" />
+                                <input type="text" class="form-control form-control-sm tf-input" @bind="model.TradingName" placeholder="LACASA" />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold text-secondary">Mã số thuế / Mã số DN <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control form-control-sm" @bind="model.TaxCode" />
+                                <input type="text" class="form-control form-control-sm tf-input" @bind="model.TaxCode" />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold text-secondary">Số GCN ĐKKD (nếu có)</label>
-                                <input type="text" class="form-control form-control-sm" @bind="model.BusinessRegistrationNumber" />
+                                <input type="text" class="form-control form-control-sm tf-input" @bind="model.BusinessRegistrationNumber" />
                             </div>
                             <div class="col-12">
                                 <label class="form-label small fw-semibold text-secondary">Địa chỉ trụ sở chính (theo ĐKKD) <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control form-control-sm" @bind="model.RegisteredAddress" />
+                                <input type="text" class="form-control form-control-sm tf-input" @bind="model.RegisteredAddress" />
                             </div>
                             <div class="col-12">
                                 <label class="form-label small fw-semibold text-secondary">Địa chỉ Showroom / Văn phòng giao dịch</label>
-                                <input type="text" class="form-control form-control-sm" @bind="model.ContactAddress" />
+                                <input type="text" class="form-control form-control-sm tf-input" @bind="model.ContactAddress" />
                             </div>
 
-                            <div class="col-12 pt-2">
-                                <h6 class="fw-bold text-dark border-bottom pb-1 mb-2">2. Người đại diện ký kết</h6>
+                            <!-- Section 2: Representative Info -->
+                            <div class="col-12 pt-3">
+                                <div class="tf-form-section-title">
+                                    <span class="tf-section-pill">2</span>
+                                    <span>Người đại diện ký kết hợp đồng</span>
+                                </div>
                             </div>
                             <div class="col-md-5">
                                 <label class="form-label small fw-semibold text-secondary">Họ và tên người đại diện <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control form-control-sm" @bind="model.RepresentativeName" />
+                                <input type="text" class="form-control form-control-sm tf-input" @bind="model.RepresentativeName" />
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label small fw-semibold text-secondary">Chức vụ <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control form-control-sm" @bind="model.RepresentativePosition" />
+                                <input type="text" class="form-control form-control-sm tf-input" @bind="model.RepresentativePosition" />
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label small fw-semibold text-secondary">Căn cứ thẩm quyền</label>
-                                <input type="text" class="form-control form-control-sm" @bind="model.RepresentativeAuthority" placeholder="Đại diện theo pháp luật..." />
+                                <input type="text" class="form-control form-control-sm tf-input" @bind="model.RepresentativeAuthority" placeholder="Đại diện theo pháp luật..." />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold text-secondary">Số điện thoại liên hệ <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control form-control-sm" @bind="model.Phone" />
+                                <input type="text" class="form-control form-control-sm tf-input" @bind="model.Phone" />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold text-secondary">Hộp thư điện tử (Email) <span class="text-danger">*</span></label>
-                                <input type="email" class="form-control form-control-sm" @bind="model.Email" />
+                                <input type="email" class="form-control form-control-sm tf-input" @bind="model.Email" />
                             </div>
 
-                            <div class="col-12 pt-2">
-                                <h6 class="fw-bold text-dark border-bottom pb-1 mb-2">3. Tài khoản ngân hàng công ty</h6>
+                            <!-- Section 3: Bank Account -->
+                            <div class="col-12 pt-3">
+                                <div class="tf-form-section-title">
+                                    <span class="tf-section-pill">3</span>
+                                    <span>Tài khoản ngân hàng công ty tiếp nhận thanh toán</span>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold text-secondary">Tên ngân hàng mở tài khoản</label>
-                                <input type="text" class="form-control form-control-sm" @bind="model.BankName" />
+                                <input type="text" class="form-control form-control-sm tf-input" @bind="model.BankName" />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold text-secondary">Số tài khoản ngân hàng</label>
-                                <input type="text" class="form-control form-control-sm" @bind="model.BankAccount" />
+                                <input type="text" class="form-control form-control-sm tf-input" @bind="model.BankAccount" />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold text-secondary">Tên chủ tài khoản</label>
-                                <input type="text" class="form-control form-control-sm" @bind="model.BankAccountHolder" />
+                                <input type="text" class="form-control form-control-sm tf-input" @bind="model.BankAccountHolder" />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold text-secondary">Chi nhánh ngân hàng</label>
-                                <input type="text" class="form-control form-control-sm" @bind="model.BankBranch" />
+                                <input type="text" class="form-control form-control-sm tf-input" @bind="model.BankBranch" />
                             </div>
 
-                            <div class="col-12 pt-2">
-                                <h6 class="fw-bold text-dark border-bottom pb-1 mb-2">4. Điều khoản thương mại mặc định</h6>
+                            <!-- Section 4: Default Commercial Terms -->
+                            <div class="col-12 pt-3">
+                                <div class="tf-form-section-title">
+                                    <span class="tf-section-pill">4</span>
+                                    <span>Điều khoản thương mại &amp; Giao nhận mặc định</span>
+                                </div>
                             </div>
                             <div class="col-12">
                                 <label class="form-label small fw-semibold text-secondary">Hướng dẫn thanh toán mặc định</label>
-                                <textarea class="form-control form-control-sm" rows="2" @bind="model.DefaultPaymentInstructions"></textarea>
+                                <textarea class="form-control form-control-sm tf-input" rows="2" @bind="model.DefaultPaymentInstructions" placeholder="Quy định thanh toán đợt 1, 2 và chuyển khoản..."></textarea>
                             </div>
                             <div class="col-12">
                                 <label class="form-label small fw-semibold text-secondary">Điều kiện giao nhận mặc định</label>
-                                <textarea class="form-control form-control-sm" rows="2" @bind="model.DefaultDeliveryTerms"></textarea>
+                                <textarea class="form-control form-control-sm tf-input" rows="2" @bind="model.DefaultDeliveryTerms" placeholder="Thời gian giao hàng, địa điểm giao và bốc dỡ..."></textarea>
                             </div>
                             <div class="col-12">
                                 <label class="form-label small fw-semibold text-secondary">Chính sách bảo hành mặc định</label>
-                                <textarea class="form-control form-control-sm" rows="2" @bind="model.DefaultWarrantyTerms"></textarea>
+                                <textarea class="form-control form-control-sm tf-input" rows="2" @bind="model.DefaultWarrantyTerms" placeholder="Thời hạn bảo hành sứ vệ sinh 10 năm, phụ kiện 2 năm..."></textarea>
                             </div>
                         </div>
                     }
                 </div>
-                <div class="modal-footer bg-light py-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CloseAsync">Đóng</button>
-                    <button type="button" class="btn btn-sm btn-primary px-3" @onclick="SaveAsync" disabled="@isSaving">
+
+                <!-- Clean Light Modal Footer -->
+                <div class="modal-footer tf-party-a-modal-footer">
+                    <button type="button" class="btn btn-sm btn-outline-secondary px-3" @onclick="CloseAsync">Đóng</button>
+                    <button type="button" class="btn btn-sm btn-primary px-4 d-flex align-items-center gap-2" @onclick="SaveAsync" disabled="@isSaving">
                         @if (isSaving)
                         {
-                            <span class="spinner-border spinner-border-sm me-1"></span>
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
                             <span>Đang lưu...</span>
                         }
                         else
                         {
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                <polyline points="17 21 17 13 7 13 7 21"/>
+                                <polyline points="7 3 7 8 15 8"/>
+                            </svg>
                             <span>Lưu cấu hình Bên A</span>
                         }
                     </button>
@@ -145,6 +202,91 @@
         </div>
     </div>
 }
+
+<style>
+    .tf-party-a-modal-backdrop {
+        background-color: rgba(15, 23, 42, 0.55);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 1060;
+    }
+
+    .tf-party-a-modal-dialog {
+        max-width: 860px;
+        margin: 1.5rem auto;
+    }
+
+    .tf-party-a-modal-content {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        overflow: hidden;
+    }
+
+    .tf-party-a-modal-header {
+        background: #ffffff;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 16px 24px;
+    }
+
+    .tf-party-a-modal-footer {
+        background: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+        padding: 14px 24px;
+    }
+
+    .tf-modal-icon-badge {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #2563eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .tf-form-section-title {
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .tf-section-pill {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #2563eb;
+        color: #ffffff;
+        font-size: 0.72rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .tf-input {
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 0.84rem;
+        transition: border-color var(--tf-motion-instant, 120ms) ease, box-shadow var(--tf-motion-instant, 120ms) ease;
+    }
+
+    .tf-input:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        outline: none;
+    }
+</style>
 
 @code {
     [Parameter] public bool IsOpen { get; set; }

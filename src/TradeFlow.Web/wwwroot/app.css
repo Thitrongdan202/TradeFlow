@@ -123,6 +123,20 @@
   --tf-transition:        150ms ease;
   --tf-transition-slow:   250ms ease;
 
+  /* --- Motion Design System Tokens (GSAP & CSS Coordinated) --- */
+  --tf-motion-instant:     120ms; /* Button press, toggle switch, micro-icon feedback */
+  --tf-motion-fast:        160ms; /* Card elevation, badge, tab switch, pill hover */
+  --tf-motion-normal:      220ms; /* Dropdown menu, sidebar hover, modal backdrop, page enter */
+  --tf-motion-modal:       260ms; /* Modal & drawer dialog entrance */
+  --tf-motion-modal-exit:  180ms; /* Modal & drawer dialog exit */
+  --tf-motion-content:     220ms; /* Content container entrance */
+
+  /* Easing Curves */
+  --tf-ease-out:           cubic-bezier(0.16, 1, 0.3, 1);  /* Responsive decelerate (natural enter) */
+  --tf-ease-in:            cubic-bezier(0.4, 0, 1, 1);     /* Restrained accelerate (natural exit) */
+  --tf-ease-in-out:        cubic-bezier(0.4, 0, 0.2, 1);   /* Smooth symmetric transition */
+  --tf-ease-spring:        cubic-bezier(0.175, 0.885, 0.32, 1.1); /* Subtle, restrained tactile response */
+
   /* --- Z-Index Scale --- */
   --tf-z-dropdown:  100;
   --tf-z-sticky:    200;
@@ -260,6 +274,18 @@ h1:focus { outline: none; }
   padding: var(--tf-space-6);
   max-width: 1440px;
   width: 100%;
+  animation: tfPageEnter var(--tf-motion-content) var(--tf-ease-out) forwards;
+}
+
+@keyframes tfPageEnter {
+  from {
+    opacity: 0.88;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ============================================================
@@ -1158,13 +1184,26 @@ h1:focus { outline: none; }
   font-weight: var(--tf-font-medium);
   font-family: var(--tf-font-family);
   cursor: pointer;
-  transition: background-color var(--tf-transition), border-color var(--tf-transition),
-              color var(--tf-transition), box-shadow var(--tf-transition), opacity var(--tf-transition);
+  transition: background-color var(--tf-motion-instant) var(--tf-ease-out),
+              border-color var(--tf-motion-instant) var(--tf-ease-out),
+              color var(--tf-motion-instant) var(--tf-ease-out),
+              box-shadow var(--tf-motion-instant) var(--tf-ease-out),
+              opacity var(--tf-motion-instant) var(--tf-ease-out),
+              transform var(--tf-motion-instant) var(--tf-ease-out);
   text-decoration: none;
   white-space: nowrap;
   user-select: none;
   outline: none;
   line-height: 1;
+}
+
+.tf-btn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.99);
+}
+
+.tf-btn:focus-visible {
+  outline: 2px solid var(--tf-primary);
+  outline-offset: 2px;
 }
 
 .tf-btn:disabled {
@@ -1308,6 +1347,25 @@ h1:focus { outline: none; }
   border: 1px solid var(--tf-border);
   border-radius: var(--tf-radius-md);
   box-shadow: var(--tf-shadow-sm);
+  transition: transform var(--tf-motion-fast) var(--tf-ease-out),
+              box-shadow var(--tf-motion-fast) var(--tf-ease-out),
+              border-color var(--tf-motion-fast) var(--tf-ease-out);
+}
+
+.tf-card-interactive,
+.tf-card.tf-card-hoverable {
+  cursor: pointer;
+}
+
+.tf-card-interactive:hover,
+.tf-card.tf-card-hoverable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px -2px rgba(15, 23, 42, 0.08), 0 3px 6px -2px rgba(15, 23, 42, 0.04);
+  border-color: var(--tf-gray-300);
+}
+
+.tf-card-interactive:active {
+  transform: translateY(0);
 }
 
 .tf-card-header {
@@ -1597,22 +1655,43 @@ h1:focus { outline: none; }
   position: fixed;
   inset: 0;
   background-color: var(--tf-surface-overlay);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: var(--tf-z-modal);
   padding: var(--tf-space-4);
+  animation: tfBackdropFadeIn var(--tf-motion-normal) var(--tf-ease-out) forwards;
 }
 
 .tf-modal {
   background: var(--tf-surface);
   border-radius: var(--tf-radius-lg);
-  box-shadow: var(--tf-shadow-xl);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.06);
   width: 100%;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  animation: tfModalScaleIn var(--tf-motion-modal) var(--tf-ease-out) forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes tfBackdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes tfModalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .tf-modal-sm { max-width: 400px; }
@@ -1666,6 +1745,19 @@ h1:focus { outline: none; }
   z-index: var(--tf-z-dropdown);
   overflow: hidden;
   padding: var(--tf-space-1) 0;
+  animation: tfDropdownReveal var(--tf-motion-fast) var(--tf-ease-out) forwards;
+  transform-origin: top right;
+}
+
+@keyframes tfDropdownReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .tf-dropdown-item {
@@ -2747,7 +2839,7 @@ h1:focus { outline: none; }
   justify-content: center;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.24s cubic-bezier(0.2, 0, 0, 1), visibility 0.24s cubic-bezier(0.2, 0, 0, 1);
   pointer-events: none;
   user-select: none;
   contain: strict;
@@ -2763,7 +2855,7 @@ h1:focus { outline: none; }
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
-  transition: opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition: opacity 0.24s cubic-bezier(0.2, 0, 0, 1), visibility 0.24s cubic-bezier(0.2, 0, 0, 1) !important;
 }
 
 /* In-card preview mode */
@@ -3182,8 +3274,37 @@ button.tf-search-spinner {
   100% { left: 100%; }
 }
 
+/* ============================================================
+   BOOTSTRAP MODAL COORDINATED TRANSITIONS
+   ============================================================ */
+.modal.fade .modal-dialog {
+  transition: transform var(--tf-motion-modal) var(--tf-ease-out), opacity var(--tf-motion-normal) ease !important;
+  transform: scale(0.96) translateY(8px);
+  opacity: 0;
+}
+
+.modal.fade.show .modal-dialog {
+  transform: scale(1) translateY(0) !important;
+  opacity: 1 !important;
+}
+
+.modal-backdrop.fade {
+  transition: opacity var(--tf-motion-normal) ease !important;
+}
+
 /* Accessibility: reduce motion */
 @media (prefers-reduced-motion: reduce) {
+  .tf-content,
+  .tf-modal,
+  .tf-modal-overlay,
+  .tf-dropdown-menu,
+  .modal-dialog,
+  .tf-card,
+  .tf-btn {
+    animation: none !important;
+    transform: none !important;
+    transition: none !important;
+  }
   .tf-skeleton {
     animation: none !important;
     background: #e2e8f0 !important;

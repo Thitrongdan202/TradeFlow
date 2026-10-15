@@ -171,6 +171,7 @@
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 18px;
     width: 100%;
+    padding: 4px 2px 8px 2px;
 }
 
 @media (min-width: 1500px) {
@@ -199,7 +200,7 @@
     }
 }
 
-/* --- Gallery Card --- */
+/* --- Gallery Card (Smooth Elevation & Zero-Lag Cursor Tracking) --- */
 .tf-gallery-card {
     display: flex;
     flex-direction: column;
@@ -207,26 +208,94 @@
     border: 1px solid #e2e8f0;
     border-radius: 8px;
     padding: 10px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    /* Matching the sidebar's 150ms ease and 160ms cubic-bezier transition */
-    transition: border-color 0.15s ease,
-                box-shadow 0.15s ease,
-                transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     cursor: pointer;
     position: relative;
     outline: none;
     min-width: 0;
     box-sizing: border-box;
+    contain: layout paint;
+    isolation: isolate;
+    /* Stationary A4 preview: Flat 2D rendering, no 3D tilt, subpixel text remains 100% crisp */
+    transform: translateZ(0);
+    will-change: transform;
+    /* CSS only transitions border-color; GSAP exclusively owns transform to prevent any conflict */
+    transition: border-color 0.18s ease;
 }
 
-.tf-gallery-card:hover,
-.tf-gallery-card:focus-within,
+/* Layer A: Isolated GPU-Composited Cursor Highlight Overlay (Zero Cascade to Children) */
+.tf-card-highlight-overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    pointer-events: none;
+    contain: strict;
+    z-index: 1;
+}
+
+.tf-highlight-spot {
+    position: absolute;
+    top: -140px;
+    left: -140px;
+    width: 280px;
+    height: 280px;
+    border-radius: 50%;
+    background: radial-gradient(
+        circle,
+        rgba(37, 99, 235, 0.09) 0%,
+        rgba(59, 130, 246, 0.03) 45%,
+        transparent 70%
+    );
+    opacity: 0;
+    pointer-events: none;
+    will-change: transform, opacity;
+    transition: opacity 0.18s ease;
+}
+
+.tf-gallery-card:hover .tf-highlight-spot,
+.tf-gallery-card.is-hovered .tf-highlight-spot,
+.tf-gallery-card.is-active .tf-highlight-spot {
+    opacity: 1;
+}
+
+/* 100% GPU-composited elevation shadow via pseudo-element opacity (0 CPU main-thread paint) */
+.tf-gallery-card::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 8px;
+    box-shadow: 0 10px 24px -4px rgba(15, 23, 42, 0.12), 0 4px 8px -2px rgba(15, 23, 42, 0.04);
+    opacity: 0;
+    pointer-events: none;
+    z-index: -1;
+    transition: opacity 0.18s ease;
+}
+
+/* Transient hover & focus lift */
+@media (hover: hover) and (pointer: fine) {
+    .tf-gallery-card:hover,
+    .tf-gallery-card.is-hovered,
+    .tf-gallery-card:focus-within {
+        border-color: #2563eb;
+        z-index: 2;
+    }
+
+    .tf-gallery-card:hover::after,
+    .tf-gallery-card.is-hovered::after,
+    .tf-gallery-card:focus-within::after {
+        opacity: 1;
+    }
+}
+
+/* Active keyboard or programmatic selection */
 .tf-gallery-card.is-active {
-    /* Subtle 2px elevation and restrained shadow - keeps A4 preview stable and avoids cursor bounce */
-    transform: translateY(-2px);
-    border-color: #3b82f6;
-    box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.08), 0 2px 4px -1px rgba(15, 23, 42, 0.04);
+    border-color: #2563eb;
     z-index: 2;
+}
+
+.tf-gallery-card.is-active::after {
+    opacity: 1;
 }
 
 .tf-gallery-card:focus-visible {
@@ -234,9 +303,15 @@
     outline-offset: 2px;
 }
 
+/* Distinct persistent selected state */
 .tf-gallery-card.is-selected {
     border-color: #2563eb;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2), 0 8px 16px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25), 0 2px 4px rgba(15, 23, 42, 0.06);
+}
+
+.tf-gallery-card.is-selected:hover,
+.tf-gallery-card.is-selected.is-hovered {
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.35);
 }
 
 /* --- Paper Wrapper --- */
@@ -248,19 +323,21 @@
     box-sizing: border-box;
 }
 
-/* --- The Miniature Pure White A4 Contract Sheet (Rock-solid visual stability) --- */
+/* --- The Miniature Pure White A4 Contract Sheet (Rock-solid visual stability & 0 hit-test overhead) --- */
 .tf-a4-sheet {
     width: 100%;
     /* Standard A4 Aspect Ratio: 210mm x 297mm */
     aspect-ratio: 210 / 297;
     background: #ffffff;
     border: 1px solid #e2e8f0;
-    box-shadow: 0 2px 6px -1px rgba(0, 0, 0, 0.07), 0 1px 3px -1px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     border-radius: 3px;
     position: relative;
     overflow: hidden;
     container-type: inline-size;
     user-select: none;
+    pointer-events: none;
+    contain: layout paint;
 }
 
 .tf-a4-page-content {
@@ -459,7 +536,7 @@
     color: #475569;
 }
 
-/* --- Responsive Action Area Below A4 Preview (Zero Clipping, Stable Height) --- */
+/* --- Responsive Action Area Below A4 Preview (Rock-solid 32px constant height, 0 reflow) --- */
 .tf-card-actions-wrapper {
     width: 100%;
     min-width: 0;
@@ -469,8 +546,7 @@
     display: flex;
     align-items: center;
     position: relative;
-    container-type: inline-size;
-    container-name: actions;
+    contain: layout size;
 }
 
 .tf-card-idle-hint {
@@ -480,14 +556,15 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
+    height: 30px;
     font-size: 11px;
     color: #94a3b8;
     background: #f8fafc;
     border: 1px dashed #e2e8f0;
     border-radius: 6px;
     opacity: 1;
-    /* Matching sidebar 0.15s ease */
-    transition: opacity 0.15s ease;
+    /* Natural Google easing: 180ms cubic-bezier(0.2, 0.8, 0.2, 1) */
+    transition: opacity 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
     user-select: none;
     pointer-events: none;
     box-sizing: border-box;
@@ -506,31 +583,56 @@
     inset: 0;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
-    gap: 6px;
+    gap: 5px;
     width: 100%;
     min-width: 0;
+    height: 32px;
     box-sizing: border-box;
     opacity: 0;
-    transform: translateY(2px);
+    transform: translateY(2px) translateZ(0);
     pointer-events: none;
-    /* Matching sidebar flyout 0.16s cubic-bezier(0.16, 1, 0.3, 1) */
-    transition: opacity 0.16s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+    /* Natural Google easing: 180ms cubic-bezier(0.2, 0.8, 0.2, 1) */
+    transition: opacity 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
+                transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
     z-index: 3;
 }
 
-.tf-gallery-card:hover .tf-card-idle-hint,
-.tf-gallery-card:focus-within .tf-card-idle-hint,
+@media (hover: hover) and (pointer: fine) {
+    .tf-gallery-card:hover .tf-card-idle-hint,
+    .tf-gallery-card.is-hovered .tf-card-idle-hint,
+    .tf-gallery-card:focus-within .tf-card-idle-hint {
+        opacity: 0;
+    }
+
+    .tf-gallery-card:hover .tf-card-actions,
+    .tf-gallery-card.is-hovered .tf-card-actions,
+    .tf-gallery-card:focus-within .tf-card-actions {
+        opacity: 1;
+        transform: translateY(0) translateZ(0);
+        pointer-events: auto;
+    }
+}
+
 .tf-gallery-card.is-active .tf-card-idle-hint {
     opacity: 0;
 }
 
-.tf-gallery-card:hover .tf-card-actions,
-.tf-gallery-card:focus-within .tf-card-actions,
 .tf-gallery-card.is-active .tf-card-actions {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) translateZ(0);
     pointer-events: auto;
+}
+
+/* Touchscreens where hover is unavailable: show action buttons directly */
+@media (hover: none) {
+    .tf-card-idle-hint {
+        display: none !important;
+    }
+    .tf-card-actions {
+        opacity: 1 !important;
+        transform: none !important;
+        pointer-events: auto !important;
+    }
 }
 
 .tf-btn-preview {
@@ -539,11 +641,11 @@
     justify-content: center;
     gap: 4px;
     height: 30px;
-    padding: 0 6px;
+    padding: 0 5px;
     background: #ffffff;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
-    font-size: 11.5px;
+    font-size: 11px;
     font-weight: 600;
     color: #334155;
     cursor: pointer;
@@ -566,6 +668,8 @@
 
 .tf-btn-preview svg {
     flex-shrink: 0;
+    width: 12px;
+    height: 12px;
 }
 
 .tf-btn-preview span {
@@ -580,11 +684,11 @@
     justify-content: center;
     gap: 4px;
     height: 30px;
-    padding: 0 6px;
+    padding: 0 5px;
     background: #2563eb;
     border: 1px solid #1d4ed8;
     border-radius: 6px;
-    font-size: 11.5px;
+    font-size: 11px;
     font-weight: 600;
     color: #ffffff;
     cursor: pointer;
@@ -600,28 +704,20 @@
 .tf-btn-compose:hover,
 .tf-btn-compose:focus-visible {
     background: #1d4ed8;
-    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
     outline: none;
 }
 
 .tf-btn-compose svg {
     flex-shrink: 0;
+    width: 12px;
+    height: 12px;
 }
 
 .tf-btn-compose span {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-@container actions (max-width: 185px) {
-    .tf-card-actions-wrapper {
-        height: 64px;
-    }
-    .tf-card-actions {
-        grid-template-columns: 1fr;
-        gap: 4px;
-    }
 }
 
 /* --- Selected Corner Badge --- */

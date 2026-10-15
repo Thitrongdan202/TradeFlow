@@ -21,6 +21,10 @@
     <ProjectReference Include="..\TradeFlow.Infrastructure\TradeFlow.Infrastructure.csproj" />
   </ItemGroup>
 
+  <Target Name="CopyGsap" BeforeTargets="Build" Condition="Exists('node_modules\gsap\dist\gsap.min.js')">
+    <Copy SourceFiles="node_modules\gsap\dist\gsap.min.js" DestinationFolder="wwwroot\lib\gsap" SkipUnchangedFiles="true" />
+  </Target>
+
   <Target Name="BuildTailwindCss" BeforeTargets="Build" Condition="Exists('node_modules')">
     <Exec Command="npm.cmd run build:css" ContinueOnError="true" StandardOutputImportance="low" />
   </Target>

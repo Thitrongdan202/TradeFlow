@@ -26,19 +26,24 @@
             pointer-events: auto;
             user-select: none;
             contain: strict;
+            transform: translate3d(0, 0, 0);
+            will-change: opacity, visibility;
+            transition: opacity 0.25s cubic-bezier(0.2, 0, 0, 1), visibility 0.25s cubic-bezier(0.2, 0, 0, 1);
         }
 
         #tf-startup-loader.is-fading-out {
             opacity: 0 !important;
             visibility: hidden !important;
             pointer-events: none !important;
-            transition: opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            transition: opacity 0.25s cubic-bezier(0.2, 0, 0, 1), visibility 0.25s cubic-bezier(0.2, 0, 0, 1) !important;
         }
 
-        .tf-loading-backdrop {
+        #tf-startup-loader .tf-loading-backdrop {
             position: absolute;
             inset: 0;
-            background-color: #f8fafc;
+            background-color: #f8fafc !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
             pointer-events: none;
         }
 
@@ -286,6 +291,8 @@
     <Routes />
     <ReconnectModal />
     <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script src="@Assets["lib/gsap/gsap.min.js"]"></script>
+    <script src="@Assets["js/tradeflow-motion.js"]"></script>
     <script>
         (function () {
             var loader = document.getElementById('tf-startup-loader');
@@ -296,17 +303,17 @@
                 if (dismissed) return;
                 dismissed = true;
 
-                // 1. Immediately disable pointer-events so clicks are never intercepted
+                // 1. Immediately disable pointer-events so user interactions are never blocked
                 loader.style.pointerEvents = 'none';
                 loader.classList.remove('is-active');
                 loader.classList.add('is-fading-out');
 
-                // 2. Remove completely from DOM after fade-out transition
+                // 2. Remove cleanly from DOM after natural Google decelerate fade-out (250ms)
                 setTimeout(function () {
                     if (loader && loader.parentNode) {
                         loader.parentNode.removeChild(loader);
                     }
-                }, 260);
+                }, 280);
             }
 
             window.tfDismissStartupLoader = dismissStartupLoader;
@@ -324,43 +331,70 @@
 
             window.tfShowStartupError = showStartupError;
 
-            // Fast dismissal on static pages (e.g. login)
-            function checkStaticPage() {
-                if (document.querySelector('.tf-login-page')) {
-                    dismissStartupLoader();
-                    return true;
-                }
-                return false;
+            // Check if application UI or auth page is rendered in DOM
+            function isAppContentReady() {
+                return !!(
+                    document.querySelector('.tf-app') ||
+                    document.querySelector('.tf-content') ||
+                    document.querySelector('.tf-login-page') ||
+                    document.querySelector('.tf-login-redirect') ||
+                    document.querySelector('.tf-sales-workspace') ||
+                    document.querySelector('.container-fluid')
+                );
             }
 
+            // Continuous mutation watcher for instant dismissal as soon as Blazor paints
+            if (document.body) {
+                var bodyObserver = new MutationObserver(function () {
+                    if (!dismissed && isAppContentReady()) {
+                        bodyObserver.disconnect();
+                        // Dismiss on next animation frame for a buttery smooth 60fps transition
+                        requestAnimationFrame(function () {
+                            dismissStartupLoader();
+                        });
+                    }
+                });
+                bodyObserver.observe(document.body, { childList: true, subtree: true });
+            }
+
+            // Also check on DOM readiness states
             if (document.readyState === 'complete' || document.readyState === 'interactive') {
-                checkStaticPage();
+                if (isAppContentReady()) {
+                    dismissStartupLoader();
+                }
             } else {
-                document.addEventListener('DOMContentLoaded', checkStaticPage);
+                document.addEventListener('DOMContentLoaded', function () {
+                    if (isAppContentReady()) {
+                        dismissStartupLoader();
+                    }
+                });
             }
 
-            // Watch for Blazor circuit errors
+            // Blazor enhanced page load hook
+            if (window.Blazor && window.Blazor.addEventListener) {
+                window.Blazor.addEventListener('enhancedload', function () {
+                    dismissStartupLoader();
+                });
+            }
+
+            // Watch specifically for real Blazor circuit crashes
             var blazorErrorUi = document.getElementById('blazor-error-ui');
             if (blazorErrorUi) {
-                var observer = new MutationObserver(function () {
+                var errObserver = new MutationObserver(function () {
                     var display = window.getComputedStyle(blazorErrorUi).display;
                     if (display !== 'none' && !dismissed) {
                         showStartupError();
                     }
                 });
-                observer.observe(blazorErrorUi, { attributes: true, attributeFilter: ['style', 'class'] });
+                errObserver.observe(blazorErrorUi, { attributes: true, attributeFilter: ['style', 'class'] });
             }
 
-            // Safety fallback: if interactive circuit mounts, dismiss; if after 3.5s still not dismissed, dismiss if app content is present, else show error
+            // Safe liveness watchdog: smoothly dismiss after 2s without crashing into fake error
             setTimeout(function () {
                 if (!dismissed) {
-                    if (document.querySelector('.tf-app') || document.querySelector('.tf-sales-workspace') || document.querySelector('.tf-content')) {
-                        dismissStartupLoader();
-                    } else {
-                        showStartupError();
-                    }
+                    dismissStartupLoader();
                 }
-            }, 3500);
+            }, 2000);
         })();
 
         window.tradeflow = {

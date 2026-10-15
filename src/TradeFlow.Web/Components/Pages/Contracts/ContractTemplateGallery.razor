@@ -1,8 +1,10 @@
 @using TradeFlow.Application.Common.Models.Contracts
 @using TradeFlow.Domain.Enums
+@implements IAsyncDisposable
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
-<div class="tf-contract-gallery-wrapper">
+<div class="tf-contract-gallery-wrapper" @ref="galleryContainer">
     <!-- Gallery Controls (Light Theme) -->
     <div class="tf-gallery-controls">
         <div class="tf-controls-top">
@@ -82,6 +84,11 @@
                          role="listitem"
                          aria-label="@t.Title"
                          @onkeydown="(e) => OnCardKeyDown(e, t)">
+
+                        <!-- Isolated GPU-Composited Cursor Highlight (Zero cascade to children) -->
+                        <div class="tf-card-highlight-overlay" aria-hidden="true">
+                            <div class="tf-highlight-spot"></div>
+                        </div>
 
                         <!-- 1. The Miniature Pure White A4 Contract Sheet -->
                         <div class="tf-card-paper-wrapper" @onclick="() => OnCardClicked(t)">
@@ -795,4 +802,43 @@
         "CONTRACT_APPENDIX" => "Trần Minh Đức",
         _ => "Đại diện Bên B"
     };
+
+    private ElementReference galleryContainer;
+    private IJSObjectReference? motionModule;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                motionModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/contract-gallery-motion.js");
+                await motionModule.InvokeVoidAsync("initGalleryMotion", galleryContainer);
+            }
+            else
+            {
+                if (motionModule != null)
+                {
+                    await motionModule.InvokeVoidAsync("refreshGalleryMotion", galleryContainer);
+                }
+            }
+        }
+        catch (JSDisconnectedException) { }
+        catch (ObjectDisposedException) { }
+        catch (Exception) { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (motionModule != null)
+            {
+                await motionModule.InvokeVoidAsync("disposeGalleryMotion", galleryContainer);
+                await motionModule.DisposeAsync();
+                motionModule = null;
+            }
+        }
+        catch { }
+    }
 }

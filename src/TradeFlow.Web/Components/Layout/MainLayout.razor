@@ -8,7 +8,7 @@
     </aside>
 
     @* Mobile overlay *@
-    <div class="tf-sidebar-backdrop" @onclick="CloseSidebar"></div>
+    <div class="tf-sidebar-backdrop @(_sidebarOpen ? "open" : "")" @onclick="CloseSidebar"></div>
 
     <div class="tf-main-wrapper @(_sidebarCollapsed ? "is-collapsed" : "")">
         <header class="tf-topbar">

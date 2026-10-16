@@ -11,4 +11,9 @@ public interface IDataBackupService
     Task<BackupResult> CreateBackupAsync(BackupOptions options, ClaimsPrincipal user, CancellationToken cancellationToken = default);
     Task<Stream?> GetPreparedBackupStreamAsync(string backupId, ClaimsPrincipal user, CancellationToken cancellationToken = default);
     Task<BackupMetadataDto?> GetLatestBackupInfoAsync(CancellationToken cancellationToken = default);
+    
+    Task<BackupValidationResult> ValidateAndPreviewArchiveAsync(Stream archiveStream, string fileName, ClaimsPrincipal user, CancellationToken cancellationToken = default);
+    Task<BackupValidationResult> ValidateAndPreviewExtractedFolderAsync(string stagingFolderPath, ClaimsPrincipal user, CancellationToken cancellationToken = default);
+    Task<RestoreResult> ExecuteRestoreAsync(ImportExecutionPlan plan, ClaimsPrincipal user, CancellationToken cancellationToken = default);
+    Task CleanupStagingAsync(string stagingId);
 }

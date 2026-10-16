@@ -3,17 +3,20 @@
 @attribute [Authorize(Policy = "Permission:CompanySettings:View")]
 
 @using System.Security.Claims
+@using System.Text.Json
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using TradeFlow.Application.Common.Interfaces
 @using TradeFlow.Application.Common.Models.Settings
+
+@implements IAsyncDisposable
 
 @inject IDataBackupService BackupService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 
-<PageTitle>Sao lưu dữ liệu — TradeFlow</PageTitle>
+<PageTitle>Sao lưu & Khôi phục dữ liệu — TradeFlow</PageTitle>
 
 <div class="tf-backup-container">
     @* Page Header *@
@@ -22,192 +25,793 @@
             <div class="tf-breadcrumb">
                 <a href="/cai-dat" class="tf-breadcrumb-link">Cài đặt</a>
                 <span class="tf-breadcrumb-sep">/</span>
-                <span class="tf-breadcrumb-current">Sao lưu dữ liệu</span>
+                <span class="tf-breadcrumb-current">Sao lưu & Khôi phục dữ liệu</span>
             </div>
-            <h1 class="tf-page-title">Sao lưu dữ liệu</h1>
-            <p class="tf-page-subtitle">Tạo và tải về bản sao lưu toàn bộ cơ sở dữ liệu hệ thống cùng các tệp kinh doanh đính kèm</p>
+            <h1 class="tf-page-title">Trung tâm Sao lưu & Khôi phục dữ liệu</h1>
+            <p class="tf-page-subtitle">Xuất toàn diện dữ liệu nghiệp vụ ra tệp ZIP độc lập và nạp khôi phục an toàn với tiền kiểm trùng lặp</p>
         </div>
     </div>
 
-    <div class="tf-backup-layout">
-        @* Primary Working Backup Card *@
-        <div class="tf-card tf-backup-main-card">
-            <div class="tf-card-header">
-                <div class="tf-card-header-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
+    @* Navigation Tabs *@
+    <div class="tf-backup-tabs">
+        <button type="button" 
+                class="tf-backup-tab @(_activeTab == "export" ? "active" : "")" 
+                @onclick="@(() => SwitchTab("export"))">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Xuất sao lưu dữ liệu (Export ZIP)</span>
+        </button>
+        <button type="button" 
+                class="tf-backup-tab @(_activeTab == "import" ? "active" : "")" 
+                @onclick="@(() => SwitchTab("import"))">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <span>Nạp & Khôi phục dữ liệu (Import & Restore)</span>
+            @if (_validationResult != null && _validationResult.IsValid && _restoreResult == null)
+            {
+                <span class="tf-tab-badge">Đang chờ xử lý</span>
+            }
+        </button>
+    </div>
+
+    @* TAB 1: EXPORT *@
+    @if (_activeTab == "export")
+    {
+        <div class="tf-backup-layout">
+            <div class="tf-card tf-backup-main-card">
+                <div class="tf-card-header">
+                    <div class="tf-card-header-icon export-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="tf-card-title">Xuất sao lưu toàn bộ cơ sở dữ liệu & tệp kinh doanh</h2>
+                        <p class="tf-card-desc">Tạo một gói lưu trữ chuẩn ZIP di động chứa toàn bộ 38 bảng thực thể và tệp đính kèm</p>
+                    </div>
                 </div>
-                <div>
-                    <h2 class="tf-card-title">Tải bản sao lưu máy chủ</h2>
-                    <p class="tf-card-desc">Bản sao lưu hoàn chỉnh lưu trữ trên máy tính cục bộ của bạn</p>
+
+                <div class="tf-card-body">
+                    <div class="tf-backup-scope-info">
+                        <h3 class="tf-scope-title">Cấu trúc và nội dung gói sao lưu:</h3>
+                        <ul class="tf-scope-list">
+                            <li>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                <span><strong>38 bảng thực thể cơ sở dữ liệu (JSON di động):</strong> Toàn bộ dữ liệu nghiệp vụ độc lập phiên bản DB (Cài đặt, Phân quyền, Người dùng, Danh mục, Kho hàng, Đối tác, Nhân sự, Bảng giá, Báo giá, Đơn bán, Đơn mua, Hóa đơn VAT, Sổ quỹ, Phiếu thu/chi, Hợp đồng, Scan chứng từ, v.v.).</span>
+                            </li>
+                            <li>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                <span><strong>Toàn bộ tệp kinh doanh đính kèm (files/**):</strong> Lưu trữ trong thư mục `wwwroot/uploads/**` (Hình ảnh sản phẩm, tệp Excel bảng giá gốc, logo công ty, tệp đính kèm chứng từ, scan hợp đồng, tài liệu chữ ký số).</span>
+                            </li>
+                            <li>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                <span><strong>Tệp đặc tả (manifest.json) & Bảng băm bảo toàn (checksums.json):</strong> Xác thực phiên bản định dạng `tradeflow-backup-v2.0`, số lượng bản ghi từng bảng, danh mục tệp và mã băm SHA-256 xác thực chống giả mạo hoặc hư hỏng.</span>
+                            </li>
+                            <li>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2.5">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                </svg>
+                                <span class="tf-text-security"><strong>Chính sách bảo mật dữ liệu nhạy cảm:</strong> Mật khẩu người dùng (PasswordHashes), Khóa ký số RSA riêng tư (PrivateKeys) và Chuỗi kết nối máy chủ (ConnectionStrings) tự động được loại trừ khỏi tệp ZIP theo nguyên tắc bảo mật.</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(_exportErrorMessage))
+                    {
+                        <div class="tf-alert tf-alert-error" role="alert">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            <span>@_exportErrorMessage</span>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(_exportSuccessMessage))
+                    {
+                        <div class="tf-alert tf-alert-success" role="status">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                            </svg>
+                            <div>
+                                <strong>Sao lưu hoàn tất!</strong>
+                                <div>@_exportSuccessMessage</div>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="tf-backup-action-row">
+                        <button type="button" 
+                                class="tf-btn tf-btn-primary tf-btn-lg" 
+                                disabled="@_isExporting"
+                                @onclick="HandleCreateBackupAsync">
+                            @if (_isExporting)
+                            {
+                                <span class="tf-spinner"></span>
+                                <span>Đang trích xuất 38 bảng &amp; nén tệp đính kèm...</span>
+                            }
+                            else
+                            {
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                <span>Tạo và tải về bản sao lưu (.zip)</span>
+                            }
+                        </button>
+                        <span class="tf-backup-note">Định dạng nén chuẩn ZIP, tương thích khôi phục trên mọi hệ thống TradeFlow</span>
+                    </div>
+
+                    @* Latest Backup Status Tracker *@
+                    @if (_latestBackup != null)
+                    {
+                        <div class="tf-latest-backup-card">
+                            <div class="tf-latest-backup-header">
+                                <span class="tf-latest-label">Lần sao lưu gần nhất ghi nhận trong nhật ký kiểm toán</span>
+                                <span class="tf-latest-time">@_latestBackup.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</span>
+                            </div>
+                            <div class="tf-latest-backup-details">
+                                <div class="tf-latest-item">
+                                    <span class="tf-meta-dim">Tên tệp:</span>
+                                    <span class="tf-meta-code font-mono">@_latestBackup.FileName</span>
+                                </div>
+                                @if (_latestBackup.FileSizeBytes > 0)
+                                {
+                                    <div class="tf-latest-item">
+                                        <span class="tf-meta-dim">Dung lượng:</span>
+                                        <span>@FormatFileSize(_latestBackup.FileSizeBytes)</span>
+                                    </div>
+                                }
+                                <div class="tf-latest-item">
+                                    <span class="tf-meta-dim">Người thực hiện:</span>
+                                    <strong>@_latestBackup.CreatedBy</strong>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="tf-latest-backup-empty">
+                            <span class="tf-empty-hint">Chưa ghi nhận sự kiện sao lưu nào trong hệ thống. Nhấn nút bên trên để tạo bản sao lưu đầu tiên.</span>
+                        </div>
+                    }
                 </div>
             </div>
 
-            <div class="tf-card-body">
-                <div class="tf-backup-scope-info">
-                    <h3 class="tf-scope-title">Nội dung gói sao lưu bao gồm:</h3>
-                    <ul class="tf-scope-list">
-                        <li>
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5">
-                                <polyline points="20 6 9 17 4 12"></polyline>
-                            </svg>
-                            <span><strong>Toàn bộ cơ sở dữ liệu PostgreSQL</strong> (cấu trúc bảng, quan hệ khóa ngoại, người dùng, bảng giá, đơn hàng, hóa đơn, công nợ, nhật ký kiểm toán). Định dạng lưu trữ chuẩn PostgreSQL Custom Archive (pg_dump -Fc) có thể khôi phục nhất quán bằng pg_restore.</span>
-                        </li>
-                        <li>
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5">
-                                <polyline points="20 6 9 17 4 12"></polyline>
-                            </svg>
-                            <span><strong>Tệp đính kèm và tài sản kinh doanh</strong> (hình ảnh sản phẩm, file bảng giá Excel gốc đã tải lên hệ thống).</span>
-                        </li>
-                        <li>
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5">
-                                <polyline points="20 6 9 17 4 12"></polyline>
-                            </svg>
-                            <span><strong>Tệp thông tin đặc tả (manifest.json)</strong> xác thực phiên bản phần mềm, ngày giờ khởi tạo, số lượng tệp và định danh hệ thống.</span>
-                        </li>
-                    </ul>
+            @* Deferred Future Destinations Section *@
+            <div class="tf-card tf-backup-future-card">
+                <div class="tf-card-header">
+                    <h2 class="tf-card-title">Điểm đến sao lưu bổ sung</h2>
+                    <p class="tf-card-desc">Các tùy chọn lưu trữ mở rộng trong tương lai</p>
                 </div>
+                <div class="tf-card-body" style="padding: 12px 16px;">
+                    <div class="tf-future-list">
+                        <div class="tf-future-item">
+                            <div class="tf-future-info">
+                                <div class="tf-future-title-row">
+                                    <span class="tf-future-title">Sao lưu đám mây</span>
+                                    <span class="tf-badge-pill-dev">Đang phát triển</span>
+                                </div>
+                                <p class="tf-future-desc">Đồng bộ tự động định kỳ lên Google Cloud Storage, AWS S3 hoặc OneDrive doanh nghiệp.</p>
+                            </div>
+                        </div>
 
-                @if (!string.IsNullOrEmpty(_errorMessage))
-                {
-                    <div class="tf-alert tf-alert-error" role="alert">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="8" x2="12" y2="12"></line>
-                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                        </svg>
-                        <span>@_errorMessage</span>
-                    </div>
-                }
+                        <div class="tf-future-item">
+                            <div class="tf-future-info">
+                                <div class="tf-future-title-row">
+                                    <span class="tf-future-title">Sao lưu vào thẻ nhớ hoặc USB</span>
+                                    <span class="tf-badge-pill-dev">Đang phát triển</span>
+                                </div>
+                                <p class="tf-future-desc">Tự động nhận diện thiết bị lưu trữ di động cắm ngoài và sao chép bản sao lưu bảo mật.</p>
+                            </div>
+                        </div>
 
-                @if (!string.IsNullOrEmpty(_successMessage))
-                {
-                    <div class="tf-alert tf-alert-success" role="status">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                        </svg>
-                        <div>
-                            <strong>Sao lưu hoàn tất!</strong>
-                            <div>@_successMessage</div>
+                        <div class="tf-future-item">
+                            <div class="tf-future-info">
+                                <div class="tf-future-title-row">
+                                    <span class="tf-future-title">Sao lưu vào ổ cứng ngoài hoặc NAS</span>
+                                    <span class="tf-badge-pill-dev">Đang phát triển</span>
+                                </div>
+                                <p class="tf-future-desc">Lưu trữ dự phòng trên hệ thống ổ đĩa gắn ngoài (External HDD/SSD) hoặc phân vùng NAS nội bộ.</p>
+                            </div>
                         </div>
                     </div>
-                }
+                </div>
+            </div>
+        </div>
+    }
 
-                <div class="tf-backup-action-row">
-                    <button type="button" 
-                            class="tf-btn tf-btn-primary tf-btn-lg" 
-                            disabled="@_isBackingUp"
-                            @onclick="HandleCreateBackupAsync">
-                        @if (_isBackingUp)
+    @* TAB 2: IMPORT & RESTORE *@
+    @if (_activeTab == "import")
+    {
+        <div class="tf-backup-layout">
+            @* Phase 1: Upload and Preflight Analysis *@
+            @if (_validationResult == null && !_isRestoring && _restoreResult == null)
+            {
+                <div class="tf-card tf-restore-upload-card">
+                    <div class="tf-card-header">
+                        <div class="tf-card-header-icon import-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="tf-card-title">Bước 1: Chọn gói sao lưu để tiền kiểm</h2>
+                            <p class="tf-card-desc">Hỗ trợ kéo thả tệp ZIP, chọn tệp ZIP từ máy tính hoặc chọn trực tiếp thư mục sao lưu đã giải nén</p>
+                        </div>
+                    </div>
+
+                    <div class="tf-card-body">
+                        @if (!string.IsNullOrEmpty(_importErrorMessage))
                         {
-                            <span class="tf-spinner"></span>
-                            <span>Đang trích xuất &amp; nén dữ liệu...</span>
+                            <div class="tf-alert tf-alert-error" role="alert">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                                <span>@_importErrorMessage</span>
+                            </div>
+                        }
+
+                        @* Drag and Drop Zone *@
+                        <div class="tf-dropzone @(_isDragOver ? "dragover" : "")" 
+                             id="tfBackupDropzone"
+                             @ondragover="HandleDragOver"
+                             @ondragleave="HandleDragLeave">
+                            <div class="tf-dropzone-icon">
+                                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--tf-primary, #1d4ed8)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="17 8 12 3 7 8"></polyline>
+                                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                                </svg>
+                            </div>
+                            <h3 class="tf-dropzone-title">Kéo &amp; thả tệp sao lưu .zip vào đây</h3>
+                            <p class="tf-dropzone-subtitle">hoặc nhấn vào các nút bên dưới để chọn nguồn dữ liệu từ máy tính của bạn</p>
+
+                            @if (_isUploading)
+                            {
+                                <div class="tf-upload-progress-wrapper">
+                                    <div class="tf-progress-bar-bg">
+                                        <div class="tf-progress-bar-fill" style="width: @(_uploadPercent)%"></div>
+                                    </div>
+                                    <div class="tf-upload-status-text">
+                                        @if (_uploadPercent < 100)
+                                        {
+                                            <span>Đang tải lên dữ liệu: @_uploadPercent%...</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="tf-spinner-small"></span>
+                                            <span>Đang giải nén, kiểm tra SHA-256 và phân tích trùng lặp DB...</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="tf-dropzone-buttons">
+                                    <label class="tf-btn tf-btn-primary" for="tfZipFileInput">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                            <polyline points="14 2 14 8 20 8"></polyline>
+                                        </svg>
+                                        <span>Chọn tệp ZIP (.zip)</span>
+                                    </label>
+                                    <input type="file" id="tfZipFileInput" accept=".zip" class="tf-hidden-input" @onchange="HandleZipFileSelected" />
+
+                                    <label class="tf-btn tf-btn-secondary" for="tfFolderFileInput">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                                        </svg>
+                                        <span>Chọn thư mục sao lưu đã giải nén</span>
+                                    </label>
+                                    <input type="file" id="tfFolderFileInput" webkitdirectory directory multiple class="tf-hidden-input" @onchange="HandleFolderSelected" />
+                                </div>
+                            }
+                        </div>
+
+                        <div class="tf-security-notice-box">
+                            <div class="tf-notice-header">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                </svg>
+                                <strong>Cơ chế bảo vệ dữ liệu &amp; An toàn tuyệt đối</strong>
+                            </div>
+                            <p>Hệ thống tự động thực hiện tiền kiểm 4 lớp trước khi cho phép khôi phục: (1) Ngăn chặn tấn công nén ZipSlip &amp; Decompression Bomb; (2) Xác thực chữ ký băm mật mã SHA-256 từng bảng; (3) Đối chiếu từng bản ghi với cơ sở dữ liệu hiện tại để phát hiện trùng lặp; (4) Tuyệt đối <strong>không bao giờ tự ý ghi đè</strong> dữ liệu khi chưa có sự xác nhận của người quản trị.</p>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @* Phase 2: Inspection, Conflict Resolution, and Plan Preview *@
+            @if (_validationResult != null && !_isRestoring && _restoreResult == null)
+            {
+                <div class="tf-card tf-preflight-card">
+                    <div class="tf-card-header">
+                        <div class="tf-card-header-icon @(_validationResult.IsValid ? "preview-icon" : "error-icon")">
+                            @if (_validationResult.IsValid)
+                            {
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="9 11 12 14 22 4"></polyline>
+                                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                                </svg>
+                            }
+                            else
+                            {
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                            }
+                        </div>
+                        <div class="tf-card-header-meta">
+                            <div>
+                                <h2 class="tf-card-title">Bước 2: Kết quả tiền kiểm &amp; Phân tích trùng lặp dữ liệu</h2>
+                                <p class="tf-card-desc">Bản sao lưu: <strong>@_validationResult.Manifest?.BackupId</strong> (Định dạng: @_validationResult.Manifest?.Version) • Tạo lúc: @_validationResult.Manifest?.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") bởi @_validationResult.Manifest?.CreatedBy</p>
+                            </div>
+                            <button type="button" class="tf-btn tf-btn-outline-sm" @onclick="HandleCancelImport">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                                <span>Hủy &amp; Chọn bản khác</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="tf-card-body">
+                        @* Validation Errors / Warnings *@
+                        @if (!_validationResult.IsValid)
+                        {
+                            <div class="tf-alert tf-alert-error" role="alert">
+                                <strong>Bản sao lưu không hợp lệ hoặc đã bị lỗi:</strong>
+                                <ul style="margin: 6px 0 0 18px; padding: 0;">
+                                    @foreach (var err in _validationResult.Errors)
+                                    {
+                                        <li>@err</li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+
+                        @if (_validationResult.Warnings.Count > 0)
+                        {
+                            <div class="tf-alert tf-alert-warning" role="alert">
+                                <strong>Cảnh báo tiền kiểm:</strong>
+                                <ul style="margin: 6px 0 0 18px; padding: 0;">
+                                    @foreach (var w in _validationResult.Warnings)
+                                    {
+                                        <li>@w</li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+
+                        @if (_validationResult.IsValid)
+                        {
+                            @* Database Status Pill *@
+                            <div class="tf-db-status-banner @(_validationResult.IsDatabaseEmpty ? "db-empty" : "db-has-data")">
+                                <div class="tf-db-status-icon">
+                                    @if (_validationResult.IsDatabaseEmpty)
+                                    {
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2">
+                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                        </svg>
+                                    }
+                                    else
+                                    {
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2">
+                                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                        </svg>
+                                    }
+                                </div>
+                                <div class="tf-db-status-text">
+                                    @if (_validationResult.IsDatabaseEmpty)
+                                    {
+                                        <strong>Cơ sở dữ liệu đích hiện tại hoàn toàn trống</strong>
+                                        <p>Hệ thống sẽ nạp mới toàn bộ 38 bảng thực thể và tệp đính kèm mà không phát sinh bất kỳ xung đột nào.</p>
+                                    }
+                                    else
+                                    {
+                                        <strong>Cơ sở dữ liệu đích hiện đang có dữ liệu hoạt động</strong>
+                                        <p>Hệ thống đã tự động đối chiếu các khóa nghiệp vụ (Mã khách hàng, Mã SP, Số đơn hàng, Số hóa đơn, v.v.). Vui lòng chọn hành động xử lý bên dưới trước khi khôi phục.</p>
+                                    }
+                                </div>
+                            </div>
+
+                            @* Summary Metric Cards *@
+                            <div class="tf-metrics-grid">
+                                <div class="tf-metric-card">
+                                    <div class="tf-metric-val">@_validationResult.Categories.Sum(c => c.TotalInBackup)</div>
+                                    <div class="tf-metric-lbl">Tổng bản ghi trong sao lưu</div>
+                                </div>
+                                <div class="tf-metric-card metric-new">
+                                    <div class="tf-metric-val">@_validationResult.Categories.Sum(c => c.NewCount)</div>
+                                    <div class="tf-metric-lbl">Bản ghi mới (Thêm mới)</div>
+                                </div>
+                                <div class="tf-metric-card metric-matched">
+                                    <div class="tf-metric-val">@_validationResult.Categories.Sum(c => c.MatchedCount)</div>
+                                    <div class="tf-metric-lbl">Bản ghi trùng khớp hoàn toàn</div>
+                                </div>
+                                <div class="tf-metric-card metric-conflict">
+                                    <div class="tf-metric-val">@_validationResult.Categories.Sum(c => c.ConflictCount)</div>
+                                    <div class="tf-metric-lbl">Bản ghi có khác biệt (Xung đột)</div>
+                                </div>
+                                <div class="tf-metric-card">
+                                    <div class="tf-metric-val">@_validationResult.TotalFiles</div>
+                                    <div class="tf-metric-lbl">Tệp đính kèm (@FormatFileSize(_validationResult.TotalFileSizeBytes))</div>
+                                </div>
+                            </div>
+
+                            @* Categories Overview Table *@
+                            <div class="tf-section-block">
+                                <h3 class="tf-section-title">Tổng quan phân loại 8 nhóm dữ liệu nghiệp vụ</h3>
+                                <div class="tf-table-responsive">
+                                    <table class="tf-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Nhóm dữ liệu nghiệp vụ</th>
+                                                <th class="text-center">Số bảng</th>
+                                                <th class="text-right">Tổng bản ghi</th>
+                                                <th class="text-right">Bản ghi mới</th>
+                                                <th class="text-right">Trùng khớp</th>
+                                                <th class="text-right">Xung đột</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var cat in _validationResult.Categories)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <div class="font-medium text-gray-900">@cat.CategoryName</div>
+                                                        <div class="text-xs text-gray-500">@string.Join(", ", cat.EntityTypes.Take(4))@(cat.EntityTypes.Count > 4 ? "..." : "")</div>
+                                                    </td>
+                                                    <td class="text-center font-mono">@cat.EntityTypes.Count</td>
+                                                    <td class="text-right font-medium">@cat.TotalInBackup</td>
+                                                    <td class="text-right">
+                                                        @if (cat.NewCount > 0)
+                                                        {
+                                                            <span class="tf-badge tf-badge-success">+@cat.NewCount</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-gray-400">0</span>
+                                                        }
+                                                    </td>
+                                                    <td class="text-right">
+                                                        @if (cat.MatchedCount > 0)
+                                                        {
+                                                            <span class="tf-badge tf-badge-gray">@cat.MatchedCount</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-gray-400">0</span>
+                                                        }
+                                                    </td>
+                                                    <td class="text-right">
+                                                        @if (cat.ConflictCount > 0)
+                                                        {
+                                                            <span class="tf-badge tf-badge-warning">@cat.ConflictCount</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-gray-400">0</span>
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            @* Conflict Resolution Matrix & Bulk Decision Toolbar *@
+                            @if (_validationResult.DetectedConflicts.Count > 0)
+                            {
+                                <div class="tf-section-block tf-conflict-section">
+                                    <div class="tf-conflict-header">
+                                        <div>
+                                            <h3 class="tf-section-title" style="margin: 0;">Xử lý xung đột bản ghi (@_validationResult.DetectedConflicts.Count bản ghi có khác biệt)</h3>
+                                            <p class="tf-section-desc">Bạn có thể áp dụng hành động nhanh cho tất cả, hoặc điều chỉnh riêng từng bản ghi</p>
+                                        </div>
+                                        <div class="tf-bulk-actions">
+                                            <button type="button" class="tf-btn tf-btn-sm tf-btn-outline" @onclick="@(() => ApplyBulkConflictAction(ConflictResolutionAction.KeepExisting))">
+                                                Giữ dữ liệu hiện tại (An toàn)
+                                            </button>
+                                            <button type="button" class="tf-btn tf-btn-sm tf-btn-outline" @onclick="@(() => ApplyBulkConflictAction(ConflictResolutionAction.Overwrite))">
+                                                Ghi đè tất cả (Overwrite)
+                                            </button>
+                                            <button type="button" class="tf-btn tf-btn-sm tf-btn-outline" @onclick="@(() => ApplyBulkConflictAction(ConflictResolutionAction.Skip))">
+                                                Bỏ qua tất cả
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="tf-conflict-table-wrapper">
+                                        <table class="tf-table tf-conflict-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Loại thực thể</th>
+                                                    <th>Mã nghiệp vụ</th>
+                                                    <th>Tên hiển thị</th>
+                                                    <th>Dữ liệu hiện tại trong DB</th>
+                                                    <th>Dữ liệu trong bản sao lưu</th>
+                                                    <th style="width: 200px;">Hành động xử lý</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var c in _validationResult.DetectedConflicts)
+                                                {
+                                                    <tr>
+                                                        <td><span class="tf-badge tf-badge-blue">@c.EntityDisplayName</span></td>
+                                                        <td class="font-mono font-medium">@c.BusinessKey</td>
+                                                        <td>@c.DisplayName</td>
+                                                        <td class="tf-val-box db-val">@c.CurrentSummary</td>
+                                                        <td class="tf-val-box backup-val">@c.BackupSummary</td>
+                                                        <td>
+                                                            <select class="tf-select-sm" 
+                                                                    value="@c.SelectedAction.ToString()" 
+                                                                    @onchange="@(e => OnConflictActionChanged(c, e))">
+                                                                <option value="KeepExisting">Giữ dữ liệu hiện tại</option>
+                                                                <option value="Overwrite">Ghi đè bằng dữ liệu sao lưu</option>
+                                                                <option value="Replace">Thay thế bản ghi trùng</option>
+                                                                <option value="ImportAsNew">Nhập thành bản ghi mới</option>
+                                                                <option value="Skip">Bỏ qua bản ghi này</option>
+                                                            </select>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            }
+
+                            @* File Conflict Resolution Options *@
+                            <div class="tf-file-policy-box">
+                                <div class="tf-policy-header">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                                        <polyline points="13 2 13 9 20 9"></polyline>
+                                    </svg>
+                                    <span class="font-medium">Chính sách xử lý tệp đính kèm khi trùng tên:</span>
+                                </div>
+                                <div class="tf-policy-radios">
+                                    <label class="tf-radio-label">
+                                        <input type="radio" name="fileConflictPolicy" value="Overwrite" 
+                                               checked="@(_fileConflictAction == ConflictResolutionAction.Overwrite)"
+                                               @onchange="@(() => _fileConflictAction = ConflictResolutionAction.Overwrite)" />
+                                        <span>Ghi đè tệp đính kèm (Overwrite)</span>
+                                    </label>
+                                    <label class="tf-radio-label">
+                                        <input type="radio" name="fileConflictPolicy" value="KeepExisting"
+                                               checked="@(_fileConflictAction == ConflictResolutionAction.KeepExisting)"
+                                               @onchange="@(() => _fileConflictAction = ConflictResolutionAction.KeepExisting)" />
+                                        <span>Giữ tệp hiện tại (Không ghi đè)</span>
+                                    </label>
+                                    <label class="tf-radio-label">
+                                        <input type="radio" name="fileConflictPolicy" value="ImportAsNew"
+                                               checked="@(_fileConflictAction == ConflictResolutionAction.ImportAsNew)"
+                                               @onchange="@(() => _fileConflictAction = ConflictResolutionAction.ImportAsNew)" />
+                                        <span>Tự động đổi tên tệp mới nếu trùng</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            @* Final Confirmation & Execution Trigger *@
+                            <div class="tf-restore-confirm-box">
+                                <label class="tf-checkbox-label">
+                                    <input type="checkbox" @bind="_isSafetyConfirmed" />
+                                    <span><strong>Xác nhận phục hồi an toàn:</strong> Tôi đã rà soát danh mục dữ liệu, hiểu rõ các quyết định xử lý trùng lặp và đồng ý tiến hành khôi phục vào hệ thống TradeFlow.</span>
+                                </label>
+
+                                <div class="tf-confirm-actions">
+                                    <button type="button" 
+                                            class="tf-btn tf-btn-danger tf-btn-lg"
+                                            disabled="@(!_isSafetyConfirmed || _isRestoring)"
+                                            @onclick="HandleExecuteRestoreAsync">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="7 10 12 15 17 10"></polyline>
+                                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                                        </svg>
+                                        <span>Tiến hành Khôi phục Dữ liệu ngay</span>
+                                    </button>
+                                    <button type="button" class="tf-btn tf-btn-outline" @onclick="HandleCancelImport">
+                                        Hủy bỏ &amp; Xóa vùng đệm tạm
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            @* Phase 3: Active Restoring Progress *@
+            @if (_isRestoring)
+            {
+                <div class="tf-card tf-restoring-card">
+                    <div class="tf-card-body text-center" style="padding: 40px 20px;">
+                        <div class="tf-large-spinner"></div>
+                        <h2 class="tf-restoring-title">Đang thực hiện khôi phục dữ liệu TradeFlow...</h2>
+                        <p class="tf-restoring-desc">Hệ thống đang thực hiện giao dịch ACID an toàn qua 6 tầng phụ thuộc, tái ánh xạ khóa ngoại, đồng bộ sequence và phục hồi tệp đính kèm.</p>
+                        <div class="tf-progress-indeterminate">
+                            <div class="tf-progress-indeterminate-bar"></div>
+                        </div>
+                        <div class="tf-restoring-warning">Vui lòng không tắt hoặc tải lại trang web cho đến khi quá trình khôi phục hoàn tất.</div>
+                    </div>
+                </div>
+            }
+
+            @* Phase 4: Post-Restore Summary Report *@
+            @if (_restoreResult != null)
+            {
+                <div class="tf-card tf-restore-result-card">
+                    <div class="tf-card-header @(_restoreResult.Succeeded ? "success-header" : "error-header")">
+                        <div class="tf-card-header-icon @(_restoreResult.Succeeded ? "preview-icon" : "error-icon")">
+                            @if (_restoreResult.Succeeded)
+                            {
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            }
+                            else
+                            {
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                                </svg>
+                            }
+                        </div>
+                        <div>
+                            <h2 class="tf-card-title">@(_restoreResult.Succeeded ? "Khôi phục dữ liệu hoàn tất thành công!" : "Khôi phục dữ liệu thất bại!")</h2>
+                            <p class="tf-card-desc">Thời gian thực thi: @_restoreResult.ExecutionDurationMs ms • Nhật ký kiểm toán ID: #@_restoreResult.AuditLogId</p>
+                        </div>
+                    </div>
+
+                    <div class="tf-card-body">
+                        @if (!_restoreResult.Succeeded)
+                        {
+                            <div class="tf-alert tf-alert-error">
+                                <strong>Lỗi trong quá trình khôi phục:</strong>
+                                <div>@_restoreResult.ErrorMessage</div>
+                                <div class="tf-alert-hint">Toàn bộ thay đổi cơ sở dữ liệu đã được tự động Rollback an toàn theo nguyên tắc ACID. Dữ liệu gốc không bị ảnh hưởng.</div>
+                            </div>
                         }
                         else
                         {
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                <polyline points="7 10 12 15 17 10"></polyline>
-                                <line x1="12" y1="15" x2="12" y2="3"></line>
-                            </svg>
-                            <span>Tải bản sao lưu (.zip)</span>
-                        }
-                    </button>
-                    <span class="tf-backup-note">Định dạng nén chuẩn .zip, dung lượng tối ưu hóa</span>
-                </div>
-
-                @* Latest Backup Status Tracker *@
-                @if (_latestBackup != null)
-                {
-                    <div class="tf-latest-backup-card">
-                        <div class="tf-latest-backup-header">
-                            <span class="tf-latest-label">Lần sao lưu gần nhất ghi nhận trên hệ thống</span>
-                            <span class="tf-latest-time">@_latestBackup.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</span>
-                        </div>
-                        <div class="tf-latest-backup-details">
-                            <div class="tf-latest-item">
-                                <span class="tf-meta-dim">Tên tệp:</span>
-                                <span class="tf-meta-code font-mono">@_latestBackup.FileName</span>
-                            </div>
-                            @if (_latestBackup.FileSizeBytes > 0)
-                            {
-                                <div class="tf-latest-item">
-                                    <span class="tf-meta-dim">Dung lượng:</span>
-                                    <span>@FormatFileSize(_latestBackup.FileSizeBytes)</span>
+                            <div class="tf-metrics-grid">
+                                <div class="tf-metric-card">
+                                    <div class="tf-metric-val">@_restoreResult.TotalRecordsProcessed</div>
+                                    <div class="tf-metric-lbl">Tổng bản ghi đã xử lý</div>
                                 </div>
-                            }
-                            <div class="tf-latest-item">
-                                <span class="tf-meta-dim">Người thực hiện:</span>
-                                <strong>@_latestBackup.CreatedBy</strong>
+                                <div class="tf-metric-card metric-new">
+                                    <div class="tf-metric-val">@_restoreResult.NewRecordsImported</div>
+                                    <div class="tf-metric-lbl">Bản ghi mới đã thêm</div>
+                                </div>
+                                <div class="tf-metric-card metric-overwritten">
+                                    <div class="tf-metric-val">@_restoreResult.RecordsOverwritten</div>
+                                    <div class="tf-metric-lbl">Bản ghi đã ghi đè</div>
+                                </div>
+                                <div class="tf-metric-card metric-matched">
+                                    <div class="tf-metric-val">@_restoreResult.ExistingRecordsRetained</div>
+                                    <div class="tf-metric-lbl">Bản ghi giữ nguyên</div>
+                                </div>
+                                <div class="tf-metric-card">
+                                    <div class="tf-metric-val">@_restoreResult.FilesRestored</div>
+                                    <div class="tf-metric-lbl">Tệp đính kèm đã phục hồi</div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                }
-                else
-                {
-                    <div class="tf-latest-backup-empty">
-                        <span class="tf-empty-hint">Chưa ghi nhận sự kiện sao lưu nào trong nhật ký kiểm toán. Nhấn nút bên trên để tạo bản sao lưu đầu tiên.</span>
-                    </div>
-                }
-            </div>
-        </div>
 
-        @* Deferred Future Destinations Section *@
-        <div class="tf-card tf-backup-future-card">
-            <div class="tf-card-header">
-                <h2 class="tf-card-title">Điểm đến sao lưu bổ sung</h2>
-                <p class="tf-card-desc">Các tùy chọn lưu trữ mở rộng trong tương lai</p>
-            </div>
-            <div class="tf-card-body" style="padding: 12px 16px;">
-                <div class="tf-future-list">
-                    <div class="tf-future-item">
-                        <div class="tf-future-info">
-                            <div class="tf-future-title-row">
-                                <span class="tf-future-title">Sao lưu đám mây</span>
-                                <span class="tf-badge-pill-dev">Đang phát triển</span>
+                            <div class="tf-section-block">
+                                <h3 class="tf-section-title">Chi tiết khôi phục theo từng nhóm dữ liệu</h3>
+                                <div class="tf-table-responsive">
+                                    <table class="tf-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Nhóm dữ liệu</th>
+                                                <th class="text-right">Đã xử lý</th>
+                                                <th class="text-right">Thêm mới</th>
+                                                <th class="text-right">Ghi đè</th>
+                                                <th class="text-right">Giữ nguyên</th>
+                                                <th class="text-right">Bỏ qua</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var c in _restoreResult.CategorySummaries)
+                                            {
+                                                <tr>
+                                                    <td class="font-medium">@c.CategoryName</td>
+                                                    <td class="text-right font-medium">@c.Processed</td>
+                                                    <td class="text-right"><span class="tf-badge tf-badge-success">+@c.Imported</span></td>
+                                                    <td class="text-right"><span class="tf-badge tf-badge-warning">@c.Overwritten</span></td>
+                                                    <td class="text-right"><span class="tf-badge tf-badge-gray">@c.Retained</span></td>
+                                                    <td class="text-right text-gray-400">@c.Skipped</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
-                            <p class="tf-future-desc">Đồng bộ tự động định kỳ lên Google Cloud Storage, AWS S3 hoặc OneDrive doanh nghiệp.</p>
-                        </div>
-                    </div>
+                        }
 
-                    <div class="tf-future-item">
-                        <div class="tf-future-info">
-                            <div class="tf-future-title-row">
-                                <span class="tf-future-title">Sao lưu vào thẻ nhớ hoặc USB</span>
-                                <span class="tf-badge-pill-dev">Đang phát triển</span>
-                            </div>
-                            <p class="tf-future-desc">Tự động nhận diện thiết bị lưu trữ di động cắm ngoài và sao chép bản sao lưu bảo mật.</p>
-                        </div>
-                    </div>
-
-                    <div class="tf-future-item">
-                        <div class="tf-future-info">
-                            <div class="tf-future-title-row">
-                                <span class="tf-future-title">Sao lưu vào ổ cứng ngoài</span>
-                                <span class="tf-badge-pill-dev">Đang phát triển</span>
-                            </div>
-                            <p class="tf-future-desc">Lưu trữ dự phòng trên hệ thống ổ đĩa gắn ngoài (External HDD/SSD) hoặc phân vùng NAS nội bộ.</p>
+                        <div class="tf-result-action-row">
+                            <button type="button" class="tf-btn tf-btn-primary" @onclick="HandleResetWorkflow">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                </svg>
+                                <span>Thực hiện khôi phục khác</span>
+                            </button>
+                            <a href="/cai-dat" class="tf-btn tf-btn-outline">Quay lại Cài đặt</a>
+                            <button type="button" class="tf-btn tf-btn-outline" @onclick="@(() => Nav.NavigateTo(Nav.Uri, forceLoad: true))">
+                                Tải lại trang (Reload)
+                            </button>
                         </div>
                     </div>
                 </div>
-            </div>
+            }
         </div>
-    </div>
+    }
 </div>
 
 @code {
-    private bool _isBackingUp = false;
-    private string? _errorMessage;
-    private string? _successMessage;
+    private string _activeTab = "export";
+    private bool _isExporting = false;
+    private string? _exportErrorMessage;
+    private string? _exportSuccessMessage;
     private BackupMetadataDto? _latestBackup;
+
+    // Import / Restore States
+    private bool _isDragOver = false;
+    private bool _isUploading = false;
+    private int _uploadPercent = 0;
+    private string? _importErrorMessage;
+    private BackupValidationResult? _validationResult;
+    private bool _isSafetyConfirmed = false;
+    private bool _isRestoring = false;
+    private RestoreResult? _restoreResult;
+    private ConflictResolutionAction _fileConflictAction = ConflictResolutionAction.Overwrite;
+
+    private DotNetObjectReference<Backup>? _dotNetHelper;
 
     protected override async Task OnInitializedAsync()
     {
+        _dotNetHelper = DotNetObjectReference.Create(this);
         await LoadLatestBackupInfoAsync();
+    }
+
+    private void SwitchTab(string tab)
+    {
+        _activeTab = tab;
+        _exportErrorMessage = null;
+        _importErrorMessage = null;
     }
 
     private async Task LoadLatestBackupInfoAsync()
@@ -218,19 +822,19 @@
         }
         catch
         {
-            // Fail gracefully without interrupting UI
+            // Fail gracefully
         }
     }
 
     private async Task HandleCreateBackupAsync()
     {
-        if (_isBackingUp) return;
+        if (_isExporting) return;
 
         try
         {
-            _isBackingUp = true;
-            _errorMessage = null;
-            _successMessage = null;
+            _isExporting = true;
+            _exportErrorMessage = null;
+            _exportSuccessMessage = null;
 
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
             var user = authState.User;
@@ -238,33 +842,207 @@
             var options = new BackupOptions
             {
                 IncludeDatabase = true,
-                IncludeUploads = true
+                IncludeUploads = true,
+                CreatedBy = user.Identity?.Name ?? "system"
             };
 
             var result = await BackupService.CreateBackupAsync(options, user);
 
             if (!result.Succeeded || string.IsNullOrEmpty(result.BackupId))
             {
-                _errorMessage = result.ErrorMessage ?? "Không thể tạo bản sao lưu. Vui lòng thử lại sau.";
+                _exportErrorMessage = result.ErrorMessage ?? "Không thể tạo bản sao lưu. Vui lòng thử lại sau.";
                 return;
             }
 
-            _successMessage = $"Tệp '{result.FileName}' ({FormatFileSize(result.FileSizeBytes)}) đã sẵn sàng. Trình duyệt đang tải tệp xuống máy tính...";
-            
-            // Reload tracked latest backup from audit logs
+            _exportSuccessMessage = $"Tệp '{result.FileName}' ({FormatFileSize(result.FileSizeBytes)}) đã sẵn sàng. Trình duyệt đang tải tệp xuống máy tính...";
             await LoadLatestBackupInfoAsync();
 
-            // Trigger direct stream download via minimal API endpoint
-            Nav.NavigateTo($"/api/admin/backup/download-prepared?id={result.BackupId}", forceLoad: true);
+            // Trigger direct stream download via JS without disrupting Blazor circuit
+            await JS.InvokeVoidAsync("tfBackup.triggerDownload", $"/api/admin/backup/download-prepared?id={result.BackupId}");
         }
         catch (Exception ex)
         {
-            _errorMessage = "Đã xảy ra lỗi không mong muốn khi chuẩn bị bản sao lưu: " + ex.Message;
+            _exportErrorMessage = "Đã xảy ra lỗi không mong muốn khi chuẩn bị bản sao lưu: " + ex.Message;
         }
         finally
         {
-            _isBackingUp = false;
+            _isExporting = false;
         }
+    }
+
+    private void HandleDragOver()
+    {
+        _isDragOver = true;
+    }
+
+    private void HandleDragLeave()
+    {
+        _isDragOver = false;
+    }
+
+    private async Task HandleZipFileSelected()
+    {
+        _importErrorMessage = null;
+        _isUploading = true;
+        _uploadPercent = 0;
+        StateHasChanged();
+
+        await JS.InvokeVoidAsync("tfBackup.uploadArchive", "tfZipFileInput", _dotNetHelper);
+    }
+
+    private async Task HandleFolderSelected()
+    {
+        _importErrorMessage = null;
+        _isUploading = true;
+        _uploadPercent = 0;
+        StateHasChanged();
+
+        await JS.InvokeVoidAsync("tfBackup.uploadFolder", "tfFolderFileInput", _dotNetHelper);
+    }
+
+    [JSInvokable]
+    public void OnUploadProgress(int percent)
+    {
+        _uploadPercent = percent;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnValidationSuccess(string jsonResult)
+    {
+        _isUploading = false;
+        _uploadPercent = 100;
+        try
+        {
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            _validationResult = JsonSerializer.Deserialize<BackupValidationResult>(jsonResult, options);
+            if (_validationResult != null && _validationResult.IsValid)
+            {
+                _fileConflictAction = _validationResult.FileConflictAction;
+            }
+        }
+        catch (Exception ex)
+        {
+            _importErrorMessage = "Lỗi xử lý kết quả tiền kiểm: " + ex.Message;
+        }
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnValidationFailed(string errorMessage)
+    {
+        _isUploading = false;
+        _uploadPercent = 0;
+        _importErrorMessage = errorMessage;
+        StateHasChanged();
+    }
+
+    private void ApplyBulkConflictAction(ConflictResolutionAction action)
+    {
+        if (_validationResult?.DetectedConflicts == null) return;
+        foreach (var c in _validationResult.DetectedConflicts)
+        {
+            c.SelectedAction = action;
+        }
+        StateHasChanged();
+    }
+
+    private void OnConflictActionChanged(BackupRecordConflictDto conflict, ChangeEventArgs e)
+    {
+        if (Enum.TryParse<ConflictResolutionAction>(e.Value?.ToString(), out var act))
+        {
+            conflict.SelectedAction = act;
+        }
+    }
+
+    private async Task HandleCancelImport()
+    {
+        if (!string.IsNullOrEmpty(_validationResult?.StagingDirectoryPath))
+        {
+            await BackupService.CleanupStagingAsync(_validationResult.StagingDirectoryPath);
+        }
+        _validationResult = null;
+        _isSafetyConfirmed = false;
+        _importErrorMessage = null;
+    }
+
+    private async Task HandleExecuteRestoreAsync()
+    {
+        if (!_isSafetyConfirmed || _validationResult == null || !_validationResult.IsValid) return;
+
+        try
+        {
+            _isRestoring = true;
+            _importErrorMessage = null;
+            StateHasChanged();
+
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            var plan = new ImportExecutionPlan
+            {
+                StagingId = _validationResult.StagingId ?? string.Empty,
+                StagingDirectoryPath = _validationResult.StagingDirectoryPath ?? _validationResult.StagingPath,
+                ValidationResult = _validationResult,
+                FileConflictAction = _fileConflictAction
+            };
+
+            foreach (var c in _validationResult.DetectedConflicts)
+            {
+                plan.Decisions.Add(new ConflictResolutionDecisionDto
+                {
+                    EntityType = c.EntityType,
+                    BusinessKey = c.BusinessKey,
+                    Action = c.SelectedAction
+                });
+            }
+
+            var planJson = JsonSerializer.Serialize(plan);
+            await JS.InvokeVoidAsync("tfBackup.executeRestore", planJson, _dotNetHelper);
+        }
+        catch (Exception ex)
+        {
+            _isRestoring = false;
+            _importErrorMessage = "Đã xảy ra lỗi khởi chạy khôi phục: " + ex.Message;
+            StateHasChanged();
+        }
+    }
+
+    [JSInvokable]
+    public void OnRestoreSuccess(string jsonResult)
+    {
+        _isRestoring = false;
+        try
+        {
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            _restoreResult = JsonSerializer.Deserialize<RestoreResult>(jsonResult, options);
+        }
+        catch (Exception ex)
+        {
+            _restoreResult = new RestoreResult
+            {
+                Succeeded = true,
+                ErrorMessage = "Đã hoàn tất khôi phục nhưng gặp lỗi khi giải mã báo cáo: " + ex.Message
+            };
+        }
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnRestoreFailed(string errorMessage)
+    {
+        _isRestoring = false;
+        _importErrorMessage = errorMessage;
+        StateHasChanged();
+    }
+
+    private void HandleResetWorkflow()
+    {
+        _validationResult = null;
+        _restoreResult = null;
+        _isSafetyConfirmed = false;
+        _importErrorMessage = null;
+        _activeTab = "export";
     }
 
     private static string FormatFileSize(long bytes)
@@ -273,5 +1051,14 @@
         if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
         if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024.0):F2} MB";
         return $"{bytes / (1024.0 * 1024.0 * 1024.0):F2} GB";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (!string.IsNullOrEmpty(_validationResult?.StagingDirectoryPath) && _restoreResult == null)
+        {
+            await BackupService.CleanupStagingAsync(_validationResult.StagingDirectoryPath);
+        }
+        _dotNetHelper?.Dispose();
     }
 }

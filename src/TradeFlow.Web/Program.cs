@@ -19,10 +19,23 @@ builder.Services.AddApplication();
 // ============================================================
 // Blazor / Razor Components
 // ============================================================
-builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options => { options.MultipartBodyLengthLimit = 209715200; });
-builder.WebHost.ConfigureKestrel(serverOptions => { serverOptions.Limits.MaxRequestBodySize = 209715200; });
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options => { options.MultipartBodyLengthLimit = 10L * 1024 * 1024 * 1024; });
+builder.WebHost.ConfigureKestrel(serverOptions => { serverOptions.Limits.MaxRequestBodySize = 10L * 1024 * 1024 * 1024; });
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    .AddInteractiveServerComponents()
+    .AddHubOptions(options =>
+    {
+        options.MaximumReceiveMessageSize = 64 * 1024 * 1024; // 64 MB
+        options.ClientTimeoutInterval = TimeSpan.FromMinutes(10);
+        options.HandshakeTimeout = TimeSpan.FromMinutes(2);
+    });
+
+builder.Services.AddSignalR(options =>
+{
+    options.MaximumReceiveMessageSize = 64 * 1024 * 1024; // 64 MB
+    options.ClientTimeoutInterval = TimeSpan.FromMinutes(10);
+    options.HandshakeTimeout = TimeSpan.FromMinutes(2);
+});
 
 // ============================================================
 // ASP.NET Core Identity + Authentication
@@ -185,7 +198,92 @@ app.MapGet("/api/admin/backup/download", async (
     return Results.File(stream, "application/zip", result.FileName ?? $"tradeflow_backup_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
 }).RequireAuthorization();
 
+app.MapPost("/api/admin/backup/upload-archive", async (
+    IFormFile file,
+    IDataBackupService backupService,
+    System.Security.Claims.ClaimsPrincipal user,
+    Microsoft.AspNetCore.Authorization.IAuthorizationService authService) =>
+{
+    var authResult = await authService.AuthorizeAsync(user, null, "Permission:CompanySettings:View");
+    if (!authResult.Succeeded && !user.IsInRole("Administrator"))
+    {
+        return Results.Forbid();
+    }
 
+    if (file == null || file.Length == 0)
+    {
+        return Results.BadRequest(new { message = "Vui lòng chọn tệp ZIP sao lưu hợp lệ." });
+    }
+
+    using var stream = file.OpenReadStream();
+    var result = await backupService.ValidateAndPreviewArchiveAsync(stream, file.FileName, user);
+    return Results.Ok(result);
+}).DisableAntiforgery().RequireAuthorization();
+
+app.MapPost("/api/admin/backup/upload-folder", async (
+    HttpRequest request,
+    IDataBackupService backupService,
+    System.Security.Claims.ClaimsPrincipal user,
+    Microsoft.AspNetCore.Authorization.IAuthorizationService authService) =>
+{
+    var authResult = await authService.AuthorizeAsync(user, null, "Permission:CompanySettings:View");
+    if (!authResult.Succeeded && !user.IsInRole("Administrator"))
+    {
+        return Results.Forbid();
+    }
+
+    var form = await request.ReadFormAsync();
+    var files = form.Files;
+    if (files == null || files.Count == 0)
+    {
+        return Results.BadRequest(new { message = "Không tìm thấy tệp nào trong thư mục đã chọn." });
+    }
+
+    string stagingDir = Path.Combine(Path.GetTempPath(), "TradeFlow_Restore_Staging", $"folder_{Guid.NewGuid():N}");
+    Directory.CreateDirectory(stagingDir);
+
+    foreach (var file in files)
+    {
+        string relPath = form[file.FileName].FirstOrDefault() ?? file.FileName;
+        var parts = relPath.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        string targetSubPath = parts.Length > 1 ? string.Join(Path.DirectorySeparatorChar, parts.Skip(1)) : parts[0];
+        string destPath = Path.Combine(stagingDir, targetSubPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
+        using var destStream = new FileStream(destPath, FileMode.Create);
+        await file.CopyToAsync(destStream);
+    }
+
+    var result = await backupService.ValidateAndPreviewExtractedFolderAsync(stagingDir, user);
+    return Results.Ok(result);
+}).DisableAntiforgery().RequireAuthorization();
+
+app.MapPost("/api/admin/backup/execute-restore", async (
+    [Microsoft.AspNetCore.Mvc.FromBody] TradeFlow.Application.Common.Models.Settings.ImportExecutionPlan plan,
+    IDataBackupService backupService,
+    System.Security.Claims.ClaimsPrincipal user,
+    Microsoft.AspNetCore.Authorization.IAuthorizationService authService) =>
+{
+    var authResult = await authService.AuthorizeAsync(user, null, "Permission:CompanySettings:View");
+    if (!authResult.Succeeded && !user.IsInRole("Administrator"))
+    {
+        return Results.Forbid();
+    }
+
+    var result = await backupService.ExecuteRestoreAsync(plan, user);
+    return Results.Ok(result);
+}).DisableAntiforgery().RequireAuthorization();
+
+app.MapPost("/api/admin/backup/cleanup-staging", async (
+    [Microsoft.AspNetCore.Mvc.FromBody] TradeFlow.Web.StagingCleanupRequest req,
+    IDataBackupService backupService,
+    System.Security.Claims.ClaimsPrincipal user) =>
+{
+    if (!string.IsNullOrEmpty(req?.StagingPath))
+    {
+        await backupService.CleanupStagingAsync(req.StagingPath);
+    }
+    return Results.Ok();
+}).DisableAntiforgery().RequireAuthorization();
 
 app.MapGet("/test-import", async (TradeFlow.Application.Common.Interfaces.IExcelPricingService excelService) => 
 { 
@@ -211,6 +309,11 @@ app.MapGet("/test-import", async (TradeFlow.Application.Common.Interfaces.IExcel
 });
 
 app.Run();
+
+namespace TradeFlow.Web
+{
+    public record StagingCleanupRequest(string? StagingPath);
+}
 
 // Make Program class accessible for integration tests
 public partial class Program { }

@@ -29,6 +29,7 @@ public enum AuditEventType
     DataExported = 31,
     FileUploaded = 32,
     DatabaseBackupCreated = 33,
+    DatabaseBackupRestored = 34,
 
     // === Cài đặt ===
     CompanySettingsChanged = 40,

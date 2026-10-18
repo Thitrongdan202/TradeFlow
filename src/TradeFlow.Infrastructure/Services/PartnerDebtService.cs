@@ -243,27 +243,80 @@ public class PartnerDebtService : IPartnerDebtService
                 .OrderByDescending(p => p.PaymentDate)
                 .ToListAsync(cancellationToken);
 
+            var supCreditsBySupplier = supPayments
+                .Where(p => p.TransactionType == DebtTransactionType.Payment || p.TransactionType == DebtTransactionType.PaymentDiscount)
+                .GroupBy(p => p.PartnerId)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
+
+            var adjustmentsBySupplier = supPayments
+                .Where(p => p.TransactionType == DebtTransactionType.Adjustment)
+                .GroupBy(p => p.PartnerId)
+                .ToDictionary(g => g.Key, g => g.OrderBy(x => x.PaymentDate).ToList());
+
+            var supplierAllocatedPaid = new Dictionary<int, decimal>();
+
+            foreach (var (supId, adjustments) in adjustmentsBySupplier)
+            {
+                supCreditsBySupplier.TryGetValue(supId, out decimal remainingCredit);
+                foreach (var adj in adjustments)
+                {
+                    decimal paidForThis = Math.Min(adj.Amount, Math.Max(0m, remainingCredit));
+                    supplierAllocatedPaid[adj.Id] = paidForThis;
+                    remainingCredit -= paidForThis;
+                }
+            }
+
             foreach (var p in supPayments)
             {
-                records.Add(new DebtRecordDto
+                if (p.TransactionType == DebtTransactionType.Adjustment)
                 {
-                    Id = p.Id,
-                    PartnerType = PartnerType.Supplier,
-                    Direction = DebtDirection.Payable,
-                    PartnerId = p.PartnerId,
-                    PartnerCode = p.Supplier?.Code ?? $"NCC{p.PartnerId:D6}",
-                    PartnerName = !string.IsNullOrEmpty(p.Supplier?.CompanyName) ? p.Supplier.CompanyName : (p.Supplier?.Name ?? "Nhà cung cấp"),
-                    Phone = p.Supplier?.Phone,
-                    DocumentType = p.TransactionType == DebtTransactionType.Payment ? "Phiếu chi thanh toán" : "Điều chỉnh nợ NCC",
-                    DocumentCode = p.PaymentCode,
-                    DocumentDate = p.PaymentDate,
-                    OriginalAmount = p.Amount,
-                    PaidAmount = p.Amount,
-                    OutstandingAmount = 0m,
-                    DebtStatus = DebtStatus.Settled,
-                    PaymentMethod = p.PaymentMethod,
-                    LinkUrl = null
-                });
+                    decimal paid = supplierAllocatedPaid.GetValueOrDefault(p.Id, 0m);
+                    decimal outstanding = Math.Max(0m, p.Amount - paid);
+                    var debtStatus = outstanding == 0m ? DebtStatus.Settled
+                        : (paid > 0m ? DebtStatus.PartiallyPaid : DebtStatus.Outstanding);
+
+                    records.Add(new DebtRecordDto
+                    {
+                        Id = p.Id,
+                        PartnerType = PartnerType.Supplier,
+                        Direction = DebtDirection.Payable,
+                        PartnerId = p.PartnerId,
+                        PartnerCode = p.Supplier?.Code ?? $"NCC{p.PartnerId:D6}",
+                        PartnerName = !string.IsNullOrEmpty(p.Supplier?.CompanyName) ? p.Supplier.CompanyName : (p.Supplier?.Name ?? "Nhà cung cấp"),
+                        Phone = p.Supplier?.Phone,
+                        DocumentType = "Điều chỉnh nợ NCC",
+                        DocumentCode = p.PaymentCode,
+                        DocumentDate = p.PaymentDate,
+                        OriginalAmount = p.Amount,
+                        PaidAmount = paid,
+                        OutstandingAmount = outstanding,
+                        DebtStatus = debtStatus,
+                        PaymentMethod = p.PaymentMethod,
+                        LinkUrl = null
+                    });
+                }
+                else
+                {
+                    records.Add(new DebtRecordDto
+                    {
+                        Id = p.Id,
+                        PartnerType = PartnerType.Supplier,
+                        Direction = DebtDirection.Payable,
+                        PartnerId = p.PartnerId,
+                        PartnerCode = p.Supplier?.Code ?? $"NCC{p.PartnerId:D6}",
+                        PartnerName = !string.IsNullOrEmpty(p.Supplier?.CompanyName) ? p.Supplier.CompanyName : (p.Supplier?.Name ?? "Nhà cung cấp"),
+                        Phone = p.Supplier?.Phone,
+                        DocumentType = p.TransactionType == DebtTransactionType.Payment ? "Phiếu chi thanh toán" : "Chiết khấu thanh toán NCC",
+                        DocumentCode = p.PaymentCode,
+                        DocumentDate = p.PaymentDate,
+                        OriginalAmount = p.Amount,
+                        PaidAmount = p.Amount,
+                        OutstandingAmount = 0m,
+                        DebtStatus = DebtStatus.Settled,
+                        PaymentMethod = p.PaymentMethod,
+                        LinkUrl = null
+                    });
+                }
             }
         }
 
@@ -449,10 +502,14 @@ public class PartnerDebtService : IPartnerDebtService
             {
                 string docType = pay.TransactionType switch
                 {
-                    DebtTransactionType.Payment => "Thanh toán (Sổ quỹ)",
+                    DebtTransactionType.Payment => "Phiếu chi thanh toán",
                     DebtTransactionType.Adjustment => "Điều chỉnh nợ NCC",
+                    DebtTransactionType.PaymentDiscount => "Chiết khấu thanh toán",
                     _ => "Phiếu chi"
                 };
+
+                decimal debit = pay.TransactionType == DebtTransactionType.Adjustment ? pay.Amount : 0m;
+                decimal credit = pay.TransactionType != DebtTransactionType.Adjustment ? pay.Amount : 0m;
 
                 history.Add(new PartnerLinkedTransactionDto
                 {
@@ -461,11 +518,11 @@ public class PartnerDebtService : IPartnerDebtService
                     DocumentCode = pay.PaymentCode,
                     DocumentDate = pay.PaymentDate,
                     Amount = pay.Amount,
-                    DebitAmount = 0m,
-                    CreditAmount = pay.Amount,
-                    PaidAmount = pay.Amount,
+                    DebitAmount = debit,
+                    CreditAmount = credit,
+                    PaidAmount = credit,
                     OutstandingAmount = 0m,
-                    Status = "Đã chi tiền",
+                    Status = pay.TransactionType == DebtTransactionType.Adjustment ? "Đã điều chỉnh" : "Đã chi tiền",
                     PaymentMethod = pay.PaymentMethod,
                     ReferenceCode = pay.ReferenceCode,
                     Notes = pay.Notes

@@ -614,6 +614,28 @@ public class PartnerService : IPartnerService
             .Select(c => new { c.Id, c.Code, c.TaxCode, c.Phone })
             .ToListAsync(cancellationToken);
 
+        var supplierIds = suppliers.Select(s => s.Id).ToList();
+        var supAllPayments = await _context.PartnerPayments.AsNoTracking()
+            .Where(p => p.PartnerType == (int)PartnerType.Supplier && supplierIds.Contains(p.PartnerId))
+            .ToListAsync(cancellationToken);
+
+        var supBalances = supAllPayments
+            .GroupBy(p => p.PartnerId)
+            .ToDictionary(g => g.Key, g =>
+            {
+                decimal deb = g.Where(x => x.TransactionType == DebtTransactionType.Adjustment).Sum(x => x.Amount);
+                decimal cred = g.Where(x => x.TransactionType != DebtTransactionType.Adjustment).Sum(x => x.Amount);
+                return Math.Max(0m, deb - cred);
+            });
+
+        var supPurchases = supAllPayments
+            .GroupBy(p => p.PartnerId)
+            .ToDictionary(g => g.Key, g => g.Where(x => x.TransactionType == DebtTransactionType.Adjustment).Sum(x => x.Amount));
+
+        var supLastDates = supAllPayments
+            .GroupBy(p => p.PartnerId)
+            .ToDictionary(g => g.Key, g => (DateTime?)g.Max(x => x.PaymentDate));
+
         var items = new List<SupplierListItemDto>();
         foreach (var s in suppliers)
         {
@@ -621,9 +643,9 @@ public class PartnerService : IPartnerService
                 (!string.IsNullOrEmpty(s.TaxCode) && c.TaxCode == s.TaxCode) ||
                 (!string.IsNullOrEmpty(s.Phone) && c.Phone == s.Phone));
 
-            // Purchasing module is Phase 6, currently no payables have occurred.
-            decimal payable = 0m;
-            decimal totalPurchases = 0m;
+            decimal payable = supBalances.GetValueOrDefault(s.Id, 0m);
+            decimal totalPurchases = supPurchases.GetValueOrDefault(s.Id, 0m);
+            DateTime? lastDate = supLastDates.GetValueOrDefault(s.Id, null);
 
             items.Add(new SupplierListItemDto
             {
@@ -640,7 +662,7 @@ public class PartnerService : IPartnerService
                 IsActive = s.IsActive,
                 CurrentPayable = payable,
                 TotalPurchases = totalPurchases,
-                LastTransactionDate = null,
+                LastTransactionDate = lastDate,
                 CreatedAt = s.CreatedAt,
                 CreatedBy = s.CreatedBy,
                 MatchingCustomerId = matchCust?.Id,
@@ -674,23 +696,47 @@ public class PartnerService : IPartnerService
             .Take(20)
             .ToListAsync(cancellationToken);
 
-        var supTransactions = supPayments.Select(p => new PartnerLinkedTransactionDto
+        var supTransactions = supPayments.Select(p =>
         {
-            DocumentId = p.Id,
-            DocumentType = p.TransactionType == DebtTransactionType.Payment ? "Thanh toán (Sổ quỹ)" : "Điều chỉnh nợ NCC",
-            DocumentCode = p.PaymentCode,
-            DocumentDate = p.PaymentDate,
-            Amount = p.Amount,
-            DebitAmount = 0m,
-            CreditAmount = p.Amount,
-            PaidAmount = p.Amount,
-            OutstandingAmount = 0m,
-            RunningBalance = -p.Amount,
-            Status = "Đã chi tiền",
-            PaymentMethod = p.PaymentMethod,
-            ReferenceCode = p.ReferenceCode,
-            Notes = p.Notes
+            decimal deb = p.TransactionType == DebtTransactionType.Adjustment ? p.Amount : 0m;
+            decimal cred = p.TransactionType != DebtTransactionType.Adjustment ? p.Amount : 0m;
+            string docType = p.TransactionType switch
+            {
+                DebtTransactionType.Payment => "Phiếu chi thanh toán",
+                DebtTransactionType.Adjustment => "Điều chỉnh nợ NCC",
+                DebtTransactionType.PaymentDiscount => "Chiết khấu thanh toán",
+                _ => "Phiếu chi"
+            };
+
+            return new PartnerLinkedTransactionDto
+            {
+                DocumentId = p.Id,
+                DocumentType = docType,
+                DocumentCode = p.PaymentCode,
+                DocumentDate = p.PaymentDate,
+                Amount = p.Amount,
+                DebitAmount = deb,
+                CreditAmount = cred,
+                PaidAmount = cred,
+                OutstandingAmount = 0m,
+                Status = p.TransactionType == DebtTransactionType.Adjustment ? "Đã điều chỉnh" : "Đã chi tiền",
+                PaymentMethod = p.PaymentMethod,
+                ReferenceCode = p.ReferenceCode,
+                Notes = p.Notes
+            };
         }).ToList();
+
+        var chrono = supTransactions.OrderBy(t => t.DocumentDate).ToList();
+        decimal running = 0m;
+        foreach (var item in chrono)
+        {
+            running += item.DebitAmount - item.CreditAmount;
+            item.RunningBalance = running;
+        }
+
+        supTransactions = chrono.OrderByDescending(t => t.DocumentDate).ToList();
+        decimal totalPurchases = supTransactions.Sum(x => x.DebitAmount);
+        decimal payable = Math.Max(0m, running);
 
         return new SupplierDetailDto
         {
@@ -706,8 +752,8 @@ public class PartnerService : IPartnerService
             Address = s.Address,
             Notes = s.Notes,
             IsActive = s.IsActive,
-            CurrentPayable = 0m,
-            TotalPurchases = 0m,
+            CurrentPayable = payable,
+            TotalPurchases = totalPurchases,
             LastTransactionDate = supTransactions.FirstOrDefault()?.DocumentDate,
             CreatedAt = s.CreatedAt,
             CreatedBy = s.CreatedBy,

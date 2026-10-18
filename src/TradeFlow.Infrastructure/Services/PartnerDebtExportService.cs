@@ -28,16 +28,20 @@ public class PartnerDebtExportService : IPartnerDebtExportService
     private readonly IAuditService _auditService;
     private readonly ILogger<PartnerDebtExportService> _logger;
 
-    // Palette Colors
-    private static readonly XLColor BrandDark = XLColor.FromHtml("#1E293B");     // Slate Navy
-    private static readonly XLColor BrandIndigo = XLColor.FromHtml("#4F46E5");   // Indigo Primary
-    private static readonly XLColor BrandHeaderBg = XLColor.FromHtml("#0F172A"); // Deep Navy Table Header
-    private static readonly XLColor TableSubHeaderBg = XLColor.FromHtml("#F1F5F9");
-    private static readonly XLColor TotalRowBg = XLColor.FromHtml("#EEF2F6");    // Neutral Light
-    private static readonly XLColor BorderGray = XLColor.FromHtml("#CBD5E1");    // Light Border
-    private static readonly XLColor ReceivableRed = XLColor.FromHtml("#DC2626"); // Danger
-    private static readonly XLColor SuccessGreen = XLColor.FromHtml("#16A34A");  // Green
-    private static readonly XLColor MutedText = XLColor.FromHtml("#64748B");
+    // Palette Colors for Professional ClosedXML Styling
+    private static readonly XLColor BrandDark = XLColor.FromHtml("#0F172A");       // Slate 900
+    private static readonly XLColor BrandNavy = XLColor.FromHtml("#1E293B");       // Slate 800
+    private static readonly XLColor BrandIndigo = XLColor.FromHtml("#4F46E5");     // Indigo Primary
+    private static readonly XLColor TableHeaderBg = XLColor.FromHtml("#1E293B");   // Navy Table Header
+    private static readonly XLColor SectionHeaderBg = XLColor.FromHtml("#E2E8F0"); // Slate 200
+    private static readonly XLColor SubHeaderBg = XLColor.FromHtml("#F8FAFC");     // Slate 50
+    private static readonly XLColor TotalRowBg = XLColor.FromHtml("#EEF2F6");      // Cool Light Gray
+    private static readonly XLColor BorderGray = XLColor.FromHtml("#CBD5E1");      // Slate 300
+    private static readonly XLColor BorderLight = XLColor.FromHtml("#E2E8F0");     // Slate 200
+    private static readonly XLColor DangerRed = XLColor.FromHtml("#DC2626");       // Overdue / Receivable Red
+    private static readonly XLColor SuccessGreen = XLColor.FromHtml("#16A34A");    // Settled Green
+    private static readonly XLColor WarningAmber = XLColor.FromHtml("#D97706");    // Warning Amber
+    private static readonly XLColor MutedText = XLColor.FromHtml("#64748B");       // Slate 500
 
     public PartnerDebtExportService(
         TradeFlowDbContext context,
@@ -52,7 +56,7 @@ public class PartnerDebtExportService : IPartnerDebtExportService
     }
 
     // =========================================================================
-    // 1. “XUẤT FILE CÔNG NỢ” — BÁO CÁO CHI TIẾT CÔNG NỢ ĐỐI TÁC
+    // 1. “XUẤT FILE CÔNG NỢ” — BÁO CÁO CÔNG NỢ ĐỐI TÁC (1 HOẶC NHIỀU ĐỐI TÁC ĐƯỢC CHỌN)
     // =========================================================================
 
     public async Task<byte[]> ExportPartnerDebtStatementAsync(
@@ -63,41 +67,55 @@ public class PartnerDebtExportService : IPartnerDebtExportService
         var authResult = await _authService.AuthorizeAsync(user, "Permission:Customers:View");
         if (!authResult.Succeeded)
         {
-            throw new UnauthorizedAccessException("Bạn không có quyền xuất dữ liệu công nợ đối tác.");
+            throw new UnauthorizedAccessException("Bạn không có quyền truy cập hoặc xuất dữ liệu công nợ đối tác.");
         }
 
         var company = await _context.CompanySettings.AsNoTracking().FirstOrDefaultAsync(cancellationToken)
                       ?? new CompanySettings("CÔNG TY CỔ PHẦN TRADEFLOW");
 
-        var partnerSummaries = await LoadPartnerStatementsAsync(request, cancellationToken);
-        var existingSheetNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var dataset = await LoadExportDatasetAsync(
+            scope: request.Scope,
+            partnerType: request.PartnerType,
+            partnerIds: request.PartnerIds,
+            filter: null,
+            fromDate: request.FromDate,
+            toDate: request.ToDate,
+            datePresetTitle: request.DatePresetTitle,
+            cancellationToken: cancellationToken);
 
         using var workbook = new XLWorkbook();
+        var existingSheetNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        if (partnerSummaries.Count == 1)
+        bool isSinglePartner = dataset.Partners.Count == 1;
+        string reportTitle = isSinglePartner
+            ? $"BÁO CÁO CHI TIẾT CÔNG NỢ — [{dataset.Partners[0].Code}] {dataset.Partners[0].Name.ToUpper()}"
+            : "BÁO CÁO TỔNG HỢP VÀ CHI TIẾT CÔNG NỢ ĐỐI TÁC";
+
+        // SHEET A: Tổng hợp công nợ
+        var wsA = workbook.Worksheets.Add(SafeSheetName("Tổng hợp công nợ", existingSheetNames));
+        BuildSheetA_Summary(wsA, dataset, company, request.DatePresetTitle, reportTitle, isSinglePartner);
+
+        // SHEET B: Chi tiết công nợ theo chứng từ
+        var wsB = workbook.Worksheets.Add(SafeSheetName("Chi tiết theo chứng từ", existingSheetNames));
+        BuildSheetB_Documents(wsB, dataset, company, request.DatePresetTitle, isSinglePartner);
+
+        // SHEET C: Chi tiết từng mặt hàng / dịch vụ
+        var wsC = workbook.Worksheets.Add(SafeSheetName("Chi tiết từng mặt hàng", existingSheetNames));
+        BuildSheetC_LineItems(wsC, dataset, company, request.DatePresetTitle, request, isSinglePartner);
+
+        // SHEET D: Lịch sử thu, chi và điều chỉnh công nợ
+        var wsD = workbook.Worksheets.Add(SafeSheetName("Lịch sử thu, chi, điều chỉnh", existingSheetNames));
+        BuildSheetD_Transactions(wsD, dataset, company, request.DatePresetTitle, isSinglePartner);
+
+        // Optional individual sheets for multi-partner selection if requested
+        if (!isSinglePartner && dataset.Partners.Count <= 20)
         {
-            // Single Partner Statement: Sheet 1 = Tổng hợp công nợ, Sheet 2 = Chi tiết giao dịch
-            var summary = partnerSummaries[0];
-            var sheet1Name = SafeSheetName("Tổng hợp công nợ", existingSheetNames);
-            var ws1 = workbook.Worksheets.Add(sheet1Name);
-            BuildSinglePartnerSummarySheet(ws1, summary, company, request);
-
-            var sheet2Name = SafeSheetName("Chi tiết giao dịch", existingSheetNames);
-            var ws2 = workbook.Worksheets.Add(sheet2Name);
-            BuildPartnerDetailTransactionsSheet(ws2, summary, company, request);
-        }
-        else
-        {
-            // Multi-Partner Statement: Sheet 1 = Tổng hợp công nợ (Consolidated), Worksheets 2..N = Detail per partner
-            var sheet1Name = SafeSheetName("Tổng hợp công nợ", existingSheetNames);
-            var ws1 = workbook.Worksheets.Add(sheet1Name);
-            BuildMultiPartnerSummarySheet(ws1, partnerSummaries, company, request);
-
-            foreach (var summary in partnerSummaries)
+            foreach (var p in dataset.Partners)
             {
-                var partnerSheetName = SafeSheetName($"{summary.Code} - {summary.Name}", existingSheetNames);
-                var wsPartner = workbook.Worksheets.Add(partnerSheetName);
-                BuildPartnerDetailTransactionsSheet(wsPartner, summary, company, request);
+                var pDataset = FilterDatasetForSinglePartner(dataset, p.PartnerId, p.PartnerType);
+                string pSheetName = SafeSheetName($"{p.Code} - {p.Name}", existingSheetNames);
+                var wsP = workbook.Worksheets.Add(pSheetName);
+                BuildSheetB_Documents(wsP, pDataset, company, request.DatePresetTitle, true);
             }
         }
 
@@ -108,15 +126,15 @@ public class PartnerDebtExportService : IPartnerDebtExportService
             AuditEventType.DebtExported,
             user.Identity?.Name ?? "System",
             "DebtStatement",
-            string.Join(",", partnerSummaries.Select(p => p.Code)),
-            $"Xuất file công nợ cho {partnerSummaries.Count} đối tác. Kỳ: {request.DatePresetTitle ?? "Tùy chọn"}.",
+            string.Join(",", dataset.Partners.Select(p => p.Code).Take(10)),
+            $"Xuất file công nợ ({dataset.Partners.Count} đối tác, {dataset.Documents.Count} chứng từ, {dataset.LineItems.Count} dòng hàng). Kỳ: {request.DatePresetTitle ?? "Tùy chọn"}.",
             cancellationToken: cancellationToken);
 
         return memoryStream.ToArray();
     }
 
     // =========================================================================
-    // 2. “XUẤT FILE QUẢN LÝ CÔNG NỢ EXCEL” — BÁO CÁO QUẢN LÝ DOANH NGHIỆP
+    // 2. “XUẤT FILE QUẢN LÝ CÔNG NỢ EXCEL” — BÁO CÁO DOANH NGHIỆP TOÀN HỆ THỐNG
     // =========================================================================
 
     public async Task<byte[]> ExportDebtManagementWorkbookAsync(
@@ -127,70 +145,65 @@ public class PartnerDebtExportService : IPartnerDebtExportService
         var authResult = await _authService.AuthorizeAsync(user, "Permission:Customers:View");
         if (!authResult.Succeeded)
         {
-            throw new UnauthorizedAccessException("Bạn không có quyền xuất sổ quản lý công nợ.");
+            throw new UnauthorizedAccessException("Bạn không có quyền truy cập hoặc xuất sổ quản lý công nợ.");
         }
 
         var company = await _context.CompanySettings.AsNoTracking().FirstOrDefaultAsync(cancellationToken)
                       ?? new CompanySettings("CÔNG TY CỔ PHẦN TRADEFLOW");
 
-        // Load customers and suppliers with debt and movements
-        var (customersData, suppliersData, allMovements) = await LoadManagementDatasetAsync(request, cancellationToken);
-        var existingSheetNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var targetIds = new List<int>();
+        if (request.Scope == DebtExportScope.SelectedPartners)
+        {
+            targetIds.AddRange(request.SelectedCustomerIds);
+            targetIds.AddRange(request.SelectedSupplierIds);
+        }
+
+        var dataset = await LoadExportDatasetAsync(
+            scope: request.Scope,
+            partnerType: request.PartnerType,
+            partnerIds: targetIds,
+            filter: request.Filter,
+            fromDate: request.FromDate,
+            toDate: request.ToDate,
+            datePresetTitle: request.DatePresetTitle,
+            cancellationToken: cancellationToken);
 
         using var workbook = new XLWorkbook();
+        var existingSheetNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        // Sheet 1: Tổng quan công nợ
-        var ws1 = workbook.Worksheets.Add(SafeSheetName("Tổng quan công nợ", existingSheetNames));
-        BuildManagementOverviewSheet(ws1, customersData, suppliersData, company, request);
+        string reportTitle = "BÁO CÁO QUẢN LÝ TỔNG HỢP VÀ CHI TIẾT CÔNG NỢ DOANH NGHIỆP";
 
-        // Sheet 2: Tổng hợp phải thu khách hàng
-        var ws2 = workbook.Worksheets.Add(SafeSheetName("Tổng hợp phải thu KH", existingSheetNames));
-        BuildManagementCustomersSheet(ws2, customersData, company, request);
+        // SHEET A: Tổng hợp công nợ
+        var wsA = workbook.Worksheets.Add(SafeSheetName("Tổng hợp công nợ", existingSheetNames));
+        BuildSheetA_Summary(wsA, dataset, company, request.DatePresetTitle, reportTitle, false);
 
-        // Sheet 3: Tổng hợp phải trả nhà cung cấp
-        var ws3 = workbook.Worksheets.Add(SafeSheetName("Tổng hợp phải trả NCC", existingSheetNames));
-        BuildManagementSuppliersSheet(ws3, suppliersData, company, request);
+        // SHEET B: Chi tiết công nợ theo chứng từ
+        var wsB = workbook.Worksheets.Add(SafeSheetName("Chi tiết theo chứng từ", existingSheetNames));
+        BuildSheetB_Documents(wsB, dataset, company, request.DatePresetTitle, false);
 
-        // Sheet 4: Chi tiết giao dịch công nợ
-        var ws4 = workbook.Worksheets.Add(SafeSheetName("Chi tiết giao dịch", existingSheetNames));
-        BuildManagementAllMovementsSheet(ws4, allMovements, company, request);
+        // SHEET C: Chi tiết từng mặt hàng / dịch vụ
+        var wsC = workbook.Worksheets.Add(SafeSheetName("Chi tiết từng mặt hàng", existingSheetNames));
+        var dummyLineReq = new PartnerDebtStatementExportRequest { IncludeLineDetails = true };
+        BuildSheetC_LineItems(wsC, dataset, company, request.DatePresetTitle, dummyLineReq, false);
 
-        // Optional individual sheets for partners if requested
+        // SHEET D: Lịch sử thu, chi và điều chỉnh công nợ
+        var wsD = workbook.Worksheets.Add(SafeSheetName("Lịch sử thu, chi, điều chỉnh", existingSheetNames));
+        BuildSheetD_Transactions(wsD, dataset, company, request.DatePresetTitle, false);
+
+        // Optional individual sheets for top debtor partners if requested
         if (request.IncludeIndividualPartnerSheets)
         {
-            List<int> targetIds;
-            if (request.SelectedCustomerIds.Any() || request.SelectedSupplierIds.Any())
-            {
-                targetIds = request.SelectedCustomerIds.Concat(request.SelectedSupplierIds).Distinct().ToList();
-            }
-            else
-            {
-                // Include partners that have closing balance or transactions in this period (up to 30)
-                targetIds = customersData.Where(c => c.ClosingReceivable > 0).Select(c => c.Id)
-                    .Concat(suppliersData.Where(s => s.ClosingPayable > 0).Select(s => s.Id))
-                    .Distinct()
-                    .Take(30)
-                    .ToList();
-            }
+            var topPartners = dataset.Partners.Where(p => p.ClosingBalance > 0)
+                .OrderByDescending(p => p.ClosingBalance)
+                .Take(25)
+                .ToList();
 
-            if (targetIds.Any())
+            foreach (var p in topPartners)
             {
-                var selectedStatementReq = new PartnerDebtStatementExportRequest
-                {
-                    Scope = DebtExportScope.SelectedPartners,
-                    PartnerIds = targetIds,
-                    FromDate = request.FromDate,
-                    ToDate = request.ToDate,
-                    DatePresetTitle = request.DatePresetTitle,
-                    IncludeLineDetails = true
-                };
-                var partnerSummaries = await LoadPartnerStatementsAsync(selectedStatementReq, cancellationToken);
-                foreach (var summary in partnerSummaries.Take(30)) // safe guard limit
-                {
-                    var sheetName = SafeSheetName($"{summary.Code} - {summary.Name}", existingSheetNames);
-                    var wsPartner = workbook.Worksheets.Add(sheetName);
-                    BuildPartnerDetailTransactionsSheet(wsPartner, summary, company, selectedStatementReq);
-                }
+                var pDataset = FilterDatasetForSinglePartner(dataset, p.PartnerId, p.PartnerType);
+                string pSheetName = SafeSheetName($"{p.Code} - {p.Name}", existingSheetNames);
+                var wsP = workbook.Worksheets.Add(pSheetName);
+                BuildSheetB_Documents(wsP, pDataset, company, request.DatePresetTitle, true);
             }
         }
 
@@ -202,408 +215,181 @@ public class PartnerDebtExportService : IPartnerDebtExportService
             user.Identity?.Name ?? "System",
             "DebtManagement",
             "Consolidated",
-            $"Xuất file quản lý công nợ Excel ({customersData.Count} KH, {suppliersData.Count} NCC). Kỳ: {request.DatePresetTitle ?? "Toàn bộ"}.",
+            $"Xuất file quản lý công nợ Excel ({dataset.Partners.Count} đối tác, {dataset.Documents.Count} chứng từ, {dataset.LineItems.Count} dòng hàng). Kỳ: {request.DatePresetTitle ?? "Toàn bộ"}.",
             cancellationToken: cancellationToken);
 
         return memoryStream.ToArray();
     }
 
     // =========================================================================
-    // SHEET BUILDERS: SINGLE PARTNER STATEMENT
+    // SHEET A BUILDER — TỔNG HỢP CÔNG NỢ
     // =========================================================================
 
-    private void BuildSinglePartnerSummarySheet(
+    private void BuildSheetA_Summary(
         IXLWorksheet ws,
-        PartnerStatementSummaryDto summary,
+        DebtExportDataset dataset,
         CompanySettings company,
-        PartnerDebtStatementExportRequest request)
+        string? datePresetTitle,
+        string reportTitle,
+        bool isSinglePartner)
     {
         ws.ShowGridLines = true;
+        SetupPageLayout(ws);
 
-        // 1. Company Branding Header
         int row = 1;
-        ws.Cell(row, 1).Value = company.CompanyName.ToUpper();
-        ws.Cell(row, 1).Style.Font.Bold = true;
-        ws.Cell(row, 1).Style.Font.FontSize = 12;
-        ws.Cell(row, 1).Style.Font.FontColor = BrandDark;
-        row++;
+        row = RenderCompanyHeader(ws, row, company);
 
-        ws.Cell(row, 1).Value = $"Địa chỉ: {company.Address ?? "Trụ sở chính TradeFlow"} | MST: {company.TaxCode ?? "0319205643"} | SĐT: {company.Phone ?? "0901234567"}";
-        ws.Cell(row, 1).Style.Font.FontSize = 9;
-        ws.Cell(row, 1).Style.Font.FontColor = MutedText;
-        row += 2;
-
-        // 2. Report Title
-        ws.Cell(row, 1).Value = "BÁO CÁO CHI TIẾT CÔNG NỢ";
+        // Title Block
+        ws.Cell(row, 1).Value = reportTitle;
         ws.Cell(row, 1).Style.Font.Bold = true;
-        ws.Cell(row, 1).Style.Font.FontSize = 16;
+        ws.Cell(row, 1).Style.Font.FontSize = 15;
         ws.Cell(row, 1).Style.Font.FontColor = BrandIndigo;
         row++;
 
-        string periodText = !string.IsNullOrEmpty(request.DatePresetTitle)
-            ? $"Kỳ đối soát: {request.DatePresetTitle}"
-            : (request.FromDate.HasValue && request.ToDate.HasValue
-                ? $"Kỳ đối soát: Từ {request.FromDate.Value:dd/MM/yyyy} đến {request.ToDate.Value:dd/MM/yyyy}"
-                : "Kỳ đối soát: Toàn thời gian");
-
-        ws.Cell(row, 1).Value = $"{periodText} | Ngày xuất: {DateTime.Now:dd/MM/yyyy HH:mm}";
-        ws.Cell(row, 1).Style.Font.Italic = true;
-        ws.Cell(row, 1).Style.Font.FontSize = 10;
-        ws.Cell(row, 1).Style.Font.FontColor = MutedText;
-        row += 2;
-
-        // 3. Partner Profile Block
-        int profileStartRow = row;
-        ws.Range(row, 1, row, 6).Merge();
-        ws.Cell(row, 1).Value = "THÔNG TIN ĐỐI TÁC";
-        ws.Cell(row, 1).Style.Font.Bold = true;
-        ws.Cell(row, 1).Style.Fill.BackgroundColor = TableSubHeaderBg;
-        ws.Cell(row, 1).Style.Font.FontColor = BrandDark;
-        row++;
-
-        AddInfoRow(ws, ref row, "Mã đối tác:", summary.Code, "Loại đối tác:", summary.PartnerType == PartnerType.Customer ? "Khách hàng" : "Nhà cung cấp");
-        AddInfoRow(ws, ref row, "Tên đối tác:", summary.Name, "Số điện thoại:", summary.Phone ?? "-");
-        if (!string.IsNullOrEmpty(summary.CompanyName))
-        {
-            AddInfoRow(ws, ref row, "Tên doanh nghiệp:", summary.CompanyName, "Mã số thuế:", summary.TaxCode ?? "-");
-        }
-        AddInfoRow(ws, ref row, "Địa chỉ:", summary.Address ?? "-", "Email:", summary.Email ?? "-");
-        row++;
-
-        // 4. Financial Balance Card
-        ws.Range(row, 1, row, 6).Merge();
-        ws.Cell(row, 1).Value = "TỔNG HỢP CÂN ĐỐI CÔNG NỢ TRONG KỲ";
-        ws.Cell(row, 1).Style.Font.Bold = true;
-        ws.Cell(row, 1).Style.Fill.BackgroundColor = TableSubHeaderBg;
-        ws.Cell(row, 1).Style.Font.FontColor = BrandDark;
-        row++;
-
-        int balanceTableStart = row;
-        AddMetricRow(ws, ref row, "1. Số dư nợ đầu kỳ:", summary.OpeningBalance, summary.PartnerType == PartnerType.Customer ? "Nợ trước kỳ cần thu" : "Nợ trước kỳ cần trả");
-        AddMetricRow(ws, ref row, "2. Tổng phát sinh tăng trong kỳ (+):", summary.TotalDebits, summary.PartnerType == PartnerType.Customer ? "Tiền hàng bán phát sinh" : "Tiền nhập hàng phát sinh");
-        AddMetricRow(ws, ref row, "3. Tổng thanh toán / thu chi trong kỳ (-):", summary.TotalCredits, "Đã thanh toán (Sổ quỹ/CK)");
-        if (summary.TotalDiscounts > 0)
-        {
-            AddMetricRow(ws, ref row, "4. Chiết khấu & Giảm trừ trong kỳ (-):", summary.TotalDiscounts, "Chiết khấu thanh toán / giảm nợ");
-        }
-
-        // Closing Balance Row
-        ws.Cell(row, 1).Value = "5. SỐ DƯ NỢ CUỐI KỲ:";
-        ws.Cell(row, 1).Style.Font.Bold = true;
-        ws.Cell(row, 1).Style.Font.FontSize = 11;
-
-        ws.Cell(row, 3).Value = (double)summary.ClosingBalance;
-        ws.Cell(row, 3).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(row, 3).Style.Font.Bold = true;
-        ws.Cell(row, 3).Style.Font.FontSize = 12;
-        ws.Cell(row, 3).Style.Font.FontColor = summary.ClosingBalance > 0 ? ReceivableRed : SuccessGreen;
-
-        ws.Cell(row, 4).Value = summary.BalanceDirectionDescription;
-        ws.Cell(row, 4).Style.Font.Italic = true;
-        ws.Cell(row, 4).Style.Font.FontColor = MutedText;
-
-        ws.Range(row, 1, row, 6).Style.Border.TopBorder = XLBorderStyleValues.Thin;
-        ws.Range(row, 1, row, 6).Style.Border.BottomBorder = XLBorderStyleValues.Double;
-        ws.Range(row, 1, row, 6).Style.Fill.BackgroundColor = TotalRowBg;
-        row += 3;
-
-        // 5. Signature Section
-        int sigRow = row;
-        ws.Cell(sigRow, 2).Value = "NGƯỜI LẬP BIỂU";
-        ws.Cell(sigRow, 2).Style.Font.Bold = true;
-        ws.Cell(sigRow, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-        ws.Cell(sigRow, 4).Value = "KẾ TOÁN CÔNG NỢ";
-        ws.Cell(sigRow, 4).Style.Font.Bold = true;
-        ws.Cell(sigRow, 4).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-        ws.Cell(sigRow, 6).Value = "ĐẠI DIỆN ĐỐI TÁC";
-        ws.Cell(sigRow, 6).Style.Font.Bold = true;
-        ws.Cell(sigRow, 6).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-        ws.Cell(sigRow + 1, 2).Value = "(Ký và ghi rõ họ tên)";
-        ws.Cell(sigRow + 1, 2).Style.Font.Italic = true;
-        ws.Cell(sigRow + 1, 2).Style.Font.FontSize = 9;
-        ws.Cell(sigRow + 1, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-        ws.Cell(sigRow + 1, 4).Value = "(Ký và ghi rõ họ tên)";
-        ws.Cell(sigRow + 1, 4).Style.Font.Italic = true;
-        ws.Cell(sigRow + 1, 4).Style.Font.FontSize = 9;
-        ws.Cell(sigRow + 1, 4).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-        ws.Cell(sigRow + 1, 6).Value = "(Ký, đóng dấu và ghi rõ họ tên)";
-        ws.Cell(sigRow + 1, 6).Style.Font.Italic = true;
-        ws.Cell(sigRow + 1, 6).Style.Font.FontSize = 9;
-        ws.Cell(sigRow + 1, 6).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-        ws.Columns(1, 6).AdjustToContents(10.0, 50.0);
-    }
-
-    private void BuildPartnerDetailTransactionsSheet(
-        IXLWorksheet ws,
-        PartnerStatementSummaryDto summary,
-        CompanySettings company,
-        PartnerDebtStatementExportRequest request)
-    {
-        ws.ShowGridLines = true;
-
-        int row = 1;
-        ws.Cell(row, 1).Value = company.CompanyName.ToUpper();
-        ws.Cell(row, 1).Style.Font.Bold = true;
-        ws.Cell(row, 1).Style.Font.FontColor = BrandDark;
-        row++;
-
-        ws.Cell(row, 1).Value = $"BẢNG KÊ CHI TIẾT GIAO DỊCH CÔNG NỢ — [{summary.Code}] {summary.Name.ToUpper()}";
-        ws.Cell(row, 1).Style.Font.Bold = true;
-        ws.Cell(row, 1).Style.Font.FontSize = 14;
-        ws.Cell(row, 1).Style.Font.FontColor = BrandIndigo;
-        row++;
-
-        string periodText = !string.IsNullOrEmpty(request.DatePresetTitle)
-            ? $"Kỳ: {request.DatePresetTitle}"
-            : (request.FromDate.HasValue && request.ToDate.HasValue
-                ? $"Kỳ: {request.FromDate.Value:dd/MM/yyyy} - {request.ToDate.Value:dd/MM/yyyy}"
-                : "Kỳ: Toàn thời gian");
-
-        ws.Cell(row, 1).Value = $"{periodText} | Dư đầu kỳ: {summary.OpeningBalance:N0} ₫ | Dư cuối kỳ: {summary.ClosingBalance:N0} ₫ | Ngày xuất: {DateTime.Now:dd/MM/yyyy HH:mm}";
+        string periodText = !string.IsNullOrEmpty(datePresetTitle)
+            ? $"Kỳ đối soát / báo cáo: {datePresetTitle}"
+            : "Kỳ đối soát / báo cáo: Toàn thời gian";
+        ws.Cell(row, 1).Value = $"{periodText}  |  Ngày xuất file: {DateTime.Now:dd/MM/yyyy HH:mm}";
         ws.Cell(row, 1).Style.Font.Italic = true;
         ws.Cell(row, 1).Style.Font.FontSize = 9;
         ws.Cell(row, 1).Style.Font.FontColor = MutedText;
         row += 2;
 
-        int tableHeaderRow = row;
-        string[] headers = new[]
+        if (isSinglePartner)
         {
-            "STT", "Thời gian", "Mã chứng từ", "Loại giao dịch", "Chứng từ gốc / TC",
-            "Diễn giải", "Giá trị chứng từ", "Phát sinh tăng (Nợ)", "Đã thanh toán (Có)", "Dư nợ sau GD",
-            "Hình thức", "Ghi chú"
-        };
-
-        for (int i = 0; i < headers.Length; i++)
-        {
-            var cell = ws.Cell(tableHeaderRow, i + 1);
-            cell.Value = headers[i];
-            cell.Style.Font.Bold = true;
-            cell.Style.Font.FontColor = XLColor.White;
-            cell.Style.Fill.BackgroundColor = BrandHeaderBg;
-            cell.Style.Alignment.Horizontal = (i == 0 || i == 1) ? XLAlignmentHorizontalValues.Center
-                : (i >= 6 && i <= 9) ? XLAlignmentHorizontalValues.Right
-                : XLAlignmentHorizontalValues.Left;
-            cell.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-            cell.Style.Border.OutsideBorderColor = BorderGray;
-        }
-        row++;
-
-        // Row 0: Số dư đầu kỳ
-        ws.Cell(row, 1).Value = "-";
-        ws.Cell(row, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-        ws.Cell(row, 2).Value = request.FromDate.HasValue ? request.FromDate.Value.ToString("dd/MM/yyyy") : "-";
-        ws.Cell(row, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-        ws.Cell(row, 3).Value = "DU_DAU_KY";
-        ws.Cell(row, 4).Value = "Số dư nợ đầu kỳ";
-        ws.Cell(row, 5).Value = "-";
-        ws.Cell(row, 6).Value = "Số dư chuyển từ kỳ trước sang";
-        ws.Cell(row, 7).Value = (double)summary.OpeningBalance;
-        ws.Cell(row, 7).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(row, 8).Value = 0.0;
-        ws.Cell(row, 8).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(row, 9).Value = 0.0;
-        ws.Cell(row, 9).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(row, 10).Value = (double)summary.OpeningBalance;
-        ws.Cell(row, 10).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(row, 10).Style.Font.Bold = true;
-        ws.Cell(row, 11).Value = "-";
-        ws.Cell(row, 12).Value = summary.OpeningBalance > 0 ? "Còn nợ trước kỳ" : "Không có nợ đọng";
-
-        for (int c = 1; c <= 12; c++)
-        {
-            ws.Cell(row, c).Style.Fill.BackgroundColor = TableSubHeaderBg;
-            ws.Cell(row, c).Style.Font.Italic = true;
-            ws.Cell(row, c).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-            ws.Cell(row, c).Style.Border.OutsideBorderColor = BorderGray;
-        }
-        row++;
-
-        // Transaction Rows
-        int stt = 1;
-        decimal runningBal = summary.OpeningBalance;
-
-        foreach (var t in summary.Transactions)
-        {
-            runningBal += t.DebitAmount - t.CreditAmount;
-
-            ws.Cell(row, 1).Value = stt++;
-            ws.Cell(row, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-            ws.Cell(row, 2).Value = t.DocumentDate.ToString("dd/MM/yyyy HH:mm");
-            ws.Cell(row, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-            ws.Cell(row, 3).Value = t.DocumentCode;
-            ws.Cell(row, 3).Style.Font.Bold = true;
-
-            ws.Cell(row, 4).Value = t.DocumentType;
-            ws.Cell(row, 5).Value = !string.IsNullOrEmpty(t.ReferenceCode) ? t.ReferenceCode : "-";
-            ws.Cell(row, 6).Value = !string.IsNullOrEmpty(t.Notes) ? t.Notes : t.DocumentType;
-
-            ws.Cell(row, 7).Value = (double)t.Amount;
-            ws.Cell(row, 7).Style.NumberFormat.Format = "#,##0 ₫";
-
-            ws.Cell(row, 8).Value = (double)t.DebitAmount;
-            ws.Cell(row, 8).Style.NumberFormat.Format = "#,##0 ₫";
-            if (t.DebitAmount > 0) ws.Cell(row, 8).Style.Font.Bold = true;
-
-            ws.Cell(row, 9).Value = (double)t.CreditAmount;
-            ws.Cell(row, 9).Style.NumberFormat.Format = "#,##0 ₫";
-            if (t.CreditAmount > 0)
+            var p = dataset.Partners.FirstOrDefault();
+            if (p != null)
             {
-                ws.Cell(row, 9).Style.Font.Bold = true;
-                ws.Cell(row, 9).Style.Font.FontColor = SuccessGreen;
-            }
+                // Single Partner Profile Box
+                ws.Range(row, 1, row, 7).Merge();
+                ws.Cell(row, 1).Value = "THÔNG TIN ĐỐI TÁC ĐỐI SOÁT";
+                ws.Cell(row, 1).Style.Font.Bold = true;
+                ws.Cell(row, 1).Style.Fill.BackgroundColor = SectionHeaderBg;
+                ws.Cell(row, 1).Style.Font.FontColor = BrandNavy;
+                row++;
 
-            ws.Cell(row, 10).Value = (double)runningBal;
-            ws.Cell(row, 10).Style.NumberFormat.Format = "#,##0 ₫";
-            ws.Cell(row, 10).Style.Font.Bold = true;
-            if (runningBal > 0) ws.Cell(row, 10).Style.Font.FontColor = ReceivableRed;
-
-            ws.Cell(row, 11).Value = !string.IsNullOrEmpty(t.PaymentMethod) ? t.PaymentMethod : "-";
-            ws.Cell(row, 12).Value = t.Status;
-
-            for (int c = 1; c <= 12; c++)
-            {
-                ws.Cell(row, c).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-                ws.Cell(row, c).Style.Border.OutsideBorderColor = BorderGray;
-            }
-            row++;
-
-            // If line items are requested and available for this invoice
-            if (request.IncludeLineDetails && t.LineItems.Any())
-            {
-                foreach (var line in t.LineItems)
+                AddKeyValueRow(ws, ref row, "Mã đối tác:", p.Code, "Loại đối tác:", p.PartnerType == PartnerType.Customer ? "Khách hàng" : "Nhà cung cấp");
+                AddKeyValueRow(ws, ref row, "Tên đối tác:", p.Name, "Số điện thoại:", p.Phone ?? "-");
+                if (!string.IsNullOrEmpty(p.CompanyName))
                 {
-                    ws.Cell(row, 1).Value = "";
-                    ws.Cell(row, 2).Value = "";
-                    ws.Cell(row, 3).Value = $"   ↳ {line.ProductCode}";
-                    ws.Cell(row, 3).Style.Font.Italic = true;
-                    ws.Cell(row, 3).Style.Font.FontSize = 9;
+                    AddKeyValueRow(ws, ref row, "Tên doanh nghiệp / Pháp nhân:", p.CompanyName, "Mã số thuế:", p.TaxCode ?? "-");
+                }
+                AddKeyValueRow(ws, ref row, "Địa chỉ:", p.Address ?? "-", "Email:", p.Email ?? "-");
+                row++;
 
-                    ws.Cell(row, 4).Value = line.ProductName;
-                    ws.Cell(row, 4).Style.Font.Italic = true;
-                    ws.Cell(row, 4).Style.Font.FontSize = 9;
+                // Financial Summary Cards
+                ws.Range(row, 1, row, 7).Merge();
+                ws.Cell(row, 1).Value = "TỔNG HỢP CÂN ĐỐI DƯ NỢ TRONG KỲ";
+                ws.Cell(row, 1).Style.Font.Bold = true;
+                ws.Cell(row, 1).Style.Fill.BackgroundColor = SectionHeaderBg;
+                ws.Cell(row, 1).Style.Font.FontColor = BrandNavy;
+                row++;
 
-                    ws.Cell(row, 5).Value = request.IncludeUnit ? line.UnitName : "";
-                    ws.Cell(row, 5).Style.Font.Italic = true;
-                    ws.Cell(row, 5).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                AddFinancialMetricRow(ws, ref row, "1. Số dư nợ đầu kỳ:", p.OpeningBalance, p.PartnerType == PartnerType.Customer ? "Nợ trước kỳ cần thu" : "Nợ trước kỳ cần trả");
+                AddFinancialMetricRow(ws, ref row, "2. Tổng phát sinh nợ trong kỳ (+):", p.TotalDebits, p.PartnerType == PartnerType.Customer ? "Doanh số hàng hóa bán phát sinh" : "Tiền nhập hàng / nghĩa vụ phát sinh");
+                AddFinancialMetricRow(ws, ref row, "3. Tổng thanh toán / thu chi trong kỳ (-):", p.TotalCredits, "Đã thanh toán (Sổ quỹ / Chuyển khoản)");
+                if (p.TotalDiscounts > 0)
+                {
+                    AddFinancialMetricRow(ws, ref row, "4. Chiết khấu & Giảm trừ trong kỳ (-):", p.TotalDiscounts, "Chiết khấu thanh toán / Điều chỉnh giảm");
+                }
 
-                    ws.Cell(row, 6).Value = request.IncludeQuantity ? (double)line.Quantity : 0.0;
-                    if (request.IncludeQuantity)
-                    {
-                        ws.Cell(row, 6).Style.NumberFormat.Format = "#,##0.##";
-                        ws.Cell(row, 6).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
-                    }
+                // Closing Balance Row
+                ws.Cell(row, 1).Value = "5. SỐ DƯ NỢ CUỐI KỲ:";
+                ws.Cell(row, 1).Style.Font.Bold = true;
+                ws.Cell(row, 1).Style.Font.FontSize = 11;
+                ws.Cell(row, 3).Value = (double)p.ClosingBalance;
+                ws.Cell(row, 3).Style.NumberFormat.Format = "#,##0 ₫";
+                ws.Cell(row, 3).Style.Font.Bold = true;
+                ws.Cell(row, 3).Style.Font.FontSize = 12;
+                ws.Cell(row, 3).Style.Font.FontColor = p.ClosingBalance > 0 ? DangerRed : SuccessGreen;
+                ws.Cell(row, 4).Value = p.BalanceDirectionDescription;
+                ws.Cell(row, 4).Style.Font.Italic = true;
+                ws.Cell(row, 4).Style.Font.FontColor = MutedText;
 
-                    ws.Cell(row, 7).Value = request.IncludeUnitPrice ? (double)line.UnitPrice : 0.0;
-                    if (request.IncludeUnitPrice) ws.Cell(row, 7).Style.NumberFormat.Format = "#,##0 ₫";
+                ws.Range(row, 1, row, 7).Style.Fill.BackgroundColor = TotalRowBg;
+                ws.Range(row, 1, row, 7).Style.Border.TopBorder = XLBorderStyleValues.Thin;
+                ws.Range(row, 1, row, 7).Style.Border.BottomBorder = XLBorderStyleValues.Double;
+                row += 2;
 
-                    ws.Cell(row, 8).Value = request.IncludeDiscount ? (double)line.DiscountAmount : 0.0;
-                    if (request.IncludeDiscount) ws.Cell(row, 8).Style.NumberFormat.Format = "#,##0 ₫";
-
-                    ws.Cell(row, 9).Value = request.IncludeVat ? (double)line.TaxAmount : 0.0;
-                    if (request.IncludeVat) ws.Cell(row, 9).Style.NumberFormat.Format = "#,##0 ₫";
-
-                    ws.Cell(row, 10).Value = request.IncludeLineTotal ? (double)line.LineTotal : 0.0;
-                    if (request.IncludeLineTotal)
-                    {
-                        ws.Cell(row, 10).Style.NumberFormat.Format = "#,##0 ₫";
-                        ws.Cell(row, 10).Style.Font.Italic = true;
-                    }
-
-                    ws.Cell(row, 11).Value = $"VAT {line.TaxRate}%";
-                    ws.Cell(row, 12).Value = "Chi tiết dòng hàng";
-
-                    for (int c = 1; c <= 12; c++)
-                    {
-                        ws.Cell(row, c).Style.Fill.BackgroundColor = XLColor.FromHtml("#F8FAFC");
-                        ws.Cell(row, c).Style.Font.FontSize = 9;
-                        ws.Cell(row, c).Style.Border.OutsideBorder = XLBorderStyleValues.Hair;
-                        ws.Cell(row, c).Style.Border.OutsideBorderColor = BorderGray;
-                    }
+                // Overdue status breakdown
+                if (p.ClosingBalance > 0)
+                {
+                    AddKeyValueRow(ws, ref row, "Nợ trong hạn (chưa đến hạn):", p.NotYetDueBalance.ToString("N0") + " ₫", "Hạn thanh toán gần nhất:", p.NextDueDate?.ToString("dd/MM/yyyy") ?? "Theo thỏa thuận");
+                    AddKeyValueRow(ws, ref row, "Nợ quá hạn:", p.OverdueBalance.ToString("N0") + " ₫", "Trạng thái công nợ:", p.DebtStatusDescription);
                     row++;
                 }
             }
         }
+        else
+        {
+            // Executive KPI Block (Multi-partner or Consolidated)
+            ws.Range(row, 1, row, 8).Merge();
+            ws.Cell(row, 1).Value = "CHỈ SỐ CÔNG NỢ TRỌNG YẾU TOÀN DOANH NGHIỆP (EXECUTIVE SUMMARY)";
+            ws.Cell(row, 1).Style.Font.Bold = true;
+            ws.Cell(row, 1).Style.Fill.BackgroundColor = SectionHeaderBg;
+            ws.Cell(row, 1).Style.Font.FontColor = BrandNavy;
+            row++;
 
-        // Summary Total Row at the bottom
-        int totalRow = row;
-        ws.Cell(totalRow, 1).Value = "TỔNG CỘNG";
-        ws.Cell(totalRow, 1).Style.Font.Bold = true;
-        ws.Cell(totalRow, 6).Value = $"Tổng phát sinh trong kỳ ({summary.Transactions.Count} giao dịch)";
-        ws.Cell(totalRow, 6).Style.Font.Bold = true;
+            decimal totalCustomerRec = dataset.Partners.Where(p => p.PartnerType == PartnerType.Customer).Sum(p => p.ClosingBalance);
+            decimal totalSupplierPay = dataset.Partners.Where(p => p.PartnerType == PartnerType.Supplier).Sum(p => p.ClosingBalance);
+            decimal netDiff = totalCustomerRec - totalSupplierPay;
 
-        ws.Cell(totalRow, 8).Value = (double)summary.TotalDebits;
-        ws.Cell(totalRow, 8).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(totalRow, 8).Style.Font.Bold = true;
+            int custWithDebt = dataset.Partners.Count(p => p.PartnerType == PartnerType.Customer && p.ClosingBalance > 0);
+            int supWithDebt = dataset.Partners.Count(p => p.PartnerType == PartnerType.Supplier && p.ClosingBalance > 0);
 
-        ws.Cell(totalRow, 9).Value = (double)summary.TotalCredits;
-        ws.Cell(totalRow, 9).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(totalRow, 9).Style.Font.Bold = true;
-        ws.Cell(totalRow, 9).Style.Font.FontColor = SuccessGreen;
+            AddFinancialMetricRow(ws, ref row, "1. Tổng công nợ phải thu từ khách hàng:", totalCustomerRec, $"{custWithDebt} khách hàng hiện có số dư nợ");
+            AddFinancialMetricRow(ws, ref row, "2. Tổng công nợ phải trả cho nhà cung cấp:", totalSupplierPay, $"{supWithDebt} nhà cung cấp có nghĩa vụ nợ");
+            AddFinancialMetricRow(ws, ref row, "3. Chênh lệch công nợ (Đối soát tham chiếu):", netDiff, "Chỉ tiêu phân tích tổng hợp (Phải thu - Phải trả), không cấn trừ giữa các pháp nhân");
+            row++;
+        }
 
-        ws.Cell(totalRow, 10).Value = (double)summary.ClosingBalance;
-        ws.Cell(totalRow, 10).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(totalRow, 10).Style.Font.Bold = true;
-        ws.Cell(totalRow, 10).Style.Font.FontColor = summary.ClosingBalance > 0 ? ReceivableRed : SuccessGreen;
+        // Render Table: CUSTOMER RECEIVABLES
+        var customers = dataset.Partners.Where(p => p.PartnerType == PartnerType.Customer).ToList();
+        if (customers.Any())
+        {
+            ws.Cell(row, 1).Value = "I. BẢNG TỔNG HỢP CÔNG NỢ PHẢI THU KHÁCH HÀNG (ACCOUNTS RECEIVABLE)";
+            ws.Cell(row, 1).Style.Font.Bold = true;
+            ws.Cell(row, 1).Style.Font.FontSize = 11;
+            ws.Cell(row, 1).Style.Font.FontColor = BrandIndigo;
+            row++;
 
-        ws.Range(totalRow, 1, totalRow, 12).Style.Fill.BackgroundColor = TotalRowBg;
-        ws.Range(totalRow, 1, totalRow, 12).Style.Border.TopBorder = XLBorderStyleValues.Thin;
-        ws.Range(totalRow, 1, totalRow, 12).Style.Border.BottomBorder = XLBorderStyleValues.Double;
+            row = RenderPartnerSummaryTable(ws, row, customers, DebtDirection.Receivable);
+            row += 2;
+        }
 
-        // Auto-filter and freeze pane
-        ws.Range(tableHeaderRow, 1, totalRow, 12).SetAutoFilter();
-        ws.SheetView.FreezeRows(tableHeaderRow);
-        ws.Columns(1, 12).AdjustToContents(8.0, 45.0);
+        // Render Table: SUPPLIER PAYABLES
+        var suppliers = dataset.Partners.Where(p => p.PartnerType == PartnerType.Supplier).ToList();
+        if (suppliers.Any())
+        {
+            ws.Cell(row, 1).Value = "II. BẢNG TỔNG HỢP CÔNG NỢ PHẢI TRẢ NHÀ CUNG CẤP (ACCOUNTS PAYABLE)";
+            ws.Cell(row, 1).Style.Font.Bold = true;
+            ws.Cell(row, 1).Style.Font.FontSize = 11;
+            ws.Cell(row, 1).Style.Font.FontColor = BrandIndigo;
+            row++;
+
+            row = RenderPartnerSummaryTable(ws, row, suppliers, DebtDirection.Payable);
+            row += 2;
+        }
+
+        // Signature Section
+        RenderSignatureSection(ws, row);
+        ws.Columns(1, 16).AdjustToContents(8.0, 45.0);
     }
 
-    // =========================================================================
-    // SHEET BUILDERS: MULTI-PARTNER STATEMENT SUMMARY
-    // =========================================================================
-
-    private void BuildMultiPartnerSummarySheet(
+    private int RenderPartnerSummaryTable(
         IXLWorksheet ws,
+        int startRow,
         List<PartnerStatementSummaryDto> partners,
-        CompanySettings company,
-        PartnerDebtStatementExportRequest request)
+        DebtDirection direction)
     {
-        ws.ShowGridLines = true;
-
-        int row = 1;
-        ws.Cell(row, 1).Value = company.CompanyName.ToUpper();
-        ws.Cell(row, 1).Style.Font.Bold = true;
-        ws.Cell(row, 1).Style.Font.FontColor = BrandDark;
-        row++;
-
-        ws.Cell(row, 1).Value = "TỔNG HỢP CÔNG NỢ ĐỐI TÁC ĐƯỢC CHỌN";
-        ws.Cell(row, 1).Style.Font.Bold = true;
-        ws.Cell(row, 1).Style.Font.FontSize = 14;
-        ws.Cell(row, 1).Style.Font.FontColor = BrandIndigo;
-        row++;
-
-        string periodText = !string.IsNullOrEmpty(request.DatePresetTitle)
-            ? $"Kỳ: {request.DatePresetTitle}"
-            : (request.FromDate.HasValue && request.ToDate.HasValue
-                ? $"Kỳ: {request.FromDate.Value:dd/MM/yyyy} - {request.ToDate.Value:dd/MM/yyyy}"
-                : "Kỳ: Toàn thời gian");
-
-        ws.Cell(row, 1).Value = $"{periodText} | Số đối tác: {partners.Count} | Ngày xuất: {DateTime.Now:dd/MM/yyyy HH:mm}";
-        ws.Cell(row, 1).Style.Font.Italic = true;
-        ws.Cell(row, 1).Style.Font.FontSize = 9;
-        ws.Cell(row, 1).Style.Font.FontColor = MutedText;
-        row += 2;
-
+        int row = startRow;
         int tableHeaderRow = row;
+
         string[] headers = new[]
         {
-            "STT", "Mã đối tác", "Tên đối tác / Pháp nhân", "Số điện thoại", "Loại đối tác",
-            "Dư nợ đầu kỳ", "Phát sinh tăng (Nợ)", "Thanh toán (Có)", "Giảm trừ / CK", "Dư nợ cuối kỳ", "Trạng thái công nợ"
+            "STT", "Chiều công nợ", "Mã đối tác", "Tên đối tác", "Tên công ty / Pháp nhân",
+            "Mã số thuế", "Số điện thoại", "Dư nợ đầu kỳ", "Phát sinh tăng trong kỳ", "Đã thanh toán / Thu chi",
+            "Chiết khấu & Điều chỉnh", "Dư nợ cuối kỳ", "Nợ quá hạn", "Nợ chưa đến hạn", "Hạn TT gần nhất", "Trạng thái công nợ"
         };
 
         for (int i = 0; i < headers.Length; i++)
@@ -612,645 +398,714 @@ public class PartnerDebtExportService : IPartnerDebtExportService
             cell.Value = headers[i];
             cell.Style.Font.Bold = true;
             cell.Style.Font.FontColor = XLColor.White;
-            cell.Style.Fill.BackgroundColor = BrandHeaderBg;
-            cell.Style.Alignment.Horizontal = (i == 0 || i == 3 || i == 4) ? XLAlignmentHorizontalValues.Center
-                : (i >= 5 && i <= 9) ? XLAlignmentHorizontalValues.Right
-                : XLAlignmentHorizontalValues.Left;
+            cell.Style.Fill.BackgroundColor = TableHeaderBg;
+            cell.Style.Alignment.Horizontal = (i == 0 || i == 1 || i == 2 || i == 5 || i == 6 || i == 14 || i == 15)
+                ? XLAlignmentHorizontalValues.Center
+                : (i >= 7 && i <= 13)
+                    ? XLAlignmentHorizontalValues.Right
+                    : XLAlignmentHorizontalValues.Left;
             cell.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
             cell.Style.Border.OutsideBorderColor = BorderGray;
         }
         row++;
 
         int stt = 1;
+        int firstDataRow = row;
+
         foreach (var p in partners)
         {
             ws.Cell(row, 1).Value = stt++;
             ws.Cell(row, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
-            ws.Cell(row, 2).Value = p.Code;
-            ws.Cell(row, 2).Style.Font.Bold = true;
-
-            ws.Cell(row, 3).Value = !string.IsNullOrEmpty(p.CompanyName) ? $"{p.Name} ({p.CompanyName})" : p.Name;
-            ws.Cell(row, 4).Value = p.Phone ?? "-";
-            ws.Cell(row, 4).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-            ws.Cell(row, 5).Value = p.PartnerType == PartnerType.Customer ? "Khách hàng" : "Nhà cung cấp";
-            ws.Cell(row, 5).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-            ws.Cell(row, 6).Value = (double)p.OpeningBalance;
-            ws.Cell(row, 6).Style.NumberFormat.Format = "#,##0 ₫";
-
-            ws.Cell(row, 7).Value = (double)p.TotalDebits;
-            ws.Cell(row, 7).Style.NumberFormat.Format = "#,##0 ₫";
-
-            ws.Cell(row, 8).Value = (double)p.TotalCredits;
-            ws.Cell(row, 8).Style.NumberFormat.Format = "#,##0 ₫";
-
-            ws.Cell(row, 9).Value = (double)p.TotalDiscounts;
-            ws.Cell(row, 9).Style.NumberFormat.Format = "#,##0 ₫";
-
-            ws.Cell(row, 10).Value = (double)p.ClosingBalance;
-            ws.Cell(row, 10).Style.NumberFormat.Format = "#,##0 ₫";
-            ws.Cell(row, 10).Style.Font.Bold = true;
-            if (p.ClosingBalance > 0) ws.Cell(row, 10).Style.Font.FontColor = ReceivableRed;
-
-            ws.Cell(row, 11).Value = p.ClosingBalance > 0 ? "Còn nợ" : "Đã thanh toán đủ";
-
-            for (int c = 1; c <= 11; c++)
-            {
-                ws.Cell(row, c).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-                ws.Cell(row, c).Style.Border.OutsideBorderColor = BorderGray;
-            }
-            row++;
-        }
-
-        // Total Row
-        int totalRow = row;
-        ws.Cell(totalRow, 1).Value = "TỔNG CỘNG";
-        ws.Cell(totalRow, 1).Style.Font.Bold = true;
-        ws.Cell(totalRow, 3).Value = $"Tổng cộng {partners.Count} đối tác được chọn";
-        ws.Cell(totalRow, 3).Style.Font.Bold = true;
-
-        ws.Cell(totalRow, 6).Value = (double)partners.Sum(x => x.OpeningBalance);
-        ws.Cell(totalRow, 6).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(totalRow, 6).Style.Font.Bold = true;
-
-        ws.Cell(totalRow, 7).Value = (double)partners.Sum(x => x.TotalDebits);
-        ws.Cell(totalRow, 7).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(totalRow, 7).Style.Font.Bold = true;
-
-        ws.Cell(totalRow, 8).Value = (double)partners.Sum(x => x.TotalCredits);
-        ws.Cell(totalRow, 8).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(totalRow, 8).Style.Font.Bold = true;
-
-        ws.Cell(totalRow, 9).Value = (double)partners.Sum(x => x.TotalDiscounts);
-        ws.Cell(totalRow, 9).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(totalRow, 9).Style.Font.Bold = true;
-
-        ws.Cell(totalRow, 10).Value = (double)partners.Sum(x => x.ClosingBalance);
-        ws.Cell(totalRow, 10).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(totalRow, 10).Style.Font.Bold = true;
-        ws.Cell(totalRow, 10).Style.Font.FontColor = ReceivableRed;
-
-        ws.Range(totalRow, 1, totalRow, 11).Style.Fill.BackgroundColor = TotalRowBg;
-        ws.Range(totalRow, 1, totalRow, 11).Style.Border.TopBorder = XLBorderStyleValues.Thin;
-        ws.Range(totalRow, 1, totalRow, 11).Style.Border.BottomBorder = XLBorderStyleValues.Double;
-
-        ws.Range(tableHeaderRow, 1, totalRow, 11).SetAutoFilter();
-        ws.SheetView.FreezeRows(tableHeaderRow);
-        ws.Columns(1, 11).AdjustToContents(8.0, 45.0);
-    }
-
-    // =========================================================================
-    // SHEET BUILDERS: MANAGEMENT WORKBOOK SHEETS
-    // =========================================================================
-
-    private void BuildManagementOverviewSheet(
-        IXLWorksheet ws,
-        List<CustomerDebtSummaryRowDto> customers,
-        List<SupplierDebtSummaryRowDto> suppliers,
-        CompanySettings company,
-        DebtManagementExportRequest request)
-    {
-        ws.ShowGridLines = true;
-
-        int row = 1;
-        ws.Cell(row, 1).Value = company.CompanyName.ToUpper();
-        ws.Cell(row, 1).Style.Font.Bold = true;
-        ws.Cell(row, 1).Style.Font.FontSize = 12;
-        ws.Cell(row, 1).Style.Font.FontColor = BrandDark;
-        row++;
-
-        ws.Cell(row, 1).Value = "BÁO CÁO QUẢN LÝ CÔNG NỢ DOANH NGHIỆP";
-        ws.Cell(row, 1).Style.Font.Bold = true;
-        ws.Cell(row, 1).Style.Font.FontSize = 16;
-        ws.Cell(row, 1).Style.Font.FontColor = BrandIndigo;
-        row++;
-
-        string periodText = !string.IsNullOrEmpty(request.DatePresetTitle)
-            ? $"Kỳ báo cáo: {request.DatePresetTitle}"
-            : (request.FromDate.HasValue && request.ToDate.HasValue
-                ? $"Kỳ: {request.FromDate.Value:dd/MM/yyyy} - {request.ToDate.Value:dd/MM/yyyy}"
-                : "Kỳ báo cáo: Toàn thời gian");
-
-        ws.Cell(row, 1).Value = $"{periodText} | Thời điểm xuất: {DateTime.Now:dd/MM/yyyy HH:mm}";
-        ws.Cell(row, 1).Style.Font.Italic = true;
-        ws.Cell(row, 1).Style.Font.FontSize = 10;
-        ws.Cell(row, 1).Style.Font.FontColor = MutedText;
-        row += 2;
-
-        // Executive KPI Cards Table
-        ws.Range(row, 1, row, 6).Merge();
-        ws.Cell(row, 1).Value = "CÁC CHỈ SỐ CÔNG NỢ TRỌNG YẾU (EXECUTIVE SUMMARY)";
-        ws.Cell(row, 1).Style.Font.Bold = true;
-        ws.Cell(row, 1).Style.Fill.BackgroundColor = TableSubHeaderBg;
-        ws.Cell(row, 1).Style.Font.FontColor = BrandDark;
-        row++;
-
-        decimal totalCustRec = customers.Sum(x => x.ClosingReceivable);
-        decimal totalSupPay = suppliers.Sum(x => x.ClosingPayable);
-        decimal netDiff = totalCustRec - totalSupPay;
-
-        int custWithDebt = customers.Count(x => x.ClosingReceivable > 0);
-        int supWithDebt = suppliers.Count(x => x.ClosingPayable > 0);
-
-        AddMetricRow(ws, ref row, "1. Tổng công nợ phải thu từ khách hàng:", totalCustRec, $"{custWithDebt} khách hàng đang có dư nợ");
-        AddMetricRow(ws, ref row, "2. Tổng công nợ phải trả cho nhà cung cấp:", totalSupPay, $"{supWithDebt} nhà cung cấp có công nợ");
-        
-        // Net difference with clear analytical label
-        ws.Cell(row, 1).Value = "3. Chênh lệch công nợ (Đối soát tham chiếu):";
-        ws.Cell(row, 1).Style.Font.Bold = true;
-        ws.Cell(row, 3).Value = (double)netDiff;
-        ws.Cell(row, 3).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(row, 3).Style.Font.Bold = true;
-        ws.Cell(row, 3).Style.Font.FontSize = 11;
-        ws.Cell(row, 4).Value = "Chỉ tiêu phân tích tổng hợp (Phải thu - Phải trả), không phải số dư cấn trừ thanh toán";
-        ws.Cell(row, 4).Style.Font.Italic = true;
-        ws.Cell(row, 4).Style.Font.FontColor = MutedText;
-        row += 2;
-
-        // Counts Table
-        ws.Range(row, 1, row, 6).Merge();
-        ws.Cell(row, 1).Value = "THỐNG KÊ QUY MÔ ĐỐI TÁC";
-        ws.Cell(row, 1).Style.Font.Bold = true;
-        ws.Cell(row, 1).Style.Fill.BackgroundColor = TableSubHeaderBg;
-        ws.Cell(row, 1).Style.Font.FontColor = BrandDark;
-        row++;
-
-        AddInfoRow(ws, ref row, "Tổng số khách hàng:", customers.Count.ToString(), "Khách hàng còn nợ:", $"{custWithDebt} KH ({((customers.Count > 0 ? (double)custWithDebt / customers.Count * 100 : 0)):N1}%)");
-        AddInfoRow(ws, ref row, "Tổng số nhà cung cấp:", suppliers.Count.ToString(), "Nhà cung cấp có công nợ:", $"{supWithDebt} NCC");
-        row += 2;
-
-        ws.Cell(row, 1).Value = "Ghi chú quản lý: Dữ liệu được trích xuất trực tiếp từ hệ thống chứng từ kế toán của TradeFlow ERP.";
-        ws.Cell(row, 1).Style.Font.Italic = true;
-        ws.Cell(row, 1).Style.Font.FontSize = 9;
-        ws.Cell(row, 1).Style.Font.FontColor = MutedText;
-
-        ws.Columns(1, 6).AdjustToContents(10.0, 50.0);
-    }
-
-    private void BuildManagementCustomersSheet(
-        IXLWorksheet ws,
-        List<CustomerDebtSummaryRowDto> customers,
-        CompanySettings company,
-        DebtManagementExportRequest request)
-    {
-        ws.ShowGridLines = true;
-
-        int row = 1;
-        ws.Cell(row, 1).Value = "TỔNG HỢP CÔNG NỢ PHẢI THU KHÁCH HÀNG";
-        ws.Cell(row, 1).Style.Font.Bold = true;
-        ws.Cell(row, 1).Style.Font.FontSize = 14;
-        ws.Cell(row, 1).Style.Font.FontColor = BrandIndigo;
-        row++;
-
-        ws.Cell(row, 1).Value = $"Tổng số khách hàng: {customers.Count} | Ngày xuất: {DateTime.Now:dd/MM/yyyy HH:mm}";
-        ws.Cell(row, 1).Style.Font.Italic = true;
-        ws.Cell(row, 1).Style.Font.FontSize = 9;
-        ws.Cell(row, 1).Style.Font.FontColor = MutedText;
-        row += 2;
-
-        int headerRow = row;
-        string[] headers = new[]
-        {
-            "STT", "Mã KH", "Tên khách hàng", "Tên công ty / Pháp nhân", "Mã số thuế",
-            "Số điện thoại", "Loại KH", "Dư nợ đầu kỳ", "Bán trong kỳ (+)", "Đã thu tiền (-)",
-            "Chiết khấu/Giảm (-)", "Dư nợ cuối kỳ", "Trạng thái"
-        };
-
-        for (int i = 0; i < headers.Length; i++)
-        {
-            var cell = ws.Cell(headerRow, i + 1);
-            cell.Value = headers[i];
-            cell.Style.Font.Bold = true;
-            cell.Style.Font.FontColor = XLColor.White;
-            cell.Style.Fill.BackgroundColor = BrandHeaderBg;
-            cell.Style.Alignment.Horizontal = (i == 0 || i == 5 || i == 6 || i == 12) ? XLAlignmentHorizontalValues.Center
-                : (i >= 7 && i <= 11) ? XLAlignmentHorizontalValues.Right
-                : XLAlignmentHorizontalValues.Left;
-            cell.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-            cell.Style.Border.OutsideBorderColor = BorderGray;
-        }
-        row++;
-
-        int stt = 1;
-        foreach (var c in customers)
-        {
-            ws.Cell(row, 1).Value = stt++;
-            ws.Cell(row, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-            ws.Cell(row, 2).Value = c.Code;
-            ws.Cell(row, 2).Style.Font.Bold = true;
-
-            ws.Cell(row, 3).Value = c.Name;
-            ws.Cell(row, 4).Value = c.CompanyName ?? "-";
-            ws.Cell(row, 5).Value = c.TaxCode ?? "-";
-
-            ws.Cell(row, 6).Value = c.Phone ?? "-";
-            ws.Cell(row, 6).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-            ws.Cell(row, 7).Value = c.IsCompany ? "Doanh nghiệp" : "Cá nhân";
-            ws.Cell(row, 7).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-            ws.Cell(row, 8).Value = (double)c.OpeningReceivable;
-            ws.Cell(row, 8).Style.NumberFormat.Format = "#,##0 ₫";
-
-            ws.Cell(row, 9).Value = (double)c.PeriodSales;
-            ws.Cell(row, 9).Style.NumberFormat.Format = "#,##0 ₫";
-
-            ws.Cell(row, 10).Value = (double)c.PaymentsReceived;
-            ws.Cell(row, 10).Style.NumberFormat.Format = "#,##0 ₫";
-
-            ws.Cell(row, 11).Value = (double)c.DiscountsOrAdjustments;
-            ws.Cell(row, 11).Style.NumberFormat.Format = "#,##0 ₫";
-
-            ws.Cell(row, 12).Value = (double)c.ClosingReceivable;
-            ws.Cell(row, 12).Style.NumberFormat.Format = "#,##0 ₫";
-            ws.Cell(row, 12).Style.Font.Bold = true;
-            if (c.ClosingReceivable > 0) ws.Cell(row, 12).Style.Font.FontColor = ReceivableRed;
-
-            ws.Cell(row, 13).Value = c.ClosingReceivable > 0 ? "Còn nợ" : "Đã thanh toán đủ";
-
-            for (int col = 1; col <= 13; col++)
-            {
-                ws.Cell(row, col).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-                ws.Cell(row, col).Style.Border.OutsideBorderColor = BorderGray;
-            }
-            row++;
-        }
-
-        // Summary row
-        int totalRow = row;
-        ws.Cell(totalRow, 1).Value = "TỔNG CỘNG";
-        ws.Cell(totalRow, 1).Style.Font.Bold = true;
-        ws.Cell(totalRow, 3).Value = $"Tổng cộng {customers.Count} khách hàng";
-        ws.Cell(totalRow, 3).Style.Font.Bold = true;
-
-        ws.Cell(totalRow, 8).Value = (double)customers.Sum(x => x.OpeningReceivable);
-        ws.Cell(totalRow, 8).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(totalRow, 8).Style.Font.Bold = true;
-
-        ws.Cell(totalRow, 9).Value = (double)customers.Sum(x => x.PeriodSales);
-        ws.Cell(totalRow, 9).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(totalRow, 9).Style.Font.Bold = true;
-
-        ws.Cell(totalRow, 10).Value = (double)customers.Sum(x => x.PaymentsReceived);
-        ws.Cell(totalRow, 10).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(totalRow, 10).Style.Font.Bold = true;
-
-        ws.Cell(totalRow, 11).Value = (double)customers.Sum(x => x.DiscountsOrAdjustments);
-        ws.Cell(totalRow, 11).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(totalRow, 11).Style.Font.Bold = true;
-
-        ws.Cell(totalRow, 12).Value = (double)customers.Sum(x => x.ClosingReceivable);
-        ws.Cell(totalRow, 12).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(totalRow, 12).Style.Font.Bold = true;
-        ws.Cell(totalRow, 12).Style.Font.FontColor = ReceivableRed;
-
-        ws.Range(totalRow, 1, totalRow, 13).Style.Fill.BackgroundColor = TotalRowBg;
-        ws.Range(totalRow, 1, totalRow, 13).Style.Border.TopBorder = XLBorderStyleValues.Thin;
-        ws.Range(totalRow, 1, totalRow, 13).Style.Border.BottomBorder = XLBorderStyleValues.Double;
-
-        ws.Range(headerRow, 1, totalRow, 13).SetAutoFilter();
-        ws.SheetView.FreezeRows(headerRow);
-        ws.Columns(1, 13).AdjustToContents(8.0, 45.0);
-    }
-
-    private void BuildManagementSuppliersSheet(
-        IXLWorksheet ws,
-        List<SupplierDebtSummaryRowDto> suppliers,
-        CompanySettings company,
-        DebtManagementExportRequest request)
-    {
-        ws.ShowGridLines = true;
-
-        int row = 1;
-        ws.Cell(row, 1).Value = "TỔNG HỢP CÔNG NỢ PHẢI TRẢ NHÀ CUNG CẤP";
-        ws.Cell(row, 1).Style.Font.Bold = true;
-        ws.Cell(row, 1).Style.Font.FontSize = 14;
-        ws.Cell(row, 1).Style.Font.FontColor = BrandIndigo;
-        row++;
-
-        ws.Cell(row, 1).Value = $"Tổng số nhà cung cấp: {suppliers.Count} | Ngày xuất: {DateTime.Now:dd/MM/yyyy HH:mm}";
-        ws.Cell(row, 1).Style.Font.Italic = true;
-        ws.Cell(row, 1).Style.Font.FontSize = 9;
-        ws.Cell(row, 1).Style.Font.FontColor = MutedText;
-        row += 2;
-
-        int headerRow = row;
-        string[] headers = new[]
-        {
-            "STT", "Mã NCC", "Tên nhà cung cấp", "Tên pháp nhân công ty", "Mã số thuế",
-            "Số điện thoại", "Dư nợ đầu kỳ", "Mua trong kỳ (+)", "Đã thanh toán (-)",
-            "Giảm trừ / Điều chỉnh (-)", "Dư nợ cuối kỳ", "Trạng thái"
-        };
-
-        for (int i = 0; i < headers.Length; i++)
-        {
-            var cell = ws.Cell(headerRow, i + 1);
-            cell.Value = headers[i];
-            cell.Style.Font.Bold = true;
-            cell.Style.Font.FontColor = XLColor.White;
-            cell.Style.Fill.BackgroundColor = BrandHeaderBg;
-            cell.Style.Alignment.Horizontal = (i == 0 || i == 5 || i == 11) ? XLAlignmentHorizontalValues.Center
-                : (i >= 6 && i <= 10) ? XLAlignmentHorizontalValues.Right
-                : XLAlignmentHorizontalValues.Left;
-            cell.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-            cell.Style.Border.OutsideBorderColor = BorderGray;
-        }
-        row++;
-
-        int stt = 1;
-        foreach (var s in suppliers)
-        {
-            ws.Cell(row, 1).Value = stt++;
-            ws.Cell(row, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-            ws.Cell(row, 2).Value = s.Code;
-            ws.Cell(row, 2).Style.Font.Bold = true;
-
-            ws.Cell(row, 3).Value = s.Name;
-            ws.Cell(row, 4).Value = s.CompanyName ?? "-";
-            ws.Cell(row, 5).Value = s.TaxCode ?? "-";
-
-            ws.Cell(row, 6).Value = s.Phone ?? "-";
-            ws.Cell(row, 6).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-            ws.Cell(row, 7).Value = (double)s.OpeningPayable;
-            ws.Cell(row, 7).Style.NumberFormat.Format = "#,##0 ₫";
-
-            ws.Cell(row, 8).Value = (double)s.PeriodPurchases;
-            ws.Cell(row, 8).Style.NumberFormat.Format = "#,##0 ₫";
-
-            ws.Cell(row, 9).Value = (double)s.PaymentsMade;
-            ws.Cell(row, 9).Style.NumberFormat.Format = "#,##0 ₫";
-
-            ws.Cell(row, 10).Value = (double)s.AdjustmentsOrReductions;
-            ws.Cell(row, 10).Style.NumberFormat.Format = "#,##0 ₫";
-
-            ws.Cell(row, 11).Value = (double)s.ClosingPayable;
-            ws.Cell(row, 11).Style.NumberFormat.Format = "#,##0 ₫";
-            ws.Cell(row, 11).Style.Font.Bold = true;
-            if (s.ClosingPayable > 0) ws.Cell(row, 11).Style.Font.FontColor = ReceivableRed;
-
-            ws.Cell(row, 12).Value = s.ClosingPayable > 0 ? "Còn nợ" : "Không có nợ đọng";
-
-            for (int col = 1; col <= 12; col++)
-            {
-                ws.Cell(row, col).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-                ws.Cell(row, col).Style.Border.OutsideBorderColor = BorderGray;
-            }
-            row++;
-        }
-
-        // Summary row
-        int totalRow = row;
-        ws.Cell(totalRow, 1).Value = "TỔNG CỘNG";
-        ws.Cell(totalRow, 1).Style.Font.Bold = true;
-        ws.Cell(totalRow, 3).Value = $"Tổng cộng {suppliers.Count} nhà cung cấp";
-        ws.Cell(totalRow, 3).Style.Font.Bold = true;
-
-        ws.Cell(totalRow, 7).Value = (double)suppliers.Sum(x => x.OpeningPayable);
-        ws.Cell(totalRow, 7).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(totalRow, 7).Style.Font.Bold = true;
-
-        ws.Cell(totalRow, 8).Value = (double)suppliers.Sum(x => x.PeriodPurchases);
-        ws.Cell(totalRow, 8).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(totalRow, 8).Style.Font.Bold = true;
-
-        ws.Cell(totalRow, 9).Value = (double)suppliers.Sum(x => x.PaymentsMade);
-        ws.Cell(totalRow, 9).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(totalRow, 9).Style.Font.Bold = true;
-
-        ws.Cell(totalRow, 10).Value = (double)suppliers.Sum(x => x.AdjustmentsOrReductions);
-        ws.Cell(totalRow, 10).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(totalRow, 10).Style.Font.Bold = true;
-
-        ws.Cell(totalRow, 11).Value = (double)suppliers.Sum(x => x.ClosingPayable);
-        ws.Cell(totalRow, 11).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(totalRow, 11).Style.Font.Bold = true;
-
-        ws.Range(totalRow, 1, totalRow, 12).Style.Fill.BackgroundColor = TotalRowBg;
-        ws.Range(totalRow, 1, totalRow, 12).Style.Border.TopBorder = XLBorderStyleValues.Thin;
-        ws.Range(totalRow, 1, totalRow, 12).Style.Border.BottomBorder = XLBorderStyleValues.Double;
-
-        ws.Range(headerRow, 1, totalRow, 12).SetAutoFilter();
-        ws.SheetView.FreezeRows(headerRow);
-        ws.Columns(1, 12).AdjustToContents(8.0, 45.0);
-    }
-
-    private void BuildManagementAllMovementsSheet(
-        IXLWorksheet ws,
-        List<ManagementMovementRowDto> movements,
-        CompanySettings company,
-        DebtManagementExportRequest request)
-    {
-        ws.ShowGridLines = true;
-
-        int row = 1;
-        ws.Cell(row, 1).Value = "NHẬT KÝ CHI TIẾT GIAO DỊCH CÔNG NỢ TOÀN HỆ THỐNG";
-        ws.Cell(row, 1).Style.Font.Bold = true;
-        ws.Cell(row, 1).Style.Font.FontSize = 14;
-        ws.Cell(row, 1).Style.Font.FontColor = BrandIndigo;
-        row++;
-
-        ws.Cell(row, 1).Value = $"Tổng số giao dịch: {movements.Count} | Ngày xuất: {DateTime.Now:dd/MM/yyyy HH:mm}";
-        ws.Cell(row, 1).Style.Font.Italic = true;
-        ws.Cell(row, 1).Style.Font.FontSize = 9;
-        ws.Cell(row, 1).Style.Font.FontColor = MutedText;
-        row += 2;
-
-        int headerRow = row;
-        string[] headers = new[]
-        {
-            "STT", "Thời gian", "Đối tác", "Mã đối tác", "Tên đối tác",
-            "Mã chứng từ", "Loại chứng từ", "Chứng từ gốc", "Phát sinh phải thu", "Phát sinh phải trả",
-            "Đã thanh toán (-)", "Dư nợ sau GD", "Phương thức", "Ghi chú"
-        };
-
-        for (int i = 0; i < headers.Length; i++)
-        {
-            var cell = ws.Cell(headerRow, i + 1);
-            cell.Value = headers[i];
-            cell.Style.Font.Bold = true;
-            cell.Style.Font.FontColor = XLColor.White;
-            cell.Style.Fill.BackgroundColor = BrandHeaderBg;
-            cell.Style.Alignment.Horizontal = (i == 0 || i == 1 || i == 2) ? XLAlignmentHorizontalValues.Center
-                : (i >= 8 && i <= 11) ? XLAlignmentHorizontalValues.Right
-                : XLAlignmentHorizontalValues.Left;
-            cell.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-            cell.Style.Border.OutsideBorderColor = BorderGray;
-        }
-        row++;
-
-        int stt = 1;
-        foreach (var m in movements)
-        {
-            ws.Cell(row, 1).Value = stt++;
-            ws.Cell(row, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-            ws.Cell(row, 2).Value = m.DocumentDate.ToString("dd/MM/yyyy HH:mm");
+            ws.Cell(row, 2).Value = direction == DebtDirection.Receivable ? "Khách hàng nợ (Phải thu)" : "Nợ NCC (Phải trả)";
             ws.Cell(row, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
-            ws.Cell(row, 3).Value = m.PartnerType == PartnerType.Customer ? "Khách hàng" : "Nhà cung cấp";
+            ws.Cell(row, 3).Value = p.Code;
+            ws.Cell(row, 3).Style.Font.Bold = true;
             ws.Cell(row, 3).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
-            ws.Cell(row, 4).Value = m.PartnerCode;
-            ws.Cell(row, 4).Style.Font.Bold = true;
+            ws.Cell(row, 4).Value = p.Name;
+            ws.Cell(row, 5).Value = p.CompanyName ?? "-";
+            ws.Cell(row, 6).Value = p.TaxCode ?? "-";
+            ws.Cell(row, 6).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
-            ws.Cell(row, 5).Value = m.PartnerName;
-            ws.Cell(row, 6).Value = m.DocumentCode;
-            ws.Cell(row, 6).Style.Font.Bold = true;
+            ws.Cell(row, 7).Value = p.Phone ?? "-";
+            ws.Cell(row, 7).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
-            ws.Cell(row, 7).Value = m.DocumentType;
-            ws.Cell(row, 8).Value = m.ReferenceCode ?? "-";
+            // Numeric values
+            SetNumericCell(ws.Cell(row, 8), (double)p.OpeningBalance);
+            SetNumericCell(ws.Cell(row, 9), (double)p.TotalDebits);
+            SetNumericCell(ws.Cell(row, 10), (double)p.TotalCredits);
+            SetNumericCell(ws.Cell(row, 11), (double)p.TotalDiscounts);
 
-            ws.Cell(row, 9).Value = (double)m.ReceivableIncrease;
-            ws.Cell(row, 9).Style.NumberFormat.Format = "#,##0 ₫";
+            var closeCell = ws.Cell(row, 12);
+            SetNumericCell(closeCell, (double)p.ClosingBalance);
+            closeCell.Style.Font.Bold = true;
+            if (p.ClosingBalance > 0)
+            {
+                closeCell.Style.Font.FontColor = direction == DebtDirection.Receivable ? DangerRed : WarningAmber;
+            }
 
-            ws.Cell(row, 10).Value = (double)m.PayableIncrease;
-            ws.Cell(row, 10).Style.NumberFormat.Format = "#,##0 ₫";
+            SetNumericCell(ws.Cell(row, 13), (double)p.OverdueBalance);
+            if (p.OverdueBalance > 0) ws.Cell(row, 13).Style.Font.FontColor = DangerRed;
 
-            ws.Cell(row, 11).Value = (double)m.PaymentOrReduction;
-            ws.Cell(row, 11).Style.NumberFormat.Format = "#,##0 ₫";
-            if (m.PaymentOrReduction > 0) ws.Cell(row, 11).Style.Font.FontColor = SuccessGreen;
+            SetNumericCell(ws.Cell(row, 14), (double)p.NotYetDueBalance);
 
-            ws.Cell(row, 12).Value = (double)m.RunningBalance;
-            ws.Cell(row, 12).Style.NumberFormat.Format = "#,##0 ₫";
-            ws.Cell(row, 12).Style.Font.Bold = true;
+            ws.Cell(row, 15).Value = p.NextDueDate.HasValue ? p.NextDueDate.Value.ToString("dd/MM/yyyy") : "-";
+            ws.Cell(row, 15).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
-            ws.Cell(row, 13).Value = m.PaymentMethod ?? "-";
-            ws.Cell(row, 14).Value = m.Notes ?? "-";
+            ws.Cell(row, 16).Value = p.DebtStatusDescription;
+            ws.Cell(row, 16).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
-            for (int col = 1; col <= 14; col++)
+            for (int col = 1; col <= 16; col++)
             {
                 ws.Cell(row, col).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-                ws.Cell(row, col).Style.Border.OutsideBorderColor = BorderGray;
+                ws.Cell(row, col).Style.Border.OutsideBorderColor = BorderLight;
             }
             row++;
         }
 
-        // Summary row
+        // Summary Total Row
         int totalRow = row;
         ws.Cell(totalRow, 1).Value = "TỔNG CỘNG";
         ws.Cell(totalRow, 1).Style.Font.Bold = true;
-        ws.Cell(totalRow, 5).Value = $"Tổng số {movements.Count} giao dịch";
-        ws.Cell(totalRow, 5).Style.Font.Bold = true;
+        ws.Cell(totalRow, 4).Value = $"Tổng cộng {partners.Count} đối tác ({ (direction == DebtDirection.Receivable ? "Phải thu" : "Phải trả") })";
+        ws.Cell(totalRow, 4).Style.Font.Bold = true;
 
-        ws.Cell(totalRow, 9).Value = (double)movements.Sum(x => x.ReceivableIncrease);
-        ws.Cell(totalRow, 9).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(totalRow, 9).Style.Font.Bold = true;
+        for (int col = 8; col <= 14; col++)
+        {
+            var cell = ws.Cell(totalRow, col);
+            string colLetter = XLHelper.GetColumnLetterFromNumber(col);
+            cell.FormulaA1 = $"SUM({colLetter}{firstDataRow}:{colLetter}{totalRow - 1})";
+            cell.Style.NumberFormat.Format = "#,##0 ₫";
+            cell.Style.Font.Bold = true;
+        }
 
-        ws.Cell(totalRow, 10).Value = (double)movements.Sum(x => x.PayableIncrease);
-        ws.Cell(totalRow, 10).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(totalRow, 10).Style.Font.Bold = true;
+        ws.Cell(totalRow, 12).Style.Font.FontColor = DangerRed;
 
-        ws.Cell(totalRow, 11).Value = (double)movements.Sum(x => x.PaymentOrReduction);
-        ws.Cell(totalRow, 11).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(totalRow, 11).Style.Font.Bold = true;
+        ws.Range(totalRow, 1, totalRow, 16).Style.Fill.BackgroundColor = TotalRowBg;
+        ws.Range(totalRow, 1, totalRow, 16).Style.Border.TopBorder = XLBorderStyleValues.Thin;
+        ws.Range(totalRow, 1, totalRow, 16).Style.Border.BottomBorder = XLBorderStyleValues.Double;
 
-        ws.Range(totalRow, 1, totalRow, 14).Style.Fill.BackgroundColor = TotalRowBg;
-        ws.Range(totalRow, 1, totalRow, 14).Style.Border.TopBorder = XLBorderStyleValues.Thin;
-        ws.Range(totalRow, 1, totalRow, 14).Style.Border.BottomBorder = XLBorderStyleValues.Double;
-
-        ws.Range(headerRow, 1, totalRow, 14).SetAutoFilter();
-        ws.SheetView.FreezeRows(headerRow);
-        ws.Columns(1, 14).AdjustToContents(8.0, 45.0);
+        ws.Range(tableHeaderRow, 1, totalRow, 16).SetAutoFilter();
+        return totalRow;
     }
 
     // =========================================================================
-    // DATA LOADERS & DOMAIN RECONCILIATION
+    // SHEET B BUILDER — CHI TIẾT CÔNG NỢ THEO CHỨNG TỪ
     // =========================================================================
 
-    private async Task<List<PartnerStatementSummaryDto>> LoadPartnerStatementsAsync(
+    private void BuildSheetB_Documents(
+        IXLWorksheet ws,
+        DebtExportDataset dataset,
+        CompanySettings company,
+        string? datePresetTitle,
+        bool isSinglePartner)
+    {
+        ws.ShowGridLines = true;
+        SetupPageLayout(ws);
+
+        int row = 1;
+        row = RenderCompanyHeader(ws, row, company);
+
+        // Title Block
+        ws.Cell(row, 1).Value = "BÁO CÁO CÔNG NỢ — SHEET B: CHI TIẾT CÔNG NỢ THEO CHỨNG TỪ";
+        ws.Cell(row, 1).Style.Font.Bold = true;
+        ws.Cell(row, 1).Style.Font.FontSize = 14;
+        ws.Cell(row, 1).Style.Font.FontColor = BrandIndigo;
+        row++;
+
+        string periodText = !string.IsNullOrEmpty(datePresetTitle)
+            ? $"Kỳ đối soát: {datePresetTitle}"
+            : "Kỳ đối soát: Toàn thời gian";
+        ws.Cell(row, 1).Value = $"{periodText}  |  Tổng số chứng từ: {dataset.Documents.Count}  |  Ngày xuất: {DateTime.Now:dd/MM/yyyy HH:mm}";
+        ws.Cell(row, 1).Style.Font.Italic = true;
+        ws.Cell(row, 1).Style.Font.FontSize = 9;
+        ws.Cell(row, 1).Style.Font.FontColor = MutedText;
+        row += 2;
+
+        int tableHeaderRow = row;
+        string[] headers = new[]
+        {
+            "STT", "Chiều công nợ", "Mã đối tác", "Tên đối tác", "Loại chứng từ",
+            "Số chứng từ", "Chứng từ gốc / Mã ĐH", "Ngày chứng từ", "Hạn thanh toán",
+            "Giá trị chứng từ", "Đã thanh toán / Đối trừ", "Chiết khấu / Giảm trừ", "Dư nợ còn lại",
+            "Trạng thái thanh toán", "Ghi chú", "Mã định danh truy vết (ID)"
+        };
+
+        for (int i = 0; i < headers.Length; i++)
+        {
+            var cell = ws.Cell(tableHeaderRow, i + 1);
+            cell.Value = headers[i];
+            cell.Style.Font.Bold = true;
+            cell.Style.Font.FontColor = XLColor.White;
+            cell.Style.Fill.BackgroundColor = TableHeaderBg;
+            cell.Style.Alignment.Horizontal = (i == 0 || i == 1 || i == 2 || i == 5 || i == 6 || i == 7 || i == 8 || i == 13 || i == 15)
+                ? XLAlignmentHorizontalValues.Center
+                : (i >= 9 && i <= 12)
+                    ? XLAlignmentHorizontalValues.Right
+                    : XLAlignmentHorizontalValues.Left;
+            cell.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+            cell.Style.Border.OutsideBorderColor = BorderGray;
+        }
+        row++;
+
+        int firstDataRow = row;
+        int stt = 1;
+
+        foreach (var doc in dataset.Documents)
+        {
+            ws.Cell(row, 1).Value = stt++;
+            ws.Cell(row, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            ws.Cell(row, 2).Value = doc.DirectionDescription;
+            ws.Cell(row, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            ws.Cell(row, 3).Value = doc.PartnerCode;
+            ws.Cell(row, 3).Style.Font.Bold = true;
+            ws.Cell(row, 3).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            ws.Cell(row, 4).Value = doc.PartnerName;
+            ws.Cell(row, 5).Value = doc.DocumentType;
+
+            ws.Cell(row, 6).Value = doc.DocumentCode;
+            ws.Cell(row, 6).Style.Font.Bold = true;
+            ws.Cell(row, 6).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            ws.Cell(row, 7).Value = !string.IsNullOrEmpty(doc.ReferenceCode) ? doc.ReferenceCode : "-";
+            ws.Cell(row, 7).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            ws.Cell(row, 8).Value = doc.DocumentDate.ToString("dd/MM/yyyy HH:mm");
+            ws.Cell(row, 8).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            ws.Cell(row, 9).Value = doc.DueDate.HasValue ? doc.DueDate.Value.ToString("dd/MM/yyyy") : "-";
+            ws.Cell(row, 9).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            SetNumericCell(ws.Cell(row, 10), (double)doc.OriginalAmount);
+            SetNumericCell(ws.Cell(row, 11), (double)doc.PaidAmount);
+            if (doc.PaidAmount > 0) ws.Cell(row, 11).Style.Font.FontColor = SuccessGreen;
+
+            SetNumericCell(ws.Cell(row, 12), (double)doc.DiscountAmount);
+
+            var outCell = ws.Cell(row, 13);
+            SetNumericCell(outCell, (double)doc.OutstandingAmount);
+            outCell.Style.Font.Bold = true;
+            if (doc.OutstandingAmount > 0) outCell.Style.Font.FontColor = DangerRed;
+
+            ws.Cell(row, 14).Value = doc.StatusDescription;
+            ws.Cell(row, 14).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            ws.Cell(row, 15).Value = doc.Notes ?? "-";
+
+            ws.Cell(row, 16).Value = doc.TraceId;
+            ws.Cell(row, 16).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            ws.Cell(row, 16).Style.Font.FontColor = MutedText;
+
+            for (int col = 1; col <= 16; col++)
+            {
+                ws.Cell(row, col).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+                ws.Cell(row, col).Style.Border.OutsideBorderColor = BorderLight;
+            }
+            row++;
+        }
+
+        // Summary Total Row
+        if (dataset.Documents.Any())
+        {
+            int totalRow = row;
+            ws.Cell(totalRow, 1).Value = "TỔNG CỘNG";
+            ws.Cell(totalRow, 1).Style.Font.Bold = true;
+            ws.Cell(totalRow, 4).Value = $"Tổng cộng {dataset.Documents.Count} chứng từ";
+            ws.Cell(totalRow, 4).Style.Font.Bold = true;
+
+            for (int col = 10; col <= 13; col++)
+            {
+                var cell = ws.Cell(totalRow, col);
+                string colLetter = XLHelper.GetColumnLetterFromNumber(col);
+                cell.FormulaA1 = $"SUM({colLetter}{firstDataRow}:{colLetter}{totalRow - 1})";
+                cell.Style.NumberFormat.Format = "#,##0 ₫";
+                cell.Style.Font.Bold = true;
+            }
+
+            ws.Cell(totalRow, 11).Style.Font.FontColor = SuccessGreen;
+            ws.Cell(totalRow, 13).Style.Font.FontColor = DangerRed;
+
+            ws.Range(totalRow, 1, totalRow, 16).Style.Fill.BackgroundColor = TotalRowBg;
+            ws.Range(totalRow, 1, totalRow, 16).Style.Border.TopBorder = XLBorderStyleValues.Thin;
+            ws.Range(totalRow, 1, totalRow, 16).Style.Border.BottomBorder = XLBorderStyleValues.Double;
+
+            ws.Range(tableHeaderRow, 1, totalRow, 16).SetAutoFilter();
+        }
+
+        ws.SheetView.FreezeRows(tableHeaderRow);
+        ws.Columns(1, 16).AdjustToContents(8.0, 45.0);
+    }
+
+    // =========================================================================
+    // SHEET C BUILDER — CHI TIẾT TỪNG MẶT HÀNG / DỊCH VỤ
+    // =========================================================================
+
+    private void BuildSheetC_LineItems(
+        IXLWorksheet ws,
+        DebtExportDataset dataset,
+        CompanySettings company,
+        string? datePresetTitle,
         PartnerDebtStatementExportRequest request,
+        bool isSinglePartner)
+    {
+        ws.ShowGridLines = true;
+        SetupPageLayout(ws);
+
+        int row = 1;
+        row = RenderCompanyHeader(ws, row, company);
+
+        // Title Block
+        ws.Cell(row, 1).Value = "BÁO CÁO CÔNG NỢ — SHEET C: CHI TIẾT TỪNG MẶT HÀNG / DỊCH VỤ";
+        ws.Cell(row, 1).Style.Font.Bold = true;
+        ws.Cell(row, 1).Style.Font.FontSize = 14;
+        ws.Cell(row, 1).Style.Font.FontColor = BrandIndigo;
+        row++;
+
+        string periodText = !string.IsNullOrEmpty(datePresetTitle)
+            ? $"Kỳ đối soát: {datePresetTitle}"
+            : "Kỳ đối soát: Toàn thời gian";
+        ws.Cell(row, 1).Value = $"{periodText}  |  Tổng số dòng mặt hàng: {dataset.LineItems.Count}  |  Ngày xuất: {DateTime.Now:dd/MM/yyyy HH:mm}";
+        ws.Cell(row, 1).Style.Font.Italic = true;
+        ws.Cell(row, 1).Style.Font.FontSize = 9;
+        ws.Cell(row, 1).Style.Font.FontColor = MutedText;
+        row += 2;
+
+        // CRITICAL ACCOUNTING ALLOCATION NOTICE BANNER
+        ws.Range(row, 1, row, 17).Merge();
+        ws.Cell(row, 1).Value = "LƯU Ý KẾ TOÁN QUAN TRỌNG: Hệ thống TradeFlow quản lý thanh toán và theo dõi dư nợ theo cấp độ Hóa đơn / Chứng từ (Document-level settlement). Các khoản thanh toán và dư nợ còn lại không phân bổ riêng lẻ cho từng dòng sản phẩm nhằm bảo toàn tính chính xác và nguyên vẹn của dữ liệu kế toán thực tế.";
+        ws.Cell(row, 1).Style.Font.Italic = true;
+        ws.Cell(row, 1).Style.Font.Bold = true;
+        ws.Cell(row, 1).Style.Font.FontSize = 9;
+        ws.Cell(row, 1).Style.Font.FontColor = XLColor.FromHtml("#92400E"); // Dark amber
+        ws.Cell(row, 1).Style.Fill.BackgroundColor = XLColor.FromHtml("#FEF3C7"); // Light amber
+        ws.Range(row, 1, row, 17).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+        ws.Range(row, 1, row, 17).Style.Border.OutsideBorderColor = XLColor.FromHtml("#F59E0B");
+        row += 2;
+
+        int tableHeaderRow = row;
+        string[] headers = new[]
+        {
+            "STT", "Số chứng từ", "Ngày chứng từ", "Chiều công nợ", "Mã đối tác",
+            "Tên đối tác", "Mã mặt hàng", "Tên sản phẩm / dịch vụ", "Quy cách / Mô tả", "Đơn vị tính",
+            "Số lượng", "Đơn giá", "Chiết khấu dòng", "Tiền thuế VAT", "Thành tiền",
+            "Đã TT (Cấp HĐ)", "Còn nợ (Cấp HĐ)", "Ghi chú phân bổ"
+        };
+
+        for (int i = 0; i < headers.Length; i++)
+        {
+            var cell = ws.Cell(tableHeaderRow, i + 1);
+            cell.Value = headers[i];
+            cell.Style.Font.Bold = true;
+            cell.Style.Font.FontColor = XLColor.White;
+            cell.Style.Fill.BackgroundColor = TableHeaderBg;
+            cell.Style.Alignment.Horizontal = (i == 0 || i == 1 || i == 2 || i == 3 || i == 4 || i == 9 || i == 17)
+                ? XLAlignmentHorizontalValues.Center
+                : (i >= 10 && i <= 16)
+                    ? XLAlignmentHorizontalValues.Right
+                    : XLAlignmentHorizontalValues.Left;
+            cell.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+            cell.Style.Border.OutsideBorderColor = BorderGray;
+        }
+        row++;
+
+        int firstDataRow = row;
+        int stt = 1;
+
+        foreach (var item in dataset.LineItems)
+        {
+            ws.Cell(row, 1).Value = stt++;
+            ws.Cell(row, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            ws.Cell(row, 2).Value = item.DocumentCode;
+            ws.Cell(row, 2).Style.Font.Bold = true;
+            ws.Cell(row, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            ws.Cell(row, 3).Value = item.DocumentDate.ToString("dd/MM/yyyy");
+            ws.Cell(row, 3).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            ws.Cell(row, 4).Value = item.DirectionDescription;
+            ws.Cell(row, 4).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            ws.Cell(row, 5).Value = item.PartnerCode;
+            ws.Cell(row, 5).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            ws.Cell(row, 6).Value = item.PartnerName;
+
+            ws.Cell(row, 7).Value = item.ProductCode;
+            ws.Cell(row, 7).Style.Font.Bold = true;
+
+            ws.Cell(row, 8).Value = item.ProductName;
+            ws.Cell(row, 9).Value = item.Specifications ?? "-";
+
+            ws.Cell(row, 10).Value = item.UnitName;
+            ws.Cell(row, 10).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            // Numeric values
+            var qtyCell = ws.Cell(row, 11);
+            qtyCell.Value = (double)item.Quantity;
+            qtyCell.Style.NumberFormat.Format = "#,##0.##";
+            qtyCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+
+            SetNumericCell(ws.Cell(row, 12), (double)item.UnitPrice);
+            SetNumericCell(ws.Cell(row, 13), (double)item.DiscountAmount);
+            SetNumericCell(ws.Cell(row, 14), (double)item.TaxAmount);
+
+            var totalCell = ws.Cell(row, 15);
+            SetNumericCell(totalCell, (double)item.LineTotal);
+            totalCell.Style.Font.Bold = true;
+
+            // Invoice-level settlement columns
+            SetNumericCell(ws.Cell(row, 16), (double)item.DocumentPaidAmount);
+            if (item.DocumentPaidAmount > 0) ws.Cell(row, 16).Style.Font.FontColor = SuccessGreen;
+
+            var docOutCell = ws.Cell(row, 17);
+            SetNumericCell(docOutCell, (double)item.DocumentOutstandingAmount);
+            if (item.DocumentOutstandingAmount > 0) docOutCell.Style.Font.FontColor = DangerRed;
+
+            ws.Cell(row, 18).Value = item.AllocationNote;
+            ws.Cell(row, 18).Style.Font.Italic = true;
+            ws.Cell(row, 18).Style.Font.FontSize = 8;
+            ws.Cell(row, 18).Style.Font.FontColor = MutedText;
+
+            for (int col = 1; col <= 18; col++)
+            {
+                ws.Cell(row, col).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+                ws.Cell(row, col).Style.Border.OutsideBorderColor = BorderLight;
+            }
+            row++;
+        }
+
+        // Summary Total Row
+        if (dataset.LineItems.Any())
+        {
+            int totalRow = row;
+            ws.Cell(totalRow, 1).Value = "TỔNG CỘNG";
+            ws.Cell(totalRow, 1).Style.Font.Bold = true;
+            ws.Cell(totalRow, 8).Value = $"Tổng cộng {dataset.LineItems.Count} dòng sản phẩm/dịch vụ";
+            ws.Cell(totalRow, 8).Style.Font.Bold = true;
+
+            // Quantity Sum
+            var qtyTotalCell = ws.Cell(totalRow, 11);
+            qtyTotalCell.FormulaA1 = $"SUM(K{firstDataRow}:K{totalRow - 1})";
+            qtyTotalCell.Style.NumberFormat.Format = "#,##0.##";
+            qtyTotalCell.Style.Font.Bold = true;
+
+            // Discount, Tax, LineTotal Sums
+            for (int col = 13; col <= 15; col++)
+            {
+                var cell = ws.Cell(totalRow, col);
+                string colLetter = XLHelper.GetColumnLetterFromNumber(col);
+                cell.FormulaA1 = $"SUM({colLetter}{firstDataRow}:{colLetter}{totalRow - 1})";
+                cell.Style.NumberFormat.Format = "#,##0 ₫";
+                cell.Style.Font.Bold = true;
+            }
+
+            ws.Cell(totalRow, 16).Value = "-";
+            ws.Cell(totalRow, 16).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            ws.Cell(totalRow, 17).Value = "-";
+            ws.Cell(totalRow, 17).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            ws.Range(totalRow, 1, totalRow, 18).Style.Fill.BackgroundColor = TotalRowBg;
+            ws.Range(totalRow, 1, totalRow, 18).Style.Border.TopBorder = XLBorderStyleValues.Thin;
+            ws.Range(totalRow, 1, totalRow, 18).Style.Border.BottomBorder = XLBorderStyleValues.Double;
+
+            ws.Range(tableHeaderRow, 1, totalRow, 18).SetAutoFilter();
+        }
+
+        ws.SheetView.FreezeRows(tableHeaderRow);
+        ws.Columns(1, 18).AdjustToContents(8.0, 45.0);
+    }
+
+    // =========================================================================
+    // SHEET D BUILDER — LỊCH SỬ THU, CHI VÀ ĐIỀU CHỈNH CÔNG NỢ
+    // =========================================================================
+
+    private void BuildSheetD_Transactions(
+        IXLWorksheet ws,
+        DebtExportDataset dataset,
+        CompanySettings company,
+        string? datePresetTitle,
+        bool isSinglePartner)
+    {
+        ws.ShowGridLines = true;
+        SetupPageLayout(ws);
+
+        int row = 1;
+        row = RenderCompanyHeader(ws, row, company);
+
+        // Title Block
+        ws.Cell(row, 1).Value = "BÁO CÁO CÔNG NỢ — SHEET D: LỊCH SỬ THU, CHI VÀ ĐIỀU CHỈNH CÔNG NỢ";
+        ws.Cell(row, 1).Style.Font.Bold = true;
+        ws.Cell(row, 1).Style.Font.FontSize = 14;
+        ws.Cell(row, 1).Style.Font.FontColor = BrandIndigo;
+        row++;
+
+        string periodText = !string.IsNullOrEmpty(datePresetTitle)
+            ? $"Kỳ đối soát: {datePresetTitle}"
+            : "Kỳ đối soát: Toàn thời gian";
+        ws.Cell(row, 1).Value = $"{periodText}  |  Tổng số nghiệp vụ tài chính: {dataset.Transactions.Count}  |  Ngày xuất: {DateTime.Now:dd/MM/yyyy HH:mm}";
+        ws.Cell(row, 1).Style.Font.Italic = true;
+        ws.Cell(row, 1).Style.Font.FontSize = 9;
+        ws.Cell(row, 1).Style.Font.FontColor = MutedText;
+        row += 2;
+
+        int tableHeaderRow = row;
+        string[] headers = new[]
+        {
+            "STT", "Loại nghiệp vụ", "Số phiếu", "Ngày giao dịch", "Chiều công nợ",
+            "Mã đối tác", "Tên đối tác", "Chứng từ liên quan (HĐ/ĐH)", "Số tiền giao dịch", "Hình thức thanh toán",
+            "Loại chiết khấu / Điều chỉnh", "Ghi chú diễn giải", "Người lập phiếu", "Thời điểm tạo", "Mã tham chiếu đối ứng"
+        };
+
+        for (int i = 0; i < headers.Length; i++)
+        {
+            var cell = ws.Cell(tableHeaderRow, i + 1);
+            cell.Value = headers[i];
+            cell.Style.Font.Bold = true;
+            cell.Style.Font.FontColor = XLColor.White;
+            cell.Style.Fill.BackgroundColor = TableHeaderBg;
+            cell.Style.Alignment.Horizontal = (i == 0 || i == 1 || i == 2 || i == 3 || i == 4 || i == 5 || i == 7 || i == 9 || i == 12 || i == 13 || i == 14)
+                ? XLAlignmentHorizontalValues.Center
+                : (i == 8)
+                    ? XLAlignmentHorizontalValues.Right
+                    : XLAlignmentHorizontalValues.Left;
+            cell.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+            cell.Style.Border.OutsideBorderColor = BorderGray;
+        }
+        row++;
+
+        int firstDataRow = row;
+        int stt = 1;
+
+        foreach (var t in dataset.Transactions)
+        {
+            ws.Cell(row, 1).Value = stt++;
+            ws.Cell(row, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            ws.Cell(row, 2).Value = t.TransactionTypeDescription;
+            ws.Cell(row, 2).Style.Font.Bold = true;
+            ws.Cell(row, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            if (t.TransactionType == DebtTransactionType.Payment)
+            {
+                ws.Cell(row, 2).Style.Font.FontColor = SuccessGreen;
+            }
+            else if (t.TransactionType == DebtTransactionType.PaymentDiscount)
+            {
+                ws.Cell(row, 2).Style.Font.FontColor = BrandIndigo;
+            }
+
+            ws.Cell(row, 3).Value = t.PaymentCode;
+            ws.Cell(row, 3).Style.Font.Bold = true;
+            ws.Cell(row, 3).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            ws.Cell(row, 4).Value = t.TransactionDate.ToString("dd/MM/yyyy HH:mm");
+            ws.Cell(row, 4).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            ws.Cell(row, 5).Value = t.DirectionDescription;
+            ws.Cell(row, 5).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            ws.Cell(row, 6).Value = t.PartnerCode;
+            ws.Cell(row, 6).Style.Font.Bold = true;
+            ws.Cell(row, 6).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            ws.Cell(row, 7).Value = t.PartnerName;
+
+            ws.Cell(row, 8).Value = !string.IsNullOrEmpty(t.ReferenceCode) ? t.ReferenceCode : "-";
+            ws.Cell(row, 8).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            var amountCell = ws.Cell(row, 9);
+            SetNumericCell(amountCell, (double)t.Amount);
+            amountCell.Style.Font.Bold = true;
+            if (t.TransactionType == DebtTransactionType.Payment)
+            {
+                amountCell.Style.Font.FontColor = SuccessGreen;
+            }
+
+            ws.Cell(row, 10).Value = t.PaymentMethod;
+            ws.Cell(row, 10).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            ws.Cell(row, 11).Value = t.DiscountOrAdjustmentType ?? "-";
+            ws.Cell(row, 12).Value = t.Notes ?? "-";
+
+            ws.Cell(row, 13).Value = t.CreatedBy ?? "Hệ thống";
+            ws.Cell(row, 13).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            ws.Cell(row, 14).Value = t.CreatedAt.ToString("dd/MM/yyyy HH:mm");
+            ws.Cell(row, 14).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            ws.Cell(row, 15).Value = t.CounterReference ?? "-";
+            ws.Cell(row, 15).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+            for (int col = 1; col <= 15; col++)
+            {
+                ws.Cell(row, col).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+                ws.Cell(row, col).Style.Border.OutsideBorderColor = BorderLight;
+            }
+            row++;
+        }
+
+        // Summary Total Row
+        if (dataset.Transactions.Any())
+        {
+            int totalRow = row;
+            ws.Cell(totalRow, 1).Value = "TỔNG CỘNG";
+            ws.Cell(totalRow, 1).Style.Font.Bold = true;
+            ws.Cell(totalRow, 7).Value = $"Tổng cộng {dataset.Transactions.Count} giao dịch thanh toán / điều chỉnh";
+            ws.Cell(totalRow, 7).Style.Font.Bold = true;
+
+            var sumCell = ws.Cell(totalRow, 9);
+            string colLetter = XLHelper.GetColumnLetterFromNumber(9);
+            sumCell.FormulaA1 = $"SUM({colLetter}{firstDataRow}:{colLetter}{totalRow - 1})";
+            sumCell.Style.NumberFormat.Format = "#,##0 ₫";
+            sumCell.Style.Font.Bold = true;
+            sumCell.Style.Font.FontColor = SuccessGreen;
+
+            ws.Range(totalRow, 1, totalRow, 15).Style.Fill.BackgroundColor = TotalRowBg;
+            ws.Range(totalRow, 1, totalRow, 15).Style.Border.TopBorder = XLBorderStyleValues.Thin;
+            ws.Range(totalRow, 1, totalRow, 15).Style.Border.BottomBorder = XLBorderStyleValues.Double;
+
+            ws.Range(tableHeaderRow, 1, totalRow, 15).SetAutoFilter();
+        }
+
+        ws.SheetView.FreezeRows(tableHeaderRow);
+        ws.Columns(1, 15).AdjustToContents(8.0, 45.0);
+    }
+
+    // =========================================================================
+    // DATASET LOADER & DOMAIN RECONCILIATION ENGINE
+    // =========================================================================
+
+    private async Task<DebtExportDataset> LoadExportDatasetAsync(
+        DebtExportScope scope,
+        PartnerType? partnerType,
+        List<int>? partnerIds,
+        DebtFilterDto? filter,
+        DateTime? fromDate,
+        DateTime? toDate,
+        string? datePresetTitle,
         CancellationToken cancellationToken)
     {
-        var summaries = new List<PartnerStatementSummaryDto>();
+        var targetCustIds = new HashSet<int>();
+        var targetSupIds = new HashSet<int>();
 
-        // 1. Determine partner IDs and types to load
-        var targetCustomerIds = new List<int>();
-        var targetSupplierIds = new List<int>();
+        bool loadCustomers = !partnerType.HasValue || partnerType.Value == PartnerType.Customer;
+        bool loadSuppliers = !partnerType.HasValue || partnerType.Value == PartnerType.Supplier;
 
-        if (request.Scope == DebtExportScope.CurrentPartner)
+        if (scope == DebtExportScope.CurrentPartner || scope == DebtExportScope.SelectedPartners)
         {
-            if (!request.PartnerIds.Any())
+            if (partnerIds != null && partnerIds.Any())
             {
-                throw new ArgumentException("Chưa chỉ định đối tác cần xuất báo cáo công nợ.", nameof(request.PartnerIds));
-            }
-            if (request.PartnerType == PartnerType.Supplier)
-                targetSupplierIds.AddRange(request.PartnerIds);
-            else
-                targetCustomerIds.AddRange(request.PartnerIds);
-        }
-        else if (request.Scope == DebtExportScope.SelectedPartners)
-        {
-            if (!request.PartnerIds.Any())
-            {
-                throw new ArgumentException("Chưa chọn đối tác nào để xuất báo cáo công nợ.", nameof(request.PartnerIds));
-            }
-            if (request.PartnerType.HasValue)
-            {
-                if (request.PartnerType.Value == PartnerType.Customer) targetCustomerIds.AddRange(request.PartnerIds);
-                else targetSupplierIds.AddRange(request.PartnerIds);
-            }
-            else
-            {
-                // Verify existence in Customers vs Suppliers
-                var foundCusts = await _context.Customers.AsNoTracking().Where(c => request.PartnerIds.Contains(c.Id)).Select(c => c.Id).ToListAsync(cancellationToken);
-                var foundSups = await _context.Suppliers.AsNoTracking().Where(s => request.PartnerIds.Contains(s.Id)).Select(s => s.Id).ToListAsync(cancellationToken);
-                targetCustomerIds.AddRange(foundCusts);
-                targetSupplierIds.AddRange(foundSups);
+                if (partnerType == PartnerType.Customer)
+                {
+                    targetCustIds = partnerIds.ToHashSet();
+                }
+                else if (partnerType == PartnerType.Supplier)
+                {
+                    targetSupIds = partnerIds.ToHashSet();
+                }
+                else
+                {
+                    // Detect customer vs supplier IDs from DB
+                    var foundCusts = await _context.Customers.AsNoTracking().Where(c => partnerIds.Contains(c.Id)).Select(c => c.Id).ToListAsync(cancellationToken);
+                    var foundSups = await _context.Suppliers.AsNoTracking().Where(s => partnerIds.Contains(s.Id)).Select(s => s.Id).ToListAsync(cancellationToken);
+                    targetCustIds = foundCusts.ToHashSet();
+                    targetSupIds = foundSups.ToHashSet();
+                }
             }
         }
         else
         {
-            // All filtered or all partners according to PartnerType
-            if (request.PartnerType == PartnerType.Customer)
+            // All filtered or all partners in system
+            if (loadCustomers)
             {
-                targetCustomerIds = await _context.Customers.AsNoTracking().Select(c => c.Id).ToListAsync(cancellationToken);
+                var custQuery = _context.Customers.AsNoTracking();
+                if (filter != null && !string.IsNullOrWhiteSpace(filter.SearchTerm))
+                {
+                    string term = filter.SearchTerm.Trim().ToLower();
+                    custQuery = custQuery.Where(c => c.Code.ToLower().Contains(term)
+                                                  || c.Name.ToLower().Contains(term)
+                                                  || (c.CompanyName != null && c.CompanyName.ToLower().Contains(term))
+                                                  || (c.Phone != null && c.Phone.Contains(term))
+                                                  || (c.TaxCode != null && c.TaxCode.Contains(term)));
+                }
+                var custIds = await custQuery.Select(c => c.Id).ToListAsync(cancellationToken);
+                targetCustIds = custIds.ToHashSet();
             }
-            else if (request.PartnerType == PartnerType.Supplier)
+
+            if (loadSuppliers)
             {
-                targetSupplierIds = await _context.Suppliers.AsNoTracking().Select(s => s.Id).ToListAsync(cancellationToken);
-            }
-            else
-            {
-                targetCustomerIds = await _context.Customers.AsNoTracking().Select(c => c.Id).ToListAsync(cancellationToken);
-                targetSupplierIds = await _context.Suppliers.AsNoTracking().Select(s => s.Id).ToListAsync(cancellationToken);
+                var supQuery = _context.Suppliers.AsNoTracking();
+                if (filter != null && !string.IsNullOrWhiteSpace(filter.SearchTerm))
+                {
+                    string term = filter.SearchTerm.Trim().ToLower();
+                    supQuery = supQuery.Where(s => s.Code.ToLower().Contains(term)
+                                                || s.Name.ToLower().Contains(term)
+                                                || (s.CompanyName != null && s.CompanyName.ToLower().Contains(term))
+                                                || (s.Phone != null && s.Phone.Contains(term))
+                                                || (s.TaxCode != null && s.TaxCode.Contains(term)));
+                }
+                var supIds = await supQuery.Select(s => s.Id).ToListAsync(cancellationToken);
+                targetSupIds = supIds.ToHashSet();
             }
         }
 
-        DateTime? fromDateUtc = request.FromDate.HasValue ? DateTime.SpecifyKind(request.FromDate.Value.Date, DateTimeKind.Utc) : null;
-        DateTime? toDateUtc = request.ToDate.HasValue ? DateTime.SpecifyKind(request.ToDate.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc) : null;
+        DateTime? fromDateUtc = fromDate.HasValue ? DateTime.SpecifyKind(fromDate.Value.Date, DateTimeKind.Utc) : null;
+        DateTime? toDateUtc = toDate.HasValue ? DateTime.SpecifyKind(toDate.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc) : null;
 
-        // 2. Load Customers
-        if (targetCustomerIds.Any())
+        var dataset = new DebtExportDataset();
+
+        // ---------------------------------------------------------------------
+        // 1. PROCESS CUSTOMERS (Công nợ phải thu)
+        // ---------------------------------------------------------------------
+        if (targetCustIds.Any())
         {
             var customers = await _context.Customers.AsNoTracking()
-                .Where(c => targetCustomerIds.Contains(c.Id))
+                .Where(c => targetCustIds.Contains(c.Id))
                 .ToListAsync(cancellationToken);
 
             var invoices = await _context.Invoices.AsNoTracking()
                 .Include(i => i.Items)
-                .Where(i => i.CustomerId.HasValue && targetCustomerIds.Contains(i.CustomerId.Value) && i.Status != InvoiceStatus.Cancelled)
+                .Where(i => i.CustomerId.HasValue && targetCustIds.Contains(i.CustomerId.Value) && i.Status != InvoiceStatus.Cancelled)
+                .OrderBy(i => i.InvoiceDate)
                 .ToListAsync(cancellationToken);
 
             var invoicedOrderIds = invoices.Where(i => i.SalesOrderId.HasValue).Select(i => i.SalesOrderId!.Value).ToHashSet();
 
             var salesOrders = await _context.SalesOrders.AsNoTracking()
-                .Where(o => targetCustomerIds.Contains(o.CustomerId) && o.Status == SalesOrderStatus.Confirmed && !invoicedOrderIds.Contains(o.Id))
+                .Include(o => o.Items)
+                .Where(o => targetCustIds.Contains(o.CustomerId) && o.Status == SalesOrderStatus.Confirmed && !invoicedOrderIds.Contains(o.Id))
+                .OrderBy(o => o.OrderDate)
                 .ToListAsync(cancellationToken);
 
-            var payments = await _context.PartnerPayments.AsNoTracking()
-                .Where(p => p.PartnerType == (int)PartnerType.Customer && targetCustomerIds.Contains(p.PartnerId))
+            var custPayments = await _context.PartnerPayments.AsNoTracking()
+                .Where(p => p.PartnerType == (int)PartnerType.Customer && targetCustIds.Contains(p.PartnerId))
+                .OrderBy(p => p.PaymentDate)
                 .ToListAsync(cancellationToken);
+
+            // Group payments by invoice (strictly payments, excluding discounts)
+            var paymentsByInvoice = custPayments.Where(p => p.InvoiceId.HasValue && p.TransactionType == DebtTransactionType.Payment)
+                .GroupBy(p => p.InvoiceId!.Value)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
+
+            var discountsByInvoice = custPayments.Where(p => p.InvoiceId.HasValue && p.TransactionType == DebtTransactionType.PaymentDiscount)
+                .GroupBy(p => p.InvoiceId!.Value)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
+
+            // General unallocated payments per customer
+            var generalPaymentsByCust = custPayments.Where(p => !p.InvoiceId.HasValue && p.TransactionType == DebtTransactionType.Payment)
+                .GroupBy(p => p.PartnerId)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
 
             foreach (var cust in customers)
             {
-                var custInvoices = invoices.Where(i => i.CustomerId == cust.Id).ToList();
-                var custOrders = salesOrders.Where(o => o.CustomerId == cust.Id).ToList();
-                var custPayments = payments.Where(p => p.PartnerId == cust.Id).ToList();
+                var custInvs = invoices.Where(i => i.CustomerId == cust.Id).ToList();
+                var custOrds = salesOrders.Where(o => o.CustomerId == cust.Id).ToList();
+                var custPays = custPayments.Where(p => p.PartnerId == cust.Id).ToList();
 
                 // Compute Opening Balance (prior to fromDateUtc)
                 decimal openingDebits = 0m;
@@ -1259,119 +1114,231 @@ public class PartnerDebtExportService : IPartnerDebtExportService
 
                 if (fromDateUtc.HasValue)
                 {
-                    // Debits before period: Invoices + Uninvoiced Orders
-                    openingDebits += custInvoices.Where(i => i.InvoiceDate < fromDateUtc.Value).Sum(i => i.GrandTotal);
-                    openingDebits += custOrders.Where(o => o.OrderDate < fromDateUtc.Value).Sum(o => o.GrandTotal);
+                    openingDebits += custInvs.Where(i => i.InvoiceDate < fromDateUtc.Value).Sum(i => i.GrandTotal);
+                    openingDebits += custOrds.Where(o => o.OrderDate < fromDateUtc.Value).Sum(o => o.GrandTotal);
 
-                    // Credits before period: Payments
-                    openingCredits += custPayments.Where(p => p.PaymentDate < fromDateUtc.Value && p.TransactionType == DebtTransactionType.Payment).Sum(p => p.Amount);
-                    openingDiscounts += custPayments.Where(p => p.PaymentDate < fromDateUtc.Value && p.TransactionType == DebtTransactionType.PaymentDiscount).Sum(p => p.Amount);
+                    openingCredits += custPays.Where(p => p.PaymentDate < fromDateUtc.Value && p.TransactionType == DebtTransactionType.Payment).Sum(p => p.Amount);
+                    openingDiscounts += custPays.Where(p => p.PaymentDate < fromDateUtc.Value && p.TransactionType == DebtTransactionType.PaymentDiscount).Sum(p => p.Amount);
                 }
 
                 decimal openingBalance = Math.Max(0m, openingDebits - openingCredits - openingDiscounts);
 
-                // Filter transactions within period
-                var periodTx = new List<PartnerLinkedTransactionDto>();
+                // In-period documents & general payment allocation
+                decimal runningGeneralCredit = generalPaymentsByCust.GetValueOrDefault(cust.Id, 0m);
 
-                // Period Invoices
-                var pInvoices = custInvoices.Where(i => (!fromDateUtc.HasValue || i.InvoiceDate >= fromDateUtc.Value) &&
-                                                        (!toDateUtc.HasValue || i.InvoiceDate <= toDateUtc.Value));
-                foreach (var inv in pInvoices)
+                var periodInvs = custInvs.Where(i => (!fromDateUtc.HasValue || i.InvoiceDate >= fromDateUtc.Value) &&
+                                                     (!toDateUtc.HasValue || i.InvoiceDate <= toDateUtc.Value)).ToList();
+
+                var periodOrds = custOrds.Where(o => (!fromDateUtc.HasValue || o.OrderDate >= fromDateUtc.Value) &&
+                                                     (!toDateUtc.HasValue || o.OrderDate <= toDateUtc.Value)).ToList();
+
+                var periodPays = custPays.Where(p => (!fromDateUtc.HasValue || p.PaymentDate >= fromDateUtc.Value) &&
+                                                     (!toDateUtc.HasValue || p.PaymentDate <= toDateUtc.Value)).ToList();
+
+                decimal totalDebits = periodInvs.Sum(i => i.GrandTotal) + periodOrds.Sum(o => o.GrandTotal);
+                decimal totalCredits = periodPays.Where(p => p.TransactionType == DebtTransactionType.Payment).Sum(p => p.Amount);
+                decimal totalDiscounts = periodPays.Where(p => p.TransactionType == DebtTransactionType.PaymentDiscount).Sum(p => p.Amount);
+
+                decimal closingBalance = Math.Max(0m, openingBalance + totalDebits - totalCredits - totalDiscounts);
+
+                // Calculate Overdue vs Not-Yet-Due
+                decimal overdue = 0m;
+                decimal notYetDue = 0m;
+                DateTime? nextDueDate = null;
+
+                foreach (var inv in periodInvs)
                 {
-                    var lines = inv.Items.OrderBy(x => x.SortOrder).Select(it => new PartnerTransactionLineItemDto
-                    {
-                        SortOrder = it.SortOrder,
-                        ProductCode = it.ProductCode,
-                        ProductName = it.ProductName,
-                        UnitName = it.UnitName,
-                        Quantity = it.Quantity,
-                        UnitPrice = it.UnitPrice,
-                        DiscountAmount = it.DiscountAmount,
-                        TaxRate = it.TaxRate,
-                        TaxAmount = it.TaxAmount,
-                        LineTotal = it.LineTotal
-                    }).ToList();
+                    bool isMarkedCredit = inv.PaymentMethod != null &&
+                                         (inv.PaymentMethod.Contains("Công nợ") ||
+                                          inv.PaymentMethod.Contains("Ghi nợ") ||
+                                          inv.PaymentMethod.Contains("Chưa thanh toán") ||
+                                          inv.Status == InvoiceStatus.Pending);
 
-                    periodTx.Add(new PartnerLinkedTransactionDto
+                    decimal specificPaid = paymentsByInvoice.GetValueOrDefault(inv.Id, 0m);
+                    decimal specificDiscount = discountsByInvoice.GetValueOrDefault(inv.Id, 0m);
+
+                    decimal paid = !isMarkedCredit ? inv.GrandTotal : specificPaid;
+
+                    // Allocate general payment if outstanding
+                    decimal outstanding = Math.Max(0m, inv.GrandTotal - paid - specificDiscount);
+                    if (isMarkedCredit && outstanding > 0 && runningGeneralCredit > 0)
                     {
-                        DocumentId = inv.Id,
-                        DocumentType = inv.Type == InvoiceType.VatInvoice ? "Hóa đơn VAT" : "Hóa đơn bán hàng",
-                        DocumentCode = !string.IsNullOrEmpty(inv.InvoiceNo) ? inv.InvoiceNo : inv.InvoiceNumber,
-                        DocumentDate = inv.InvoiceDate,
-                        Amount = inv.GrandTotal,
-                        DebitAmount = inv.GrandTotal,
-                        CreditAmount = 0m,
-                        OutstandingAmount = inv.GrandTotal,
-                        PaidAmount = 0m,
-                        Status = inv.Status switch { InvoiceStatus.Issued => "Đã phát hành", InvoiceStatus.Pending => "Chờ thanh toán", _ => inv.Status.ToString() },
-                        PaymentMethod = inv.PaymentMethod,
+                        decimal alloc = Math.Min(outstanding, runningGeneralCredit);
+                        paid += alloc;
+                        outstanding -= alloc;
+                        runningGeneralCredit -= alloc;
+                    }
+
+                    // Default payment term: 30 days
+                    DateTime dueDate = inv.InvoiceDate.AddDays(30);
+                    if (outstanding > 0)
+                    {
+                        if (DateTime.UtcNow > dueDate) overdue += outstanding;
+                        else notYetDue += outstanding;
+
+                        if (!nextDueDate.HasValue || dueDate < nextDueDate.Value)
+                        {
+                            nextDueDate = dueDate;
+                        }
+                    }
+
+                    var docStatus = outstanding == 0m ? DebtStatus.Settled
+                        : (paid > 0m ? DebtStatus.PartiallyPaid : DebtStatus.Outstanding);
+
+                    string docType = inv.Type == InvoiceType.VatInvoice ? "Hóa đơn VAT" : "Hóa đơn bán hàng";
+                    string docCode = !string.IsNullOrEmpty(inv.InvoiceNo) ? inv.InvoiceNo : inv.InvoiceNumber;
+
+                    dataset.Documents.Add(new DebtDocumentExportRowDto
+                    {
+                        Direction = DebtDirection.Receivable,
+                        PartnerCode = cust.Code,
+                        PartnerName = cust.Name,
+                        DocumentType = docType,
+                        DocumentCode = docCode,
                         ReferenceCode = inv.SalesOrderId.HasValue ? $"DH-{inv.SalesOrderId}" : null,
+                        DocumentDate = inv.InvoiceDate,
+                        DueDate = dueDate,
+                        OriginalAmount = inv.GrandTotal,
+                        PaidAmount = paid,
+                        DiscountAmount = specificDiscount,
+                        OutstandingAmount = outstanding,
+                        DebtStatus = docStatus,
                         Notes = inv.Notes,
-                        LineItems = lines
+                        TraceId = $"INV-{inv.Id}"
                     });
+
+                    // Line Items for Sheet C
+                    foreach (var it in inv.Items.OrderBy(x => x.SortOrder))
+                    {
+                        dataset.LineItems.Add(new DebtLineItemExportRowDto
+                        {
+                            DocumentCode = docCode,
+                            DocumentDate = inv.InvoiceDate,
+                            Direction = DebtDirection.Receivable,
+                            PartnerCode = cust.Code,
+                            PartnerName = cust.Name,
+                            ProductCode = it.ProductCode,
+                            ProductName = it.ProductName,
+                            Specifications = null,
+                            UnitName = it.UnitName,
+                            Quantity = it.Quantity,
+                            UnitPrice = it.UnitPrice,
+                            DiscountAmount = it.DiscountAmount,
+                            TaxRate = it.TaxRate,
+                            TaxAmount = it.TaxAmount,
+                            LineTotal = it.LineTotal,
+                            DocumentPaidAmount = paid,
+                            DocumentOutstandingAmount = outstanding,
+                            AllocationNote = "Phân bổ theo hóa đơn (Document-level settlement)"
+                        });
+                    }
                 }
 
-                // Period Orders (confirmed uninvoiced)
-                var pOrders = custOrders.Where(o => (!fromDateUtc.HasValue || o.OrderDate >= fromDateUtc.Value) &&
-                                                    (!toDateUtc.HasValue || o.OrderDate <= toDateUtc.Value));
-                foreach (var ord in pOrders)
+                // Add Uninvoiced Orders
+                foreach (var ord in periodOrds)
                 {
-                    periodTx.Add(new PartnerLinkedTransactionDto
+                    decimal ordPaid = 0m;
+                    decimal ordOutstanding = ord.GrandTotal;
+                    if (runningGeneralCredit > 0)
                     {
-                        DocumentId = ord.Id,
+                        decimal alloc = Math.Min(ordOutstanding, runningGeneralCredit);
+                        ordPaid += alloc;
+                        ordOutstanding -= alloc;
+                        runningGeneralCredit -= alloc;
+                    }
+
+                    DateTime dueDate = ord.DeliveryDate ?? ord.OrderDate.AddDays(15);
+                    if (ordOutstanding > 0)
+                    {
+                        if (DateTime.UtcNow > dueDate) overdue += ordOutstanding;
+                        else notYetDue += ordOutstanding;
+
+                        if (!nextDueDate.HasValue || dueDate < nextDueDate.Value) nextDueDate = dueDate;
+                    }
+
+                    var ordStatus = ordOutstanding == 0m ? DebtStatus.Settled
+                        : (ordPaid > 0m ? DebtStatus.PartiallyPaid : DebtStatus.Outstanding);
+
+                    dataset.Documents.Add(new DebtDocumentExportRowDto
+                    {
+                        Direction = DebtDirection.Receivable,
+                        PartnerCode = cust.Code,
+                        PartnerName = cust.Name,
                         DocumentType = "Đơn bán hàng",
                         DocumentCode = ord.Code,
+                        ReferenceCode = null,
                         DocumentDate = ord.OrderDate,
-                        Amount = ord.GrandTotal,
-                        DebitAmount = ord.GrandTotal,
-                        CreditAmount = 0m,
-                        OutstandingAmount = ord.GrandTotal,
-                        PaidAmount = 0m,
-                        Status = "Đã xác nhận",
-                        PaymentMethod = "Chờ lập hóa đơn",
-                        Notes = ord.Notes
+                        DueDate = dueDate,
+                        OriginalAmount = ord.GrandTotal,
+                        PaidAmount = ordPaid,
+                        DiscountAmount = 0m,
+                        OutstandingAmount = ordOutstanding,
+                        DebtStatus = ordStatus,
+                        Notes = ord.Notes,
+                        TraceId = $"SO-{ord.Id}"
                     });
+
+                    foreach (var it in ord.Items.OrderBy(x => x.Id))
+                    {
+                        dataset.LineItems.Add(new DebtLineItemExportRowDto
+                        {
+                            DocumentCode = ord.Code,
+                            DocumentDate = ord.OrderDate,
+                            Direction = DebtDirection.Receivable,
+                            PartnerCode = cust.Code,
+                            PartnerName = cust.Name,
+                            ProductCode = it.ProductCode,
+                            ProductName = it.ProductName,
+                            Specifications = it.Notes,
+                            UnitName = it.UnitName,
+                            Quantity = it.Quantity,
+                            UnitPrice = it.UnitPrice,
+                            DiscountAmount = it.DiscountAmount,
+                            TaxRate = it.TaxRate,
+                            TaxAmount = it.TaxAmount,
+                            LineTotal = it.LineTotal,
+                            DocumentPaidAmount = ordPaid,
+                            DocumentOutstandingAmount = ordOutstanding,
+                            AllocationNote = "Phân bổ theo đơn hàng (Document-level settlement)"
+                        });
+                    }
                 }
 
-                // Period Payments / Adjustments / Discounts
-                var pPayments = custPayments.Where(p => (!fromDateUtc.HasValue || p.PaymentDate >= fromDateUtc.Value) &&
-                                                        (!toDateUtc.HasValue || p.PaymentDate <= toDateUtc.Value));
-                foreach (var pay in pPayments)
+                // Add Financial Transactions for Sheet D
+                foreach (var pay in periodPays)
                 {
-                    string docType = pay.TransactionType switch
+                    string txDesc = pay.TransactionType switch
                     {
-                        DebtTransactionType.Payment => "Phiếu thu tiền",
-                        DebtTransactionType.Adjustment => "Điều chỉnh công nợ",
-                        DebtTransactionType.PaymentDiscount => "Chiết khấu thanh toán",
+                        DebtTransactionType.Payment => "Phiếu thu tiền (Thu nợ KH)",
+                        DebtTransactionType.PaymentDiscount => "Chiết khấu thanh toán KH",
+                        DebtTransactionType.Adjustment => "Điều chỉnh công nợ KH",
                         _ => "Phiếu thu"
                     };
 
-                    periodTx.Add(new PartnerLinkedTransactionDto
+                    dataset.Transactions.Add(new DebtTransactionExportRowDto
                     {
-                        DocumentId = pay.Id,
-                        DocumentType = docType,
-                        DocumentCode = pay.PaymentCode,
-                        DocumentDate = pay.PaymentDate,
+                        TransactionType = pay.TransactionType,
+                        TransactionTypeDescription = txDesc,
+                        PaymentCode = pay.PaymentCode,
+                        TransactionDate = pay.PaymentDate,
+                        Direction = DebtDirection.Receivable,
+                        PartnerCode = cust.Code,
+                        PartnerName = cust.Name,
+                        ReferenceCode = pay.ReferenceCode ?? (pay.InvoiceId.HasValue ? $"INV-{pay.InvoiceId}" : null),
                         Amount = pay.Amount,
-                        DebitAmount = 0m,
-                        CreditAmount = pay.Amount,
-                        OutstandingAmount = 0m,
-                        PaidAmount = pay.Amount,
-                        Status = "Đã ghi nhận",
                         PaymentMethod = pay.PaymentMethod,
-                        ReferenceCode = pay.ReferenceCode,
-                        Notes = pay.Notes
+                        DiscountOrAdjustmentType = pay.TransactionType == DebtTransactionType.PaymentDiscount ? "Chiết khấu sớm" : (pay.TransactionType == DebtTransactionType.Adjustment ? "Điều chỉnh kế toán" : "Thu tiền"),
+                        Notes = pay.Notes,
+                        CreatedBy = pay.CreatedBy,
+                        CreatedAt = pay.CreatedAt,
+                        CounterReference = null
                     });
                 }
 
-                periodTx = periodTx.OrderBy(t => t.DocumentDate).ToList();
+                string statusDesc = closingBalance == 0m ? "Đã thanh toán đủ"
+                    : (overdue > 0m ? $"Quá hạn ({overdue:N0} ₫)" : "Trong hạn");
 
-                decimal totalDebits = periodTx.Sum(x => x.DebitAmount);
-                decimal totalCredits = periodTx.Where(x => x.DocumentType != "Chiết khấu thanh toán").Sum(x => x.CreditAmount);
-                decimal totalDiscounts = periodTx.Where(x => x.DocumentType == "Chiết khấu thanh toán").Sum(x => x.CreditAmount);
-                decimal closingBalance = Math.Max(0m, openingBalance + totalDebits - totalCredits - totalDiscounts);
-
-                summaries.Add(new PartnerStatementSummaryDto
+                dataset.Partners.Add(new PartnerStatementSummaryDto
                 {
                     PartnerId = cust.Id,
                     PartnerType = PartnerType.Customer,
@@ -1387,65 +1354,129 @@ public class PartnerDebtExportService : IPartnerDebtExportService
                     TotalCredits = totalCredits,
                     TotalDiscounts = totalDiscounts,
                     ClosingBalance = closingBalance,
+                    OverdueBalance = overdue,
+                    NotYetDueBalance = notYetDue,
+                    NextDueDate = nextDueDate,
+                    DebtStatusDescription = statusDesc,
                     BalanceDirectionDescription = closingBalance > 0
                         ? "Số dư phản ánh số tiền khách hàng còn nợ doanh nghiệp cần thu hồi"
-                        : "Khách hàng đã hoàn tất nghĩa vụ thanh toán",
-                    Transactions = periodTx
+                        : "Khách hàng đã hoàn tất nghĩa vụ thanh toán"
                 });
             }
         }
 
-        // 3. Load Suppliers
-        if (targetSupplierIds.Any())
+        // ---------------------------------------------------------------------
+        // 2. PROCESS SUPPLIERS (Công nợ phải trả)
+        // ---------------------------------------------------------------------
+        if (targetSupIds.Any())
         {
             var suppliers = await _context.Suppliers.AsNoTracking()
-                .Where(s => targetSupplierIds.Contains(s.Id))
+                .Where(s => targetSupIds.Contains(s.Id))
                 .ToListAsync(cancellationToken);
 
-            var payments = await _context.PartnerPayments.AsNoTracking()
-                .Where(p => p.PartnerType == (int)PartnerType.Supplier && targetSupplierIds.Contains(p.PartnerId))
+            var supPayments = await _context.PartnerPayments.AsNoTracking()
+                .Where(p => p.PartnerType == (int)PartnerType.Supplier && targetSupIds.Contains(p.PartnerId))
+                .OrderBy(p => p.PaymentDate)
                 .ToListAsync(cancellationToken);
 
             foreach (var sup in suppliers)
             {
-                var supPayments = payments.Where(p => p.PartnerId == sup.Id).ToList();
+                var pPayments = supPayments.Where(p => p.PartnerId == sup.Id).ToList();
 
+                decimal openingDebits = 0m;
                 decimal openingCredits = 0m;
+
                 if (fromDateUtc.HasValue)
                 {
-                    openingCredits += supPayments.Where(p => p.PaymentDate < fromDateUtc.Value && p.TransactionType == DebtTransactionType.Payment).Sum(p => p.Amount);
+                    openingDebits += pPayments.Where(p => p.PaymentDate < fromDateUtc.Value && p.TransactionType == DebtTransactionType.Adjustment).Sum(p => p.Amount);
+                    openingCredits += pPayments.Where(p => p.PaymentDate < fromDateUtc.Value && p.TransactionType != DebtTransactionType.Adjustment).Sum(p => p.Amount);
                 }
-                decimal openingBalance = 0m; // Phase 6 purchasing pending
 
-                var periodTx = new List<PartnerLinkedTransactionDto>();
-                var pPayments = supPayments.Where(p => (!fromDateUtc.HasValue || p.PaymentDate >= fromDateUtc.Value) &&
-                                                        (!toDateUtc.HasValue || p.PaymentDate <= toDateUtc.Value));
-                foreach (var pay in pPayments)
+                decimal openingBalance = Math.Max(0m, openingDebits - openingCredits);
+
+                var periodTx = pPayments.Where(p => (!fromDateUtc.HasValue || p.PaymentDate >= fromDateUtc.Value) &&
+                                                    (!toDateUtc.HasValue || p.PaymentDate <= toDateUtc.Value)).ToList();
+
+                decimal totalDebits = periodTx.Where(p => p.TransactionType == DebtTransactionType.Adjustment).Sum(p => p.Amount);
+                decimal totalCredits = periodTx.Where(p => p.TransactionType == DebtTransactionType.Payment).Sum(p => p.Amount);
+                decimal totalDiscounts = periodTx.Where(p => p.TransactionType == DebtTransactionType.PaymentDiscount).Sum(p => p.Amount);
+
+                decimal closingBalance = Math.Max(0m, openingBalance + totalDebits - totalCredits - totalDiscounts);
+
+                // Allocate payment to adjustments
+                decimal remainingPayCredit = periodTx.Where(p => p.TransactionType != DebtTransactionType.Adjustment).Sum(p => p.Amount);
+                var adjustments = periodTx.Where(p => p.TransactionType == DebtTransactionType.Adjustment).OrderBy(p => p.PaymentDate).ToList();
+
+                decimal overdue = 0m;
+                decimal notYetDue = 0m;
+                DateTime? nextDueDate = null;
+
+                foreach (var adj in adjustments)
                 {
-                    periodTx.Add(new PartnerLinkedTransactionDto
+                    decimal paid = Math.Min(adj.Amount, Math.Max(0m, remainingPayCredit));
+                    remainingPayCredit -= paid;
+                    decimal outstanding = Math.Max(0m, adj.Amount - paid);
+
+                    DateTime dueDate = adj.PaymentDate.AddDays(30);
+                    if (outstanding > 0)
                     {
-                        DocumentId = pay.Id,
-                        DocumentType = pay.TransactionType == DebtTransactionType.Payment ? "Phiếu chi thanh toán" : "Điều chỉnh nợ NCC",
-                        DocumentCode = pay.PaymentCode,
-                        DocumentDate = pay.PaymentDate,
-                        Amount = pay.Amount,
-                        DebitAmount = 0m,
-                        CreditAmount = pay.Amount,
-                        OutstandingAmount = 0m,
-                        PaidAmount = pay.Amount,
-                        Status = "Đã chi tiền",
-                        PaymentMethod = pay.PaymentMethod,
-                        ReferenceCode = pay.ReferenceCode,
-                        Notes = pay.Notes
+                        if (DateTime.UtcNow > dueDate) overdue += outstanding;
+                        else notYetDue += outstanding;
+
+                        if (!nextDueDate.HasValue || dueDate < nextDueDate.Value) nextDueDate = dueDate;
+                    }
+
+                    var status = outstanding == 0m ? DebtStatus.Settled
+                        : (paid > 0m ? DebtStatus.PartiallyPaid : DebtStatus.Outstanding);
+
+                    dataset.Documents.Add(new DebtDocumentExportRowDto
+                    {
+                        Direction = DebtDirection.Payable,
+                        PartnerCode = sup.Code,
+                        PartnerName = sup.Name,
+                        DocumentType = "Điều chỉnh nợ NCC",
+                        DocumentCode = adj.PaymentCode,
+                        ReferenceCode = adj.ReferenceCode,
+                        DocumentDate = adj.PaymentDate,
+                        DueDate = dueDate,
+                        OriginalAmount = adj.Amount,
+                        PaidAmount = paid,
+                        DiscountAmount = 0m,
+                        OutstandingAmount = outstanding,
+                        DebtStatus = status,
+                        Notes = adj.Notes,
+                        TraceId = $"PP-{adj.Id}"
                     });
                 }
 
-                periodTx = periodTx.OrderBy(t => t.DocumentDate).ToList();
-                decimal totalDebits = 0m;
-                decimal totalCredits = periodTx.Sum(x => x.CreditAmount);
-                decimal closingBalance = 0m;
+                // If supplier has pure payment records (without adjustment obligation)
+                var paymentsOnly = periodTx.Where(p => p.TransactionType != DebtTransactionType.Adjustment).ToList();
+                foreach (var pay in paymentsOnly)
+                {
+                    dataset.Transactions.Add(new DebtTransactionExportRowDto
+                    {
+                        TransactionType = pay.TransactionType,
+                        TransactionTypeDescription = pay.TransactionType == DebtTransactionType.Payment ? "Phiếu chi thanh toán NCC" : "Chiết khấu thanh toán NCC",
+                        PaymentCode = pay.PaymentCode,
+                        TransactionDate = pay.PaymentDate,
+                        Direction = DebtDirection.Payable,
+                        PartnerCode = sup.Code,
+                        PartnerName = sup.Name,
+                        ReferenceCode = pay.ReferenceCode,
+                        Amount = pay.Amount,
+                        PaymentMethod = pay.PaymentMethod,
+                        DiscountOrAdjustmentType = pay.TransactionType == DebtTransactionType.PaymentDiscount ? "Chiết khấu NCC" : "Thanh toán",
+                        Notes = pay.Notes,
+                        CreatedBy = pay.CreatedBy,
+                        CreatedAt = pay.CreatedAt,
+                        CounterReference = null
+                    });
+                }
 
-                summaries.Add(new PartnerStatementSummaryDto
+                string statusDesc = closingBalance == 0m ? "Không có nợ đọng"
+                    : (overdue > 0m ? $"Quá hạn ({overdue:N0} ₫)" : "Còn nợ nhà cung cấp");
+
+                dataset.Partners.Add(new PartnerStatementSummaryDto
                 {
                     PartnerId = sup.Id,
                     PartnerType = PartnerType.Supplier,
@@ -1459,112 +1490,171 @@ public class PartnerDebtExportService : IPartnerDebtExportService
                     OpeningBalance = openingBalance,
                     TotalDebits = totalDebits,
                     TotalCredits = totalCredits,
-                    TotalDiscounts = 0m,
+                    TotalDiscounts = totalDiscounts,
                     ClosingBalance = closingBalance,
-                    BalanceDirectionDescription = "Phân hệ Mua hàng đang chuẩn bị kích hoạt; chưa phát sinh công nợ phải trả",
-                    Transactions = periodTx
+                    OverdueBalance = overdue,
+                    NotYetDueBalance = notYetDue,
+                    NextDueDate = nextDueDate,
+                    DebtStatusDescription = statusDesc,
+                    BalanceDirectionDescription = closingBalance > 0
+                        ? "Doanh nghiệp còn nghĩa vụ nợ phải trả cho nhà cung cấp"
+                        : "Không có dư nợ phải trả"
                 });
             }
         }
 
-        return summaries;
-    }
-
-    private async Task<(List<CustomerDebtSummaryRowDto>, List<SupplierDebtSummaryRowDto>, List<ManagementMovementRowDto>)> LoadManagementDatasetAsync(
-        DebtManagementExportRequest request,
-        CancellationToken cancellationToken)
-    {
-        var stmtReq = new PartnerDebtStatementExportRequest
+        // Apply additional balance threshold filters if provided in DebtFilterDto
+        if (filter != null)
         {
-            Scope = DebtExportScope.AllFiltered,
-            FromDate = request.FromDate,
-            ToDate = request.ToDate,
-            DatePresetTitle = request.DatePresetTitle,
-            IncludeLineDetails = false
-        };
-
-        var allStatements = await LoadPartnerStatementsAsync(stmtReq, cancellationToken);
-
-        var customersList = allStatements
-            .Where(x => x.PartnerType == PartnerType.Customer)
-            .Select(c => new CustomerDebtSummaryRowDto
+            if (filter.MinBalance.HasValue)
             {
-                Id = c.PartnerId,
-                Code = c.Code,
-                Name = c.Name,
-                CompanyName = c.CompanyName,
-                TaxCode = c.TaxCode,
-                Phone = c.Phone,
-                IsCompany = !string.IsNullOrEmpty(c.CompanyName) || !string.IsNullOrEmpty(c.TaxCode),
-                OpeningReceivable = c.OpeningBalance,
-                PeriodSales = c.TotalDebits,
-                PaymentsReceived = c.TotalCredits,
-                DiscountsOrAdjustments = c.TotalDiscounts,
-                ClosingReceivable = c.ClosingBalance
-            })
-            .OrderByDescending(x => x.ClosingReceivable)
-            .ToList();
-
-        var suppliersList = allStatements
-            .Where(x => x.PartnerType == PartnerType.Supplier)
-            .Select(s => new SupplierDebtSummaryRowDto
+                dataset.Partners = dataset.Partners.Where(p => p.ClosingBalance >= filter.MinBalance.Value).ToList();
+            }
+            if (filter.MaxBalance.HasValue)
             {
-                Id = s.PartnerId,
-                Code = s.Code,
-                Name = s.Name,
-                CompanyName = s.CompanyName,
-                TaxCode = s.TaxCode,
-                Phone = s.Phone,
-                OpeningPayable = s.OpeningBalance,
-                PeriodPurchases = s.TotalDebits,
-                PaymentsMade = s.TotalCredits,
-                AdjustmentsOrReductions = s.TotalDiscounts,
-                ClosingPayable = s.ClosingBalance
-            })
-            .ToList();
-
-        var allMovements = new List<ManagementMovementRowDto>();
-        foreach (var stmt in allStatements)
-        {
-            decimal runBal = stmt.OpeningBalance;
-            foreach (var t in stmt.Transactions)
+                dataset.Partners = dataset.Partners.Where(p => p.ClosingBalance <= filter.MaxBalance.Value).ToList();
+            }
+            if (filter.DebtStatus.HasValue)
             {
-                runBal += t.DebitAmount - t.CreditAmount;
-                allMovements.Add(new ManagementMovementRowDto
+                if (filter.DebtStatus.Value == DebtStatus.Settled)
                 {
-                    PartnerType = stmt.PartnerType,
-                    PartnerCode = stmt.Code,
-                    PartnerName = stmt.Name,
-                    Phone = stmt.Phone,
-                    DocumentCode = t.DocumentCode,
-                    DocumentDate = t.DocumentDate,
-                    DocumentType = t.DocumentType,
-                    ReferenceCode = t.ReferenceCode,
-                    ReceivableIncrease = stmt.PartnerType == PartnerType.Customer ? t.DebitAmount : 0m,
-                    PayableIncrease = stmt.PartnerType == PartnerType.Supplier ? t.DebitAmount : 0m,
-                    PaymentOrReduction = t.CreditAmount,
-                    RunningBalance = runBal,
-                    PaymentMethod = t.PaymentMethod,
-                    Notes = t.Notes
-                });
+                    dataset.Partners = dataset.Partners.Where(p => p.ClosingBalance == 0).ToList();
+                }
+                else if (filter.DebtStatus.Value == DebtStatus.Outstanding)
+                {
+                    dataset.Partners = dataset.Partners.Where(p => p.ClosingBalance > 0 && p.TotalCredits == 0).ToList();
+                }
+                else if (filter.DebtStatus.Value == DebtStatus.PartiallyPaid)
+                {
+                    dataset.Partners = dataset.Partners.Where(p => p.ClosingBalance > 0 && p.TotalCredits > 0).ToList();
+                }
             }
         }
 
-        allMovements = allMovements.OrderByDescending(m => m.DocumentDate).ToList();
+        // Sort Documents and Transactions chronologically descending
+        dataset.Documents = dataset.Documents.OrderByDescending(d => d.DocumentDate).ToList();
+        dataset.LineItems = dataset.LineItems.OrderByDescending(l => l.DocumentDate).ToList();
+        dataset.Transactions = dataset.Transactions.OrderByDescending(t => t.TransactionDate).ToList();
 
-        return (customersList, suppliersList, allMovements);
+        return dataset;
+    }
+
+    private static DebtExportDataset FilterDatasetForSinglePartner(DebtExportDataset source, int partnerId, PartnerType type)
+    {
+        var partner = source.Partners.FirstOrDefault(p => p.PartnerId == partnerId && p.PartnerType == type);
+        string code = partner?.Code ?? "";
+
+        return new DebtExportDataset
+        {
+            Partners = partner != null ? new List<PartnerStatementSummaryDto> { partner } : new(),
+            Documents = source.Documents.Where(d => d.PartnerCode == code).ToList(),
+            LineItems = source.LineItems.Where(l => l.PartnerCode == code).ToList(),
+            Transactions = source.Transactions.Where(t => t.PartnerCode == code).ToList()
+        };
     }
 
     // =========================================================================
-    // EXCEL HELPER UTILITIES
+    // EXCEL HELPER FORMATTERS
     // =========================================================================
+
+    private static void SetupPageLayout(IXLWorksheet ws)
+    {
+        ws.PageSetup.PageOrientation = XLPageOrientation.Landscape;
+        ws.PageSetup.PaperSize = XLPaperSize.A4Paper;
+        ws.PageSetup.FitToPages(1, 0); // Fit 1 page wide
+    }
+
+    private static int RenderCompanyHeader(IXLWorksheet ws, int startRow, CompanySettings company)
+    {
+        int row = startRow;
+        ws.Cell(row, 1).Value = company.CompanyName.ToUpper();
+        ws.Cell(row, 1).Style.Font.Bold = true;
+        ws.Cell(row, 1).Style.Font.FontSize = 11;
+        ws.Cell(row, 1).Style.Font.FontColor = BrandDark;
+        row++;
+
+        ws.Cell(row, 1).Value = $"Địa chỉ: {company.Address ?? "Trụ sở chính TradeFlow"}  |  MST: {company.TaxCode ?? "0319205643"}  |  SĐT: {company.Phone ?? "0901234567"}";
+        ws.Cell(row, 1).Style.Font.FontSize = 9;
+        ws.Cell(row, 1).Style.Font.FontColor = MutedText;
+        row += 2;
+
+        return row;
+    }
+
+    private static void RenderSignatureSection(IXLWorksheet ws, int startRow)
+    {
+        int sigRow = startRow + 2;
+        ws.Cell(sigRow, 2).Value = "NGƯỜI LẬP BIỂU";
+        ws.Cell(sigRow, 2).Style.Font.Bold = true;
+        ws.Cell(sigRow, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+        ws.Cell(sigRow, 6).Value = "KẾ TOÁN CÔNG NỢ";
+        ws.Cell(sigRow, 6).Style.Font.Bold = true;
+        ws.Cell(sigRow, 6).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+        ws.Cell(sigRow, 11).Value = "KẾ TOÁN TRƯỞNG / GIÁM ĐỐC";
+        ws.Cell(sigRow, 11).Style.Font.Bold = true;
+        ws.Cell(sigRow, 11).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+        ws.Cell(sigRow + 1, 2).Value = "(Ký và ghi rõ họ tên)";
+        ws.Cell(sigRow + 1, 2).Style.Font.Italic = true;
+        ws.Cell(sigRow + 1, 2).Style.Font.FontSize = 9;
+        ws.Cell(sigRow + 1, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+        ws.Cell(sigRow + 1, 6).Value = "(Ký và ghi rõ họ tên)";
+        ws.Cell(sigRow + 1, 6).Style.Font.Italic = true;
+        ws.Cell(sigRow + 1, 6).Style.Font.FontSize = 9;
+        ws.Cell(sigRow + 1, 6).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+        ws.Cell(sigRow + 1, 11).Value = "(Ký, đóng dấu và ghi rõ họ tên)";
+        ws.Cell(sigRow + 1, 11).Style.Font.Italic = true;
+        ws.Cell(sigRow + 1, 11).Style.Font.FontSize = 9;
+        ws.Cell(sigRow + 1, 11).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+    }
+
+    private static void SetNumericCell(IXLCell cell, double value)
+    {
+        cell.Value = value;
+        cell.Style.NumberFormat.Format = "#,##0 ₫";
+        cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+    }
+
+    private static void AddFinancialMetricRow(IXLWorksheet ws, ref int row, string label, decimal amount, string hint)
+    {
+        ws.Cell(row, 1).Value = label;
+        ws.Cell(row, 1).Style.Font.Bold = true;
+
+        var amountCell = ws.Cell(row, 3);
+        SetNumericCell(amountCell, (double)amount);
+        amountCell.Style.Font.Bold = true;
+
+        ws.Cell(row, 4).Value = hint;
+        ws.Cell(row, 4).Style.Font.Italic = true;
+        ws.Cell(row, 4).Style.Font.FontColor = MutedText;
+
+        ws.Range(row, 1, row, 7).Style.Border.BottomBorder = XLBorderStyleValues.Thin;
+        ws.Range(row, 1, row, 7).Style.Border.BottomBorderColor = BorderLight;
+        row++;
+    }
+
+    private static void AddKeyValueRow(IXLWorksheet ws, ref int row, string key1, string val1, string key2, string val2)
+    {
+        ws.Cell(row, 1).Value = key1;
+        ws.Cell(row, 1).Style.Font.Bold = true;
+        ws.Cell(row, 2).Value = val1;
+
+        ws.Cell(row, 4).Value = key2;
+        ws.Cell(row, 4).Style.Font.Bold = true;
+        ws.Cell(row, 5).Value = val2;
+
+        ws.Range(row, 1, row, 7).Style.Border.BottomBorder = XLBorderStyleValues.Hair;
+        ws.Range(row, 1, row, 7).Style.Border.BottomBorderColor = BorderLight;
+        row++;
+    }
 
     public static string SafeSheetName(string desiredName, HashSet<string> existingNames)
     {
-        if (string.IsNullOrWhiteSpace(desiredName))
-        {
-            desiredName = "Sheet";
-        }
+        if (string.IsNullOrWhiteSpace(desiredName)) desiredName = "Sheet";
 
         var invalidChars = new[] { '\\', '/', '?', '*', '[', ']', ':', '\'', '"' };
         var clean = new StringBuilder();
@@ -1576,10 +1666,9 @@ public class PartnerDebtExportService : IPartnerDebtExportService
         var trimmed = clean.ToString().Trim();
         if (string.IsNullOrWhiteSpace(trimmed)) trimmed = "Sheet";
 
-        // Limit base length to 26 to allow room for unique suffixes "_1", "_2", etc. (Excel max = 31)
-        if (trimmed.Length > 26)
+        if (trimmed.Length > 31)
         {
-            trimmed = trimmed.Substring(0, 26).TrimEnd('-', '_', ' ');
+            trimmed = trimmed.Substring(0, 31).TrimEnd('-', '_', ' ');
         }
 
         var finalName = trimmed;
@@ -1595,87 +1684,15 @@ public class PartnerDebtExportService : IPartnerDebtExportService
         existingNames.Add(finalName);
         return finalName;
     }
-
-    private static void AddMetricRow(IXLWorksheet ws, ref int row, string label, decimal amount, string hint)
-    {
-        ws.Cell(row, 1).Value = label;
-        ws.Cell(row, 1).Style.Font.Bold = true;
-
-        ws.Cell(row, 3).Value = (double)amount;
-        ws.Cell(row, 3).Style.NumberFormat.Format = "#,##0 ₫";
-        ws.Cell(row, 3).Style.Font.Bold = true;
-
-        ws.Cell(row, 4).Value = hint;
-        ws.Cell(row, 4).Style.Font.Italic = true;
-        ws.Cell(row, 4).Style.Font.FontColor = MutedText;
-
-        ws.Range(row, 1, row, 6).Style.Border.BottomBorder = XLBorderStyleValues.Thin;
-        ws.Range(row, 1, row, 6).Style.Border.BottomBorderColor = BorderGray;
-        row++;
-    }
-
-    private static void AddInfoRow(IXLWorksheet ws, ref int row, string lbl1, string val1, string lbl2, string val2)
-    {
-        ws.Cell(row, 1).Value = lbl1;
-        ws.Cell(row, 1).Style.Font.Bold = true;
-        ws.Cell(row, 2).Value = val1;
-
-        ws.Cell(row, 4).Value = lbl2;
-        ws.Cell(row, 4).Style.Font.Bold = true;
-        ws.Cell(row, 5).Value = val2;
-
-        ws.Range(row, 1, row, 6).Style.Border.BottomBorder = XLBorderStyleValues.Hair;
-        ws.Range(row, 1, row, 6).Style.Border.BottomBorderColor = BorderGray;
-        row++;
-    }
 }
 
-// Supporting internal management models
-public class CustomerDebtSummaryRowDto
+/// <summary>
+/// Internal container for loaded export data across sheets
+/// </summary>
+public class DebtExportDataset
 {
-    public int Id { get; set; }
-    public string Code { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string? CompanyName { get; set; }
-    public string? TaxCode { get; set; }
-    public string? Phone { get; set; }
-    public bool IsCompany { get; set; }
-    public decimal OpeningReceivable { get; set; }
-    public decimal PeriodSales { get; set; }
-    public decimal PaymentsReceived { get; set; }
-    public decimal DiscountsOrAdjustments { get; set; }
-    public decimal ClosingReceivable { get; set; }
-}
-
-public class SupplierDebtSummaryRowDto
-{
-    public int Id { get; set; }
-    public string Code { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string? CompanyName { get; set; }
-    public string? TaxCode { get; set; }
-    public string? Phone { get; set; }
-    public decimal OpeningPayable { get; set; }
-    public decimal PeriodPurchases { get; set; }
-    public decimal PaymentsMade { get; set; }
-    public decimal AdjustmentsOrReductions { get; set; }
-    public decimal ClosingPayable { get; set; }
-}
-
-public class ManagementMovementRowDto
-{
-    public PartnerType PartnerType { get; set; }
-    public string PartnerCode { get; set; } = string.Empty;
-    public string PartnerName { get; set; } = string.Empty;
-    public string? Phone { get; set; }
-    public string DocumentCode { get; set; } = string.Empty;
-    public DateTime DocumentDate { get; set; }
-    public string DocumentType { get; set; } = string.Empty;
-    public string? ReferenceCode { get; set; }
-    public decimal ReceivableIncrease { get; set; }
-    public decimal PayableIncrease { get; set; }
-    public decimal PaymentOrReduction { get; set; }
-    public decimal RunningBalance { get; set; }
-    public string? PaymentMethod { get; set; }
-    public string? Notes { get; set; }
+    public List<PartnerStatementSummaryDto> Partners { get; set; } = new();
+    public List<DebtDocumentExportRowDto> Documents { get; set; } = new();
+    public List<DebtLineItemExportRowDto> LineItems { get; set; } = new();
+    public List<DebtTransactionExportRowDto> Transactions { get; set; } = new();
 }

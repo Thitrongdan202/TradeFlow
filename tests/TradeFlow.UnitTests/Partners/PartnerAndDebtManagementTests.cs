@@ -497,14 +497,20 @@ public class PartnerAndDebtManagementTests
         using var stream = new MemoryStream(bytes);
         using var workbook = new XLWorkbook(stream);
 
-        // Single partner statement must contain 2 worksheets: "Tổng hợp công nợ" and "Chi tiết giao dịch"
-        Assert.True(workbook.Worksheets.Count >= 2);
+        // Single partner statement must contain the 4 standardized sheets
+        Assert.True(workbook.Worksheets.Count >= 4);
         var summarySheet = workbook.Worksheet("Tổng hợp công nợ");
         Assert.NotNull(summarySheet);
         Assert.Contains(customer.Code, summarySheet.Cell(8, 2).GetString());
 
-        var detailSheet = workbook.Worksheet("Chi tiết giao dịch");
+        var detailSheet = workbook.Worksheet("Chi tiết theo chứng từ");
         Assert.NotNull(detailSheet);
+
+        var itemsSheet = workbook.Worksheet("Chi tiết từng mặt hàng");
+        Assert.NotNull(itemsSheet);
+
+        var txSheet = workbook.Worksheet("Lịch sử thu, chi, điều chỉnh");
+        Assert.NotNull(txSheet);
 
         // Verify financial cells contain real numeric values (not plain strings)
         var closingCell = summarySheet.Cell("C16");
@@ -537,9 +543,12 @@ public class PartnerAndDebtManagementTests
         using var stream = new MemoryStream(bytes);
         using var workbook = new XLWorkbook(stream);
 
-        // Multi-partner export must produce exactly 1 summary sheet + 1 detail sheet per partner
-        Assert.Equal(3, workbook.Worksheets.Count);
+        // Multi-partner export must produce the 4 core sheets plus safe partner detail sheets
+        Assert.True(workbook.Worksheets.Count >= 4);
         Assert.NotNull(workbook.Worksheet("Tổng hợp công nợ"));
+        Assert.NotNull(workbook.Worksheet("Chi tiết theo chứng từ"));
+        Assert.NotNull(workbook.Worksheet("Chi tiết từng mặt hàng"));
+        Assert.NotNull(workbook.Worksheet("Lịch sử thu, chi, điều chỉnh"));
 
         // Verify safe sheet names: prohibited characters \ / ? * [ ] : must be cleaned
         foreach (var ws in workbook.Worksheets)
@@ -595,14 +604,16 @@ public class PartnerAndDebtManagementTests
         using var stream = new MemoryStream(bytes);
         using var workbook = new XLWorkbook(stream);
 
-        // Consolidated management workbook must contain 4 core sheets:
-        Assert.NotNull(workbook.Worksheet("Tổng quan công nợ"));
-        Assert.NotNull(workbook.Worksheet("Tổng hợp phải thu KH"));
-        Assert.NotNull(workbook.Worksheet("Tổng hợp phải trả NCC"));
-        Assert.NotNull(workbook.Worksheet("Chi tiết giao dịch"));
+        // Consolidated management workbook must contain 4 standardized core sheets:
+        Assert.NotNull(workbook.Worksheet("Tổng hợp công nợ"));
+        Assert.NotNull(workbook.Worksheet("Chi tiết theo chứng từ"));
+        Assert.NotNull(workbook.Worksheet("Chi tiết từng mặt hàng"));
+        Assert.NotNull(workbook.Worksheet("Lịch sử thu, chi, điều chỉnh"));
 
-        var overviewSheet = workbook.Worksheet("Tổng quan công nợ");
-        var customerReceivableCell = overviewSheet.Cell(6, 3);
+        var summarySheet = workbook.Worksheet("Tổng hợp công nợ");
+        var customerReceivableRow = summarySheet.RowsUsed().FirstOrDefault(r => r.Cell(1).GetString().Contains("Tổng công nợ phải thu"));
+        Assert.NotNull(customerReceivableRow);
+        var customerReceivableCell = customerReceivableRow.Cell(3);
         Assert.Equal(XLDataType.Number, customerReceivableCell.DataType);
         Assert.Equal(5000000d, customerReceivableCell.GetDouble());
     }

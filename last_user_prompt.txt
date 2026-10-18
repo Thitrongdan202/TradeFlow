@@ -1,0 +1,467 @@
+<USER_REQUEST>
+# TRADEFLOW — COMPLETE ACCOUNTS RECEIVABLE & PAYABLE REPORTING REDESIGN
+
+## Mission
+
+Rebuild and complete the existing debt-reporting and debt-export functionality in TradeFlow.
+
+The current debt files must provide a complete, detailed, and trustworthy representation of every outstanding receivable and payable. A report containing only customer/supplier names and aggregate debt balances is insufficient.
+
+The exported report must contain the detailed debt records and individual items represented by the application's actual debt lists, while preserving the correct relationship to source invoices, orders, transactions, payments, adjustments, and supporting documents.
+
+Cover both directions:
+
+1. **Công nợ phải thu:** amounts customers and other debtors owe the company.
+2. **Công nợ phải trả:** amounts the company owes suppliers and other creditors.
+
+This is an implementation task. Inspect the existing TradeFlow debt screens, export logic, database entities, financial services, and document relationships. Implement the improvements directly and verify the exported files against the live application data.
+
+Do not include repository URLs in the UI or final report. Do not commit or push.
+
+---
+
+## 1. Audit the current debt system before changing it
+
+Inspect the actual implementation of:
+
+- Customer debt and receivables.
+- Supplier debt and payables.
+- Consolidated debt summaries.
+- Customer and supplier detail views.
+- Receipts, payments, debt adjustments, and payment discounts.
+- Sales invoices and other documents that create receivables.
+- Purchase, supplier, or other records that create payables.
+- Invoice and document line items.
+- Payment allocation and settlement records.
+- Existing Excel/CSV/PDF export services.
+- The relevant Chứng từ records and attachments.
+
+Identify exactly which database entities and services currently determine outstanding balances.
+
+Determine which detailed fields are available from actual persisted data, which values are calculated, and which relationships are missing or incomplete.
+
+Do not invent additional historical transactions, product details, payments, or debt allocations merely to fill gaps in the exported report.
+
+Do not replace the existing accounting or debt-calculation rules without a separately justified correction.
+
+## 2. Make the export match the actual displayed debt list
+
+The debt export must faithfully represent the records shown in the corresponding TradeFlow screen.
+
+For each report:
+
+- Preserve the same applicable search and filter conditions.
+- Export all records matching those conditions, not merely the rows currently visible on the screen.
+- Preserve the relevant sorting and grouping where practical.
+- Include the actual fields displayed in the list.
+- Include the available underlying details needed to explain each balance.
+- Include every applicable record, even when the screen uses pagination.
+- Do not truncate names, document numbers, notes, or important identifiers in the exported data.
+- Do not substitute placeholder values for missing database fields.
+
+A report must not show one total in the application and a different total in Excel without a clear, documented reason.
+
+If the application displays a customer with outstanding debt, the exported workbook must show the underlying details explaining that customer's outstanding balance.
+
+If the report is filtered to an individual customer, it must contain only that customer's records.
+
+Apply the same principle to individual suppliers.
+
+## 3. Build a professional Excel workbook
+
+Use the existing supported Excel export technology if available. If the project already has an export library, reuse it where appropriate instead of introducing another dependency unnecessarily.
+
+Generate a professionally formatted `.xlsx` workbook.
+
+The workbook should be readable, structured, filterable, and suitable for reconciliation and operational reporting.
+
+Use Vietnamese sheet names and Vietnamese column headings.
+
+Apply:
+
+- Clear report titles.
+- Report generation timestamp.
+- Applicable reporting filters or date range.
+- Consistent date formatting.
+- Consistent VND currency formatting.
+- Thousands separators.
+- Correct monetary precision based on existing financial rules.
+- Readable column widths.
+- Bold column headings.
+- Frozen header rows.
+- Excel filters.
+- Proper numeric cell types rather than numbers stored as text.
+- Totals and subtotals where appropriate.
+- Sensible page setup for printing.
+- A clear distinction between raw details and calculated summaries.
+
+Avoid excessive colours, decorative graphics, merged cells that make data difficult to filter, or unnecessary formatting that makes large reports slow to open.
+
+The values must remain usable for Excel sorting, filtering, formulas, reconciliation, and further analysis.
+
+## 4. Define the report structure
+
+Inspect the actual database relationships before finalizing the sheet layout. Include the following logical information wherever it exists in the authoritative data model.
+
+### Sheet A — Tổng hợp công nợ
+
+Provide an aggregate overview of the applicable debt population.
+
+For receivables, include where supported:
+
+- Customer/debtor code.
+- Customer/debtor name.
+- Tax ID or other appropriate identifier.
+- Contact information where relevant and authorized.
+- Opening outstanding balance when available.
+- Total amounts creating receivables during the reporting period.
+- Payments received.
+- Applicable discounts, credits, returns, or adjustments.
+- Current outstanding balance.
+- Overdue balance.
+- Not-yet-due balance where due dates are available.
+- Earliest or next due date where meaningful.
+- Relevant debt status.
+
+For payables, provide the equivalent information from the company's perspective:
+
+- Supplier/creditor code.
+- Supplier/creditor name.
+- Tax ID or relevant identifier.
+- Opening payable balance where available.
+- Total amounts creating payables during the reporting period.
+- Payments made.
+- Applicable discounts, credits, returns, or adjustments.
+- Current outstanding balance.
+- Overdue balance.
+- Not-yet-due balance where due dates are available.
+- Relevant due dates and settlement status.
+
+Use the existing model's actual values and terminology. Do not make up due dates, credit terms, opening balances, or status classifications that the application does not support.
+
+If opening balances cannot be established reliably, omit the field or clearly indicate that the value is unavailable. Never fabricate historical values to make the report appear complete.
+
+### Sheet B — Chi tiết công nợ theo chứng từ
+
+Provide a detailed list of each source document that contributes to the outstanding debt.
+
+Where supported, include:
+
+- Debt direction: phải thu or phải trả.
+- Customer or supplier code.
+- Customer or supplier name.
+- Source document type.
+- Source document number.
+- Related invoice, order, receipt, payment, or adjustment reference.
+- Document date.
+- Due date, if recorded.
+- Original document value.
+- Amount paid or settled.
+- Discounts, credits, returns, or applicable adjustments.
+- Remaining outstanding amount.
+- Settlement status.
+- Relevant notes.
+- Stable source record identifier for traceability.
+
+A customer with multiple outstanding invoices must appear against each relevant invoice, not just as one aggregate row.
+
+The same applies to a supplier with multiple outstanding purchase documents or payables.
+
+Do not duplicate an entire original invoice amount for each associated payment. Use the actual settlement relationships and outstanding calculations.
+
+### Sheet C — Chi tiết từng mặt hàng / dịch vụ
+
+This sheet is critical.
+
+Where the source document contains line items, report the individual items that contribute to the corresponding debt.
+
+Include the available fields, such as:
+
+- Source document number.
+- Customer or supplier.
+- Product/service code.
+- Product/service name.
+- Specification or description where applicable.
+- Unit of measure.
+- Quantity.
+- Unit price.
+- Discount.
+- Applicable tax.
+- Line total.
+- Amount paid or settled against the source document or line, when supported by actual allocation records.
+- Remaining outstanding amount attributable to that line, only when it can be calculated reliably.
+- Related document and stable line identifier.
+
+For example, if a customer's unpaid invoice contains three product lines, the workbook should expose those three lines rather than merely reporting the invoice's grand total.
+
+However, do not invent allocations when payments are recorded only at the invoice level.
+
+If the actual system stores payment allocations at the invoice level rather than the line-item level, preserve that distinction. Show:
+
+- Actual item-level invoice details.
+- The actual payment and outstanding balance at the invoice level.
+- A clear indication that payment allocation by line item is not available.
+
+Do not arbitrarily distribute a receipt among products using quantity, price, or proportional allocation unless that is already an established and verifiable accounting rule in TradeFlow.
+
+Where item-level outstanding balances cannot be reliably derived, report the full original item details and keep the remaining balance at its proper source-document level.
+
+This is preferable to generating falsely precise amounts.
+
+### Sheet D — Lịch sử thu, chi và điều chỉnh công nợ
+
+Include the actual financial transactions relevant to the selected reporting scope.
+
+Where supported, include:
+
+- Transaction type.
+- Receipt/payment number.
+- Transaction date.
+- Related customer or supplier.
+- Related source invoice or document.
+- Amount.
+- Payment method.
+- Discount or adjustment type.
+- Notes.
+- Creator and creation timestamp.
+- Reversal or correction references, if recorded.
+
+This sheet must distinguish actual receipts and payments from discounts, debt adjustments, and other events that change the balance.
+
+Do not treat every row as a payment. Preserve the semantics of each transaction type.
+
+Do not include unrelated transactions simply because they belong to the same customer or supplier.
+
+Use the actual transaction-to-document links from the database.
+
+### Additional sheets
+
+Add other sheets only where they provide real value, such as:
+
+- Công nợ quá hạn.
+- Đối chiếu chênh lệch.
+- Danh mục khách hàng/nhà cung cấp liên quan.
+
+Avoid producing numerous nearly identical sheets that make the workbook harder to use.
+
+## 5. Correctly represent outstanding debt
+
+Inspect the current financial model and determine how the application calculates debt balances.
+
+Use the existing authoritative calculation logic wherever possible.
+
+A conceptual calculation might be:
+
+Outstanding amount = eligible source-document amounts − settlements − applicable credits or adjustments.
+
+However, this is only a conceptual description. Do not blindly apply the formula without reviewing TradeFlow's real accounting rules.
+
+Account for the supported treatment of:
+
+- Receipts and payments.
+- Partial settlement.
+- Overpayment and advance payment, if supported.
+- Payment discounts.
+- Credit notes.
+- Returns.
+- Debt increases and decreases.
+- Reversals and cancellations.
+- Voided documents.
+- Opening balances.
+- Currency precision.
+- Relevant status transitions.
+
+Do not include cancelled or reversed records incorrectly in outstanding balances.
+
+Do not count the same financial event twice through both its source document and its associated ledger entry.
+
+If the UI currently uses a specific service to calculate outstanding balances, use the same business rules in the export path rather than independently implementing a potentially inconsistent calculation.
+
+If a defect is found in the existing calculation, document it and fix it only after verifying the intended business rule and affected workflows.
+
+## 6. Keep receivables and payables separate
+
+Provide clearly distinguishable reports for the two debt directions.
+
+### Customer receivables
+
+Use the customer's perspective appropriately:
+
+- Customer owes the company.
+- Money received reduces the relevant receivable according to the existing rules.
+- The remaining outstanding amount is clearly identified as phải thu.
+
+### Supplier payables
+
+Use the company's perspective appropriately:
+
+- The company owes the supplier.
+- Money paid reduces the relevant payable according to the existing rules.
+- The remaining outstanding amount is clearly identified as phải trả.
+
+Do not mix receivables and payables into an unlabeled net balance that obscures who owes whom.
+
+If the application supports multiple companies, branches, or accounting entities, group the reports according to the actual company/branch relationship and ensure the totals reconcile independently.
+
+When exporting an aggregate report that contains multiple companies, separate their data into distinct worksheets or clearly separated report sections, according to the existing data model.
+
+Do not accidentally mix records from different companies into one customer's or supplier's report.
+
+## 7. Preserve individual and aggregate export scope
+
+Inspect the actual export controls and existing behaviour.
+
+### Quick customer export
+
+When a user exports a specific customer's data, export all relevant supported information for that customer without requiring the user to manually choose columns.
+
+Include its applicable debt details and traceable underlying documents and transactions, according to the existing supported export scope.
+
+Never include other customers' information.
+
+### Quick supplier export
+
+Apply the same principle to an individual supplier: export the full relevant payable detail for that supplier, excluding unrelated suppliers.
+
+### Debt-specific export
+
+For the detailed debt-report export, allow users to select appropriate optional fields or reporting scope where the existing UI already supports such selection or where it can be introduced without adding unnecessary complexity.
+
+Do not ask users to configure basic columns individually just to get a complete report.
+
+### Consolidated debt export
+
+When exporting a consolidated report, include every record matching the selected filters and period.
+
+Do not export only the current screen page.
+
+If multiple companies or branches are represented, keep their data separated in the output.
+
+Respect existing authorization and data-visibility rules for every export scope.
+
+## 8. Make the export traceable to TradeFlow's displayed data
+
+The workbook should enable the administrator to explain where each reported balance came from.
+
+Include stable source identifiers or document numbers so users can trace from the summary to the document-level detail and, where available, individual item lines.
+
+Use a consistent identifier across sheets.
+
+Where appropriate, use separate sheets for summary and details rather than creating a single enormous worksheet with repeated totals.
+
+Ensure the user can reconcile:
+
+- The summary total.
+- The list of outstanding documents.
+- The detailed item records.
+- The recorded financial transactions.
+
+A total must not be added once for each product line and then added again in the document-summary sheet.
+
+Be explicit about the level at which each amount is calculated so users can safely aggregate data in Excel.
+
+## 9. Protect export security and performance
+
+The exported workbook contains sensitive business data.
+
+Preserve existing authorization rules and enforce export permissions on the server.
+
+Do not log full debt details or sensitive identifiers unnecessarily.
+
+Use parameterized queries and avoid loading an unbounded volume of related entities into memory.
+
+Use appropriate query strategies, projection, batching, or streaming where necessary.
+
+Avoid generating N+1 database queries when exporting large customer or supplier lists.
+
+Do not allow export requests to retrieve data that the requesting user is not authorized to access.
+
+For a report that includes multiple companies, respect the applicable user permissions and company scope.
+
+Do not change database schemas merely to produce the Excel report unless a real data-model defect prevents correct reporting and a separate, justified migration is required.
+
+## 10. Update the existing UI only where necessary
+
+If the current debt pages or export buttons are insufficient to access the new detail, make a targeted UI improvement.
+
+Keep TradeFlow's existing visual style.
+
+The export action should clearly distinguish between:
+
+- Xuất công nợ khách hàng.
+- Xuất công nợ nhà cung cấp.
+- Xuất báo cáo công nợ tổng hợp.
+- Xuất công nợ chi tiết theo chứng từ/mặt hàng.
+
+Reuse existing components and controls where possible.
+
+Do not redesign unrelated pages or introduce unnecessary icons and animation.
+
+## 11. Mandatory validation and reconciliation tests
+
+Do not stop after building an Excel file that looks correct.
+
+Use a safe test database with representative records.
+
+Test at least these scenarios:
+
+1. One customer with one outstanding invoice.
+2. One customer with multiple outstanding invoices.
+3. An invoice containing several product lines.
+4. An invoice with a partial payment.
+5. An invoice that is fully settled.
+6. A customer with an applicable discount or debt adjustment.
+7. A supplier with multiple outstanding purchase documents.
+8. A supplier with a partial payment.
+9. A supplier with a fully settled payable.
+10. Relevant cancelled, reversed, or corrected records.
+11. Multiple customers and suppliers with overlapping names.
+12. Multiple companies/branches, if the model supports them.
+13. A filtered report and a paginated screen.
+14. Export of one customer and verification that unrelated customers are excluded.
+15. Export of one supplier and verification that unrelated suppliers are excluded.
+16. A consolidated export that includes all records matching the filters.
+17. Reconciliation between the exported totals and the corresponding TradeFlow UI balances.
+
+For item-level outstanding balances, verify that the allocation method is supported by actual records. Do not fabricate a product-level settlement allocation merely to make the exported totals look complete.
+
+Test workbook integrity: open the generated `.xlsx`, confirm that headings, number formats, filters, totals, and data types are correct, and ensure no important column or row is silently omitted.
+
+Run the relevant automated tests and application build.
+
+Do not claim successful reconciliation unless the test data was actually reconciled.
+
+## 12. Completion requirements
+
+Implement the real export/report improvements directly in TradeFlow.
+
+At completion, provide a concise report in Vietnamese containing:
+
+- Which debt-export paths were corrected.
+- Which database entities and document relationships contribute to the report.
+- The workbook sheet structure.
+- How the report handles individual item details and payments.
+- How customer and supplier reporting are separated.
+- Which totals were verified against the UI.
+- The files changed.
+- Build, test, and workbook-verification results.
+- Any genuine data-model limitations preventing a reliable item-level balance.
+
+Do not commit or push.
+
+## Final acceptance criteria
+
+The exported customer and supplier debt workbooks must show the complete supported debt detail, not merely aggregate balances.
+
+The user must be able to see what each debt relates to, which source document it came from, the individual items involved, the relevant payments and adjustments, and the remaining amount at the correct accounting level.
+
+All balances must use TradeFlow's actual financial rules and reconcile with the corresponding displayed debt list.
+
+**Do not fabricate missing item-level allocations. Preserve accurate document-level balances when item-level payment data is unavailable, and clearly report that limitation rather than exporting misleading numbers.**
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-10-18T07:13:03+07:00.
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from None to Gemini 3.8 Flash (High). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>

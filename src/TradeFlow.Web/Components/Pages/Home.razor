@@ -8,6 +8,7 @@
 @using TradeFlow.Domain.Entities.Users
 @using TradeFlow.Domain.Enums
 @using TradeFlow.Infrastructure.Persistence
+@using System.Text.Json
 @inject IDbContextFactory<TradeFlowDbContext> DbContextFactory
 @inject INotificationService NotificationService
 @inject AuthenticationStateProvider AuthStateProvider
@@ -84,7 +85,7 @@
                                         </div>
                                         @if (!string.IsNullOrEmpty(act.Details))
                                         {
-                                            <div class="tf-activity-desc">@act.Details</div>
+                                            <div class="tf-activity-desc">@FormatAuditEventDescription(act)</div>
                                         }
                                         <div class="tf-activity-user">
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -377,18 +378,257 @@
     {
         return log.EventType switch
         {
-            AuditEventType.DatabaseBackupCreated => "Tạo bản sao lưu dữ liệu hệ thống",
-            AuditEventType.CompanySettingsChanged => "Cập nhật thông tin công ty",
             AuditEventType.Login => "Đăng nhập hệ thống",
-            AuditEventType.UserLocked => "Khóa tài khoản người dùng",
+            AuditEventType.LoginFailed => "Đăng nhập thất bại",
+            AuditEventType.Logout => "Đăng xuất hệ thống",
             AuditEventType.UserCreated => "Thêm người dùng mới",
             AuditEventType.UserUpdated => "Cập nhật tài khoản",
+            AuditEventType.UserLocked => "Khóa tài khoản người dùng",
+            AuditEventType.UserUnlocked => "Mở khóa tài khoản",
+            AuditEventType.PasswordReset => "Đặt lại mật khẩu",
+            AuditEventType.PasswordChanged => "Đổi mật khẩu người dùng",
+            AuditEventType.PasswordViewed => "Xem mật khẩu tạm",
+            AuditEventType.RoleCreated => "Thêm vai trò mới",
+            AuditEventType.RoleUpdated => "Cập nhật vai trò",
+            AuditEventType.RoleDeleted => "Xóa vai trò",
+            AuditEventType.PermissionAssigned => "Cấp quyền truy cập",
+            AuditEventType.PermissionRevoked => "Thu hồi quyền truy cập",
+            AuditEventType.DataImported => "Nhập dữ liệu vào hệ thống",
+            AuditEventType.DataExported => "Xuất dữ liệu hệ thống",
+            AuditEventType.FileUploaded => "Tải tệp tin lên hệ thống",
+            AuditEventType.DatabaseBackupCreated => "Tạo bản sao lưu hệ thống",
+            AuditEventType.DatabaseBackupRestored => "Khôi phục dữ liệu hệ thống",
+            AuditEventType.CompanySettingsChanged => "Cập nhật thông tin công ty",
+            AuditEventType.SupportAccessEnabled => "Bật hỗ trợ kỹ thuật",
+            AuditEventType.SupportAccessRevoked => "Tắt hỗ trợ kỹ thuật",
+            AuditEventType.SupportActionPerformed => "Thao tác hỗ trợ kỹ thuật",
             AuditEventType.ProductCreated => "Thêm sản phẩm mới",
             AuditEventType.ProductUpdated => "Cập nhật thông tin sản phẩm",
+            AuditEventType.ProductDeleted => "Xóa sản phẩm",
+            AuditEventType.CategoryCreated => "Thêm danh mục sản phẩm",
+            AuditEventType.CategoryUpdated => "Cập nhật danh mục sản phẩm",
+            AuditEventType.CategoryDeleted => "Xóa danh mục sản phẩm",
+            AuditEventType.UnitCreated => "Thêm đơn vị tính mới",
+            AuditEventType.UnitUpdated => "Cập nhật đơn vị tính",
+            AuditEventType.UnitDeleted => "Xóa đơn vị tính",
+            AuditEventType.CurrencyCreated => "Thêm loại tiền tệ mới",
+            AuditEventType.CurrencyUpdated => "Cập nhật loại tiền tệ",
+            AuditEventType.CurrencyDeleted => "Xóa loại tiền tệ",
             AuditEventType.CustomerCreated => "Thêm khách hàng mới",
             AuditEventType.CustomerUpdated => "Cập nhật hồ sơ khách hàng",
+            AuditEventType.CustomerDeleted => "Xóa khách hàng",
             AuditEventType.SupplierCreated => "Thêm nhà cung cấp mới",
-            _ => log.TargetEntity != null ? $"{log.EventType} ({log.TargetEntity})" : log.EventType.ToString()
+            AuditEventType.SupplierUpdated => "Cập nhật nhà cung cấp",
+            AuditEventType.SupplierDeleted => "Xóa nhà cung cấp",
+            AuditEventType.WarehouseCreated => "Thêm kho hàng mới",
+            AuditEventType.WarehouseUpdated => "Cập nhật thông tin kho",
+            AuditEventType.WarehouseDeleted => "Xóa kho hàng",
+            AuditEventType.PriceListCreated => "Tạo bảng giá mới",
+            AuditEventType.PriceListUpdated => "Cập nhật bảng giá",
+            AuditEventType.PriceListDeleted => "Xóa bảng giá",
+            AuditEventType.PriceListApproved => "Phê duyệt bảng giá",
+            AuditEventType.PriceListImported => "Nhập bảng giá từ Excel",
+            AuditEventType.PriceListExported => "Xuất bảng giá ra Excel",
+            AuditEventType.PriceListOriginalDownloaded => "Tải file bảng giá gốc",
+            AuditEventType.PriceChanged => "Điều chỉnh giá sản phẩm",
+            AuditEventType.ProductImageMapped => "Gán ảnh sản phẩm",
+            AuditEventType.SalesOrderCreated => "Tạo đơn bán hàng mới",
+            AuditEventType.SalesOrderUpdated => "Cập nhật đơn bán hàng",
+            AuditEventType.SalesOrderConfirmed => "Xác nhận đơn bán hàng",
+            AuditEventType.SalesOrderCancelled => "Hủy đơn bán hàng",
+            AuditEventType.SalesOrderDeleted => "Xóa đơn bán hàng",
+            AuditEventType.InvoiceCreated => "Tạo hóa đơn bán hàng",
+            AuditEventType.InvoiceUpdated => "Cập nhật hóa đơn bán hàng",
+            AuditEventType.InvoiceIssued => "Phát hành hóa đơn bán hàng",
+            AuditEventType.InvoiceAdjusted => "Điều chỉnh hóa đơn",
+            AuditEventType.InvoiceReplaced => "Thay thế hóa đơn",
+            AuditEventType.InvoiceCancelled => "Hủy hóa đơn bán hàng",
+            AuditEventType.InvoiceDeleted => "Xóa hóa đơn bán hàng",
+            AuditEventType.InvoiceExportedPdf => "Xuất PDF hóa đơn",
+            AuditEventType.QuotationCreated => "Tạo báo giá mới",
+            AuditEventType.QuotationUpdated => "Cập nhật báo giá",
+            AuditEventType.QuotationStatusChanged => "Cập nhật trạng thái báo giá",
+            AuditEventType.QuotationConverted => "Chuyển báo giá thành đơn hàng",
+            AuditEventType.QuotationDeleted => "Xóa báo giá",
+            AuditEventType.QuotationExportedPdf => "Xuất PDF báo giá",
+            AuditEventType.DocumentUploaded => "Tải chứng từ / tài liệu",
+            AuditEventType.DocumentDeleted => "Xóa chứng từ / tài liệu",
+            AuditEventType.DocumentDownloaded => "Tải chứng từ / tài liệu về",
+            AuditEventType.SignerEnrolled => "Đăng ký người ký số",
+            AuditEventType.SignerRevoked => "Thu hồi quyền ký số",
+            AuditEventType.SignerCodeIssued => "Cấp mã định danh ký",
+            AuditEventType.SignerCodeRevoked => "Thu hồi mã định danh ký",
+            AuditEventType.SignatureCreated => "Ký điện tử chứng từ",
+            AuditEventType.SignatureVerified => "Xác minh chữ ký điện tử",
+            AuditEventType.SignatureFailed => "Ký điện tử thất bại",
+            AuditEventType.DocumentTampered => "Cảnh báo toàn vẹn văn bản",
+            AuditEventType.UserOffboarded => "Thu hồi tài khoản nhân sự",
+            AuditEventType.SecuritySettingsUpdated => "Cập nhật cấu hình an ninh",
+            AuditEventType.SignerPinChanged => "Đổi mã PIN ký số",
+            AuditEventType.SignerPinReset => "Đặt lại mã PIN ký số",
+            AuditEventType.SignerLockedOut => "Khóa quyền ký số tạm thời",
+            AuditEventType.SignerProfileCreated => "Tạo hồ sơ ký số",
+            AuditEventType.SignerProfileUpdated => "Cập nhật hồ sơ ký số",
+            AuditEventType.EmployeeCreated => "Thêm nhân viên mới",
+            AuditEventType.EmployeeUpdated => "Cập nhật thông tin nhân viên",
+            AuditEventType.EmployeeStatusChanged => "Cập nhật trạng thái nhân sự",
+            AuditEventType.EmployeeRetired => "Xử lý nhân sự thôi việc",
+            AuditEventType.EmployeeRequestSubmitted => "Gửi đề xuất nhân sự",
+            AuditEventType.EmployeeRequestApproved => "Phê duyệt đề xuất nhân sự",
+            AuditEventType.EmployeeRequestRejected => "Từ chối đề xuất nhân sự",
+            AuditEventType.EmployeeLinkedToUser => "Liên kết tài khoản người dùng",
+            AuditEventType.EmployeeUnlinkedFromUser => "Hủy liên kết tài khoản",
+            AuditEventType.DepartmentCreated => "Thêm phòng ban mới",
+            AuditEventType.PositionCreated => "Thêm chức vụ mới",
+            AuditEventType.DebtPaymentRecorded => "Ghi nhận thanh toán công nợ",
+            AuditEventType.DebtAdjustmentRecorded => "Điều chỉnh công nợ",
+            AuditEventType.DebtDiscountRecorded => "Ghi nhận chiết khấu thanh toán",
+            AuditEventType.DebtExported => "Xuất báo cáo công nợ",
+            AuditEventType.ContractCreated => "Tạo hợp đồng kinh tế",
+            AuditEventType.ContractUpdated => "Cập nhật hợp đồng kinh tế",
+            AuditEventType.ContractFinalized => "Hoàn tất hợp đồng kinh tế",
+            AuditEventType.ContractSigned => "Ký điện tử hợp đồng",
+            AuditEventType.ContractPrinted => "In hợp đồng kinh tế",
+            AuditEventType.ContractCancelled => "Hủy hợp đồng kinh tế",
+            AuditEventType.ContractLiquidated => "Thanh lý hợp đồng kinh tế",
+            AuditEventType.ContractExportedPdf => "Xuất PDF hợp đồng",
+            AuditEventType.ContractSettingsUpdated => "Cập nhật cấu hình hợp đồng",
+            AuditEventType.ContractTemplateUpdated => "Cập nhật mẫu hợp đồng",
+            AuditEventType.ContractDeleted => "Xóa hợp đồng kinh tế",
+            _ => !string.IsNullOrEmpty(log.TargetEntity) ? $"{log.EventType} ({log.TargetEntity})" : log.EventType.ToString()
         };
+    }
+
+    private static string FormatAuditEventDescription(AuditLog log)
+    {
+        if (string.IsNullOrWhiteSpace(log.Details))
+        {
+            return string.Empty;
+        }
+
+        var text = log.Details.Trim();
+
+        // Check if Details is a JSON string
+        if ((text.StartsWith("{") && text.EndsWith("}")) || (text.StartsWith("[") && text.EndsWith("]")))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(text);
+                var root = doc.RootElement;
+
+                if (root.ValueKind == JsonValueKind.Object)
+                {
+                    // Special case: DatabaseBackupRestored
+                    if (log.EventType == AuditEventType.DatabaseBackupRestored || root.TryGetProperty("NewRecordsImported", out _))
+                    {
+                        int newRec = root.TryGetProperty("NewRecordsImported", out var np) && np.TryGetInt32(out var nv) ? nv : 0;
+                        int retRec = root.TryGetProperty("ExistingRecordsRetained", out var rp) && rp.TryGetInt32(out var rv) ? rv : 0;
+                        int overRec = root.TryGetProperty("RecordsOverwritten", out var op) && op.TryGetInt32(out var ov) ? ov : 0;
+                        int files = root.TryGetProperty("FilesImported", out var fp) && fp.TryGetInt32(out var fv) ? fv : 0;
+
+                        var parts = new List<string>
+                        {
+                            $"Khôi phục dữ liệu: {newRec:N0} bản ghi mới",
+                            $"{retRec:N0} bản ghi giữ nguyên",
+                            $"{overRec:N0} bản ghi ghi đè"
+                        };
+                        if (files > 0)
+                        {
+                            parts.Add($"{files} tệp đính kèm");
+                        }
+                        return string.Join(", ", parts);
+                    }
+
+                    // Special case: DatabaseBackupCreated
+                    if (log.EventType == AuditEventType.DatabaseBackupCreated || root.TryGetProperty("FileSizeBytes", out _) || root.TryGetProperty("FileName", out _))
+                    {
+                        string fileName = root.TryGetProperty("FileName", out var fn) ? fn.GetString() ?? "" : "";
+                        long size = root.TryGetProperty("FileSizeBytes", out var sz) && sz.TryGetInt64(out var sv) ? sv : 0;
+                        int tables = root.TryGetProperty("TablesCount", out var tb) && tb.TryGetInt32(out var tv) ? tv : 0;
+
+                        var result = "Tạo tệp sao lưu";
+                        if (!string.IsNullOrEmpty(fileName))
+                        {
+                            result += $": {fileName}";
+                        }
+                        if (size > 0)
+                        {
+                            result += $" ({FormatFileSize(size)})";
+                        }
+                        if (tables > 0)
+                        {
+                            result += $" • {tables} bảng dữ liệu";
+                        }
+                        return result;
+                    }
+
+                    // Check common descriptive fields in JSON
+                    if (root.TryGetProperty("Summary", out var sum) && sum.ValueKind == JsonValueKind.String)
+                        return sum.GetString()!;
+                    if (root.TryGetProperty("Message", out var msg) && msg.ValueKind == JsonValueKind.String)
+                        return msg.GetString()!;
+                    if (root.TryGetProperty("Note", out var note) && note.ValueKind == JsonValueKind.String)
+                        return note.GetString()!;
+                    if (root.TryGetProperty("Description", out var desc) && desc.ValueKind == JsonValueKind.String)
+                        return desc.GetString()!;
+
+                    // If object has other properties, create clean key-value summary without internal technical identifiers
+                    var summaries = new List<string>();
+                    foreach (var prop in root.EnumerateObject())
+                    {
+                        var propName = prop.Name;
+                        if (propName.EndsWith("Id", StringComparison.OrdinalIgnoreCase) ||
+                            propName.Equals("StagingId", StringComparison.OrdinalIgnoreCase) ||
+                            propName.Equals("DurationMs", StringComparison.OrdinalIgnoreCase) ||
+                            propName.Equals("Timestamp", StringComparison.OrdinalIgnoreCase) ||
+                            propName.Equals("Scope", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        if (prop.Value.ValueKind == JsonValueKind.String)
+                        {
+                            summaries.Add($"{propName}: {prop.Value.GetString()}");
+                        }
+                        else if (prop.Value.ValueKind == JsonValueKind.Number)
+                        {
+                            summaries.Add($"{propName}: {prop.Value}");
+                        }
+                    }
+
+                    if (summaries.Count > 0)
+                    {
+                        return string.Join(" • ", summaries);
+                    }
+                }
+            }
+            catch
+            {
+                // Fall through to text cleanup
+            }
+        }
+
+        // Clean up common English or raw technical phrases into natural Vietnamese
+        var cleaned = text;
+        cleaned = cleaned.Replace("Manual invoice created", "Tạo hóa đơn thủ công");
+        cleaned = cleaned.Replace("Invoice created from SO", "Tạo hóa đơn từ đơn bán hàng");
+        cleaned = cleaned.Replace("Draft invoice updated", "Cập nhật hóa đơn nháp");
+        cleaned = cleaned.Replace("Invoice issued", "Phát hành hóa đơn thành công");
+        cleaned = cleaned.Replace("Draft invoice deleted", "Xóa hóa đơn nháp");
+        cleaned = cleaned.Replace("PDF exported", "Xuất tệp PDF thành công");
+        cleaned = cleaned.Replace("Draft order created", "Tạo đơn hàng nháp mới");
+        cleaned = cleaned.Replace("Draft order updated", "Cập nhật đơn hàng nháp");
+        cleaned = cleaned.Replace("Order confirmed", "Xác nhận đơn hàng thành công");
+        cleaned = cleaned.Replace("Order cancelled", "Hủy đơn hàng");
+
+        return cleaned;
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{(bytes / 1024.0):F1} KB";
+        if (bytes < 1024 * 1024 * 1024) return $"{(bytes / (1024.0 * 1024.0)):F1} MB";
+        return $"{(bytes / (1024.0 * 1024.0 * 1024.0)):F2} GB";
     }
 }

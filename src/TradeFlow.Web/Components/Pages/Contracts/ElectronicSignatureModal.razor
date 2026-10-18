@@ -1,3 +1,5 @@
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
 @using TradeFlow.Application.Common.Interfaces
 @using TradeFlow.Application.Common.Models.Contracts
 @inject IContractService ContractService
@@ -31,7 +33,7 @@
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
                                 <circle cx="12" cy="12" r="10"/>
                                 <line x1="12" y1="16" x2="12" y2="12"/>
-                                <line x1="12" y1="8" x2="12.01" y8"/>
+                                <line x1="12" y1="8" x2="12.01" y2="8"/>
                             </svg>
                             Căn cứ Luật Giao dịch điện tử số 20/2023/QH15:
                         </div>
@@ -43,27 +45,27 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label small fw-semibold text-secondary">Chủ thể ký kết <span class="text-danger">*</span></label>
-                            <select class="form-select form-select-sm" @bind="signerParty" @bind:after="OnPartyChanged">
+                            <select class="form-select form-select-sm" @bind="signerParty">
                                 <option value="PartyA">Đại diện Bên A (Đơn vị bán hàng)</option>
                                 <option value="PartyB">Đại diện Bên B (Khách hàng / Bên mua)</option>
                             </select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-semibold text-secondary">Họ và tên người ký <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control form-control-sm" @bind="signerName" @bind:after="OnNameChanged" placeholder="Nhập họ và tên người đại diện..." />
+                            <input type="text" class="form-control form-control-sm" @bind="signerName" placeholder="Nhập họ và tên người đại diện..." />
                         </div>
 
                         <!-- Signature Method Tabs -->
                         <div class="col-12">
                             <label class="form-label small fw-semibold text-secondary">Hình thức tạo chữ ký</label>
                             <div class="btn-group w-100" role="group">
-                                <button type="button" class="btn btn-sm @(sigMethod == "cursive" ? "btn-primary" : "btn-outline-secondary")" @onclick='() => SetMethod("cursive")'>
+                                <button type="button" class="btn btn-sm @(sigMethod == "cursive" ? "btn-primary" : "btn-outline-secondary")" @onclick="@(() => SetMethod("cursive"))">
                                     Tạo tự động theo họ tên
                                 </button>
-                                <button type="button" class="btn btn-sm @(sigMethod == "sample" ? "btn-primary" : "btn-outline-secondary")" @onclick='() => SetMethod("sample")'>
+                                <button type="button" class="btn btn-sm @(sigMethod == "sample" ? "btn-primary" : "btn-outline-secondary")" @onclick="@(() => SetMethod("sample"))">
                                     Mẫu chữ ký doanh nhân
                                 </button>
-                                <button type="button" class="btn btn-sm @(sigMethod == "canvas" ? "btn-primary" : "btn-outline-secondary")" @onclick='() => SetMethod("canvas")'>
+                                <button type="button" class="btn btn-sm @(sigMethod == "canvas" ? "btn-primary" : "btn-outline-secondary")" @onclick="@(() => SetMethod("canvas"))">
                                     Vẽ chữ ký trực tiếp
                                 </button>
                             </div>
@@ -128,8 +130,33 @@
     [Parameter] public string DefaultPartyBSigner { get; set; } = string.Empty;
     [Parameter] public EventCallback OnSigned { get; set; }
 
-    private string signerParty = "PartyA";
-    private string signerName = string.Empty;
+    private string _signerParty = "PartyA";
+    private string signerParty
+    {
+        get => _signerParty;
+        set
+        {
+            if (_signerParty != value)
+            {
+                _signerParty = value;
+                OnPartyChanged();
+            }
+        }
+    }
+
+    private string _signerName = string.Empty;
+    private string signerName
+    {
+        get => _signerName;
+        set
+        {
+            if (_signerName != value)
+            {
+                _signerName = value;
+                OnNameChanged();
+            }
+        }
+    }
     private string sigMethod = "cursive";
     private string signatureData = string.Empty;
     private bool isSubmitting = false;
@@ -139,11 +166,11 @@
     {
         if (IsOpen)
         {
-            if (string.IsNullOrEmpty(signerName))
+            if (string.IsNullOrEmpty(_signerName))
             {
-                signerName = signerParty == "PartyA" ? DefaultPartyASigner : DefaultPartyBSigner;
+                _signerName = _signerParty == "PartyA" ? DefaultPartyASigner : DefaultPartyBSigner;
             }
-            if (string.IsNullOrEmpty(signatureData) && !string.IsNullOrEmpty(signerName))
+            if (string.IsNullOrEmpty(signatureData) && !string.IsNullOrEmpty(_signerName))
             {
                 GenerateCursiveSignature();
             }
@@ -152,8 +179,7 @@
 
     private void OnPartyChanged()
     {
-        signerName = signerParty == "PartyA" ? DefaultPartyASigner : DefaultPartyBSigner;
-        OnNameChanged();
+        signerName = _signerParty == "PartyA" ? DefaultPartyASigner : DefaultPartyBSigner;
     }
 
     private void OnNameChanged()
@@ -186,7 +212,7 @@
 
     private void GenerateCursiveSignature()
     {
-        var name = string.IsNullOrWhiteSpace(signerName) ? "LACASA Signer" : signerName.Trim();
+        var name = string.IsNullOrWhiteSpace(_signerName) ? "LACASA Signer" : _signerName.Trim();
         var encoded = System.Net.WebUtility.HtmlEncode(name);
         signatureData = $"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 360 90' width='360' height='90'><path d='M10 65 Q 40 20, 80 50 T 150 35 T 230 65' fill='none' stroke='%23003366' stroke-width='2.5' stroke-linecap='round'/><text x='35' y='60' font-family='Brush Script MT, Segoe Script, cursive' font-size='32' font-style='italic' fill='%23002244'>{encoded}</text></svg>";
     }
@@ -257,7 +283,7 @@
 
     private async Task ExecuteSignAsync()
     {
-        if (string.IsNullOrWhiteSpace(signerName))
+        if (string.IsNullOrWhiteSpace(_signerName))
         {
             errorMessage = "Vui lòng nhập họ và tên người ký xác nhận.";
             return;
@@ -284,12 +310,12 @@
 
             var signDto = new SignContractDto
             {
-                SignerParty = signerParty,
-                SignerName = signerName.Trim(),
+                SignerParty = _signerParty,
+                SignerName = _signerName.Trim(),
                 SignatureData = signatureData
             };
 
-            await ContractService.SignContractAsync(ContractId, signDto, "currentUser", signerName.Trim());
+            await ContractService.SignContractAsync(ContractId, signDto, "currentUser", _signerName.Trim());
 
             await OnSigned.InvokeAsync();
             await CloseAsync();

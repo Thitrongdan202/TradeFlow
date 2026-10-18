@@ -384,6 +384,87 @@ public class PartnerStatementSummaryDto
     public decimal TotalCredits { get; set; }
     public decimal TotalDiscounts { get; set; }
     public decimal ClosingBalance { get; set; }
+    public decimal OverdueBalance { get; set; }
+    public decimal NotYetDueBalance { get; set; }
+    public DateTime? NextDueDate { get; set; }
+    public string DebtStatusDescription { get; set; } = "Còn nợ";
     public string BalanceDirectionDescription { get; set; } = string.Empty;
     public List<PartnerLinkedTransactionDto> Transactions { get; set; } = new();
+}
+
+/// <summary>
+/// Dòng chi tiết chứng từ phát sinh nợ cho Sheet B (Chi tiết công nợ theo chứng từ)
+/// </summary>
+public class DebtDocumentExportRowDto
+{
+    public int Stt { get; set; }
+    public DebtDirection Direction { get; set; }
+    public string DirectionDescription => Direction == DebtDirection.Receivable ? "Khách hàng nợ (Phải thu)" : "Nợ NCC (Phải trả)";
+    public string PartnerCode { get; set; } = string.Empty;
+    public string PartnerName { get; set; } = string.Empty;
+    public string DocumentType { get; set; } = string.Empty;
+    public string DocumentCode { get; set; } = string.Empty;
+    public string? ReferenceCode { get; set; }
+    public DateTime DocumentDate { get; set; }
+    public DateTime? DueDate { get; set; }
+    public decimal OriginalAmount { get; set; }
+    public decimal PaidAmount { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public decimal OutstandingAmount { get; set; }
+    public DebtStatus DebtStatus { get; set; }
+    public string StatusDescription => OutstandingAmount == 0m ? "Đã thanh toán đủ"
+        : (PaidAmount > 0m ? "Đã thanh toán một phần" : "Còn nợ hoàn toàn");
+    public string? Notes { get; set; }
+    public string TraceId { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Dòng chi tiết mặt hàng/dịch vụ cho Sheet C (Chi tiết từng mặt hàng / dịch vụ)
+/// </summary>
+public class DebtLineItemExportRowDto
+{
+    public int Stt { get; set; }
+    public string DocumentCode { get; set; } = string.Empty;
+    public DateTime DocumentDate { get; set; }
+    public DebtDirection Direction { get; set; }
+    public string DirectionDescription => Direction == DebtDirection.Receivable ? "Phải thu" : "Phải trả";
+    public string PartnerCode { get; set; } = string.Empty;
+    public string PartnerName { get; set; } = string.Empty;
+    public string ProductCode { get; set; } = string.Empty;
+    public string ProductName { get; set; } = string.Empty;
+    public string? Specifications { get; set; }
+    public string UnitName { get; set; } = string.Empty;
+    public decimal Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public decimal TaxRate { get; set; }
+    public decimal TaxAmount { get; set; }
+    public decimal LineTotal { get; set; }
+    public decimal DocumentPaidAmount { get; set; }
+    public decimal DocumentOutstandingAmount { get; set; }
+    public string AllocationNote { get; set; } = "Theo hóa đơn";
+}
+
+/// <summary>
+/// Dòng giao dịch thanh toán / điều chỉnh cho Sheet D (Lịch sử thu, chi và điều chỉnh công nợ)
+/// </summary>
+public class DebtTransactionExportRowDto
+{
+    public int Stt { get; set; }
+    public DebtTransactionType TransactionType { get; set; }
+    public string TransactionTypeDescription { get; set; } = string.Empty;
+    public string PaymentCode { get; set; } = string.Empty;
+    public DateTime TransactionDate { get; set; }
+    public DebtDirection Direction { get; set; }
+    public string DirectionDescription => Direction == DebtDirection.Receivable ? "Thu nợ KH" : "Trả nợ NCC";
+    public string PartnerCode { get; set; } = string.Empty;
+    public string PartnerName { get; set; } = string.Empty;
+    public string? ReferenceCode { get; set; }
+    public decimal Amount { get; set; }
+    public string PaymentMethod { get; set; } = "Tiền mặt";
+    public string? DiscountOrAdjustmentType { get; set; }
+    public string? Notes { get; set; }
+    public string? CreatedBy { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public string? CounterReference { get; set; }
 }

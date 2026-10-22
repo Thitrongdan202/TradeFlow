@@ -1,0 +1,334 @@
+@page "/kho/bien-dong"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Warehouse
+@using TradeFlow.Domain.Entities.MasterData
+@using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
+@attribute [Authorize(Policy = "Permission:Warehouses:View")]
+
+@inject IWarehouseService WarehouseService
+@inject IDbContextFactory<TradeFlowDbContext> DbContextFactory
+@inject NavigationManager Nav
+
+<PageTitle>Sổ thẻ kho & Lịch sử biến động - TradeFlow</PageTitle>
+
+<WarehouseNavTabs ActiveTab="movements" />
+
+<div class="tf-page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+    <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+        <div>
+            <h1 class="tf-page-title" style="margin: 0; font-size: 20px;">Sổ thẻ kho & Biến động xuất nhập tồn</h1>
+            <p class="tf-page-subtitle" style="margin: 2px 0 0; font-size: 12px;">Nhật ký giao dịch kho bất biến (Append-only Ledger) ghi nhận chi tiết mọi giao dịch luân chuyển vật tư</p>
+        </div>
+        <div style="width: 280px; max-width: 100%;">
+            <input type="text"
+                   class="tf-form-control tw-w-full tw-h-9 tw-px-3 tw-text-sm tw-rounded-md tw-border tw-border-slate-300 focus:tw-border-emerald-500 focus:tw-outline-none"
+                   placeholder="Tìm số phiếu, sản phẩm, ghi chú..."
+                   @bind="_searchTerm"
+                   @bind:event="oninput" />
+        </div>
+    </div>
+</div>
+
+<!-- KPI Summary Cards -->
+<div class="tw-grid tw-grid-cols-1 sm:tw-grid-cols-2 lg:tw-grid-cols-4 tw-gap-4 tw-mb-4">
+    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
+        <span class="tw-text-xs tw-font-semibold tw-text-slate-500 tw-uppercase">Tổng số giao dịch</span>
+        <div class="tw-text-2xl tw-font-bold tw-text-slate-900 tw-mt-1">@FilteredMovements.Count().ToString("N0")</div>
+        <div class="tw-text-xs tw-text-slate-400 tw-mt-1">Số lượt phát sinh biến động</div>
+    </div>
+    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
+        <span class="tw-text-xs tw-font-semibold tw-text-emerald-600 tw-uppercase">Tổng số lượng Nhập (IN)</span>
+        <div class="tw-text-2xl tw-font-bold tw-text-emerald-700 tw-mt-1">+@FilteredMovements.Where(m => m.Direction == "IN").Sum(m => m.Quantity).ToString("N0")</div>
+        <div class="tw-text-xs tw-text-slate-400 tw-mt-1">Mua hàng, kiểm kê thừa, trả hàng</div>
+    </div>
+    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
+        <span class="tw-text-xs tw-font-semibold tw-text-red-600 tw-uppercase">Tổng số lượng Xuất (OUT)</span>
+        <div class="tw-text-2xl tw-font-bold tw-text-red-700 tw-mt-1">-@FilteredMovements.Where(m => m.Direction == "OUT").Sum(m => m.Quantity).ToString("N0")</div>
+        <div class="tw-text-xs tw-text-slate-400 tw-mt-1">Xuất bán, kiểm kê thiếu, xuất hủy</div>
+    </div>
+    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
+        <span class="tw-text-xs tw-font-semibold tw-text-blue-600 tw-uppercase">Tổng giá trị luân chuyển</span>
+        <div class="tw-text-2xl tw-font-bold tw-text-blue-700 tw-mt-1">@FilteredMovements.Sum(m => m.Quantity * m.UnitCost).ToString("N0") đ</div>
+        <div class="tw-text-xs tw-text-slate-400 tw-mt-1">Tổng tiền hạch toán</div>
+    </div>
+</div>
+
+<!-- Filters Bar -->
+<div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-mb-4 tw-shadow-xs">
+    <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-4 tw-gap-3">
+        <div>
+            <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-600 tw-mb-1">Kho hàng</label>
+            <select class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300" @bind="WarehouseId">
+                <option value="">-- Tất cả các kho --</option>
+                @foreach (var wh in _warehouses)
+                {
+                    <option value="@wh.Id">@wh.Name (@wh.Code)</option>
+                }
+            </select>
+        </div>
+
+        <div>
+            <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-600 tw-mb-1">Sản phẩm</label>
+            <select class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300" @bind="ProductId">
+                <option value="">-- Tất cả sản phẩm --</option>
+                @foreach (var p in _products)
+                {
+                    <option value="@p.Id">@p.Code - @p.Name</option>
+                }
+            </select>
+        </div>
+
+        <div>
+            <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-600 tw-mb-1">Chiều luân chuyển</label>
+            <select class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300" @bind="_directionFilter">
+                <option value="">Tất cả (Nhập & Xuất)</option>
+                <option value="IN">Chỉ xem Nhập kho (IN)</option>
+                <option value="OUT">Chỉ xem Xuất kho (OUT)</option>
+            </select>
+        </div>
+
+        <div class="tw-flex tw-items-end tw-gap-2">
+            <button class="tf-btn tf-btn-secondary tw-h-9 tw-w-full" @onclick="ClearFilters">
+                Đặt lại bộ lọc
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Ledger Table -->
+<div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-shadow-xs tw-overflow-hidden">
+    <div class="tw-overflow-x-auto">
+        <table class="tf-table tw-w-full">
+            <thead>
+                <tr class="tw-bg-slate-50 tw-border-b tw-border-slate-200 tw-text-left tw-text-xs tw-font-semibold tw-text-slate-600 tw-uppercase">
+                    <th class="tw-p-3" style="min-width: 130px;">Thời gian</th>
+                    <th class="tw-p-3" style="min-width: 140px;">Kho hàng</th>
+                    <th class="tw-p-3" style="min-width: 200px;">Sản phẩm</th>
+                    <th class="tw-p-3" style="width: 100px; text-align: center;">Phẩm chất</th>
+                    <th class="tw-p-3" style="min-width: 160px;">Loại biến động</th>
+                    <th class="tw-p-3" style="text-align: center; width: 80px;">Chiều</th>
+                    <th class="tw-p-3" style="text-align: right; width: 100px;">Số lượng</th>
+                    <th class="tw-p-3" style="text-align: right; min-width: 140px;">Tồn Trước &rarr; Sau</th>
+                    <th class="tw-p-3" style="text-align: right; min-width: 110px;">Đơn giá vốn</th>
+                    <th class="tw-p-3" style="min-width: 150px;">Số phiếu / Ref</th>
+                    <th class="tw-p-3" style="min-width: 180px;">Ghi chú nghiệp vụ</th>
+                </tr>
+            </thead>
+            <tbody class="tw-divide-y tw-divide-slate-100 tw-text-sm">
+                @if (_isLoading)
+                {
+                    <tr>
+                        <td colspan="11" class="tw-p-8 tw-text-center tw-text-slate-500">
+                            <div class="tw-inline-block tw-animate-spin tw-rounded-full tw-h-6 tw-w-6 tw-border-b-2 tw-border-emerald-600 tw-mr-2"></div>
+                            <span>Đang tải sổ thẻ kho...</span>
+                        </td>
+                    </tr>
+                }
+                else if (!FilteredMovements.Any())
+                {
+                    <tr>
+                        <td colspan="11" class="tw-p-8 tw-text-center tw-text-slate-500">
+                            <div class="tw-text-base tw-font-medium tw-text-slate-600 tw-mb-1">Chưa có giao dịch biến động nào phù hợp</div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var m in PagedMovements)
+                    {
+                        <tr class="hover:tw-bg-slate-50/70 tw-transition-colors">
+                            <td class="tw-p-3 tw-text-slate-600 tw-text-xs">
+                                <div>@m.MovementDate.ToString("dd/MM/yyyy")</div>
+                                <div class="tw-text-slate-400">@m.MovementDate.ToString("HH:mm:ss")</div>
+                            </td>
+                            <td class="tw-p-3 tw-font-medium tw-text-slate-800">
+                                @m.WarehouseName
+                            </td>
+                            <td class="tw-p-3">
+                                <div class="tw-font-medium tw-text-slate-900">@m.ProductName</div>
+                                <div class="tw-text-xs tw-text-slate-400">Mã: @m.ProductCode | ĐVT: @m.UnitName</div>
+                            </td>
+                            <td class="tw-p-3" style="text-align: center;">
+                                @if (m.Condition == StockCondition.Saleable)
+                                {
+                                    <span class="tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded-full tw-text-xs tw-font-medium tw-bg-emerald-100 tw-text-emerald-800">Tốt</span>
+                                }
+                                else if (m.Condition == StockCondition.Usable)
+                                {
+                                    <span class="tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded-full tw-text-xs tw-font-medium tw-bg-blue-100 tw-text-blue-800">Dùng được</span>
+                                }
+                                else
+                                {
+                                    <span class="tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded-full tw-text-xs tw-font-medium tw-bg-amber-100 tw-text-amber-800">Lỗi</span>
+                                }
+                            </td>
+                            <td class="tw-p-3 tw-text-xs tw-font-medium tw-text-slate-800">
+                                @m.MovementTypeName
+                            </td>
+                            <td class="tw-p-3" style="text-align: center;">
+                                @if (m.Direction == "IN")
+                                {
+                                    <span class="tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded tw-text-xs tw-font-bold tw-bg-emerald-100 tw-text-emerald-800">
+                                        + NHẬP
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded tw-text-xs tw-font-bold tw-bg-red-100 tw-text-red-800">
+                                        - XUẤT
+                                    </span>
+                                }
+                            </td>
+                            <td class="tw-p-3 tw-text-right tw-font-bold @(m.Direction == "IN" ? "tw-text-emerald-700" : "tw-text-red-700")">
+                                @(m.Direction == "IN" ? "+" : "-")@m.Quantity.ToString("N0")
+                            </td>
+                            <td class="tw-p-3 tw-text-right tw-text-xs">
+                                <span class="tw-text-slate-500">@m.PreviousBalance.ToString("N0")</span>
+                                <span class="tw-text-slate-400 tw-mx-1">&rarr;</span>
+                                <span class="tw-font-bold tw-text-slate-900">@m.NewBalance.ToString("N0")</span>
+                            </td>
+                            <td class="tw-p-3 tw-text-right tw-text-slate-700">
+                                @m.UnitCost.ToString("N0") đ
+                            </td>
+                            <td class="tw-p-3">
+                                @if (!string.IsNullOrEmpty(m.VoucherNumber))
+                                {
+                                    @if (m.VoucherId.HasValue)
+                                    {
+                                        <a href="/kho/phieu-kho/@m.VoucherId" class="tw-font-mono tw-text-xs tw-font-bold tw-text-emerald-700 hover:tw-underline">
+                                            @m.VoucherNumber
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="tw-font-mono tw-text-xs tw-font-bold tw-text-slate-700">@m.VoucherNumber</span>
+                                    }
+                                }
+                                @if (!string.IsNullOrEmpty(m.SourceReference))
+                                {
+                                    <div class="tw-text-xs tw-text-slate-400">Ref: @m.SourceReference</div>
+                                }
+                            </td>
+                            <td class="tw-p-3 tw-text-slate-600 tw-text-xs">
+                                <div>@(m.Notes ?? "-")</div>
+                                @if (!string.IsNullOrEmpty(m.CreatedByName))
+                                {
+                                    <div class="tw-text-slate-400">Bởi: @m.CreatedByName</div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (FilteredMovements.Any())
+    {
+        <div class="tw-p-3 tw-border-t tw-border-slate-200 tw-flex tw-justify-between tw-items-center tw-flex-wrap tw-gap-2">
+            <div class="tw-text-xs tw-text-slate-500">
+                Hiển thị @((_currentPage - 1) * _pageSize + 1) đến @(Math.Min(_currentPage * _pageSize, FilteredMovements.Count())) trong tổng số @FilteredMovements.Count() dòng biến động
+            </div>
+            <div class="tw-flex tw-gap-1">
+                <button class="tf-btn tf-btn-ghost tf-btn-sm" disabled="@(_currentPage <= 1)" @onclick="() => _currentPage--">Trước</button>
+                <span class="tw-px-3 tw-py-1 tw-text-xs tw-font-medium tw-text-slate-700 tw-flex tw-items-center">Trang @_currentPage / @TotalPages</span>
+                <button class="tf-btn tf-btn-ghost tf-btn-sm" disabled="@(_currentPage >= TotalPages)" @onclick="() => _currentPage++">Sau</button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public int? ProductId { get; set; }
+
+    [SupplyParameterFromQuery]
+    public int? WarehouseId { get; set; }
+
+    private List<InventoryMovementDto> _movements = new();
+    private List<Warehouse> _warehouses = new();
+    private List<Product> _products = new();
+    private bool _isLoading = true;
+
+    private string _searchTerm = string.Empty;
+    private string _directionFilter = string.Empty;
+
+    private int _currentPage = 1;
+    private int _pageSize = 25;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            using var ctx = await DbContextFactory.CreateDbContextAsync();
+            _warehouses = await ctx.Warehouses.Where(w => w.IsActive).OrderBy(w => w.Name).ToListAsync();
+            _products = await ctx.Products.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
+
+            _movements = await WarehouseService.GetMovementsAsync(WarehouseId, ProductId);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private IEnumerable<InventoryMovementDto> FilteredMovements
+    {
+        get
+        {
+            var query = _movements.AsEnumerable();
+
+            if (WarehouseId.HasValue)
+            {
+                query = query.Where(m => m.WarehouseId == WarehouseId.Value);
+            }
+
+            if (ProductId.HasValue)
+            {
+                query = query.Where(m => m.ProductId == ProductId.Value);
+            }
+
+            if (!string.IsNullOrEmpty(_directionFilter))
+            {
+                query = query.Where(m => m.Direction == _directionFilter);
+            }
+
+            if (!string.IsNullOrWhiteSpace(_searchTerm))
+            {
+                var term = _searchTerm.Trim().ToLower();
+                query = query.Where(m =>
+                    (m.VoucherNumber?.ToLower().Contains(term) ?? false) ||
+                    (m.SourceReference?.ToLower().Contains(term) ?? false) ||
+                    (m.ProductCode?.ToLower().Contains(term) ?? false) ||
+                    (m.ProductName?.ToLower().Contains(term) ?? false) ||
+                    (m.Notes?.ToLower().Contains(term) ?? false));
+            }
+
+            return query.OrderByDescending(m => m.MovementDate).ThenByDescending(m => m.Id);
+        }
+    }
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling((double)FilteredMovements.Count() / _pageSize));
+
+    private IEnumerable<InventoryMovementDto> PagedMovements =>
+        FilteredMovements.Skip((_currentPage - 1) * _pageSize).Take(_pageSize);
+
+    private void ClearFilters()
+    {
+        ProductId = null;
+        WarehouseId = null;
+        _directionFilter = string.Empty;
+        _searchTerm = string.Empty;
+        _currentPage = 1;
+    }
+}

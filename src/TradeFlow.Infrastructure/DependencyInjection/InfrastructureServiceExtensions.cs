@@ -124,6 +124,9 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IContractPdfService, Services.Pdf.ContractPdfService>();
         services.AddScoped<IContractService, Services.ContractService>();
 
+        // Register Warehouse Management & Operations services
+        services.AddScoped<IWarehouseService, Services.WarehouseService>();
+
         return services;
     }
 }

@@ -9,6 +9,7 @@ using TradeFlow.Domain.Entities.Settings;
 using TradeFlow.Domain.Entities.Users;
 using TradeFlow.Domain.Entities.Documents;
 using TradeFlow.Domain.Entities.Employees;
+using TradeFlow.Domain.Entities.Warehouses;
 using TradeFlow.Domain.Enums;
 
 namespace TradeFlow.Infrastructure.Persistence;
@@ -80,6 +81,7 @@ public class DatabaseSeeder
             await SeedEmployeeMasterDataAsync();
             await SeedSampleEmployeesAsync();
             await SeedContractDataAsync();
+            await SeedWarehouseOperationsDataAsync();
         }
         catch (Exception ex)
         {
@@ -1166,5 +1168,619 @@ public class DatabaseSeeder
             _context.ContractTemplates.AddRange(templates);
             await _context.SaveChangesAsync();
         }
+    }
+
+    private async Task SeedWarehouseOperationsDataAsync()
+    {
+        _logger.LogInformation("Seeding warehouse operations data and permissions...");
+        var now = DateTime.UtcNow;
+
+        // 1. Permissions for Warehouse and Manager roles
+        var warehouseRole = await _roleManager.FindByNameAsync("Warehouse");
+        if (warehouseRole != null)
+        {
+            var whPerms = new[]
+            {
+                (ResourceType.Warehouses, PermissionAction.View),
+                (ResourceType.Warehouses, PermissionAction.Create),
+                (ResourceType.Warehouses, PermissionAction.Edit),
+                (ResourceType.Products, PermissionAction.View),
+                (ResourceType.Documents, PermissionAction.View),
+                (ResourceType.Documents, PermissionAction.Create),
+            };
+            foreach (var (res, act) in whPerms)
+            {
+                if (!await _context.RolePermissions.AnyAsync(p => p.RoleId == warehouseRole.Id && p.Resource == res && p.Action == act))
+                {
+                    _context.RolePermissions.Add(new RolePermission { RoleId = warehouseRole.Id, Resource = res, Action = act, IsGranted = true, GrantedBy = "System" });
+                }
+            }
+        }
+
+        var managerRole = await _roleManager.FindByNameAsync("Manager");
+        if (managerRole != null)
+        {
+            var mgrPerms = new[]
+            {
+                (ResourceType.Warehouses, PermissionAction.View),
+                (ResourceType.Warehouses, PermissionAction.Create),
+                (ResourceType.Warehouses, PermissionAction.Edit),
+                (ResourceType.Warehouses, PermissionAction.Approve),
+                (ResourceType.Warehouses, PermissionAction.Delete),
+                (ResourceType.Products, PermissionAction.View),
+                (ResourceType.Products, PermissionAction.Create),
+                (ResourceType.Products, PermissionAction.Edit),
+                (ResourceType.Documents, PermissionAction.View),
+                (ResourceType.Documents, PermissionAction.Create),
+                (ResourceType.Documents, PermissionAction.Edit),
+                (ResourceType.Documents, PermissionAction.Approve),
+            };
+            foreach (var (res, act) in mgrPerms)
+            {
+                if (!await _context.RolePermissions.AnyAsync(p => p.RoleId == managerRole.Id && p.Resource == res && p.Action == act))
+                {
+                    _context.RolePermissions.Add(new RolePermission { RoleId = managerRole.Id, Resource = res, Action = act, IsGranted = true, GrantedBy = "System" });
+                }
+            }
+        }
+        await _context.SaveChangesAsync();
+
+        // 2. Ensure Warehouses exist
+        if (!await _context.Warehouses.AnyAsync())
+        {
+            var wh1 = new Warehouse
+            {
+                Code = "KHO000001",
+                BusinessCode = "KHO-HN",
+                Name = "Kho Tổng Lacasa Hà Nội",
+                Address = "Km 10, Quốc lộ 1A, Thanh Trì, Hà Nội",
+                ManagerName = "Trần Văn Tuấn",
+                Phone = "0369.074.789",
+                Notes = "Kho trung tâm lưu trữ toàn bộ dải sản phẩm thiết bị vệ sinh, sen vòi, bồn cầu",
+                IsActive = true,
+                CreatedAt = now,
+                CreatedBy = "System"
+            };
+            var wh2 = new Warehouse
+            {
+                Code = "KHO000002",
+                BusinessCode = "KHO-HCM",
+                Name = "Kho Chi nhánh TP. Hồ Chí Minh",
+                Address = "Số 88, Đường Song Hành, Phường An Phú, TP. Thủ Đức, TP. Hồ Chí Minh",
+                ManagerName = "Lê Hoàng Quân",
+                Phone = "0909.123.456",
+                Notes = "Kho phân phối miền Nam phục vụ dự án và đại lý",
+                IsActive = true,
+                CreatedAt = now,
+                CreatedBy = "System"
+            };
+            _context.Warehouses.AddRange(wh1, wh2);
+            await _context.SaveChangesAsync();
+        }
+
+        var primaryWarehouse = await _context.Warehouses.FirstOrDefaultAsync(w => w.Code == "KHO000001") ?? await _context.Warehouses.FirstOrDefaultAsync();
+        var secondaryWarehouse = await _context.Warehouses.FirstOrDefaultAsync(w => w.Code == "KHO000002") ?? primaryWarehouse;
+
+        if (primaryWarehouse == null) return;
+
+        // 3. Ensure Product Categories exist
+        var catSanitary = await _context.ProductCategories.FirstOrDefaultAsync(c => c.Code == "TBVS");
+        if (catSanitary == null)
+        {
+            catSanitary = new ProductCategory { Code = "TBVS", Name = "Thiết bị vệ sinh sứ", Description = "Bồn cầu, chậu lavabo sứ cao cấp", DisplayOrder = 1, IsActive = true, CreatedAt = now, CreatedBy = "System" };
+            _context.ProductCategories.Add(catSanitary);
+        }
+        var catFaucet = await _context.ProductCategories.FirstOrDefaultAsync(c => c.Code == "SENVOI");
+        if (catFaucet == null)
+        {
+            catFaucet = new ProductCategory { Code = "SENVOI", Name = "Sen vòi & Phụ kiện", Description = "Sen tắm, vòi lavabo mạ crom, phụ kiện inox", DisplayOrder = 2, IsActive = true, CreatedAt = now, CreatedBy = "System" };
+            _context.ProductCategories.Add(catFaucet);
+        }
+        await _context.SaveChangesAsync();
+
+        var unitCai = await _context.UnitOfMeasures.FirstOrDefaultAsync(u => u.Code == "CAI");
+        var unitBo = await _context.UnitOfMeasures.FirstOrDefaultAsync(u => u.Code == "BO");
+
+        // 4. Ensure Products exist
+        if (!await _context.Products.AnyAsync())
+        {
+            var p1 = new Product { Code = "SP000001", NewCode = "LC-8800", Name = "Bồn cầu liền khối Lacasa Luxury LC-8800", ShortName = "Bồn cầu LC-8800", CategoryId = catSanitary.Id, UnitId = unitCai?.Id, Description = "Men Nano nung kháng khuẩn, xả xoáy siphon êm ái", IsActive = true, CreatedAt = now, CreatedBy = "System" };
+            var p2 = new Product { Code = "SP000002", NewCode = "LC-620", Name = "Sen cây tắm đứng hiển thị nhiệt độ LC-620", ShortName = "Sen cây LC-620", CategoryId = catFaucet.Id, UnitId = unitBo?.Id, Description = "Khóa nhiệt an toàn 38 độ C, màn hình LED phát điện thủy lực", IsActive = true, CreatedAt = now, CreatedBy = "System" };
+            var p3 = new Product { Code = "SP000003", NewCode = "LC-301", Name = "Vòi lavabo nóng lạnh đồng mạ crom LC-301", ShortName = "Vòi lavabo LC-301", CategoryId = catFaucet.Id, UnitId = unitCai?.Id, Description = "Chất liệu đồng nguyên khối 59-1 mạ crom 5 lớp sáng bóng", IsActive = true, CreatedAt = now, CreatedBy = "System" };
+            var p4 = new Product { Code = "SP000004", NewCode = "LC-402", Name = "Chậu lavabo đặt bàn đá sứ chống bám bẩn LC-402", ShortName = "Chậu đặt bàn LC-402", CategoryId = catSanitary.Id, UnitId = unitCai?.Id, Description = "Kích thước 500x400x140mm, men tuyết chống ố vàng", IsActive = true, CreatedAt = now, CreatedBy = "System" };
+            var p5 = new Product { Code = "SP000005", NewCode = "LC-101", Name = "Bộ vòi xịt vệ sinh inox 304 siêu bền LC-101", ShortName = "Bộ xịt inox LC-101", CategoryId = catFaucet.Id, UnitId = unitBo?.Id, Description = "Dây chịu áp chống xoắn 1.2m, ty đồng chống rò rỉ", IsActive = true, CreatedAt = now, CreatedBy = "System" };
+            _context.Products.AddRange(p1, p2, p3, p4, p5);
+            await _context.SaveChangesAsync();
+        }
+
+        var allProducts = await _context.Products.Take(5).ToListAsync();
+        if (!allProducts.Any()) return;
+
+        // 5. Seed InventoryStocks & initial Movements if not exist
+        if (!await _context.InventoryStocks.AnyAsync())
+        {
+            var initialQuantities = new Dictionary<string, (decimal Qty, decimal Cost)>
+            {
+                ["SP000001"] = (50, 2500000),
+                ["SP000002"] = (80, 1850000),
+                ["SP000003"] = (120, 450000),
+                ["SP000004"] = (40, 950000),
+                ["SP000005"] = (200, 150000),
+            };
+
+            foreach (var prod in allProducts)
+            {
+                var (qty, cost) = initialQuantities.TryGetValue(prod.Code, out var val) ? val : (30m, 500000m);
+
+                // Kho 1
+                var stock1 = new InventoryStock
+                {
+                    WarehouseId = primaryWarehouse.Id,
+                    ProductId = prod.Id,
+                    Condition = StockCondition.Saleable,
+                    Quantity = qty,
+                    LastMovementAt = now,
+                    CreatedAt = now,
+                    CreatedBy = "System"
+                };
+                _context.InventoryStocks.Add(stock1);
+
+                _context.InventoryMovements.Add(new InventoryMovement
+                {
+                    WarehouseId = primaryWarehouse.Id,
+                    ProductId = prod.Id,
+                    Condition = StockCondition.Saleable,
+                    MovementType = InventoryMovementType.InboundPurchase,
+                    Quantity = qty,
+                    Direction = "IN",
+                    PreviousBalance = 0,
+                    NewBalance = qty,
+                    UnitCost = cost,
+                    SourceReference = "SODK-2026",
+                    Notes = "Số dư kho đầu kỳ năm 2026",
+                    MovementDate = now.AddDays(-30),
+                    CreatedByName = "System",
+                    CreatedAt = now.AddDays(-30),
+                    CreatedBy = "System"
+                });
+
+                // Kho 2 (if different)
+                if (secondaryWarehouse != null && secondaryWarehouse.Id != primaryWarehouse.Id)
+                {
+                    decimal qty2 = Math.Round(qty / 2);
+                    var stock2 = new InventoryStock
+                    {
+                        WarehouseId = secondaryWarehouse.Id,
+                        ProductId = prod.Id,
+                        Condition = StockCondition.Saleable,
+                        Quantity = qty2,
+                        LastMovementAt = now,
+                        CreatedAt = now,
+                        CreatedBy = "System"
+                    };
+                    _context.InventoryStocks.Add(stock2);
+
+                    _context.InventoryMovements.Add(new InventoryMovement
+                    {
+                        WarehouseId = secondaryWarehouse.Id,
+                        ProductId = prod.Id,
+                        Condition = StockCondition.Saleable,
+                        MovementType = InventoryMovementType.InboundPurchase,
+                        Quantity = qty2,
+                        Direction = "IN",
+                        PreviousBalance = 0,
+                        NewBalance = qty2,
+                        UnitCost = cost,
+                        SourceReference = "SODK-2026",
+                        Notes = "Số dư kho đầu kỳ năm 2026 (Kho HCM)",
+                        MovementDate = now.AddDays(-30),
+                        CreatedByName = "System",
+                        CreatedAt = now.AddDays(-30),
+                        CreatedBy = "System"
+                    });
+                }
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        // 6. Quarantined defective goods
+        if (!await _context.QuarantinedInventoryItems.AnyAsync())
+        {
+            var p2 = allProducts.Count > 1 ? allProducts[1] : allProducts[0];
+            var p1 = allProducts[0];
+
+            var q1 = new QuarantinedInventoryItem
+            {
+                Code = "CL-2026-0001",
+                WarehouseId = primaryWarehouse.Id,
+                ProductId = p2.Id,
+                ProductCode = p2.Code,
+                ProductName = p2.Name,
+                UnitName = "Bộ",
+                Quantity = 2,
+                DefectReason = "Lỗi van điều nhiệt không khóa được nước nóng, cần gửi về hãng bảo hành hoặc thay ruột van",
+                SourceType = "CustomerReturn",
+                SourceReference = "KTH-2026-0001",
+                ReportedByName = "kho01",
+                Status = QuarantineStatus.InQuarantine,
+                DateIdentified = now.AddDays(-5),
+                CreatedAt = now.AddDays(-5),
+                CreatedBy = "kho01"
+            };
+
+            var q2 = new QuarantinedInventoryItem
+            {
+                Code = "CL-2026-0002",
+                WarehouseId = primaryWarehouse.Id,
+                ProductId = p1.Id,
+                ProductCode = p1.Code,
+                ProductName = p1.Name,
+                UnitName = "Cái",
+                Quantity = 1,
+                DefectReason = "Nứt rạn men phần chân đế sau khi bốc dỡ, không an toàn để bàn giao khách hàng",
+                SourceType = "InternalDamage",
+                SourceReference = "BBKN-2026-0001",
+                ReportedByName = "kho01",
+                Status = QuarantineStatus.InQuarantine,
+                DateIdentified = now.AddDays(-2),
+                CreatedAt = now.AddDays(-2),
+                CreatedBy = "kho01"
+            };
+
+            _context.QuarantinedInventoryItems.AddRange(q1, q2);
+
+            // Also maintain defective stock entry
+            var defectiveStock1 = await _context.InventoryStocks.FirstOrDefaultAsync(s => s.WarehouseId == primaryWarehouse.Id && s.ProductId == p2.Id && s.Condition == StockCondition.Defective);
+            if (defectiveStock1 == null)
+            {
+                _context.InventoryStocks.Add(new InventoryStock { WarehouseId = primaryWarehouse.Id, ProductId = p2.Id, Condition = StockCondition.Defective, Quantity = 2, CreatedAt = now, CreatedBy = "System" });
+            }
+            var defectiveStock2 = await _context.InventoryStocks.FirstOrDefaultAsync(s => s.WarehouseId == primaryWarehouse.Id && s.ProductId == p1.Id && s.Condition == StockCondition.Defective);
+            if (defectiveStock2 == null)
+            {
+                _context.InventoryStocks.Add(new InventoryStock { WarehouseId = primaryWarehouse.Id, ProductId = p1.Id, Condition = StockCondition.Defective, Quantity = 1, CreatedAt = now, CreatedBy = "System" });
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        // 7. Stocktake sessions
+        if (!await _context.StocktakeSessions.AnyAsync())
+        {
+            var p1 = allProducts[0];
+            var p2 = allProducts.Count > 1 ? allProducts[1] : allProducts[0];
+
+            var session1 = new StocktakeSession
+            {
+                Code = "KK-2026-0001",
+                WarehouseId = primaryWarehouse.Id,
+                StocktakeDate = now.AddDays(-7),
+                Status = StocktakeStatus.Completed,
+                CountedByUserId = "dev_kho01",
+                CountedByName = "Kho 01 (Thủ kho)",
+                SubmittedAt = now.AddDays(-7).AddHours(4),
+                ReviewedByUserId = "dev_quanly01",
+                ReviewedByName = "Quản Lý 01",
+                ReviewedAt = now.AddDays(-7).AddHours(5),
+                ApprovedAt = now.AddDays(-7).AddHours(5),
+                CompletedAt = now.AddDays(-7).AddHours(5),
+                Reason = "Kiểm kê định kỳ tháng 10/2026",
+                Notes = "Kiểm kê định kỳ đầu tháng. Số lượng khớp với sổ sách, không phát hiện thất thoát.",
+                CreatedAt = now.AddDays(-7),
+                CreatedBy = "kho01"
+            };
+            session1.Items.Add(new StocktakeItem
+            {
+                ProductId = p1.Id,
+                ProductCode = p1.Code,
+                ProductName = p1.Name,
+                UnitName = "Cái",
+                Condition = StockCondition.Saleable,
+                BookQuantity = 50,
+                CountedQuantity = 50,
+                VarianceQuantity = 0,
+                UnitCost = 2500000,
+                VarianceValue = 0,
+                Notes = "Khớp 100%"
+            });
+            session1.Items.Add(new StocktakeItem
+            {
+                ProductId = p2.Id,
+                ProductCode = p2.Code,
+                ProductName = p2.Name,
+                UnitName = "Bộ",
+                Condition = StockCondition.Saleable,
+                BookQuantity = 80,
+                CountedQuantity = 80,
+                VarianceQuantity = 0,
+                UnitCost = 1850000,
+                VarianceValue = 0,
+                Notes = "Khớp 100%"
+            });
+
+            var session2 = new StocktakeSession
+            {
+                Code = "KK-2026-0002",
+                WarehouseId = secondaryWarehouse?.Id ?? primaryWarehouse.Id,
+                StocktakeDate = now,
+                Status = StocktakeStatus.Counting,
+                CountedByUserId = "dev_kho01",
+                CountedByName = "Kho 01 (Thủ kho)",
+                Reason = "Kiểm kê đột xuất kho chi nhánh",
+                Notes = "Đợt kiểm kê đột xuất kho chi nhánh",
+                CreatedAt = now,
+                CreatedBy = "kho01"
+            };
+            session2.Items.Add(new StocktakeItem
+            {
+                ProductId = p1.Id,
+                ProductCode = p1.Code,
+                ProductName = p1.Name,
+                UnitName = "Cái",
+                Condition = StockCondition.Saleable,
+                BookQuantity = 25,
+                CountedQuantity = 0,
+                VarianceQuantity = -25,
+                UnitCost = 2500000,
+                VarianceValue = -62500000,
+                Notes = "Đang chờ kiểm đếm"
+            });
+            session2.Items.Add(new StocktakeItem
+            {
+                ProductId = p2.Id,
+                ProductCode = p2.Code,
+                ProductName = p2.Name,
+                UnitName = "Bộ",
+                Condition = StockCondition.Saleable,
+                BookQuantity = 30,
+                CountedQuantity = 0,
+                VarianceQuantity = -30,
+                UnitCost = 1850000,
+                VarianceValue = -55500000,
+                Notes = "Đang chờ kiểm đếm"
+            });
+
+            _context.StocktakeSessions.AddRange(session1, session2);
+            await _context.SaveChangesAsync();
+        }
+
+        // 8. Warehouse return orders
+        if (!await _context.WarehouseReturnOrders.AnyAsync())
+        {
+            var p2 = allProducts.Count > 1 ? allProducts[1] : allProducts[0];
+            var p5 = allProducts.Count > 4 ? allProducts[4] : allProducts[0];
+
+            var retOrder1 = new WarehouseReturnOrder
+            {
+                Code = "KTH-2026-0001",
+                ReturnType = WarehouseReturnType.CustomerReturn,
+                WarehouseId = primaryWarehouse.Id,
+                CustomerName = "Công ty TNHH Đầu tư & Xây dựng An Phát",
+                Status = WarehouseReturnStatus.ReceivedAwaitingInspection,
+                Reason = "Khách hàng hoàn trả 2 bộ sen cây nghi lỗi nhiệt độ và 5 bộ xịt inox thừa công trình",
+                OriginalInvoiceNumber = "HD-2026-0042",
+                ReceivedByName = "Kho 01",
+                ReceivedAt = now.AddDays(-1),
+                CreatedAt = now.AddDays(-1),
+                CreatedBy = "kho01"
+            };
+            retOrder1.Items.Add(new WarehouseReturnOrderItem
+            {
+                ProductId = p2.Id,
+                ProductCode = p2.Code,
+                ProductName = p2.Name,
+                UnitName = "Bộ",
+                RequestedQuantity = 2,
+                ReceivedQuantity = 2,
+                Disposition = ReturnDisposition.PendingInspection,
+                Condition = StockCondition.Undetermined,
+                UnitPrice = 1850000,
+                InspectionNotes = "Đã tiếp nhận hàng vào khu vực chờ kiểm định"
+            });
+            retOrder1.Items.Add(new WarehouseReturnOrderItem
+            {
+                ProductId = p5.Id,
+                ProductCode = p5.Code,
+                ProductName = p5.Name,
+                UnitName = "Bộ",
+                RequestedQuantity = 5,
+                ReceivedQuantity = 5,
+                Disposition = ReturnDisposition.RestockSaleable,
+                Condition = StockCondition.Saleable,
+                UnitPrice = 150000,
+                InspectionNotes = "Hàng còn nguyên bao bì niêm phong, đủ điều kiện tái nhập kho bán hàng"
+            });
+
+            // Supplier return order
+            var supReturn = new WarehouseReturnOrder
+            {
+                Code = "TNCC-2026-0001",
+                ReturnType = WarehouseReturnType.SupplierReturn,
+                WarehouseId = primaryWarehouse.Id,
+                SupplierName = "Tổng Công ty Thiết Bị Viglacera",
+                Status = WarehouseReturnStatus.Approved,
+                Reason = "Xuất trả nhà cung cấp 2 sản phẩm sen cây lỗi kỹ thuật van nhiệt theo điều khoản bảo hành",
+                OriginalInvoiceNumber = "PO-2026-0012",
+                ReceivedByName = "Kho 01",
+                ReceivedAt = now.AddDays(-3),
+                ApprovedByName = "Quản Lý 01",
+                ApprovedAt = now.AddDays(-2),
+                Notes = "Đã được phê duyệt xuất trả bảo hành nhà sản xuất",
+                CreatedAt = now.AddDays(-3),
+                CreatedBy = "kho01"
+            };
+            supReturn.Items.Add(new WarehouseReturnOrderItem
+            {
+                ProductId = p2.Id,
+                ProductCode = p2.Code,
+                ProductName = p2.Name,
+                UnitName = "Bộ",
+                RequestedQuantity = 2,
+                ReceivedQuantity = 2,
+                Disposition = ReturnDisposition.ReturnToSupplier,
+                Condition = StockCondition.Defective,
+                UnitPrice = 1850000,
+                InspectionNotes = "Lỗi kỹ thuật van nhiệt nhà sản xuất"
+            });
+
+            _context.WarehouseReturnOrders.AddRange(retOrder1, supReturn);
+            await _context.SaveChangesAsync();
+        }
+
+        // 9. Standard Warehouse Vouchers (Form 01-VT & Form 02-VT)
+        if (!await _context.WarehouseVouchers.AnyAsync())
+        {
+            var p1 = allProducts[0];
+            var p2 = allProducts.Count > 1 ? allProducts[1] : allProducts[0];
+
+            var v1 = new WarehouseVoucher
+            {
+                VoucherNumber = "PNK-2026-0001",
+                VoucherType = WarehouseVoucherType.InboundReceipt,
+                VoucherDate = now.AddDays(-10),
+                WarehouseId = primaryWarehouse.Id,
+                Status = WarehouseVoucherStatus.Approved,
+                PartnerName = "Tổng Công ty Thiết Bị Viglacera",
+                PartnerAddress = "Tòa nhà Viglacera, Mễ Trì, Nam Từ Liêm, Hà Nội",
+                DelivererOrReceiverName = "Trần Thị Mai (Đại diện Viglacera)",
+                WarehouseKeeperName = "Trần Văn Tuấn",
+                ApprovedByName = "Quản Lý 01",
+                ApprovedAt = now.AddDays(-10),
+                Reason = "Nhập kho theo Hợp đồng cung ứng lô thiết bị vệ sinh quý 1/2026",
+                SourceReference = "HD-2026-001",
+                SourceModule = "Contract",
+                TotalQuantity = 130,
+                TotalAmount = 50 * 2500000 + 80 * 1850000,
+                CreatedAt = now.AddDays(-10),
+                CreatedBy = "kho01"
+            };
+            v1.Items.Add(new WarehouseVoucherItem
+            {
+                ProductId = p1.Id,
+                ProductCode = p1.Code,
+                ProductName = p1.Name,
+                UnitName = "Cái",
+                Condition = StockCondition.Saleable,
+                DocumentQuantity = 50,
+                ActualQuantity = 50,
+                UnitPrice = 2500000,
+                LineTotal = 50 * 2500000,
+                Notes = "Hàng mới 100%, kèm phiếu bảo hành chính hãng"
+            });
+            v1.Items.Add(new WarehouseVoucherItem
+            {
+                ProductId = p2.Id,
+                ProductCode = p2.Code,
+                ProductName = p2.Name,
+                UnitName = "Bộ",
+                Condition = StockCondition.Saleable,
+                DocumentQuantity = 80,
+                ActualQuantity = 80,
+                UnitPrice = 1850000,
+                LineTotal = 80 * 1850000,
+                Notes = "Hàng mới 100%, đóng hộp nguyên kiện"
+            });
+
+            var p3 = allProducts.Count > 2 ? allProducts[2] : allProducts[0];
+            var p5 = allProducts.Count > 4 ? allProducts[4] : allProducts[0];
+
+            var v2 = new WarehouseVoucher
+            {
+                VoucherNumber = "PXK-2026-0001",
+                VoucherType = WarehouseVoucherType.OutboundIssue,
+                VoucherDate = now.AddDays(-4),
+                WarehouseId = primaryWarehouse.Id,
+                Status = WarehouseVoucherStatus.Approved,
+                PartnerName = "Công ty CP Đầu Tư Bất Động Sản Green Park",
+                PartnerAddress = "Khu đô thị Green Park, Cầu Giấy, Hà Nội",
+                DelivererOrReceiverName = "Phạm Đình Trọng (Chỉ huy trưởng)",
+                WarehouseKeeperName = "Trần Văn Tuấn",
+                ApprovedByName = "Quản Lý 01",
+                ApprovedAt = now.AddDays(-4),
+                Reason = "Xuất kho vật tư lắp đặt đợt 1 tòa A dự án Green Park",
+                SourceReference = "SO-2026-0015",
+                SourceModule = "SalesOrder",
+                TotalQuantity = 50,
+                TotalAmount = 20 * 450000 + 30 * 150000,
+                CreatedAt = now.AddDays(-4),
+                CreatedBy = "kho01"
+            };
+            v2.Items.Add(new WarehouseVoucherItem
+            {
+                ProductId = p3.Id,
+                ProductCode = p3.Code,
+                ProductName = p3.Name,
+                UnitName = "Cái",
+                Condition = StockCondition.Saleable,
+                DocumentQuantity = 20,
+                ActualQuantity = 20,
+                UnitPrice = 450000,
+                LineTotal = 20 * 450000,
+                Notes = "Xuất theo phiếu yêu cầu vật tư số 05/GreenPark"
+            });
+            v2.Items.Add(new WarehouseVoucherItem
+            {
+                ProductId = p5.Id,
+                ProductCode = p5.Code,
+                ProductName = p5.Name,
+                UnitName = "Bộ",
+                Condition = StockCondition.Saleable,
+                DocumentQuantity = 30,
+                ActualQuantity = 30,
+                UnitPrice = 150000,
+                LineTotal = 30 * 150000,
+                Notes = "Xuất theo phiếu yêu cầu vật tư số 05/GreenPark"
+            });
+
+            _context.WarehouseVouchers.AddRange(v1, v2);
+            await _context.SaveChangesAsync();
+
+            // Link to DocumentAttachments
+            var catPhieuNhap = await _context.DocumentCategories.FirstOrDefaultAsync(c => c.Code == "PHIEU_NHAP");
+            var catPhieuXuat = await _context.DocumentCategories.FirstOrDefaultAsync(c => c.Code == "PHIEU_XUAT");
+
+            if (catPhieuNhap != null)
+            {
+                var doc1 = new DocumentAttachment
+                {
+                    FileName = $"{v1.VoucherNumber}.pdf",
+                    StoragePath = $"/documents/warehouse/{v1.VoucherNumber}.pdf",
+                    ContentType = "application/pdf",
+                    FileSize = 24500,
+                    CategoryId = catPhieuNhap.Id,
+                    RelatedEntityType = "WarehouseVoucher",
+                    RelatedEntityId = v1.Id,
+                    Description = $"Phiếu nhập kho Mẫu 01-VT: {v1.VoucherNumber} - {v1.Reason}",
+                    Status = "Active",
+                    CreatedAt = v1.CreatedAt,
+                    CreatedBy = "kho01"
+                };
+                _context.DocumentAttachments.Add(doc1);
+                await _context.SaveChangesAsync();
+            }
+
+            if (catPhieuXuat != null)
+            {
+                var doc2 = new DocumentAttachment
+                {
+                    FileName = $"{v2.VoucherNumber}.pdf",
+                    StoragePath = $"/documents/warehouse/{v2.VoucherNumber}.pdf",
+                    ContentType = "application/pdf",
+                    FileSize = 21200,
+                    CategoryId = catPhieuXuat.Id,
+                    RelatedEntityType = "WarehouseVoucher",
+                    RelatedEntityId = v2.Id,
+                    Description = $"Phiếu xuất kho Mẫu 02-VT: {v2.VoucherNumber} - {v2.Reason}",
+                    Status = "Active",
+                    CreatedAt = v2.CreatedAt,
+                    CreatedBy = "kho01"
+                };
+                _context.DocumentAttachments.Add(doc2);
+                await _context.SaveChangesAsync();
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+        _logger.LogInformation("Warehouse operations data seeded successfully.");
     }
 }

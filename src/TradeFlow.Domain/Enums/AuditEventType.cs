@@ -150,5 +150,22 @@ public enum AuditEventType
     ContractSettingsUpdated = 208,
     ContractPartyASettingsUpdated = 208,
     ContractTemplateUpdated = 209,
-    ContractDeleted = 210
+    ContractDeleted = 210,
+
+    // === Quản lý Kho, Kiểm kê & Hàng trả ===
+    StocktakeCreated = 220,
+    StocktakeUpdated = 221,
+    StocktakeSubmitted = 222,
+    StocktakeApproved = 223,
+    StocktakeRejected = 224,
+    StocktakeCancelled = 225,
+    WarehouseVoucherCreated = 226,
+    WarehouseVoucherApproved = 227,
+    WarehouseVoucherCancelled = 228,
+    WarehouseReturnCreated = 229,
+    WarehouseReturnInspected = 230,
+    WarehouseReturnApproved = 231,
+    WarehouseReturnCompleted = 232,
+    DefectiveStockQuarantined = 233,
+    DefectiveStockDisposed = 234
 }

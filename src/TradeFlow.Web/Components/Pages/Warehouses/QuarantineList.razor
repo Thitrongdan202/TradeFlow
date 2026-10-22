@@ -1,0 +1,305 @@
+@page "/kho/hang-loi"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Warehouse
+@using TradeFlow.Domain.Entities.MasterData
+@using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
+@attribute [Authorize(Policy = "Permission:Warehouses:View")]
+
+@inject IWarehouseService WarehouseService
+@inject IDbContextFactory<TradeFlowDbContext> DbContextFactory
+@inject NavigationManager Nav
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Quản lý Hàng lỗi & Cách ly - TradeFlow</PageTitle>
+
+<WarehouseNavTabs ActiveTab="quarantine" />
+
+<div class="tf-page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+    <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+        <div>
+            <h1 class="tf-page-title" style="margin: 0; font-size: 20px;">Hàng lỗi & Kho cách ly</h1>
+            <p class="tf-page-subtitle" style="margin: 2px 0 0; font-size: 12px;">Theo dõi biệt lập hàng hư hỏng, lỗi kỹ thuật, bóc tách hoàn toàn khỏi tồn kho khả dụng bán hàng</p>
+        </div>
+        <div style="width: 300px; max-width: 100%;">
+            <input type="text"
+                   class="tf-form-control tw-w-full tw-h-9 tw-px-3 tw-text-sm tw-rounded-md tw-border tw-border-slate-300 focus:tw-border-emerald-500 focus:tw-outline-none"
+                   placeholder="Tìm mã CL, sản phẩm, lý do lỗi..."
+                   @bind="_searchTerm"
+                   @bind:event="oninput" />
+        </div>
+    </div>
+</div>
+
+<!-- Isolation Notice Banner -->
+<div class="tw-bg-amber-50 tw-border tw-border-amber-200 tw-rounded-lg tw-p-4 tw-mb-4 tw-text-sm tw-text-amber-900">
+    <div class="tw-flex tw-items-start tw-gap-3">
+        <svg class="tw-w-5 tw-h-5 tw-text-amber-600 tw-shrink-0 tw-mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <div>
+            <span class="tw-font-bold">Quy chuẩn kiểm soát chất lượng & Cách ly vật lý:</span>
+            <span class="tw-ml-1">
+                Tất cả hàng hóa ghi nhận tại danh mục cách ly này đều được tự động loại trừ khỏi tồn khả dụng (Available Stock), ngăn chặn tuyệt đối rủi ro xuất bán hoặc giao hàng lỗi cho khách hàng. Các phương án xử lý (Khôi phục, Xuất trả hãng bảo hành, Tiêu hủy) đều sinh phiếu kho và bút toán thẻ kho tương ứng.
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="tw-grid tw-grid-cols-1 sm:tw-grid-cols-2 lg:tw-grid-cols-4 tw-gap-4 tw-mb-4">
+    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
+        <span class="tw-text-xs tw-font-semibold tw-text-slate-500 tw-uppercase">Tổng số lượng cách ly</span>
+        <div class="tw-text-2xl tw-font-bold tw-text-slate-900 tw-mt-1">@_items.Sum(i => i.Quantity).ToString("N0")</div>
+        <div class="tw-text-xs tw-text-slate-400 tw-mt-1">Tổng cộng các đợt phát hiện</div>
+    </div>
+    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
+        <span class="tw-text-xs tw-font-semibold tw-text-amber-600 tw-uppercase">Đang trong kho cách ly</span>
+        <div class="tw-text-2xl tw-font-bold tw-text-amber-700 tw-mt-1">@_items.Where(i => i.Status == QuarantineStatus.InQuarantine).Sum(i => i.Quantity).ToString("N0")</div>
+        <div class="tw-text-xs tw-text-slate-400 tw-mt-1">Chờ thẩm định & giải tỏa</div>
+    </div>
+    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
+        <span class="tw-text-xs tw-font-semibold tw-text-blue-600 tw-uppercase">Đã xuất trả Nhà sản xuất</span>
+        <div class="tw-text-2xl tw-font-bold tw-text-blue-700 tw-mt-1">@_items.Where(i => i.Status == QuarantineStatus.ReturnedToSupplier).Sum(i => i.Quantity).ToString("N0")</div>
+        <div class="tw-text-xs tw-text-slate-400 tw-mt-1">Bảo hành hoặc đổi mới từ NCC</div>
+    </div>
+    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
+        <span class="tw-text-xs tw-font-semibold tw-text-emerald-600 tw-uppercase">Đã sửa chữa / Phục hồi</span>
+        <div class="tw-text-2xl tw-font-bold tw-text-emerald-700 tw-mt-1">@_items.Where(i => i.Status == QuarantineStatus.Restored).Sum(i => i.Quantity).ToString("N0")</div>
+        <div class="tw-text-xs tw-text-slate-400 tw-mt-1">Đạt chuẩn tái nhập kho bán hàng</div>
+    </div>
+</div>
+
+<!-- Table Card -->
+<div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-shadow-xs tw-overflow-hidden">
+    <div class="tw-overflow-x-auto">
+        <table class="tf-table tw-w-full">
+            <thead>
+                <tr class="tw-bg-slate-50 tw-border-b tw-border-slate-200 tw-text-left tw-text-xs tw-font-semibold tw-text-slate-600 tw-uppercase">
+                    <th class="tw-p-3" style="min-width: 130px;">Mã cách ly</th>
+                    <th class="tw-p-3" style="min-width: 140px;">Kho lưu trữ</th>
+                    <th class="tw-p-3" style="min-width: 220px;">Sản phẩm</th>
+                    <th class="tw-p-3" style="text-align: right; width: 90px;">Số lượng</th>
+                    <th class="tw-p-3" style="min-width: 240px;">Lý do khuyết tật / Mô tả lỗi</th>
+                    <th class="tw-p-3" style="min-width: 140px;">Nguồn phát hiện</th>
+                    <th class="tw-p-3" style="min-width: 110px;">Ngày phát hiện</th>
+                    <th class="tw-p-3" style="text-align: center; min-width: 130px;">Trạng thái</th>
+                    <th class="tw-p-3" style="text-align: right; min-width: 120px;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody class="tw-divide-y tw-divide-slate-100 tw-text-sm">
+                @if (_isLoading)
+                {
+                    <tr>
+                        <td colspan="9" class="tw-p-8 tw-text-center tw-text-slate-500">
+                            <div class="tw-inline-block tw-animate-spin tw-rounded-full tw-h-6 tw-w-6 tw-border-b-2 tw-border-emerald-600 tw-mr-2"></div>
+                            <span>Đang tải danh mục hàng cách ly...</span>
+                        </td>
+                    </tr>
+                }
+                else if (!FilteredItems.Any())
+                {
+                    <tr>
+                        <td colspan="9" class="tw-p-8 tw-text-center tw-text-slate-500">
+                            <div class="tw-text-base tw-font-medium tw-text-slate-600 tw-mb-1">Không có mặt hàng lỗi nào cần cách ly</div>
+                            <p class="tw-text-xs tw-text-slate-400">Kho hàng hiện tại đang đạt chuẩn chất lượng</p>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var it in FilteredItems)
+                    {
+                        <tr class="hover:tw-bg-slate-50/70 tw-transition-colors">
+                            <td class="tw-p-3">
+                                <span class="tw-font-mono tw-font-bold tw-text-amber-800 tw-bg-amber-50 tw-px-2 tw-py-0.5 tw-rounded tw-text-xs">
+                                    @it.Code
+                                </span>
+                            </td>
+                            <td class="tw-p-3 tw-font-medium tw-text-slate-800">
+                                @it.WarehouseName
+                            </td>
+                            <td class="tw-p-3">
+                                <div class="tw-font-medium tw-text-slate-900">@it.ProductName</div>
+                                <div class="tw-text-xs tw-text-slate-400">Mã: @it.ProductCode | ĐVT: @it.UnitName</div>
+                            </td>
+                            <td class="tw-p-3 tw-text-right tw-font-bold tw-text-slate-900">
+                                @it.Quantity.ToString("N0")
+                            </td>
+                            <td class="tw-p-3 tw-text-slate-700">
+                                @it.DefectReason
+                            </td>
+                            <td class="tw-p-3">
+                                <div class="tw-text-xs tw-font-medium tw-text-slate-800">@GetSourceTypeName(it.SourceType)</div>
+                                @if (!string.IsNullOrEmpty(it.SourceReference))
+                                {
+                                    <div class="tw-text-xs tw-text-slate-400">Ref: @it.SourceReference</div>
+                                }
+                            </td>
+                            <td class="tw-p-3 tw-text-slate-600 tw-text-xs">
+                                @it.DateIdentified.ToString("dd/MM/yyyy")
+                            </td>
+                            <td class="tw-p-3" style="text-align: center;">
+                                @GetStatusBadge(it.Status)
+                            </td>
+                            <td class="tw-p-3" style="text-align: right;">
+                                @if (it.Status == QuarantineStatus.InQuarantine)
+                                {
+                                    <AuthorizeView Policy="Permission:Warehouses:Edit">
+                                        <button class="tf-btn tf-btn-sm tf-btn-primary" @onclick="() => OpenResolveModal(it)">
+                                            Giải tỏa
+                                        </button>
+                                    </AuthorizeView>
+                                }
+                                else
+                                {
+                                    <span class="tw-text-xs tw-text-slate-400 tw-italic">Đã giải quyết</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Resolve Quarantine Item -->
+@if (_showResolveModal && _resolvingItem != null)
+{
+    <div class="tw-fixed tw-inset-0 tw-z-50 tw-flex tw-items-center tw-justify-center tw-bg-slate-900/50 tw-p-4">
+        <div class="tw-bg-white tw-rounded-lg tw-shadow-xl tw-max-w-md tw-w-full tw-p-6">
+            <div class="tw-flex tw-justify-between tw-items-center tw-border-b tw-border-slate-200 tw-pb-3 tw-mb-4">
+                <h3 class="tw-text-base tw-font-bold tw-text-slate-900">Xử lý giải tỏa hàng cách ly (@_resolvingItem.Code)</h3>
+                <button type="button" class="tw-text-slate-400 hover:tw-text-slate-600" @onclick="() => _showResolveModal = false">&times;</button>
+            </div>
+
+            <div class="tw-space-y-4 text-sm">
+                <div class="tw-bg-slate-50 tw-p-3 tw-rounded">
+                    <div class="tw-font-medium tw-text-slate-900">@_resolvingItem.ProductName</div>
+                    <div class="tw-text-xs tw-text-slate-500 tw-mt-1">Số lượng cách ly: <strong>@_resolvingItem.Quantity @_resolvingItem.UnitName</strong></div>
+                    <div class="tw-text-xs tw-text-slate-500">Lý do: @_resolvingItem.DefectReason</div>
+                </div>
+
+                <div>
+                    <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-700 tw-mb-1">Phương án giải tỏa *</label>
+                    <select class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300" @bind="_newResolutionStatus">
+                        <option value="@QuarantineStatus.Restored">Đã khắc phục / Phục hồi đạt chuẩn hàng tốt (Nhập lại kho)</option>
+                        <option value="@QuarantineStatus.ReturnedToSupplier">Xuất trả Nhà cung cấp / Hãng bảo hành</option>
+                        <option value="@QuarantineStatus.Scrapped">Tiêu hủy / Xuất loại bỏ (Hao hụt bất khả kháng)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-700 tw-mb-1">Biên bản giải trình & Phương án chi tiết *</label>
+                    <textarea rows="3" class="tf-form-control tw-w-full tw-p-2 tw-text-sm tw-rounded tw-border tw-border-slate-300" placeholder="Ghi nhận phương án xử lý, người thực hiện, kết quả kiểm tra lại..." @bind="_resolutionNotes"></textarea>
+                </div>
+            </div>
+
+            <div class="tw-flex tw-justify-end tw-gap-2 tw-border-t tw-border-slate-200 tw-pt-4 tw-mt-6">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showResolveModal = false">Hủy</button>
+                <button type="button" class="tf-btn tf-btn-primary" @onclick="ExecuteResolveAsync">Xác nhận xử lý & Ghi sổ kho</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<QuarantinedItemDto> _items = new();
+    private bool _isLoading = true;
+    private string _searchTerm = string.Empty;
+
+    // Resolve Modal
+    private bool _showResolveModal = false;
+    private QuarantinedItemDto? _resolvingItem;
+    private QuarantineStatus _newResolutionStatus = QuarantineStatus.Restored;
+    private string _resolutionNotes = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _items = await WarehouseService.GetQuarantinedItemsAsync();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private IEnumerable<QuarantinedItemDto> FilteredItems
+    {
+        get
+        {
+            var query = _items.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(_searchTerm))
+            {
+                var term = _searchTerm.Trim().ToLower();
+                query = query.Where(i =>
+                    (i.Code?.ToLower().Contains(term) ?? false) ||
+                    (i.ProductCode?.ToLower().Contains(term) ?? false) ||
+                    (i.ProductName?.ToLower().Contains(term) ?? false) ||
+                    (i.DefectReason?.ToLower().Contains(term) ?? false));
+            }
+            return query.OrderByDescending(i => i.DateIdentified);
+        }
+    }
+
+    private string GetSourceTypeName(string source) => source switch
+    {
+        "CustomerReturn" => "Khách hàng trả lại",
+        "Stocktaking" => "Phát hiện khi kiểm kê",
+        "InternalDamage" => "Hư hỏng nội bộ bốc dỡ",
+        "SupplierDefect" => "Lỗi từ nhà sản xuất",
+        _ => source
+    };
+
+    private RenderFragment GetStatusBadge(QuarantineStatus status) => builder =>
+    {
+        var (cls, text) = status switch
+        {
+            QuarantineStatus.InQuarantine => ("tw-bg-amber-100 tw-text-amber-800", "Đang cách ly"),
+            QuarantineStatus.Repairing => ("tw-bg-blue-100 tw-text-blue-800", "Đang sửa chữa"),
+            QuarantineStatus.Restored => ("tw-bg-emerald-100 tw-text-emerald-800", "Đã phục hồi"),
+            QuarantineStatus.ReturnedToSupplier => ("tw-bg-indigo-100 tw-text-indigo-800", "Đã trả NCC"),
+            QuarantineStatus.Scrapped => ("tw-bg-slate-100 tw-text-slate-700", "Đã tiêu hủy"),
+            _ => ("tw-bg-slate-100 tw-text-slate-700", status.ToString())
+        };
+
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class", $"tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded-full tw-text-xs tw-font-medium {cls}");
+        builder.AddContent(2, text);
+        builder.CloseElement();
+    };
+
+    private void OpenResolveModal(QuarantinedItemDto item)
+    {
+        _resolvingItem = item;
+        _newResolutionStatus = QuarantineStatus.Restored;
+        _resolutionNotes = "Đã kiểm tra xử lý xong, đề xuất hoàn tất thủ tục giải tỏa.";
+        _showResolveModal = true;
+    }
+
+    private async Task ExecuteResolveAsync()
+    {
+        if (_resolvingItem == null || string.IsNullOrWhiteSpace(_resolutionNotes)) return;
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var userName = user.Identity?.Name ?? "Admin";
+        var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "admin";
+
+        await WarehouseService.ResolveQuarantineItemAsync(_resolvingItem.Id, _newResolutionStatus, _resolutionNotes, userId, userName);
+        _showResolveModal = false;
+        await LoadDataAsync();
+    }
+}

@@ -1,0 +1,375 @@
+@page "/kho/hang-tra/{Id:int}"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Warehouse
+@using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
+@attribute [Authorize(Policy = "Permission:Warehouses:View")]
+
+@inject IWarehouseService WarehouseService
+@inject IDbContextFactory<TradeFlowDbContext> DbContextFactory
+@inject NavigationManager Nav
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Chi tiết đơn trả hàng @_order?.Code - TradeFlow</PageTitle>
+
+<WarehouseNavTabs ActiveTab="returns" />
+
+<!-- Action Header Bar -->
+<div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-mb-4 tw-flex tw-justify-between tw-items-center tw-flex-wrap tw-gap-3 tw-shadow-xs">
+    <div class="tw-flex tw-items-center tw-gap-3">
+        <a href="/kho/hang-tra" class="tf-btn tf-btn-ghost tw-text-slate-600">
+            <svg class="tw-w-4 tw-h-4 tw-mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span>Quay lại</span>
+        </a>
+        <span class="tw-text-slate-300">|</span>
+        <span class="tw-font-mono tw-font-bold tw-text-slate-800 tw-text-base">@_order?.Code</span>
+        @if (_order?.ReturnType == WarehouseReturnType.CustomerReturn)
+        {
+            <span class="tw-inline-flex tw-items-center tw-px-2.5 tw-py-0.5 tw-rounded-full tw-text-xs tw-font-medium tw-bg-indigo-100 tw-text-indigo-800">
+                Khách trả hàng
+            </span>
+        }
+        else
+        {
+            <span class="tw-inline-flex tw-items-center tw-px-2.5 tw-py-0.5 tw-rounded-full tw-text-xs tw-font-medium tw-bg-orange-100 tw-text-orange-800">
+                Trả hàng Nhà cung cấp
+            </span>
+        }
+    </div>
+
+    <div class="tw-flex tw-gap-2">
+        @if (_order?.Status == WarehouseReturnStatus.PendingIntake)
+        {
+            <button class="tf-btn tf-btn-primary" @onclick="ConfirmIntakeAsync">
+                Xác nhận đã tiếp nhận hàng vào cửa kho
+            </button>
+        }
+        else if (_order?.Status == WarehouseReturnStatus.ReceivedAwaitingInspection)
+        {
+            <button class="tf-btn tf-btn-primary" @onclick="SaveInspectionAsync">
+                Lưu kết quả kiểm nghiệm & Gửi duyệt
+            </button>
+        }
+        else if (_order?.Status == WarehouseReturnStatus.Inspected)
+        {
+            <AuthorizeView Policy="Permission:Warehouses:Approve">
+                <button class="tf-btn tf-btn-primary" @onclick="ApproveReturnAsync">
+                    Duyệt phương án & Cập nhật tồn kho
+                </button>
+            </AuthorizeView>
+        }
+    </div>
+</div>
+
+@if (_errorMessage != null)
+{
+    <div class="tw-bg-red-50 tw-border tw-border-red-200 tw-rounded-lg tw-p-4 tw-mb-4 tw-text-red-700 tw-text-sm tw-flex tw-justify-between tw-items-center">
+        <span>@_errorMessage</span>
+        <button type="button" class="tw-font-bold" @onclick="() => _errorMessage = null">&times;</button>
+    </div>
+}
+
+@if (_successMessage != null)
+{
+    <div class="tw-bg-emerald-50 tw-border tw-border-emerald-200 tw-rounded-lg tw-p-4 tw-mb-4 tw-text-emerald-700 tw-text-sm tw-flex tw-justify-between tw-items-center">
+        <span>@_successMessage</span>
+        <button type="button" class="tw-font-bold" @onclick="() => _successMessage = null">&times;</button>
+    </div>
+}
+
+@if (_order == null)
+{
+    <div class="tw-bg-white tw-p-12 tw-text-center tw-rounded-lg tw-border tw-border-slate-200">
+        <div class="tw-animate-spin tw-inline-block tw-w-8 tw-h-8 tw-border-4 tw-border-emerald-500 tw-border-t-transparent tw-rounded-full tw-mb-2"></div>
+        <div class="tw-text-slate-600">Đang tải chi tiết đơn hàng trả lại...</div>
+    </div>
+}
+else
+{
+    <!-- Workflow Stepper -->
+    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-mb-4 tw-shadow-xs">
+        <div class="tw-flex tw-items-center tw-justify-between tw-max-w-3xl tw-mx-auto">
+            <!-- Step 1 -->
+            <div class="tw-flex tw-items-center tw-gap-2">
+                <div class="tw-w-8 tw-h-8 tw-rounded-full tw-flex tw-items-center tw-justify-center tw-text-xs tw-font-bold @(GetStepClass(1))">1</div>
+                <div class="tw-text-xs">
+                    <div class="tw-font-bold">Tiếp nhận cửa kho</div>
+                    <div class="tw-text-slate-400">@(_order.ReceivedByName ?? "Chờ nhận")</div>
+                </div>
+            </div>
+            <div class="tw-flex-1 tw-h-0.5 tw-bg-slate-200 tw-mx-2"></div>
+
+            <!-- Step 2 -->
+            <div class="tw-flex tw-items-center tw-gap-2">
+                <div class="tw-w-8 tw-h-8 tw-rounded-full tw-flex tw-items-center tw-justify-center tw-text-xs tw-font-bold @(GetStepClass(2))">2</div>
+                <div class="tw-text-xs">
+                    <div class="tw-font-bold">Kiểm nghiệm chất lượng</div>
+                    <div class="tw-text-slate-400">@(_order.InspectedByName ?? "Chờ kiểm định")</div>
+                </div>
+            </div>
+            <div class="tw-flex-1 tw-h-0.5 tw-bg-slate-200 tw-mx-2"></div>
+
+            <!-- Step 3 -->
+            <div class="tw-flex tw-items-center tw-gap-2">
+                <div class="tw-w-8 tw-h-8 tw-rounded-full tw-flex tw-items-center tw-justify-center tw-text-xs tw-font-bold @(GetStepClass(3))">3</div>
+                <div class="tw-text-xs">
+                    <div class="tw-font-bold">Phê duyệt & Xuất/Nhập</div>
+                    <div class="tw-text-slate-400">@(_order.ApprovedByName ?? "Chờ duyệt")</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Metadata Card -->
+    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-mb-4 tw-shadow-xs">
+        <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-4 tw-gap-4 tw-text-sm">
+            <div>
+                <span class="tw-text-xs tw-text-slate-500 tw-block">Đối tác:</span>
+                <span class="tw-font-semibold tw-text-slate-900">@_order.PartnerName</span>
+            </div>
+            <div>
+                <span class="tw-text-xs tw-text-slate-500 tw-block">Kho hàng:</span>
+                <span class="tw-font-semibold tw-text-slate-900">@_order.WarehouseName</span>
+            </div>
+            <div>
+                <span class="tw-text-xs tw-text-slate-500 tw-block">Hóa đơn / Đơn gốc:</span>
+                <span class="tw-font-mono tw-font-semibold tw-text-slate-800">@(_order.OriginalInvoiceNumber ?? "Không có")</span>
+            </div>
+            <div>
+                <span class="tw-text-xs tw-text-slate-500 tw-block">Lý do trả hàng:</span>
+                <span class="tw-text-slate-700">@_order.Reason</span>
+            </div>
+        </div>
+    </div>
+
+    @if (_order.ResultingVoucherId != null)
+    {
+        <div class="tw-bg-emerald-50 tw-border tw-border-emerald-200 tw-rounded-lg tw-p-4 tw-mb-4 tw-flex tw-justify-between tw-items-center">
+            <div>
+                <span class="tw-font-semibold tw-text-emerald-900">Chứng từ kho kết quả đã được phát hành tự động:</span>
+                <span class="tw-text-sm tw-text-emerald-800 tw-ml-2">Phiếu kho đã ghi nhận điều chỉnh sổ kho và lưu trữ trong hệ thống Chứng từ.</span>
+            </div>
+            <a href="/kho/phieu-kho/@_order.ResultingVoucherId" class="tf-btn tf-btn-sm tf-btn-primary">
+                Xem Phiếu kho kết quả &rarr;
+            </a>
+        </div>
+    }
+
+    <!-- Items Table -->
+    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-shadow-xs tw-overflow-hidden">
+        <div class="tw-p-4 tw-border-b tw-border-slate-200">
+            <h3 class="tw-font-bold tw-text-base tw-text-slate-900">Danh mục hàng trả lại & Phương án kiểm định</h3>
+        </div>
+        <div class="tw-overflow-x-auto">
+            <table class="tf-table tw-w-full">
+                <thead>
+                    <tr class="tw-bg-slate-50 tw-border-b tw-border-slate-200 tw-text-left tw-text-xs tw-font-semibold tw-text-slate-600 tw-uppercase">
+                        <th class="tw-p-3" style="width: 40px; text-align: center;">STT</th>
+                        <th class="tw-p-3" style="min-width: 120px;">Mã SP</th>
+                        <th class="tw-p-3" style="min-width: 200px;">Tên sản phẩm</th>
+                        <th class="tw-p-3" style="width: 70px; text-align: center;">ĐVT</th>
+                        <th class="tw-p-3" style="text-align: right; width: 100px;">SL yêu cầu</th>
+                        <th class="tw-p-3" style="text-align: right; width: 110px;">SL thực nhận</th>
+                        <th class="tw-p-3" style="min-width: 150px;">Phẩm chất xác định</th>
+                        <th class="tw-p-3" style="min-width: 200px;">Phương án xử lý</th>
+                        <th class="tw-p-3" style="min-width: 180px;">Ghi chú kiểm nghiệm</th>
+                    </tr>
+                </thead>
+                <tbody class="tw-divide-y tw-divide-slate-100 tw-text-sm">
+                    @{ int stt = 1; }
+                    @foreach (var it in _order.Items)
+                    {
+                        <tr class="hover:tw-bg-slate-50/70 tw-transition-colors">
+                            <td class="tw-p-3 tw-text-center tw-text-slate-500">@(stt++)</td>
+                            <td class="tw-p-3">
+                                <span class="tw-font-mono tw-font-semibold tw-text-indigo-700 tw-bg-indigo-50 tw-px-2 tw-py-0.5 tw-rounded tw-text-xs">
+                                    @it.ProductCode
+                                </span>
+                            </td>
+                            <td class="tw-p-3 tw-font-medium tw-text-slate-900">@it.ProductName</td>
+                            <td class="tw-p-3 tw-text-center tw-text-slate-600">@it.UnitName</td>
+                            <td class="tw-p-3 tw-text-right tw-font-semibold">@it.RequestedQuantity.ToString("N0")</td>
+                            
+                            <!-- Received Quantity Column -->
+                            <td class="tw-p-3 tw-text-right">
+                                @if (_order.Status == WarehouseReturnStatus.PendingIntake)
+                                {
+                                    <input type="number" step="1" min="0" class="tf-form-control tw-w-20 tw-h-8 tw-text-right tw-px-2 tw-text-sm tw-font-bold tw-rounded tw-border tw-border-slate-300" @bind="it.ReceivedQuantity" />
+                                }
+                                else
+                                {
+                                    <span class="tw-font-bold tw-text-slate-900">@it.ReceivedQuantity.ToString("N0")</span>
+                                }
+                            </td>
+
+                            <!-- Condition Column -->
+                            <td class="tw-p-3">
+                                @if (_order.Status == WarehouseReturnStatus.ReceivedAwaitingInspection)
+                                {
+                                    <select class="tf-form-control tw-w-full tw-h-8 tw-text-xs tw-px-2 tw-rounded tw-border tw-border-slate-300" @bind="it.Condition">
+                                        <option value="@StockCondition.Saleable">Hàng tốt (Khả dụng)</option>
+                                        <option value="@StockCondition.Usable">Hàng dùng được (Cũ)</option>
+                                        <option value="@StockCondition.Defective">Hàng lỗi / Cách ly</option>
+                                    </select>
+                                }
+                                else
+                                {
+                                    @if (it.Condition == StockCondition.Saleable)
+                                    {
+                                        <span class="tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded-full tw-text-xs tw-font-medium tw-bg-emerald-100 tw-text-emerald-800">
+                                            Hàng tốt
+                                        </span>
+                                    }
+                                    else if (it.Condition == StockCondition.Usable)
+                                    {
+                                        <span class="tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded-full tw-text-xs tw-font-medium tw-bg-blue-100 tw-text-blue-800">
+                                            Dùng được
+                                        </span>
+                                    }
+                                    else if (it.Condition == StockCondition.Defective)
+                                    {
+                                        <span class="tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded-full tw-text-xs tw-font-medium tw-bg-red-100 tw-text-red-800">
+                                            Hàng lỗi
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="tw-text-slate-400 tw-text-xs">Chờ kiểm định</span>
+                                    }
+                                }
+                            </td>
+
+                            <!-- Disposition Column -->
+                            <td class="tw-p-3">
+                                @if (_order.Status == WarehouseReturnStatus.ReceivedAwaitingInspection)
+                                {
+                                    <select class="tf-form-control tw-w-full tw-h-8 tw-text-xs tw-px-2 tw-rounded tw-border tw-border-slate-300" @bind="it.Disposition">
+                                        <option value="@ReturnDisposition.RestockSaleable">Nhập lại kho bán hàng</option>
+                                        <option value="@ReturnDisposition.TransferUsable">Chuyển sang hàng dùng được</option>
+                                        <option value="@ReturnDisposition.QuarantineDefective">Chuyển kho cách ly hàng lỗi</option>
+                                        <option value="@ReturnDisposition.ReturnToSupplier">Xuất trả nhà cung cấp</option>
+                                        <option value="@ReturnDisposition.RejectReturn">Từ chối nhận lại</option>
+                                    </select>
+                                }
+                                else
+                                {
+                                    <span class="tw-font-medium tw-text-slate-800 tw-text-xs">
+                                        @it.DispositionName
+                                    </span>
+                                }
+                            </td>
+
+                            <!-- Inspection Notes Column -->
+                            <td class="tw-p-3">
+                                @if (_order.Status == WarehouseReturnStatus.ReceivedAwaitingInspection)
+                                {
+                                    <input type="text" class="tf-form-control tw-w-full tw-h-8 tw-text-xs tw-px-2 tw-rounded tw-border tw-border-slate-200" placeholder="Chi tiết lỗi hoặc ghi chú kiểm định..." @bind="it.InspectionNotes" />
+                                }
+                                else
+                                {
+                                    <span class="tw-text-slate-600 tw-text-xs">@(it.InspectionNotes ?? "-")</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private WarehouseReturnOrderDto? _order;
+    private string? _errorMessage;
+    private string? _successMessage;
+
+    private string _currentUserId = string.Empty;
+    private string _currentUserName = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        _currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "admin";
+        _currentUserName = user.Identity?.Name ?? "Admin";
+
+        await LoadOrderAsync();
+    }
+
+    private async Task LoadOrderAsync()
+    {
+        _order = await WarehouseService.GetReturnOrderByIdAsync(Id);
+    }
+
+    private string GetStepClass(int stepNumber)
+    {
+        if (_order == null) return "tw-bg-slate-200 tw-text-slate-600";
+        var currentStep = _order.Status switch
+        {
+            WarehouseReturnStatus.PendingIntake => 1,
+            WarehouseReturnStatus.ReceivedAwaitingInspection => 2,
+            WarehouseReturnStatus.Inspected => 3,
+            WarehouseReturnStatus.Approved or WarehouseReturnStatus.Completed => 4,
+            _ => 1
+        };
+
+        if (currentStep > stepNumber)
+            return "tw-bg-emerald-600 tw-text-white";
+        if (currentStep == stepNumber)
+            return "tw-bg-emerald-100 tw-text-emerald-800 tw-ring-2 tw-ring-emerald-600";
+        return "tw-bg-slate-100 tw-text-slate-500";
+    }
+
+    private async Task ConfirmIntakeAsync()
+    {
+        if (_order == null) return;
+        try
+        {
+            await WarehouseService.ReceiveReturnIntakeAsync(_order.Id, _order.Items, _currentUserId, _currentUserName);
+            _successMessage = "Đã xác nhận tiếp nhận hàng tại cửa kho.";
+            await LoadOrderAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+    }
+
+    private async Task SaveInspectionAsync()
+    {
+        if (_order == null) return;
+        try
+        {
+            await WarehouseService.InspectReturnItemsAsync(_order.Id, _order.Items, _currentUserId, _currentUserName);
+            _successMessage = "Đã lưu kết quả kiểm định chất lượng và gửi duyệt phương án.";
+            await LoadOrderAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+    }
+
+    private async Task ApproveReturnAsync()
+    {
+        if (_order == null) return;
+        try
+        {
+            await WarehouseService.ApproveAndProcessReturnAsync(_order.Id, _currentUserId, _currentUserName);
+            _successMessage = "Đã phê duyệt thành công! Các phiếu kho và thẻ kho đã được ghi sổ.";
+            await LoadOrderAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+    }
+}

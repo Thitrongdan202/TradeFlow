@@ -12,6 +12,7 @@ using TradeFlow.Domain.Entities.Security;
 using TradeFlow.Domain.Entities.Employees;
 using TradeFlow.Domain.Entities.Partners;
 using TradeFlow.Domain.Entities.Contracts;
+using TradeFlow.Domain.Entities.Warehouses;
 
 namespace TradeFlow.Infrastructure.Persistence;
 
@@ -82,6 +83,17 @@ public class TradeFlowDbContext
     public DbSet<TradeFlow.Domain.Entities.Contracts.ContractItem> ContractItems => Set<TradeFlow.Domain.Entities.Contracts.ContractItem>();
     public DbSet<TradeFlow.Domain.Entities.Contracts.ContractTemplate> ContractTemplates => Set<TradeFlow.Domain.Entities.Contracts.ContractTemplate>();
     public DbSet<TradeFlow.Domain.Entities.Contracts.ContractPartyASettings> ContractPartyASettings => Set<TradeFlow.Domain.Entities.Contracts.ContractPartyASettings>();
+
+    // === Quản lý Kho, Kiểm kê, Hàng trả & Chứng từ kho ===
+    public DbSet<InventoryStock> InventoryStocks => Set<InventoryStock>();
+    public DbSet<InventoryMovement> InventoryMovements => Set<InventoryMovement>();
+    public DbSet<WarehouseVoucher> WarehouseVouchers => Set<WarehouseVoucher>();
+    public DbSet<WarehouseVoucherItem> WarehouseVoucherItems => Set<WarehouseVoucherItem>();
+    public DbSet<StocktakeSession> StocktakeSessions => Set<StocktakeSession>();
+    public DbSet<StocktakeItem> StocktakeItems => Set<StocktakeItem>();
+    public DbSet<WarehouseReturnOrder> WarehouseReturnOrders => Set<WarehouseReturnOrder>();
+    public DbSet<WarehouseReturnOrderItem> WarehouseReturnOrderItems => Set<WarehouseReturnOrderItem>();
+    public DbSet<QuarantinedInventoryItem> QuarantinedInventoryItems => Set<QuarantinedInventoryItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

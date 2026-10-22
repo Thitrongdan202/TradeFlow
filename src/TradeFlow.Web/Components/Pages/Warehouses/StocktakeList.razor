@@ -1,0 +1,288 @@
+@page "/kho/kiem-kho"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Warehouse
+@using TradeFlow.Domain.Entities.MasterData
+@using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
+@attribute [Authorize(Policy = "Permission:Warehouses:View")]
+
+@inject IWarehouseService WarehouseService
+@inject IDbContextFactory<TradeFlowDbContext> DbContextFactory
+@inject NavigationManager Nav
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Kiểm kê Kho - TradeFlow</PageTitle>
+
+<WarehouseNavTabs ActiveTab="stocktake" />
+
+<div class="tf-page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+    <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+        <div>
+            <h1 class="tf-page-title" style="margin: 0; font-size: 20px;">Kiểm kê kho & Đối soát chênh lệch</h1>
+            <p class="tf-page-subtitle" style="margin: 2px 0 0; font-size: 12px;">Quy trình chốt sổ số dư, kiểm đếm vật lý, phân tách trách nhiệm kiểm soát và xử lý chênh lệch</p>
+        </div>
+        <div style="width: 280px; max-width: 100%;">
+            <input type="text"
+                   class="tf-form-control tw-w-full tw-h-9 tw-px-3 tw-text-sm tw-rounded-md tw-border tw-border-slate-300 focus:tw-border-emerald-500 focus:tw-outline-none"
+                   placeholder="Tìm mã đợt kiểm kê, lý do..."
+                   @bind="_searchTerm"
+                   @bind:event="oninput" />
+        </div>
+    </div>
+    <div class="tf-page-actions">
+        <AuthorizeView Policy="Permission:Warehouses:Create">
+            <button class="tf-btn tf-btn-primary" @onclick="() => _showCreateModal = true" style="display: inline-flex; align-items: center; gap: 6px; height: 36px; white-space: nowrap;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                <span>Tạo đợt kiểm kê mới</span>
+            </button>
+        </AuthorizeView>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="tw-grid tw-grid-cols-1 sm:tw-grid-cols-2 lg:tw-grid-cols-4 tw-gap-4 tw-mb-4">
+    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
+        <div class="tw-text-xs tw-font-semibold tw-text-slate-500 tw-uppercase tw-mb-1">Tổng đợt kiểm kê</div>
+        <div class="tw-text-2xl tw-font-bold tw-text-slate-900">@_sessions.Count</div>
+        <div class="tw-text-xs tw-text-slate-500 tw-mt-1">Lịch sử kiểm kê toàn hệ thống</div>
+    </div>
+    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
+        <div class="tw-text-xs tw-font-semibold tw-text-blue-600 tw-uppercase tw-mb-1">Đang kiểm đếm</div>
+        <div class="tw-text-2xl tw-font-bold tw-text-blue-700">@_sessions.Count(s => s.Status == StocktakeStatus.Counting)</div>
+        <div class="tw-text-xs tw-text-slate-500 tw-mt-1">Thủ kho đang đếm thực tế</div>
+    </div>
+    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
+        <div class="tw-text-xs tw-font-semibold tw-text-amber-600 tw-uppercase tw-mb-1">Chờ phê duyệt</div>
+        <div class="tw-text-2xl tw-font-bold tw-text-amber-700">@_sessions.Count(s => s.Status == StocktakeStatus.PendingReview)</div>
+        <div class="tw-text-xs tw-text-slate-500 tw-mt-1">Chờ Quản lý đối soát và duyệt</div>
+    </div>
+    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
+        <div class="tw-text-xs tw-font-semibold tw-text-emerald-600 tw-uppercase tw-mb-1">Đã xử lý xong</div>
+        <div class="tw-text-2xl tw-font-bold tw-text-emerald-700">@_sessions.Count(s => s.Status == StocktakeStatus.Completed || s.Status == StocktakeStatus.Approved)</div>
+        <div class="tw-text-xs tw-text-slate-500 tw-mt-1">Đã sinh phiếu điều chỉnh kho</div>
+    </div>
+</div>
+
+<!-- Sessions Table Card -->
+<div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-shadow-xs tw-overflow-hidden">
+    <div class="tw-overflow-x-auto">
+        <table class="tf-table tw-w-full">
+            <thead>
+                <tr class="tw-bg-slate-50 tw-border-b tw-border-slate-200 tw-text-left tw-text-xs tw-font-semibold tw-text-slate-600 tw-uppercase">
+                    <th class="tw-p-3" style="min-width: 140px;">Mã đợt</th>
+                    <th class="tw-p-3" style="min-width: 150px;">Kho kiểm kê</th>
+                    <th class="tw-p-3" style="min-width: 120px;">Ngày chốt sổ</th>
+                    <th class="tw-p-3" style="min-width: 180px;">Mục đích / Lý do</th>
+                    <th class="tw-p-3" style="min-width: 140px;">Người kiểm đếm</th>
+                    <th class="tw-p-3" style="min-width: 140px;">Người giám sát</th>
+                    <th class="tw-p-3" style="text-align: right; min-width: 90px;">Số mặt hàng</th>
+                    <th class="tw-p-3" style="text-align: center; min-width: 120px;">Trạng thái</th>
+                    <th class="tw-p-3" style="text-align: right; min-width: 120px;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody class="tw-divide-y tw-divide-slate-100 tw-text-sm">
+                @if (_isLoading)
+                {
+                    <tr>
+                        <td colspan="9" class="tw-p-8 tw-text-center tw-text-slate-500">
+                            <div class="tw-inline-block tw-animate-spin tw-rounded-full tw-h-6 tw-w-6 tw-border-b-2 tw-border-emerald-600 tw-mr-2"></div>
+                            <span>Đang tải các đợt kiểm kê...</span>
+                        </td>
+                    </tr>
+                }
+                else if (!FilteredSessions.Any())
+                {
+                    <tr>
+                        <td colspan="9" class="tw-p-8 tw-text-center tw-text-slate-500">
+                            <div class="tw-text-base tw-font-medium tw-text-slate-600 tw-mb-1">Chưa có đợt kiểm kê nào</div>
+                            <p class="tw-text-xs tw-text-slate-400">Nhấn nút "Tạo đợt kiểm kê mới" để bắt đầu quy trình chốt số liệu kiểm kê</p>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var s in FilteredSessions)
+                    {
+                        <tr class="hover:tw-bg-slate-50/70 tw-transition-colors">
+                            <td class="tw-p-3">
+                                <a href="/kho/kiem-kho/@s.Id" class="tw-font-mono tw-font-bold tw-text-emerald-700 hover:tw-underline">
+                                    @s.Code
+                                </a>
+                            </td>
+                            <td class="tw-p-3 tw-font-medium tw-text-slate-900">
+                                @s.WarehouseName
+                            </td>
+                            <td class="tw-p-3 tw-text-slate-600">
+                                @s.StocktakeDate.ToString("dd/MM/yyyy HH:mm")
+                            </td>
+                            <td class="tw-p-3 tw-text-slate-700">
+                                @s.Reason
+                            </td>
+                            <td class="tw-p-3 tw-text-slate-600">
+                                @(s.CountedByName ?? "Chưa chỉ định")
+                            </td>
+                            <td class="tw-p-3 tw-text-slate-600">
+                                @(s.ReviewedByName ?? "Chờ giám sát")
+                            </td>
+                            <td class="tw-p-3 tw-text-right tw-font-semibold">
+                                @s.Items.Count
+                            </td>
+                            <td class="tw-p-3" style="text-align: center;">
+                                @if (s.Status == StocktakeStatus.Completed)
+                                {
+                                    <span class="tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded-full tw-text-xs tw-font-medium tw-bg-emerald-100 tw-text-emerald-800">
+                                        Đã xử lý xong
+                                    </span>
+                                }
+                                else if (s.Status == StocktakeStatus.PendingReview)
+                                {
+                                    <span class="tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded-full tw-text-xs tw-font-medium tw-bg-amber-100 tw-text-amber-800">
+                                        Chờ Quản lý duyệt
+                                    </span>
+                                }
+                                else if (s.Status == StocktakeStatus.Counting)
+                                {
+                                    <span class="tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded-full tw-text-xs tw-font-medium tw-bg-blue-100 tw-text-blue-800">
+                                        Đang kiểm đếm
+                                    </span>
+                                }
+                                else if (s.Status == StocktakeStatus.Rejected)
+                                {
+                                    <span class="tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded-full tw-text-xs tw-font-medium tw-bg-red-100 tw-text-red-800">
+                                        Từ chối / Đếm lại
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded-full tw-text-xs tw-font-medium tw-bg-slate-100 tw-text-slate-700">
+                                        Dự thảo
+                                    </span>
+                                }
+                            </td>
+                            <td class="tw-p-3" style="text-align: right;">
+                                <a href="/kho/kiem-kho/@s.Id" class="tf-btn tf-btn-ghost tf-btn-sm tw-text-emerald-700 hover:tw-bg-emerald-50">
+                                    Chi tiết & Đếm
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Create Modal -->
+@if (_showCreateModal)
+{
+    <div class="tw-fixed tw-inset-0 tw-z-50 tw-flex tw-items-center tw-justify-center tw-bg-slate-900/50 tw-p-4">
+        <div class="tw-bg-white tw-rounded-lg tw-shadow-xl tw-max-w-lg tw-w-full tw-p-6">
+            <div class="tw-flex tw-justify-between tw-items-center tw-border-b tw-border-slate-200 tw-pb-3 tw-mb-4">
+                <h3 class="tw-text-lg tw-font-bold tw-text-slate-900">Khởi tạo đợt kiểm kê kho</h3>
+                <button type="button" class="tw-text-slate-400 hover:tw-text-slate-600" @onclick="() => _showCreateModal = false">&times;</button>
+            </div>
+
+            <div class="tw-space-y-4">
+                <div>
+                    <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-700 tw-mb-1">Kho kiểm kê *</label>
+                    <select class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300" @bind="_newWarehouseId">
+                        @foreach (var wh in _warehouses)
+                        {
+                            <option value="@wh.Id">@wh.Name (@wh.Code)</option>
+                        }
+                    </select>
+                </div>
+
+                <div>
+                    <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-700 tw-mb-1">Thời điểm chốt số liệu sổ sách (Cutoff Snapshot) *</label>
+                    <input type="datetime-local" class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300" @bind="_newCutoffDate" />
+                    <p class="tw-text-xs tw-text-slate-500 tw-mt-1">Hệ thống sẽ chụp lại ảnh chụp tồn sổ sách chính xác tại thời điểm này để so sánh.</p>
+                </div>
+
+                <div>
+                    <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-700 tw-mb-1">Mục đích / Lý do kiểm kê *</label>
+                    <input type="text" class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300" placeholder="Ví dụ: Kiểm kê định kỳ cuối tháng, Kiểm kê đột xuất..." @bind="_newReason" />
+                </div>
+            </div>
+
+            <div class="tw-flex tw-justify-end tw-gap-2 tw-border-t tw-border-slate-200 tw-pt-4 tw-mt-6">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showCreateModal = false">Đóng</button>
+                <button type="button" class="tf-btn tf-btn-primary" @onclick="CreateSessionAsync">Chốt số và Bắt đầu đếm</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<StocktakeSessionDto> _sessions = new();
+    private List<Warehouse> _warehouses = new();
+    private bool _isLoading = true;
+    private string _searchTerm = string.Empty;
+
+    // Create Modal state
+    private bool _showCreateModal = false;
+    private int _newWarehouseId;
+    private DateTime _newCutoffDate = DateTime.Now;
+    private string _newReason = "Kiểm kê định kỳ tháng " + DateTime.Now.Month + "/" + DateTime.Now.Year;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            using var ctx = await DbContextFactory.CreateDbContextAsync();
+            _warehouses = await ctx.Warehouses.Where(w => w.IsActive).OrderBy(w => w.Name).ToListAsync();
+            if (_warehouses.Any() && _newWarehouseId == 0)
+            {
+                _newWarehouseId = _warehouses.First().Id;
+            }
+
+            _sessions = await WarehouseService.GetStocktakeSessionsAsync();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private IEnumerable<StocktakeSessionDto> FilteredSessions
+    {
+        get
+        {
+            var query = _sessions.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(_searchTerm))
+            {
+                var term = _searchTerm.Trim().ToLower();
+                query = query.Where(s =>
+                    (s.Code?.ToLower().Contains(term) ?? false) ||
+                    (s.WarehouseName?.ToLower().Contains(term) ?? false) ||
+                    (s.Reason?.ToLower().Contains(term) ?? false));
+            }
+            return query.OrderByDescending(s => s.StocktakeDate);
+        }
+    }
+
+    private async Task CreateSessionAsync()
+    {
+        if (_newWarehouseId == 0 || string.IsNullOrWhiteSpace(_newReason)) return;
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var userName = user.Identity?.Name ?? "Admin";
+        var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "admin";
+
+        var session = await WarehouseService.CreateStocktakeSessionAsync(_newWarehouseId, _newCutoffDate, _newReason, userId, userName);
+        _showCreateModal = false;
+        Nav.NavigateTo($"/kho/kiem-kho/{session.Id}");
+    }
+}

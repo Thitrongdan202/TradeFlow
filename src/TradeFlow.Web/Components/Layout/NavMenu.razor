@@ -213,6 +213,30 @@
                 <div class="tf-nav-flyout-header">Kho hàng</div>
                 <div class="tf-nav-flyout-body">
                     <AuthorizeView Policy="Permission:Warehouses:View">
+                        <NavLink class="tf-flyout-link" href="/kho/ton-kho" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Tồn kho thực tế</span>
+                        </NavLink>
+                        <NavLink class="tf-flyout-link" href="/kho/phieu-kho" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Phiếu nhập / xuất kho</span>
+                        </NavLink>
+                        <NavLink class="tf-flyout-link" href="/kho/kiem-kho" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Kiểm kê kho</span>
+                        </NavLink>
+                        <NavLink class="tf-flyout-link" href="/kho/hang-tra" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Hàng trả lại</span>
+                        </NavLink>
+                        <NavLink class="tf-flyout-link" href="/kho/hang-loi" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Hàng lỗi / Cách ly</span>
+                        </NavLink>
+                        <NavLink class="tf-flyout-link" href="/kho/bien-dong" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Sổ thẻ kho & Biến động</span>
+                        </NavLink>
                         <NavLink class="tf-flyout-link" href="/kho-hang" ActiveClass="active" @onclick="HandleLinkClick">
                             <span class="tf-flyout-dot"></span>
                             <span>Danh sách kho hàng</span>
@@ -224,6 +248,36 @@
             @* Mobile / Click Accordion Submenu *@
             <div class="tf-nav-sub @(IsWarehouseOpen ? "expanded" : "")">
                 <AuthorizeView Policy="Permission:Warehouses:View">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/kho/ton-kho" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-nav-sub-dot"></span>Tồn kho thực tế
+                        </NavLink>
+                    </div>
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/kho/phieu-kho" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-nav-sub-dot"></span>Phiếu nhập / xuất kho
+                        </NavLink>
+                    </div>
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/kho/kiem-kho" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-nav-sub-dot"></span>Kiểm kê kho
+                        </NavLink>
+                    </div>
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/kho/hang-tra" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-nav-sub-dot"></span>Hàng trả lại
+                        </NavLink>
+                    </div>
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/kho/hang-loi" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-nav-sub-dot"></span>Hàng lỗi / Cách ly
+                        </NavLink>
+                    </div>
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/kho/bien-dong" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-nav-sub-dot"></span>Sổ thẻ kho & Biến động
+                        </NavLink>
+                    </div>
                     <div class="tf-nav-sub-item">
                         <NavLink class="tf-nav-sub-link" href="/kho-hang" ActiveClass="active" @onclick="HandleLinkClick">
                             <span class="tf-nav-sub-dot"></span>Danh sách kho

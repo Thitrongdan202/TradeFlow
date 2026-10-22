@@ -1,0 +1,350 @@
+@page "/kho/phieu-kho/{Id:int}"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Warehouse
+@using TradeFlow.Domain.Entities.Settings
+@using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
+@attribute [Authorize(Policy = "Permission:Warehouses:View")]
+
+@inject IWarehouseService WarehouseService
+@inject IDbContextFactory<TradeFlowDbContext> DbContextFactory
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Chi tiết chứng từ kho @_voucher?.VoucherNumber - TradeFlow</PageTitle>
+
+<WarehouseNavTabs ActiveTab="vouchers" />
+
+<!-- Action Bar (Hidden during printing) -->
+<div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-mb-4 tw-flex tw-justify-between tw-items-center tw-flex-wrap tw-gap-3 tw-shadow-xs no-print">
+    <div class="tw-flex tw-items-center tw-gap-3">
+        <a href="/kho/phieu-kho" class="tf-btn tf-btn-ghost tw-text-slate-600">
+            <svg class="tw-w-4 tw-h-4 tw-mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span>Quay lại</span>
+        </a>
+        <span class="tw-text-slate-300">|</span>
+        <span class="tw-font-mono tw-font-bold tw-text-slate-800 tw-text-base">@_voucher?.VoucherNumber</span>
+        @if (_voucher?.Status == WarehouseVoucherStatus.Approved)
+        {
+            <span class="tw-inline-flex tw-items-center tw-px-2.5 tw-py-0.5 tw-rounded-full tw-text-xs tw-font-medium tw-bg-emerald-100 tw-text-emerald-800">
+                Đã phê duyệt
+            </span>
+        }
+        else if (_voucher?.Status == WarehouseVoucherStatus.Draft)
+        {
+            <span class="tw-inline-flex tw-items-center tw-px-2.5 tw-py-0.5 tw-rounded-full tw-text-xs tw-font-medium tw-bg-amber-100 tw-text-amber-800">
+                Dự thảo (Chưa ghi sổ)
+            </span>
+        }
+    </div>
+
+    <div class="tw-flex tw-gap-2">
+        <button class="tf-btn tf-btn-secondary" @onclick="PrintVoucher" style="display: inline-flex; align-items: center; gap: 6px;">
+            <svg class="tw-w-4 tw-h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            <span>In biểu mẫu A4</span>
+        </button>
+
+        @if (_voucher?.Status == WarehouseVoucherStatus.Draft)
+        {
+            <AuthorizeView Policy="Permission:Warehouses:Approve">
+                <button class="tf-btn tf-btn-primary" @onclick="ApproveVoucherAsync" style="display: inline-flex; align-items: center; gap: 6px;">
+                    <svg class="tw-w-4 tw-h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Phê duyệt & Ghi sổ kho</span>
+                </button>
+            </AuthorizeView>
+        }
+    </div>
+</div>
+
+@if (_voucher == null)
+{
+    <div class="tw-bg-white tw-p-12 tw-text-center tw-rounded-lg tw-border tw-border-slate-200">
+        <div class="tw-animate-spin tw-inline-block tw-w-8 tw-h-8 tw-border-4 tw-border-emerald-500 tw-border-t-transparent tw-rounded-full tw-mb-2"></div>
+        <div class="tw-text-slate-600">Đang tải chứng từ kho...</div>
+    </div>
+}
+else
+{
+    <!-- A4 Printable Sheet Container -->
+    <div class="voucher-a4-sheet tw-bg-white tw-border tw-border-slate-300 tw-p-8 tw-mx-auto tw-max-w-4xl tw-shadow-sm tw-rounded-lg tw-text-slate-900" style="font-family: 'Times New Roman', Times, serif;">
+        
+        <!-- Header: Enterprise Info & Form Standard Code -->
+        <div class="tw-grid tw-grid-cols-2 tw-gap-4 tw-border-b tw-border-slate-300 tw-pb-4 tw-mb-4">
+            <div>
+                <div class="tw-font-bold tw-text-sm tw-uppercase">@(_companySettings?.CompanyName ?? "TỔNG KHO THIẾT BỊ VỆ SINH LACASA")</div>
+                <div class="tw-text-xs">Địa chỉ: @(_companySettings?.Address ?? "Hà Nội, Việt Nam")</div>
+                <div class="tw-text-xs">Mã số thuế: @(_companySettings?.TaxCode ?? "0123456789")</div>
+                <div class="tw-text-xs">Hotline: @(_companySettings?.Phone ?? "0369.074.789")</div>
+            </div>
+            <div class="tw-text-right">
+                <div class="tw-font-bold tw-text-sm">@GetFormTemplateCode(_voucher.VoucherType)</div>
+                <div class="tw-text-xs tw-italic">Ban hành theo Thông tư số 200/2014/TT-BTC</div>
+                <div class="tw-text-xs tw-italic">Ngày 22/12/2014 của Bộ Tài chính</div>
+            </div>
+        </div>
+
+        <!-- Voucher Title -->
+        <div class="tw-text-center tw-my-6">
+            <h2 class="tw-text-2xl tw-font-bold tw-tracking-wide tw-uppercase tw-mb-1">
+                @GetVoucherTitle(_voucher.VoucherType)
+            </h2>
+            <div class="tw-text-sm tw-italic tw-mb-1">
+                Ngày @_voucher.VoucherDate.Day tháng @_voucher.VoucherDate.Month năm @_voucher.VoucherDate.Year
+            </div>
+            <div class="tw-text-sm tw-font-semibold">
+                Số: <span class="tw-font-mono">@_voucher.VoucherNumber</span>
+            </div>
+        </div>
+
+        <!-- Voucher Context Details -->
+        <div class="tw-space-y-1.5 tw-text-sm tw-mb-6">
+            <div class="tw-grid tw-grid-cols-12 tw-gap-2">
+                <span class="tw-col-span-3 tw-font-medium">- Họ tên người giao/nhận:</span>
+                <span class="tw-col-span-9 tw-font-bold">@(_voucher.DelivererOrReceiverName ?? _voucher.PartnerName ?? "...................................................................")</span>
+            </div>
+            <div class="tw-grid tw-grid-cols-12 tw-gap-2">
+                <span class="tw-col-span-3 tw-font-medium">- Đơn vị / Đối tác:</span>
+                <span class="tw-col-span-9">@(_voucher.PartnerName ?? "...................................................................")</span>
+            </div>
+            <div class="tw-grid tw-grid-cols-12 tw-gap-2">
+                <span class="tw-col-span-3 tw-font-medium">- Theo chứng từ số:</span>
+                <span class="tw-col-span-9">@(_voucher.SourceReference ?? "...................................................................")</span>
+            </div>
+            <div class="tw-grid tw-grid-cols-12 tw-gap-2">
+                <span class="tw-col-span-3 tw-font-medium">- Lý do nhập/xuất kho:</span>
+                <span class="tw-col-span-9">@_voucher.Reason</span>
+            </div>
+            <div class="tw-grid tw-grid-cols-12 tw-gap-2">
+                <span class="tw-col-span-3 tw-font-medium">- Kho hàng:</span>
+                <span class="tw-col-span-9 tw-font-semibold">@_voucher.WarehouseName (@_voucher.WarehouseCode)</span>
+            </div>
+        </div>
+
+        <!-- Table of Items -->
+        <div class="tw-mb-6">
+            <table class="tw-w-full tw-border-collapse tw-border tw-border-slate-400 tw-text-sm">
+                <thead>
+                    <tr class="tw-bg-slate-100 tw-text-center tw-font-bold">
+                        <th class="tw-border tw-border-slate-400 tw-p-2" style="width: 40px;" rowspan="2">STT</th>
+                        <th class="tw-border tw-border-slate-400 tw-p-2" rowspan="2">Tên, nhãn hiệu, quy cách phẩm chất vật tư, hàng hóa</th>
+                        <th class="tw-border tw-border-slate-400 tw-p-2" style="width: 100px;" rowspan="2">Mã số</th>
+                        <th class="tw-border tw-border-slate-400 tw-p-2" style="width: 60px;" rowspan="2">ĐVT</th>
+                        <th class="tw-border tw-border-slate-400 tw-p-2" colspan="2">Số lượng</th>
+                        <th class="tw-border tw-border-slate-400 tw-p-2" style="width: 110px;" rowspan="2">Đơn giá (đ)</th>
+                        <th class="tw-border tw-border-slate-400 tw-p-2" style="width: 130px;" rowspan="2">Thành tiền (đ)</th>
+                    </tr>
+                    <tr class="tw-bg-slate-100 tw-text-center tw-text-xs">
+                        <th class="tw-border tw-border-slate-400 tw-p-1" style="width: 80px;">Chứng từ</th>
+                        <th class="tw-border tw-border-slate-400 tw-p-1" style="width: 80px;">Thực tế</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ int stt = 1; }
+                    @foreach (var it in _voucher.Items)
+                    {
+                        <tr>
+                            <td class="tw-border tw-border-slate-400 tw-p-2 tw-text-center">@(stt++)</td>
+                            <td class="tw-border tw-border-slate-400 tw-p-2">
+                                <div class="tw-font-semibold">@it.ProductName</div>
+                                @if (!string.IsNullOrEmpty(it.Notes))
+                                {
+                                    <div class="tw-text-xs tw-italic tw-text-slate-600">Ghi chú: @it.Notes</div>
+                                }
+                            </td>
+                            <td class="tw-border tw-border-slate-400 tw-p-2 tw-font-mono tw-text-xs tw-text-center">@it.ProductCode</td>
+                            <td class="tw-border tw-border-slate-400 tw-p-2 tw-text-center">@it.UnitName</td>
+                            <td class="tw-border tw-border-slate-400 tw-p-2 tw-text-right">@((it.DocumentQuantity > 0 ? it.DocumentQuantity : it.ActualQuantity).ToString("N0"))</td>
+                            <td class="tw-border tw-border-slate-400 tw-p-2 tw-text-right tw-font-bold">@it.ActualQuantity.ToString("N0")</td>
+                            <td class="tw-border tw-border-slate-400 tw-p-2 tw-text-right">@it.UnitPrice.ToString("N0")</td>
+                            <td class="tw-border tw-border-slate-400 tw-p-2 tw-text-right tw-font-bold">@it.LineTotal.ToString("N0")</td>
+                        </tr>
+                    }
+                    <!-- Summary Row -->
+                    <tr class="tw-font-bold tw-bg-slate-50">
+                        <td colspan="4" class="tw-border tw-border-slate-400 tw-p-2 tw-text-center tw-uppercase">Cộng</td>
+                        <td class="tw-border tw-border-slate-400 tw-p-2 tw-text-right">-</td>
+                        <td class="tw-border tw-border-slate-400 tw-p-2 tw-text-right">@_voucher.TotalQuantity.ToString("N0")</td>
+                        <td class="tw-border tw-border-slate-400 tw-p-2 tw-text-right">-</td>
+                        <td class="tw-border tw-border-slate-400 tw-p-2 tw-text-right tw-text-base">@_voucher.TotalAmount.ToString("N0") đ</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Amount In Words -->
+        <div class="tw-text-sm tw-mb-8">
+            <span class="tw-italic">- Tổng số tiền (viết bằng chữ): </span>
+            <span class="tw-font-bold tw-italic">@NumberToWordsVietnamese((long)_voucher.TotalAmount)</span>
+        </div>
+
+        <!-- Official Signatures (5 roles) -->
+        <div class="tw-grid tw-grid-cols-4 tw-gap-2 tw-text-center tw-text-sm tw-mt-8">
+            <div>
+                <div class="tw-font-bold">Người lập biểu</div>
+                <div class="tw-text-xs tw-italic">(Ký, họ tên)</div>
+                <div class="tw-h-20"></div>
+                <div class="tw-font-semibold">@(_voucher.CreatedByName ?? "Trần Văn Tuấn")</div>
+            </div>
+            <div>
+                <div class="tw-font-bold">Người giao / nhận</div>
+                <div class="tw-text-xs tw-italic">(Ký, họ tên)</div>
+                <div class="tw-h-20"></div>
+                <div class="tw-font-semibold">@(_voucher.DelivererOrReceiverName ?? "............................")</div>
+            </div>
+            <div>
+                <div class="tw-font-bold">Thủ kho</div>
+                <div class="tw-text-xs tw-italic">(Ký, họ tên)</div>
+                <div class="tw-h-20"></div>
+                <div class="tw-font-semibold">@(_voucher.WarehouseKeeperName ?? "Trần Văn Tuấn")</div>
+            </div>
+            <div>
+                <div class="tw-font-bold">Giám đốc / Quản lý</div>
+                <div class="tw-text-xs tw-italic">(Ký, họ tên, đóng dấu)</div>
+                <div class="tw-h-20"></div>
+                <div class="tw-font-semibold">@(_voucher.ApprovedByName ?? "Quản Lý 01")</div>
+            </div>
+        </div>
+
+    </div>
+}
+
+<style>
+    @@media print {
+        .no-print {
+            display: none !important;
+        }
+        body {
+            background-color: white !important;
+        }
+        .voucher-a4-sheet {
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            max-width: 100% !important;
+        }
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private WarehouseVoucherDto? _voucher;
+    private CompanySettings? _companySettings;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadVoucherAsync();
+    }
+
+    private async Task LoadVoucherAsync()
+    {
+        _voucher = await WarehouseService.GetVoucherByIdAsync(Id);
+
+        using var ctx = await DbContextFactory.CreateDbContextAsync();
+        _companySettings = await ctx.CompanySettings.FirstOrDefaultAsync();
+    }
+
+    private string GetFormTemplateCode(WarehouseVoucherType type) => type switch
+    {
+        WarehouseVoucherType.InboundReceipt => "Mẫu số 01 - VT",
+        WarehouseVoucherType.OutboundIssue => "Mẫu số 02 - VT",
+        WarehouseVoucherType.InspectionRecord => "Mẫu số 03 - VT",
+        WarehouseVoucherType.StocktakeReport => "Mẫu số 05 - VT",
+        _ => "Biểu mẫu kế toán VT"
+    };
+
+    private string GetVoucherTitle(WarehouseVoucherType type) => type switch
+    {
+        WarehouseVoucherType.InboundReceipt => "PHIẾU NHẬP KHO",
+        WarehouseVoucherType.OutboundIssue => "PHIẾU XUẤT KHO",
+        WarehouseVoucherType.InspectionRecord => "BIÊN BẢN KIỂM NGHIỆM VẬT TƯ HÀNG HÓA",
+        WarehouseVoucherType.StocktakeReport => "BIÊN BẢN KIỂM KÊ VẬT TƯ HÀNG HÓA",
+        _ => "PHIẾU KHO"
+    };
+
+    private async Task PrintVoucher()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+
+    private async Task ApproveVoucherAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var userName = user.Identity?.Name ?? "Admin";
+        var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "admin";
+
+        await WarehouseService.ApproveVoucherAsync(Id, userId, userName);
+        await LoadVoucherAsync();
+    }
+
+    private string NumberToWordsVietnamese(long number)
+    {
+        if (number == 0) return "Không đồng";
+        if (number < 0) return "Âm " + NumberToWordsVietnamese(-number);
+
+        string[] units = { "", "nghìn", "triệu", "tỷ", "nghìn tỷ", "triệu tỷ" };
+        string[] digits = { "không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín" };
+
+        string result = "";
+        int unitIndex = 0;
+
+        while (number > 0)
+        {
+            long group = number % 1000;
+            if (group > 0)
+            {
+                long h = group / 100;
+                long t = (group % 100) / 10;
+                long u = group % 10;
+
+                string groupText = "";
+                if (h > 0 || number > 999)
+                {
+                    groupText += digits[h] + " trăm ";
+                }
+
+                if (t > 1)
+                {
+                    groupText += digits[t] + " mươi ";
+                    if (u == 1) groupText += "mốt ";
+                    else if (u == 5) groupText += "lăm ";
+                    else if (u > 0) groupText += digits[u] + " ";
+                }
+                else if (t == 1)
+                {
+                    groupText += "mười ";
+                    if (u == 5) groupText += "lăm ";
+                    else if (u > 0) groupText += digits[u] + " ";
+                }
+                else if (u > 0)
+                {
+                    if (h > 0 || number > 999) groupText += "lẻ ";
+                    groupText += digits[u] + " ";
+                }
+
+                result = groupText + units[unitIndex] + " " + result;
+            }
+            number /= 1000;
+            unitIndex++;
+        }
+
+        result = result.Trim();
+        if (result.Length > 0)
+        {
+            result = char.ToUpper(result[0]) + result.Substring(1) + " đồng chẵn.";
+        }
+        return result;
+    }
+}

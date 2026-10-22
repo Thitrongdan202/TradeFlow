@@ -1,0 +1,344 @@
+@page "/kho/hang-tra"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Warehouse
+@using TradeFlow.Domain.Entities.MasterData
+@using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
+@attribute [Authorize(Policy = "Permission:Warehouses:View")]
+
+@inject IWarehouseService WarehouseService
+@inject IDbContextFactory<TradeFlowDbContext> DbContextFactory
+@inject NavigationManager Nav
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Quản lý Hàng trả lại - TradeFlow</PageTitle>
+
+<WarehouseNavTabs ActiveTab="returns" />
+
+<div class="tf-page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+    <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+        <div>
+            <h1 class="tf-page-title" style="margin: 0; font-size: 20px;">Hàng trả lại (Khách trả & Trả NCC)</h1>
+            <p class="tf-page-subtitle" style="margin: 2px 0 0; font-size: 12px;">Quy trình tiếp nhận tại cửa kho, kiểm nghiệm chất lượng, phân loại tái nhập / cách ly / trả hãng</p>
+        </div>
+        <div style="width: 280px; max-width: 100%;">
+            <input type="text"
+                   class="tf-form-control tw-w-full tw-h-9 tw-px-3 tw-text-sm tw-rounded-md tw-border tw-border-slate-300 focus:tw-border-emerald-500 focus:tw-outline-none"
+                   placeholder="Tìm mã đơn, đối tác, hóa đơn..."
+                   @bind="_searchTerm"
+                   @bind:event="oninput" />
+        </div>
+    </div>
+    <div class="tf-page-actions">
+        <AuthorizeView Policy="Permission:Warehouses:Create">
+            <button class="tf-btn tf-btn-primary" @onclick="() => _showCreateModal = true" style="display: inline-flex; align-items: center; gap: 6px; height: 36px; white-space: nowrap;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                <span>Tạo đơn trả hàng</span>
+            </button>
+        </AuthorizeView>
+    </div>
+</div>
+
+<!-- Type Filter Chips -->
+<div class="tw-flex tw-gap-2 tw-mb-4">
+    <button class="tw-px-3 tw-py-1.5 tw-rounded-full tw-text-xs tw-font-medium tw-transition-colors @(_typeFilter == null ? "tw-bg-emerald-600 tw-text-white" : "tw-bg-slate-100 tw-text-slate-700 hover:tw-bg-slate-200")"
+            @onclick="() => _typeFilter = null">
+        Tất cả đơn trả hàng
+    </button>
+    <button class="tw-px-3 tw-py-1.5 tw-rounded-full tw-text-xs tw-font-medium tw-transition-colors @(_typeFilter == WarehouseReturnType.CustomerReturn ? "tw-bg-emerald-600 tw-text-white" : "tw-bg-slate-100 tw-text-slate-700 hover:tw-bg-slate-200")"
+            @onclick="() => _typeFilter = WarehouseReturnType.CustomerReturn">
+        Khách hàng trả lại (KTH)
+    </button>
+    <button class="tw-px-3 tw-py-1.5 tw-rounded-full tw-text-xs tw-font-medium tw-transition-colors @(_typeFilter == WarehouseReturnType.SupplierReturn ? "tw-bg-emerald-600 tw-text-white" : "tw-bg-slate-100 tw-text-slate-700 hover:tw-bg-slate-200")"
+            @onclick="() => _typeFilter = WarehouseReturnType.SupplierReturn">
+        Trả hàng Nhà cung cấp (TNCC)
+    </button>
+</div>
+
+<!-- Return Orders Table -->
+<div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-shadow-xs tw-overflow-hidden">
+    <div class="tw-overflow-x-auto">
+        <table class="tf-table tw-w-full">
+            <thead>
+                <tr class="tw-bg-slate-50 tw-border-b tw-border-slate-200 tw-text-left tw-text-xs tw-font-semibold tw-text-slate-600 tw-uppercase">
+                    <th class="tw-p-3" style="min-width: 140px;">Mã đơn</th>
+                    <th class="tw-p-3" style="min-width: 130px;">Phân loại</th>
+                    <th class="tw-p-3" style="min-width: 110px;">Ngày lập</th>
+                    <th class="tw-p-3" style="min-width: 150px;">Kho tiếp nhận</th>
+                    <th class="tw-p-3" style="min-width: 180px;">Đối tác</th>
+                    <th class="tw-p-3" style="min-width: 130px;">Hóa đơn gốc</th>
+                    <th class="tw-p-3" style="min-width: 200px;">Lý do trả hàng</th>
+                    <th class="tw-p-3" style="text-align: right; min-width: 80px;">Số dòng</th>
+                    <th class="tw-p-3" style="text-align: center; min-width: 140px;">Trạng thái</th>
+                    <th class="tw-p-3" style="text-align: right; min-width: 120px;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody class="tw-divide-y tw-divide-slate-100 tw-text-sm">
+                @if (_isLoading)
+                {
+                    <tr>
+                        <td colspan="10" class="tw-p-8 tw-text-center tw-text-slate-500">
+                            <div class="tw-inline-block tw-animate-spin tw-rounded-full tw-h-6 tw-w-6 tw-border-b-2 tw-border-emerald-600 tw-mr-2"></div>
+                            <span>Đang tải danh sách đơn trả hàng...</span>
+                        </td>
+                    </tr>
+                }
+                else if (!FilteredOrders.Any())
+                {
+                    <tr>
+                        <td colspan="10" class="tw-p-8 tw-text-center tw-text-slate-500">
+                            <div class="tw-text-base tw-font-medium tw-text-slate-600 tw-mb-1">Chưa có đơn trả hàng nào</div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var o in FilteredOrders)
+                    {
+                        <tr class="hover:tw-bg-slate-50/70 tw-transition-colors">
+                            <td class="tw-p-3">
+                                <a href="/kho/hang-tra/@o.Id" class="tw-font-mono tw-font-bold tw-text-emerald-700 hover:tw-underline">
+                                    @o.Code
+                                </a>
+                            </td>
+                            <td class="tw-p-3">
+                                @if (o.ReturnType == WarehouseReturnType.CustomerReturn)
+                                {
+                                    <span class="tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded tw-text-xs tw-font-medium tw-bg-indigo-100 tw-text-indigo-800">
+                                        Khách trả hàng
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded tw-text-xs tw-font-medium tw-bg-orange-100 tw-text-orange-800">
+                                        Trả hàng NCC
+                                    </span>
+                                }
+                            </td>
+                            <td class="tw-p-3 tw-text-slate-600">
+                                @o.ReturnDate.ToString("dd/MM/yyyy")
+                            </td>
+                            <td class="tw-p-3 tw-text-slate-700 tw-font-medium">
+                                @o.WarehouseName
+                            </td>
+                            <td class="tw-p-3 tw-font-medium tw-text-slate-900">
+                                @o.PartnerName
+                            </td>
+                            <td class="tw-p-3 tw-text-slate-600 tw-font-mono tw-text-xs">
+                                @(o.OriginalInvoiceNumber ?? "-")
+                            </td>
+                            <td class="tw-p-3 tw-text-slate-600">
+                                <span class="tw-line-clamp-2" title="@o.Reason">@o.Reason</span>
+                            </td>
+                            <td class="tw-p-3 tw-text-right tw-font-semibold">
+                                @o.Items.Count
+                            </td>
+                            <td class="tw-p-3" style="text-align: center;">
+                                @GetStatusBadge(o.Status)
+                            </td>
+                            <td class="tw-p-3" style="text-align: right;">
+                                <a href="/kho/hang-tra/@o.Id" class="tf-btn tf-btn-ghost tf-btn-sm tw-text-emerald-700 hover:tw-bg-emerald-50">
+                                    Chi tiết & Xử lý
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Create Return Order -->
+@if (_showCreateModal)
+{
+    <div class="tw-fixed tw-inset-0 tw-z-50 tw-flex tw-items-center tw-justify-center tw-bg-slate-900/50 tw-p-4">
+        <div class="tw-bg-white tw-rounded-lg tw-shadow-xl tw-max-w-xl tw-w-full tw-p-6">
+            <div class="tw-flex tw-justify-between tw-items-center tw-border-b tw-border-slate-200 tw-pb-3 tw-mb-4">
+                <h3 class="tw-text-lg tw-font-bold tw-text-slate-900">Tạo đơn hàng trả lại</h3>
+                <button type="button" class="tw-text-slate-400 hover:tw-text-slate-600" @onclick="() => _showCreateModal = false">&times;</button>
+            </div>
+
+            <div class="tw-space-y-4">
+                <div>
+                    <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-700 tw-mb-1">Luồng trả hàng *</label>
+                    <select class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300" @bind="_newReturnType">
+                        <option value="@WarehouseReturnType.CustomerReturn">Khách hàng hoàn trả (Customer Return)</option>
+                        <option value="@WarehouseReturnType.SupplierReturn">Xuất trả Nhà cung cấp (Supplier Return)</option>
+                    </select>
+                </div>
+
+                <div class="tw-grid tw-grid-cols-2 tw-gap-4">
+                    <div>
+                        <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-700 tw-mb-1">Kho tiếp nhận *</label>
+                        <select class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300" @bind="_newWarehouseId">
+                            @foreach (var wh in _warehouses)
+                            {
+                                <option value="@wh.Id">@wh.Name (@wh.Code)</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-700 tw-mb-1">Tên khách hàng / Nhà cung cấp *</label>
+                        <input type="text" class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300" placeholder="Tên đối tác trả hàng" @bind="_newPartnerName" />
+                    </div>
+                </div>
+
+                <div>
+                    <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-700 tw-mb-1">Số hóa đơn / Đơn hàng gốc liên quan</label>
+                    <input type="text" class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300" placeholder="VD: HD-2026-0042 hoặc SO-2026-0015" @bind="_newOriginalInvoice" />
+                </div>
+
+                <div>
+                    <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-700 tw-mb-1">Lý do trả hàng *</label>
+                    <textarea rows="2" class="tf-form-control tw-w-full tw-p-2 tw-text-sm tw-rounded tw-border tw-border-slate-300" placeholder="Ghi rõ lý do trả hàng (Lỗi sản xuất, giao nhầm mã, khách mua thừa...)" @bind="_newReason"></textarea>
+                </div>
+
+                <!-- Product selection -->
+                <div class="tw-border-t tw-border-slate-200 tw-pt-3">
+                    <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-700 tw-mb-1">Mặt hàng trả lại đầu tiên *</label>
+                    <div class="tw-flex tw-gap-2">
+                        <select class="tf-form-control tw-flex-1 tw-h-8 tw-text-xs tw-px-2 tw-rounded tw-border tw-border-slate-300" @bind="_newProductId">
+                            @foreach (var prod in _products)
+                            {
+                                <option value="@prod.Id">@prod.Code - @prod.Name</option>
+                            }
+                        </select>
+                        <input type="number" min="1" step="1" class="tf-form-control tw-w-24 tw-h-8 tw-text-xs tw-px-2 tw-rounded tw-border tw-border-slate-300" placeholder="Số lượng" @bind="_newQuantity" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="tw-flex tw-justify-end tw-gap-2 tw-border-t tw-border-slate-200 tw-pt-4 tw-mt-6">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showCreateModal = false">Đóng</button>
+                <button type="button" class="tf-btn tf-btn-primary" @onclick="CreateOrderAsync">Khởi tạo đơn trả hàng</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<WarehouseReturnOrderDto> _orders = new();
+    private List<Warehouse> _warehouses = new();
+    private List<Product> _products = new();
+    private bool _isLoading = true;
+
+    private string _searchTerm = string.Empty;
+    private WarehouseReturnType? _typeFilter;
+
+    // Create Modal state
+    private bool _showCreateModal = false;
+    private WarehouseReturnType _newReturnType = WarehouseReturnType.CustomerReturn;
+    private int _newWarehouseId;
+    private string _newPartnerName = string.Empty;
+    private string _newOriginalInvoice = string.Empty;
+    private string _newReason = string.Empty;
+    private int _newProductId;
+    private decimal _newQuantity = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            using var ctx = await DbContextFactory.CreateDbContextAsync();
+            _warehouses = await ctx.Warehouses.Where(w => w.IsActive).OrderBy(w => w.Name).ToListAsync();
+            _products = await ctx.Products.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
+
+            if (_warehouses.Any() && _newWarehouseId == 0)
+            {
+                _newWarehouseId = _warehouses.First().Id;
+            }
+            if (_products.Any() && _newProductId == 0)
+            {
+                _newProductId = _products.First().Id;
+            }
+
+            _orders = await WarehouseService.GetReturnOrdersAsync();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private IEnumerable<WarehouseReturnOrderDto> FilteredOrders
+    {
+        get
+        {
+            var query = _orders.AsEnumerable();
+            if (_typeFilter.HasValue)
+            {
+                query = query.Where(o => o.ReturnType == _typeFilter.Value);
+            }
+            if (!string.IsNullOrWhiteSpace(_searchTerm))
+            {
+                var term = _searchTerm.Trim().ToLower();
+                query = query.Where(o =>
+                    (o.Code?.ToLower().Contains(term) ?? false) ||
+                    (o.PartnerName?.ToLower().Contains(term) ?? false) ||
+                    (o.OriginalInvoiceNumber?.ToLower().Contains(term) ?? false) ||
+                    (o.Reason?.ToLower().Contains(term) ?? false));
+            }
+            return query.OrderByDescending(o => o.ReturnDate);
+        }
+    }
+
+    private RenderFragment GetStatusBadge(WarehouseReturnStatus status) => builder =>
+    {
+        var (cls, text) = status switch
+        {
+            WarehouseReturnStatus.PendingIntake => ("tw-bg-slate-100 tw-text-slate-700", "Chờ tiếp nhận"),
+            WarehouseReturnStatus.ReceivedAwaitingInspection => ("tw-bg-amber-100 tw-text-amber-800", "Chờ kiểm định"),
+            WarehouseReturnStatus.Inspected => ("tw-bg-blue-100 tw-text-blue-800", "Đã kiểm định"),
+            WarehouseReturnStatus.Approved => ("tw-bg-emerald-100 tw-text-emerald-800", "Đã duyệt phương án"),
+            WarehouseReturnStatus.Completed => ("tw-bg-emerald-100 tw-text-emerald-800", "Hoàn thành"),
+            WarehouseReturnStatus.Rejected => ("tw-bg-red-100 tw-text-red-800", "Từ chối"),
+            _ => ("tw-bg-slate-100 tw-text-slate-700", status.ToString())
+        };
+
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class", $"tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded-full tw-text-xs tw-font-medium {cls}");
+        builder.AddContent(2, text);
+        builder.CloseElement();
+    };
+
+    private async Task CreateOrderAsync()
+    {
+        if (_newWarehouseId == 0 || string.IsNullOrWhiteSpace(_newPartnerName) || string.IsNullOrWhiteSpace(_newReason) || _newProductId == 0) return;
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var userName = user.Identity?.Name ?? "Admin";
+        var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "admin";
+
+        var dto = new WarehouseReturnOrderDto
+        {
+            ReturnType = _newReturnType,
+            WarehouseId = _newWarehouseId,
+            CustomerName = _newReturnType == WarehouseReturnType.CustomerReturn ? _newPartnerName : null,
+            SupplierName = _newReturnType == WarehouseReturnType.SupplierReturn ? _newPartnerName : null,
+            OriginalInvoiceNumber = _newOriginalInvoice,
+            Reason = _newReason,
+            Status = WarehouseReturnStatus.PendingIntake,
+            Items = new List<WarehouseReturnOrderItemDto>
+            {
+                new() { ProductId = _newProductId, RequestedQuantity = _newQuantity, UnitPrice = 1000000 }
+            }
+        };
+
+        var created = await WarehouseService.CreateReturnOrderAsync(dto, userId, userName);
+        _showCreateModal = false;
+        Nav.NavigateTo($"/kho/hang-tra/{created.Id}");
+    }
+}

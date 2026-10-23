@@ -233,7 +233,7 @@ public class ContractPdfDocument : IDocument
             });
 
             // 9. CHỮ KÝ HAI BÊN
-            col.Item().PaddingTop(12).Row(row =>
+            col.Item().ShowEntire().PaddingTop(12).Row(row =>
             {
                 // Bên A
                 row.RelativeItem().AlignCenter().Column(c =>

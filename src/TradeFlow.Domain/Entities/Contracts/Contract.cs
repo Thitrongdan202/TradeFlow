@@ -30,7 +30,7 @@ public class Contract : AuditableEntity<int>
     public DateTime ContractDate { get; set; } = DateTime.UtcNow;
 
     /// <summary>Địa điểm lập / ký kết hợp đồng (ví dụ: Cần Thơ, TP.HCM)</summary>
-    public string ContractPlace { get; set; } = "Cần Thơ";
+    public string ContractPlace { get; set; } = string.Empty;
 
     /// <summary>Ngày bắt đầu có hiệu lực</summary>
     public DateTime? EffectiveDate { get; set; }

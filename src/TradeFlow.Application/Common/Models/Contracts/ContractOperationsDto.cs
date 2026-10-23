@@ -9,7 +9,7 @@ public class CreateContractDto
     public string Title { get; set; } = string.Empty;
     public string TemplateCode { get; set; } = "B2B_SALE";
     public DateTime ContractDate { get; set; } = DateTime.UtcNow;
-    public string ContractPlace { get; set; } = "Cần Thơ";
+    public string ContractPlace { get; set; } = string.Empty;
     public DateTime? EffectiveDate { get; set; }
     public DateTime? ExpirationDate { get; set; }
 

@@ -576,6 +576,10 @@ namespace TradeFlow.Infrastructure.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<string>("DefaultSigningLocation")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
                     b.Property<string>("DefaultWarrantyTerms")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
@@ -3059,6 +3063,11 @@ namespace TradeFlow.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .HasColumnType("integer");
+
+                    b.Property<string>("AccountingRegime")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("Address")
                         .HasMaxLength(500)

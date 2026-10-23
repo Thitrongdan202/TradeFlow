@@ -27,6 +27,9 @@ public class CompanySettings : AuditableEntity<int>
     /// <summary>Địa chỉ</summary>
     public string? Address { get; set; }
 
+    /// <summary>Chế độ kế toán áp dụng cho biểu mẫu chứng từ kho (TT99_2025, TT200_2014, TT133_2016)</summary>
+    public string AccountingRegime { get; set; } = "TT99_2025";
+
     /// <summary>Điện thoại</summary>
     public string? Phone { get; set; }
 

@@ -45,6 +45,13 @@
     </div>
 
     <div class="tw-flex tw-gap-2">
+        <a href="/api/warehouses/vouchers/@Id/export-pdf" target="_blank" class="tf-btn tf-btn-outline-primary" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none;">
+            <svg class="tw-w-4 tw-h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span>Tải file PDF</span>
+        </a>
+
         <button class="tf-btn tf-btn-secondary" @onclick="PrintVoucher" style="display: inline-flex; align-items: center; gap: 6px;">
             <svg class="tw-w-4 tw-h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -76,38 +83,46 @@
 else
 {
     <!-- A4 Printable Sheet Container -->
-    <div class="voucher-a4-sheet tw-bg-white tw-border tw-border-slate-300 tw-p-8 tw-mx-auto tw-max-w-4xl tw-shadow-sm tw-rounded-lg tw-text-slate-900" style="font-family: 'Times New Roman', Times, serif;">
+    <div id="print-warehouse-voucher" class="voucher-a4-sheet tw-bg-white tw-border tw-border-slate-300 tw-p-8 tw-mx-auto tw-max-w-4xl tw-shadow-sm tw-rounded-lg tw-text-slate-900" style="font-family: 'Times New Roman', Times, serif;">
         
         <!-- Header: Enterprise Info & Form Standard Code -->
-        <div class="tw-grid tw-grid-cols-2 tw-gap-4 tw-border-b tw-border-slate-300 tw-pb-4 tw-mb-4">
+        <div class="tw-grid tw-grid-cols-2 tw-gap-4 tw-border-b tw-border-slate-300 tw-pb-3 tw-mb-3">
             <div>
                 <div class="tw-font-bold tw-text-sm tw-uppercase">@(_companySettings?.CompanyName ?? "TỔNG KHO THIẾT BỊ VỆ SINH LACASA")</div>
-                <div class="tw-text-xs">Địa chỉ: @(_companySettings?.Address ?? "Hà Nội, Việt Nam")</div>
-                <div class="tw-text-xs">Mã số thuế: @(_companySettings?.TaxCode ?? "0123456789")</div>
-                <div class="tw-text-xs">Hotline: @(_companySettings?.Phone ?? "0369.074.789")</div>
+                <div class="tw-text-xs">Địa chỉ: @(_companySettings?.Address ?? "TP. Cần Thơ, Việt Nam")</div>
+                <div class="tw-text-xs">Mã số thuế: @(_companySettings?.TaxCode ?? "0316899999")</div>
+                <div class="tw-text-xs">Hotline: @(_companySettings?.Phone ?? "0909 123 456")</div>
             </div>
             <div class="tw-text-right">
                 <div class="tw-font-bold tw-text-sm">@GetFormTemplateCode(_voucher.VoucherType)</div>
-                <div class="tw-text-xs tw-italic">Ban hành theo Thông tư số 200/2014/TT-BTC</div>
-                <div class="tw-text-xs tw-italic">Ngày 22/12/2014 của Bộ Tài chính</div>
+                @if (IsCircular99)
+                {
+                    <div class="tw-text-xs tw-italic">Ban hành theo Thông tư số 99/2025/TT-BTC</div>
+                    <div class="tw-text-xs tw-italic">Ngày 27/10/2025 của Bộ Tài chính</div>
+                }
+                else
+                {
+                    <div class="tw-text-xs tw-italic">Ban hành theo Thông tư số 200/2014/TT-BTC</div>
+                    <div class="tw-text-xs tw-italic">Ngày 22/12/2014 của Bộ Tài chính</div>
+                }
             </div>
         </div>
 
         <!-- Voucher Title -->
-        <div class="tw-text-center tw-my-6">
-            <h2 class="tw-text-2xl tw-font-bold tw-tracking-wide tw-uppercase tw-mb-1">
+        <div class="tw-text-center tw-my-3">
+            <h2 class="tw-text-xl tw-font-bold tw-tracking-wide tw-uppercase tw-mb-0.5">
                 @GetVoucherTitle(_voucher.VoucherType)
             </h2>
-            <div class="tw-text-sm tw-italic tw-mb-1">
+            <div class="tw-text-xs tw-italic tw-mb-0.5">
                 Ngày @_voucher.VoucherDate.Day tháng @_voucher.VoucherDate.Month năm @_voucher.VoucherDate.Year
             </div>
-            <div class="tw-text-sm tw-font-semibold">
+            <div class="tw-text-xs tw-font-semibold">
                 Số: <span class="tw-font-mono">@_voucher.VoucherNumber</span>
             </div>
         </div>
 
         <!-- Voucher Context Details -->
-        <div class="tw-space-y-1.5 tw-text-sm tw-mb-6">
+        <div class="tw-space-y-1 tw-text-sm tw-mb-3">
             <div class="tw-grid tw-grid-cols-12 tw-gap-2">
                 <span class="tw-col-span-3 tw-font-medium">- Họ tên người giao/nhận:</span>
                 <span class="tw-col-span-9 tw-font-bold">@(_voucher.DelivererOrReceiverName ?? _voucher.PartnerName ?? "...................................................................")</span>
@@ -131,17 +146,17 @@ else
         </div>
 
         <!-- Table of Items -->
-        <div class="tw-mb-6">
+        <div class="tw-mb-3">
             <table class="tw-w-full tw-border-collapse tw-border tw-border-slate-400 tw-text-sm">
                 <thead>
                     <tr class="tw-bg-slate-100 tw-text-center tw-font-bold">
-                        <th class="tw-border tw-border-slate-400 tw-p-2" style="width: 40px;" rowspan="2">STT</th>
-                        <th class="tw-border tw-border-slate-400 tw-p-2" rowspan="2">Tên, nhãn hiệu, quy cách phẩm chất vật tư, hàng hóa</th>
-                        <th class="tw-border tw-border-slate-400 tw-p-2" style="width: 100px;" rowspan="2">Mã số</th>
-                        <th class="tw-border tw-border-slate-400 tw-p-2" style="width: 60px;" rowspan="2">ĐVT</th>
-                        <th class="tw-border tw-border-slate-400 tw-p-2" colspan="2">Số lượng</th>
-                        <th class="tw-border tw-border-slate-400 tw-p-2" style="width: 110px;" rowspan="2">Đơn giá (đ)</th>
-                        <th class="tw-border tw-border-slate-400 tw-p-2" style="width: 130px;" rowspan="2">Thành tiền (đ)</th>
+                        <th class="tw-border tw-border-slate-400 tw-p-1.5" style="width: 40px;" rowspan="2">STT</th>
+                        <th class="tw-border tw-border-slate-400 tw-p-1.5" rowspan="2">Tên, nhãn hiệu, quy cách phẩm chất vật tư, hàng hóa</th>
+                        <th class="tw-border tw-border-slate-400 tw-p-1.5" style="width: 100px;" rowspan="2">Mã số</th>
+                        <th class="tw-border tw-border-slate-400 tw-p-1.5" style="width: 60px;" rowspan="2">ĐVT</th>
+                        <th class="tw-border tw-border-slate-400 tw-p-1.5" colspan="2">Số lượng</th>
+                        <th class="tw-border tw-border-slate-400 tw-p-1.5" style="width: 110px;" rowspan="2">Đơn giá (đ)</th>
+                        <th class="tw-border tw-border-slate-400 tw-p-1.5" style="width: 130px;" rowspan="2">Thành tiền (đ)</th>
                     </tr>
                     <tr class="tw-bg-slate-100 tw-text-center tw-text-xs">
                         <th class="tw-border tw-border-slate-400 tw-p-1" style="width: 80px;">Chứng từ</th>
@@ -152,65 +167,65 @@ else
                     @{ int stt = 1; }
                     @foreach (var it in _voucher.Items)
                     {
-                        <tr>
-                            <td class="tw-border tw-border-slate-400 tw-p-2 tw-text-center">@(stt++)</td>
-                            <td class="tw-border tw-border-slate-400 tw-p-2">
+                        <tr style="break-inside: avoid !important; page-break-inside: avoid !important;">
+                            <td class="tw-border tw-border-slate-400 tw-p-1.5 tw-text-center">@(stt++)</td>
+                            <td class="tw-border tw-border-slate-400 tw-p-1.5">
                                 <div class="tw-font-semibold">@it.ProductName</div>
                                 @if (!string.IsNullOrEmpty(it.Notes))
                                 {
                                     <div class="tw-text-xs tw-italic tw-text-slate-600">Ghi chú: @it.Notes</div>
                                 }
                             </td>
-                            <td class="tw-border tw-border-slate-400 tw-p-2 tw-font-mono tw-text-xs tw-text-center">@it.ProductCode</td>
-                            <td class="tw-border tw-border-slate-400 tw-p-2 tw-text-center">@it.UnitName</td>
-                            <td class="tw-border tw-border-slate-400 tw-p-2 tw-text-right">@((it.DocumentQuantity > 0 ? it.DocumentQuantity : it.ActualQuantity).ToString("N0"))</td>
-                            <td class="tw-border tw-border-slate-400 tw-p-2 tw-text-right tw-font-bold">@it.ActualQuantity.ToString("N0")</td>
-                            <td class="tw-border tw-border-slate-400 tw-p-2 tw-text-right">@it.UnitPrice.ToString("N0")</td>
-                            <td class="tw-border tw-border-slate-400 tw-p-2 tw-text-right tw-font-bold">@it.LineTotal.ToString("N0")</td>
+                            <td class="tw-border tw-border-slate-400 tw-p-1.5 tw-font-mono tw-text-xs tw-text-center">@it.ProductCode</td>
+                            <td class="tw-border tw-border-slate-400 tw-p-1.5 tw-text-center">@it.UnitName</td>
+                            <td class="tw-border tw-border-slate-400 tw-p-1.5 tw-text-right">@((it.DocumentQuantity > 0 ? it.DocumentQuantity : it.ActualQuantity).ToString("N0"))</td>
+                            <td class="tw-border tw-border-slate-400 tw-p-1.5 tw-text-right tw-font-bold">@it.ActualQuantity.ToString("N0")</td>
+                            <td class="tw-border tw-border-slate-400 tw-p-1.5 tw-text-right">@it.UnitPrice.ToString("N0")</td>
+                            <td class="tw-border tw-border-slate-400 tw-p-1.5 tw-text-right tw-font-bold">@it.LineTotal.ToString("N0")</td>
                         </tr>
                     }
                     <!-- Summary Row -->
-                    <tr class="tw-font-bold tw-bg-slate-50">
-                        <td colspan="4" class="tw-border tw-border-slate-400 tw-p-2 tw-text-center tw-uppercase">Cộng</td>
-                        <td class="tw-border tw-border-slate-400 tw-p-2 tw-text-right">-</td>
-                        <td class="tw-border tw-border-slate-400 tw-p-2 tw-text-right">@_voucher.TotalQuantity.ToString("N0")</td>
-                        <td class="tw-border tw-border-slate-400 tw-p-2 tw-text-right">-</td>
-                        <td class="tw-border tw-border-slate-400 tw-p-2 tw-text-right tw-text-base">@_voucher.TotalAmount.ToString("N0") đ</td>
+                    <tr class="tw-font-bold tw-bg-slate-50" style="break-inside: avoid !important; page-break-inside: avoid !important;">
+                        <td colspan="4" class="tw-border tw-border-slate-400 tw-p-1.5 tw-text-center tw-uppercase">Cộng</td>
+                        <td class="tw-border tw-border-slate-400 tw-p-1.5 tw-text-right">-</td>
+                        <td class="tw-border tw-border-slate-400 tw-p-1.5 tw-text-right">@_voucher.TotalQuantity.ToString("N0")</td>
+                        <td class="tw-border tw-border-slate-400 tw-p-1.5 tw-text-right">-</td>
+                        <td class="tw-border tw-border-slate-400 tw-p-1.5 tw-text-right tw-text-base">@_voucher.TotalAmount.ToString("N0") đ</td>
                     </tr>
                 </tbody>
             </table>
         </div>
 
         <!-- Amount In Words -->
-        <div class="tw-text-sm tw-mb-8">
+        <div class="tw-text-sm tw-mb-4">
             <span class="tw-italic">- Tổng số tiền (viết bằng chữ): </span>
             <span class="tw-font-bold tw-italic">@NumberToWordsVietnamese((long)_voucher.TotalAmount)</span>
         </div>
 
-        <!-- Official Signatures (5 roles) -->
-        <div class="tw-grid tw-grid-cols-4 tw-gap-2 tw-text-center tw-text-sm tw-mt-8">
-            <div>
+        <!-- Official Signatures (4 roles - strictly kept together) -->
+        <div class="voucher-signature-block tw-grid tw-grid-cols-4 tw-gap-2 tw-text-center tw-text-sm tw-mt-4" style="break-inside: avoid !important; page-break-inside: avoid !important;">
+            <div class="voucher-signature-col" style="break-inside: avoid !important; page-break-inside: avoid !important;">
                 <div class="tw-font-bold">Người lập biểu</div>
                 <div class="tw-text-xs tw-italic">(Ký, họ tên)</div>
-                <div class="tw-h-20"></div>
+                <div class="tw-h-12"></div>
                 <div class="tw-font-semibold">@(_voucher.CreatedByName ?? "Trần Văn Tuấn")</div>
             </div>
-            <div>
+            <div class="voucher-signature-col" style="break-inside: avoid !important; page-break-inside: avoid !important;">
                 <div class="tw-font-bold">Người giao / nhận</div>
                 <div class="tw-text-xs tw-italic">(Ký, họ tên)</div>
-                <div class="tw-h-20"></div>
+                <div class="tw-h-12"></div>
                 <div class="tw-font-semibold">@(_voucher.DelivererOrReceiverName ?? "............................")</div>
             </div>
-            <div>
+            <div class="voucher-signature-col" style="break-inside: avoid !important; page-break-inside: avoid !important;">
                 <div class="tw-font-bold">Thủ kho</div>
                 <div class="tw-text-xs tw-italic">(Ký, họ tên)</div>
-                <div class="tw-h-20"></div>
+                <div class="tw-h-12"></div>
                 <div class="tw-font-semibold">@(_voucher.WarehouseKeeperName ?? "Trần Văn Tuấn")</div>
             </div>
-            <div>
+            <div class="voucher-signature-col" style="break-inside: avoid !important; page-break-inside: avoid !important;">
                 <div class="tw-font-bold">Giám đốc / Quản lý</div>
                 <div class="tw-text-xs tw-italic">(Ký, họ tên, đóng dấu)</div>
-                <div class="tw-h-20"></div>
+                <div class="tw-h-12"></div>
                 <div class="tw-font-semibold">@(_voucher.ApprovedByName ?? "Quản Lý 01")</div>
             </div>
         </div>
@@ -220,17 +235,27 @@ else
 
 <style>
     @@media print {
-        .no-print {
-            display: none !important;
+        body * {
+            visibility: hidden;
         }
-        body {
-            background-color: white !important;
+        #print-warehouse-voucher, #print-warehouse-voucher * {
+            visibility: visible;
         }
-        .voucher-a4-sheet {
+        #print-warehouse-voucher {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
             border: none !important;
             box-shadow: none !important;
-            padding: 0 !important;
-            max-width: 100% !important;
+            background: #ffffff !important;
+        }
+        .voucher-signature-block, .voucher-signature-col {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
         }
     }
 </style>
@@ -241,6 +266,7 @@ else
 
     private WarehouseVoucherDto? _voucher;
     private CompanySettings? _companySettings;
+    private bool IsCircular99 => (_voucher != null && _voucher.VoucherDate.Year >= 2026) || _companySettings?.AccountingRegime == "TT99_2025";
 
     protected override async Task OnInitializedAsync()
     {

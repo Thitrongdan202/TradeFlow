@@ -63,6 +63,7 @@ public class ContractService : IContractService
                 BankAccount = "0071000999888",
                 BankAccountHolder = "CÔNG TY TNHH THIẾT BỊ VỆ SINH LACASA VIỆT NAM",
                 BankBranch = "Chi nhánh Cần Thơ",
+                DefaultSigningLocation = "TP. Cần Thơ",
                 DefaultPaymentInstructions = "Chuyển khoản theo số tài khoản công ty hoặc tiền mặt tại quầy giao dịch",
                 DefaultDeliveryTerms = "Giao hàng tại chân công trình hoặc kho bên mua trong bán kính 20km",
                 DefaultWarrantyTerms = "Bảo hành chính hãng 10 năm đối với phần sứ, 03 năm đối với linh kiện và phụ kiện sen vòi"
@@ -96,6 +97,7 @@ public class ContractService : IContractService
         entity.BankAccount = dto.BankAccount?.Trim();
         entity.BankAccountHolder = dto.BankAccountHolder?.Trim();
         entity.BankBranch = dto.BankBranch?.Trim();
+        entity.DefaultSigningLocation = dto.DefaultSigningLocation?.Trim();
         entity.DefaultPaymentInstructions = dto.DefaultPaymentInstructions?.Trim();
         entity.DefaultDeliveryTerms = dto.DefaultDeliveryTerms?.Trim();
         entity.DefaultWarrantyTerms = dto.DefaultWarrantyTerms?.Trim();
@@ -202,6 +204,17 @@ public class ContractService : IContractService
         var contractNumber = await _codeGenerator.GenerateCodeAsync(SystemCodeConstants.Contract, cancellationToken);
         var now = DateTime.UtcNow;
 
+        var partyASettings = await _context.ContractPartyASettings.FirstOrDefaultAsync(cancellationToken);
+        string contractPlace = dto.ContractPlace?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(contractPlace))
+        {
+            contractPlace = partyASettings?.DefaultSigningLocation?.Trim() ?? string.Empty;
+        }
+        if (string.IsNullOrWhiteSpace(contractPlace))
+        {
+            contractPlace = "TP. Cần Thơ";
+        }
+
         var contract = new Contract
         {
             ContractNumber = contractNumber,
@@ -210,7 +223,7 @@ public class ContractService : IContractService
             TemplateVersion = "1.0",
             Status = ContractStatus.Draft,
             ContractDate = NormalizeToUtc(dto.ContractDate),
-            ContractPlace = string.IsNullOrWhiteSpace(dto.ContractPlace) ? "Cần Thơ" : dto.ContractPlace.Trim(),
+            ContractPlace = contractPlace,
             EffectiveDate = dto.EffectiveDate.HasValue ? NormalizeToUtc(dto.EffectiveDate.Value) : null,
             ExpirationDate = dto.ExpirationDate.HasValue ? NormalizeToUtc(dto.ExpirationDate.Value) : null,
             PartyBType = dto.PartyBType,
@@ -343,7 +356,7 @@ public class ContractService : IContractService
         var now = DateTime.UtcNow;
         contract.Title = dto.Title.Trim();
         contract.ContractDate = NormalizeToUtc(dto.ContractDate);
-        contract.ContractPlace = string.IsNullOrWhiteSpace(dto.ContractPlace) ? "Cần Thơ" : dto.ContractPlace.Trim();
+        contract.ContractPlace = string.IsNullOrWhiteSpace(dto.ContractPlace) ? contract.ContractPlace : dto.ContractPlace.Trim();
         contract.EffectiveDate = dto.EffectiveDate.HasValue ? NormalizeToUtc(dto.EffectiveDate.Value) : null;
         contract.ExpirationDate = dto.ExpirationDate.HasValue ? NormalizeToUtc(dto.ExpirationDate.Value) : null;
         contract.PartyBType = dto.PartyBType;
@@ -781,6 +794,7 @@ public class ContractService : IContractService
             BankAccount = e.BankAccount,
             BankAccountHolder = e.BankAccountHolder,
             BankBranch = e.BankBranch,
+            DefaultSigningLocation = string.IsNullOrWhiteSpace(e.DefaultSigningLocation) ? "TP. Cần Thơ" : e.DefaultSigningLocation,
             DefaultPaymentInstructions = e.DefaultPaymentInstructions,
             DefaultDeliveryTerms = e.DefaultDeliveryTerms,
             DefaultWarrantyTerms = e.DefaultWarrantyTerms

@@ -6,6 +6,8 @@ using TradeFlow.Domain.Entities.Settings;
 using TradeFlow.Domain.Entities.Warehouses;
 using TradeFlow.Domain.Enums;
 using TradeFlow.Infrastructure.Persistence;
+using TradeFlow.Infrastructure.Services.Pdf;
+using QuestPDF.Fluent;
 
 namespace TradeFlow.Infrastructure.Services;
 
@@ -470,6 +472,17 @@ public class WarehouseService : IWarehouseService
             cancellationToken: cancellationToken);
 
         return true;
+    }
+
+    public async Task<byte[]> GenerateVoucherPdfAsync(int voucherId, CancellationToken cancellationToken = default)
+    {
+        var voucherDto = await GetVoucherByIdAsync(voucherId, cancellationToken);
+        if (voucherDto == null)
+            throw new KeyNotFoundException($"Không tìm thấy chứng từ kho #{voucherId}");
+
+        var companySettings = await _context.CompanySettings.FirstOrDefaultAsync(cancellationToken);
+        var document = new WarehouseVoucherPdfDocument(voucherDto, companySettings);
+        return document.GeneratePdf();
     }
 
     private async Task RegisterToCentralDocumentsAsync(WarehouseVoucher voucher, CancellationToken cancellationToken)

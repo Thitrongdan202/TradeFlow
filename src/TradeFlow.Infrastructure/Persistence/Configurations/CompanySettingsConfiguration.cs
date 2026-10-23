@@ -29,6 +29,9 @@ public class CompanySettingsConfiguration : IEntityTypeConfiguration<CompanySett
         builder.Property(x => x.Address)
             .HasMaxLength(500);
 
+        builder.Property(x => x.AccountingRegime)
+            .HasMaxLength(50);
+
         builder.Property(x => x.Phone)
             .HasMaxLength(50);
 

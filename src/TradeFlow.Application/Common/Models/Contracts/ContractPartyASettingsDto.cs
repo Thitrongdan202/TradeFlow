@@ -9,6 +9,7 @@ public class ContractPartyASettingsDto
     public string? BusinessRegistrationNumber { get; set; }
     public string RegisteredAddress { get; set; } = string.Empty;
     public string? ContactAddress { get; set; }
+    public string? DefaultSigningLocation { get; set; }
     public string RepresentativeName { get; set; } = string.Empty;
     public string RepresentativePosition { get; set; } = string.Empty;
     public string? RepresentativeAuthority { get; set; }

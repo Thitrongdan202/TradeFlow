@@ -102,6 +102,15 @@
                                 <label class="form-label small fw-semibold text-secondary">Địa chỉ Showroom / Văn phòng giao dịch</label>
                                 <input type="text" class="form-control form-control-sm tf-input" @bind="model.ContactAddress" />
                             </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold text-secondary">
+                                    Địa điểm lập / ký hợp đồng mặc định <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control form-control-sm tf-input" @bind="model.DefaultSigningLocation" placeholder="vd: TP. Cần Thơ, TP. Hồ Chí Minh, TP. Hà Nội..." />
+                                <div class="form-text small text-muted">
+                                    Địa danh hành chính xuất hiện ở dòng mở đầu hợp đồng (vd: "Hôm nay, ngày... tại [Địa điểm]...") và làm cơ sở xác định địa điểm thỏa thuận hợp đồng.
+                                </div>
+                            </div>
 
                             <!-- Section 2: Representative Info -->
                             <div class="col-12 pt-3">

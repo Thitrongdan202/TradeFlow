@@ -135,17 +135,22 @@
                     <label class="form-label small fw-semibold text-secondary">Địa chỉ trụ sở</label>
                     <input type="text" class="form-control form-control-sm" @bind="model.PartyAAddress" />
                 </div>
-                <div class="col-md-5">
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold text-secondary">Địa điểm lập / ký kết hợp đồng <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" @bind="model.ContractPlace" placeholder="vd: TP. Cần Thơ, TP. Hồ Chí Minh..." />
+                    <div class="form-text small text-muted">Địa danh hành chính xuất hiện ở dòng mở đầu văn bản hợp đồng.</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold text-secondary">Thẩm quyền đại diện</label>
+                    <input type="text" class="form-control form-control-sm" @bind="model.PartyAAuthority" />
+                </div>
+                <div class="col-md-6">
                     <label class="form-label small fw-semibold text-secondary">Người đại diện ký kết</label>
                     <input type="text" class="form-control form-control-sm" @bind="model.PartyARepresentative" />
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-6">
                     <label class="form-label small fw-semibold text-secondary">Chức vụ</label>
                     <input type="text" class="form-control form-control-sm" @bind="model.PartyAPosition" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label small fw-semibold text-secondary">Thẩm quyền</label>
-                    <input type="text" class="form-control form-control-sm" @bind="model.PartyAAuthority" />
                 </div>
                 <div class="col-md-6">
                     <label class="form-label small fw-semibold text-secondary">Số điện thoại</label>
@@ -484,7 +489,7 @@
                 }
 
                 <!-- Signatures -->
-                <div class="row mt-4 pt-3 text-center">
+                <div class="row mt-4 pt-3 text-center" style="break-inside: avoid; page-break-inside: avoid;">
                     <div class="col-6">
                         <div class="fw-bold">ĐẠI DIỆN BÊN A</div>
                         <div class="fst-italic small">(Ký, ghi rõ họ tên và đóng dấu)</div>
@@ -566,6 +571,7 @@
             model.PaymentTerms = partyA.DefaultPaymentInstructions;
             model.DeliveryTerms = partyA.DefaultDeliveryTerms;
             model.WarrantyTerms = partyA.DefaultWarrantyTerms;
+            model.ContractPlace = !string.IsNullOrWhiteSpace(partyA.DefaultSigningLocation) ? partyA.DefaultSigningLocation : "TP. Cần Thơ";
 
             if (availableTemplates.Count > 0 && string.IsNullOrEmpty(TemplateCode))
             {
@@ -685,9 +691,9 @@
 
     private async Task SaveContractAsync(bool finalize)
     {
-        if (string.IsNullOrWhiteSpace(model.Title) || string.IsNullOrWhiteSpace(model.PartyBName))
+        if (string.IsNullOrWhiteSpace(model.Title) || string.IsNullOrWhiteSpace(model.PartyBName) || string.IsNullOrWhiteSpace(model.ContractPlace))
         {
-            errorMessage = "Vui lòng nhập Tiêu đề hợp đồng và Thông tin Tên Bên B.";
+            errorMessage = "Vui lòng nhập Tiêu đề hợp đồng, Địa điểm ký kết và Thông tin Tên Bên B.";
             return;
         }
 

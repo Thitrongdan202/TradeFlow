@@ -1,8 +1,10 @@
+@using TradeFlow.Application.Common.Interfaces
 @using TradeFlow.Application.Common.Models.Contracts
 @using TradeFlow.Domain.Enums
 @implements IAsyncDisposable
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@inject IContractService ContractService
 
 <div class="tf-contract-gallery-wrapper" @ref="galleryContainer">
     <!-- Gallery Controls (Light Theme) -->
@@ -99,7 +101,7 @@
                                         <div class="tf-a4-nat-name">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
                                         <div class="tf-a4-nat-motto">Độc lập - Tự do - Hạnh phúc</div>
                                         <div class="tf-a4-nat-line"></div>
-                                        <div class="tf-a4-nat-date">TP. Cần Thơ, ngày @DateTime.Now.ToString("dd") tháng @DateTime.Now.ToString("MM") năm @DateTime.Now.ToString("yyyy")</div>
+                                        <div class="tf-a4-nat-date">@signingLocation, ngày @DateTime.Now.ToString("dd") tháng @DateTime.Now.ToString("MM") năm @DateTime.Now.ToString("yyyy")</div>
                                     </div>
 
                                     <!-- Document Title & Number -->
@@ -281,7 +283,7 @@
                                 <div class="fw-bold" style="font-size: 15px;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
                                 <div class="fw-bold" style="font-size: 14px;">Độc lập - Tự do - Hạnh phúc</div>
                                 <div class="mx-auto my-1" style="width: 140px; height: 1px; background-color: #333;"></div>
-                                <div class="fst-italic" style="font-size: 13px;">TP. Cần Thơ, ngày @DateTime.Now.ToString("dd") tháng @DateTime.Now.ToString("MM") năm @DateTime.Now.ToString("yyyy")</div>
+                                <div class="fst-italic" style="font-size: 13px;">@signingLocation, ngày @DateTime.Now.ToString("dd") tháng @DateTime.Now.ToString("MM") năm @DateTime.Now.ToString("yyyy")</div>
                             </div>
 
                             <!-- Document Title & Number -->
@@ -359,7 +361,7 @@
                             }
 
                             <!-- Signatures Box -->
-                            <div class="row mt-5 pt-4 text-center">
+                            <div class="row mt-5 pt-4 text-center" style="break-inside: avoid !important; page-break-inside: avoid !important;">
                                 <div class="col-6">
                                     <div class="fw-bold">ĐẠI DIỆN BÊN A</div>
                                     <div class="fst-italic small mb-2">(Ký, ghi rõ họ tên và đóng dấu)</div>
@@ -406,6 +408,20 @@
     private string searchQuery = string.Empty;
     private string? activeCardCode;
     private ContractTemplateDto? inspectTemplate;
+    private string signingLocation = "TP. Cần Thơ";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var partyA = await ContractService.GetPartyASettingsAsync();
+            if (!string.IsNullOrWhiteSpace(partyA?.DefaultSigningLocation))
+            {
+                signingLocation = partyA.DefaultSigningLocation;
+            }
+        }
+        catch { }
+    }
 
     private IEnumerable<string> AvailableCategories =>
         Templates?.Select(t => t.Category).Distinct().ToList() ?? Enumerable.Empty<string>();
@@ -730,7 +746,7 @@
             new MiniClause("Điều 4", "Tiêu chuẩn chất lượng và Xuất xứ hàng hóa", "Hàng hóa là hàng mới 100%, chính hãng LACASA, đạt tiêu chuẩn chất lượng TCVN và có đầy đủ chứng chỉ CO/CQ từ nhà sản xuất."),
             new MiniClause("Điều 5", "Trách nhiệm và Bảo hành thiết bị", "Bên A bảo hành 10 năm cho phần men sứ Nano chống bám bẩn và 03 năm cho linh kiện phụ trợ van xả, sen vòi nóng lạnh. Mọi hư hỏng do lỗi sản xuất sẽ được đổi mới miễn phí trong vòng 48 giờ."),
             new MiniClause("Điều 6", "Phạt vi phạm và Bồi thường thiệt hại", "Bên nào vi phạm nghĩa vụ hợp đồng sẽ phải chịu phạt vi phạm với mức 8% giá trị phần nghĩa vụ bị vi phạm theo đúng quy định tại Điều 301 Luật Thương mại 2005 và bồi thường thiệt hại thực tế phát sinh."),
-            new MiniClause("Điều 7", "Giải quyết tranh chấp và Điều khoản thi hành", "Mọi tranh chấp phát sinh sẽ được ưu tiên giải quyết thông qua thương lượng, hòa giải. Trường hợp không hòa giải được sẽ đưa ra Tòa án nhân dân có thẩm quyền tại TP. Cần Thơ để giải quyết.")
+            new MiniClause("Điều 7", "Giải quyết tranh chấp và Điều khoản thi hành", "Mọi tranh chấp phát sinh sẽ được ưu tiên giải quyết thông qua thương lượng, hòa giải. Trường hợp không hòa giải được sẽ đưa ra Tòa án nhân dân có thẩm quyền nơi Bên A đặt trụ sở chính hoặc nơi thực hiện hợp đồng để giải quyết.")
         },
         "B2C_RETAIL" => new[]
         {

@@ -17,6 +17,7 @@ public class ContractPartyASettingsConfiguration : IEntityTypeConfiguration<Cont
         builder.Property(x => x.BusinessRegistrationNumber).HasMaxLength(50);
         builder.Property(x => x.RegisteredAddress).HasMaxLength(500).IsRequired();
         builder.Property(x => x.ContactAddress).HasMaxLength(500);
+        builder.Property(x => x.DefaultSigningLocation).HasMaxLength(150);
         builder.Property(x => x.RepresentativeName).HasMaxLength(150).IsRequired();
         builder.Property(x => x.RepresentativePosition).HasMaxLength(100).IsRequired();
         builder.Property(x => x.RepresentativeAuthority).HasMaxLength(200);

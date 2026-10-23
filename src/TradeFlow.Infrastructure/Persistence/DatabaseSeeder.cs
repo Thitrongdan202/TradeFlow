@@ -962,6 +962,7 @@ public class DatabaseSeeder
                 BankAccount = "0071000999888",
                 BankAccountHolder = "CONG TY TNHH THIET BI VE SINH LACASA VIET NAM",
                 BankBranch = "Chi nhánh Cần Thơ",
+                DefaultSigningLocation = "TP. Cần Thơ",
                 DefaultPaymentInstructions = "Thanh toán bằng hình thức chuyển khoản vào tài khoản Công ty hoặc tiền mặt tại văn phòng / showroom LACASA. Nội dung chuyển khoản ghi rõ: [Số Hợp đồng] - [Tên Bên B] thanh toán.",
                 DefaultDeliveryTerms = "Giao hàng miễn phí trong phạm vi bán kính 20km tính từ kho trung tâm LACASA. Hàng hóa được giao tận chân công trình hoặc sàn tầng 1 theo thỏa thuận hai bên.",
                 DefaultWarrantyTerms = "Bảo hành chính hãng 10 năm đối với phần thân sứ vệ sinh (men sứ chống bám bẩn Nano); 03 năm đối với phụ kiện van xả, nắp êm, sen vòi, bộ trộn nóng lạnh; 01 năm đối với phụ kiện dây cấp và vật tư tiêu hao.",
@@ -1000,7 +1001,7 @@ public class DatabaseSeeder
                         new { ClauseNumber = "Điều 4", Title = "Tiêu chuẩn chất lượng và Xuất xứ hàng hóa", Content = "Hàng hóa do Bên A cung cấp là hàng mới 100%, chính hãng LACASA, đạt tiêu chuẩn chất lượng TCVN và có đầy đủ CO/CQ từ nhà sản xuất." },
                         new { ClauseNumber = "Điều 5", Title = "Trách nhiệm và Bảo hành thiết bị", Content = "Bên A bảo hành 10 năm cho phần men sứ và 03 năm cho linh kiện phụ trợ. Mọi hư hỏng do lỗi sản xuất sẽ được đổi mới miễn phí trong vòng 48 giờ." },
                         new { ClauseNumber = "Điều 6", Title = "Phạt vi phạm và Bồi thường thiệt hại", Content = "Bên nào vi phạm nghĩa vụ hợp đồng sẽ phải chịu phạt vi phạm với mức 8% giá trị phần nghĩa vụ bị vi phạm theo đúng quy định tại Điều 301 Luật Thương mại 2005 và bồi thường thiệt hại thực tế phát sinh." },
-                        new { ClauseNumber = "Điều 7", Title = "Giải quyết tranh chấp và Điều khoản thi hành", Content = "Mọi tranh chấp phát sinh sẽ được ưu tiên giải quyết thông qua thương lượng, hòa giải. Trường hợp không hòa giải được sẽ đưa ra Tòa án nhân dân có thẩm quyền tại TP. Cần Thơ để giải quyết." }
+                        new { ClauseNumber = "Điều 7", Title = "Giải quyết tranh chấp và Điều khoản thi hành", Content = "Mọi tranh chấp phát sinh sẽ được ưu tiên giải quyết thông qua thương lượng, hòa giải. Trường hợp không hòa giải được sẽ đưa ra Tòa án nhân dân có thẩm quyền nơi Bên A đặt trụ sở chính hoặc nơi thực hiện hợp đồng để giải quyết." }
                     }),
                     CreatedAt = now,
                     CreatedBy = "System"

@@ -3332,23 +3332,114 @@ button.tf-search-spinner {
 /* ============================================================
    STRICT DOCUMENT & PRINT PROTECTION
    Preserves 100% pure white paper background and zero UI bleeding
-   for Sales Invoices, VAT Invoices, Orders, Quotations & Contracts
+   for Sales Invoices, VAT Invoices, Orders, Quotations, Warehouse Vouchers & Contracts
    ============================================================ */
+@page {
+  size: A4 portrait;
+  margin: 10mm 12mm 12mm 12mm;
+}
+
 @media print {
-  body,
+  html, body {
+    background-color: #ffffff !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    font-family: 'Times New Roman', Times, serif;
+  }
+
+  /* Unconditionally hide application chrome, navigation, headers, footers and action bars */
+  .no-print,
+  .tf-sidebar,
+  .tf-sidebar-backdrop,
+  .tf-topbar,
+  .tf-topbar-actions,
+  .tf-search,
+  .tf-search-box,
+  .tf-topbar-warehouse-pill,
+  .tf-topbar-btn,
+  .tf-topbar-divider,
+  #blazor-error-ui,
+  header.tf-topbar,
+  aside.tf-sidebar,
+  nav,
+  .modal-backdrop,
+  .btn-close {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    width: 0 !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    top: -9999px !important;
+    left: -9999px !important;
+  }
+
+  /* Reset layout wrappers to full printable width without sidebar offsets */
   .tf-app,
   .tf-main-wrapper,
-  .tf-content,
+  .tf-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Target all printable document sheets */
   #print-document-area,
+  #print-warehouse-voucher,
   #print-area,
   #print-quotation-area,
   .don-dat-hang-sheet,
   .quotation-print-sheet,
+  .voucher-a4-sheet,
   .tf-a4-sheet {
     background-color: #ffffff !important;
     background: #ffffff !important;
     color: #000000 !important;
     box-shadow: none !important;
+    border: none !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Page break rules */
+  table {
+    page-break-inside: auto;
+  }
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tfoot {
+    display: table-footer-group;
+  }
+
+  /* Signature blocks must NEVER break across pages */
+  .voucher-signature-block,
+  .signature-block,
+  .tf-signature-section {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .voucher-signature-col,
+  .signature-col {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 }
 

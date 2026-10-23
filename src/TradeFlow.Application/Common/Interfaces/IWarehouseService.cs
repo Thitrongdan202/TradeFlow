@@ -17,6 +17,7 @@ public interface IWarehouseService
     Task<WarehouseVoucherDto> CreateVoucherAsync(WarehouseVoucherDto dto, string userId, string userName, CancellationToken cancellationToken = default);
     Task<bool> ApproveVoucherAsync(int voucherId, string userId, string userName, CancellationToken cancellationToken = default);
     Task<bool> CancelVoucherAsync(int voucherId, string reason, string userId, string userName, CancellationToken cancellationToken = default);
+    Task<byte[]> GenerateVoucherPdfAsync(int voucherId, CancellationToken cancellationToken = default);
 
     // === 3. Kiểm kê kho (Stocktaking) ===
     Task<List<StocktakeSessionDto>> GetStocktakeSessionsAsync(int? warehouseId = null, StocktakeStatus? status = null, string? searchTerm = null, CancellationToken cancellationToken = default);

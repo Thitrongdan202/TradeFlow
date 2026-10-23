@@ -13,7 +13,7 @@ public class ContractDto
     public string TemplateVersion { get; set; } = "1.0";
     public ContractStatus Status { get; set; } = ContractStatus.Draft;
     public DateTime ContractDate { get; set; } = DateTime.UtcNow;
-    public string ContractPlace { get; set; } = "Cần Thơ";
+    public string ContractPlace { get; set; } = string.Empty;
     public DateTime? EffectiveDate { get; set; }
     public DateTime? ExpirationDate { get; set; }
 

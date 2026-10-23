@@ -31,6 +31,9 @@ public class ContractPartyASettings : AuditableEntity<int>
     /// <summary>Địa chỉ văn phòng giao dịch / Showroom</summary>
     public string? ContactAddress { get; set; } = "Số 123 Đường Nguyễn Văn Cừ, Phường An Khánh, Quận Ninh Kiều, TP. Cần Thơ";
 
+    /// <summary>Địa điểm lập/ký hợp đồng mặc định (vd: TP. Hồ Chí Minh, TP. Hà Nội, TP. Cần Thơ)</summary>
+    public string? DefaultSigningLocation { get; set; } = "TP. Cần Thơ";
+
     /// <summary>Họ và tên người đại diện theo pháp luật</summary>
     public string RepresentativeName { get; set; } = "Nguyễn Văn An";
 

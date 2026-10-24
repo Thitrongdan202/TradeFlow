@@ -51,28 +51,35 @@
     </div>
 </div>
 
-<!-- Type Filter Chips -->
-<div class="tw-flex tw-gap-2 tw-mb-4 tw-overflow-x-auto tw-pb-1">
-    <button class="tw-px-3 tw-py-1.5 tw-rounded-full tw-text-xs tw-font-medium tw-transition-colors @(_typeFilter == null ? "tw-bg-emerald-600 tw-text-white" : "tw-bg-slate-100 tw-text-slate-700 hover:tw-bg-slate-200")"
-            @onclick="() => _typeFilter = null">
-        Tất cả chứng từ
-    </button>
-    <button class="tw-px-3 tw-py-1.5 tw-rounded-full tw-text-xs tw-font-medium tw-transition-colors @(_typeFilter == WarehouseVoucherType.InboundReceipt ? "tw-bg-emerald-600 tw-text-white" : "tw-bg-slate-100 tw-text-slate-700 hover:tw-bg-slate-200")"
-            @onclick="() => _typeFilter = WarehouseVoucherType.InboundReceipt">
-        Phiếu nhập kho (01-VT)
-    </button>
-    <button class="tw-px-3 tw-py-1.5 tw-rounded-full tw-text-xs tw-font-medium tw-transition-colors @(_typeFilter == WarehouseVoucherType.OutboundIssue ? "tw-bg-emerald-600 tw-text-white" : "tw-bg-slate-100 tw-text-slate-700 hover:tw-bg-slate-200")"
-            @onclick="() => _typeFilter = WarehouseVoucherType.OutboundIssue">
-        Phiếu xuất kho (02-VT)
-    </button>
-    <button class="tw-px-3 tw-py-1.5 tw-rounded-full tw-text-xs tw-font-medium tw-transition-colors @(_typeFilter == WarehouseVoucherType.InspectionRecord ? "tw-bg-emerald-600 tw-text-white" : "tw-bg-slate-100 tw-text-slate-700 hover:tw-bg-slate-200")"
-            @onclick="() => _typeFilter = WarehouseVoucherType.InspectionRecord">
-        Biên bản kiểm nghiệm (03-VT)
-    </button>
-    <button class="tw-px-3 tw-py-1.5 tw-rounded-full tw-text-xs tw-font-medium tw-transition-colors @(_typeFilter == WarehouseVoucherType.StocktakeReport ? "tw-bg-emerald-600 tw-text-white" : "tw-bg-slate-100 tw-text-slate-700 hover:tw-bg-slate-200")"
-            @onclick="() => _typeFilter = WarehouseVoucherType.StocktakeReport">
-        Biên bản kiểm kê (05-VT)
-    </button>
+<!-- Type Filter Tabs (Standard Segmented Control) -->
+<div class="tw-mb-4">
+    <div class="tf-segmented-tabs">
+        <button type="button" class="tf-segmented-tab @(_typeFilter == null ? "is-active" : "")"
+                @onclick="() => _typeFilter = null">
+            <span>Tất cả chứng từ</span>
+            <span class="tw-ml-1.5 tw-text-2xs tw-px-1.5 tw-py-0.5 tw-rounded-full @(_typeFilter == null ? "tw-bg-blue-100 tw-text-blue-700 tw-font-bold" : "tw-bg-slate-200/80 tw-text-slate-600")">@_vouchers.Count</span>
+        </button>
+        <button type="button" class="tf-segmented-tab @(_typeFilter == WarehouseVoucherType.InboundReceipt ? "is-active" : "")"
+                @onclick="() => _typeFilter = WarehouseVoucherType.InboundReceipt">
+            <span>Phiếu nhập kho (01-VT)</span>
+            <span class="tw-ml-1.5 tw-text-2xs tw-px-1.5 tw-py-0.5 tw-rounded-full @(_typeFilter == WarehouseVoucherType.InboundReceipt ? "tw-bg-blue-100 tw-text-blue-700 tw-font-bold" : "tw-bg-slate-200/80 tw-text-slate-600")">@_vouchers.Count(v => v.VoucherType == WarehouseVoucherType.InboundReceipt)</span>
+        </button>
+        <button type="button" class="tf-segmented-tab @(_typeFilter == WarehouseVoucherType.OutboundIssue ? "is-active" : "")"
+                @onclick="() => _typeFilter = WarehouseVoucherType.OutboundIssue">
+            <span>Phiếu xuất kho (02-VT)</span>
+            <span class="tw-ml-1.5 tw-text-2xs tw-px-1.5 tw-py-0.5 tw-rounded-full @(_typeFilter == WarehouseVoucherType.OutboundIssue ? "tw-bg-blue-100 tw-text-blue-700 tw-font-bold" : "tw-bg-slate-200/80 tw-text-slate-600")">@_vouchers.Count(v => v.VoucherType == WarehouseVoucherType.OutboundIssue)</span>
+        </button>
+        <button type="button" class="tf-segmented-tab @(_typeFilter == WarehouseVoucherType.InspectionRecord ? "is-active" : "")"
+                @onclick="() => _typeFilter = WarehouseVoucherType.InspectionRecord">
+            <span>Biên bản kiểm nghiệm (03-VT)</span>
+            <span class="tw-ml-1.5 tw-text-2xs tw-px-1.5 tw-py-0.5 tw-rounded-full @(_typeFilter == WarehouseVoucherType.InspectionRecord ? "tw-bg-blue-100 tw-text-blue-700 tw-font-bold" : "tw-bg-slate-200/80 tw-text-slate-600")">@_vouchers.Count(v => v.VoucherType == WarehouseVoucherType.InspectionRecord)</span>
+        </button>
+        <button type="button" class="tf-segmented-tab @(_typeFilter == WarehouseVoucherType.StocktakeReport ? "is-active" : "")"
+                @onclick="() => _typeFilter = WarehouseVoucherType.StocktakeReport">
+            <span>Biên bản kiểm kê (05-VT)</span>
+            <span class="tw-ml-1.5 tw-text-2xs tw-px-1.5 tw-py-0.5 tw-rounded-full @(_typeFilter == WarehouseVoucherType.StocktakeReport ? "tw-bg-blue-100 tw-text-blue-700 tw-font-bold" : "tw-bg-slate-200/80 tw-text-slate-600")">@_vouchers.Count(v => v.VoucherType == WarehouseVoucherType.StocktakeReport)</span>
+        </button>
+    </div>
 </div>
 
 <!-- Main Table Card -->
@@ -209,23 +216,69 @@
     }
 </div>
 
-<!-- Modal Create Voucher -->
+<!-- Modal Create Voucher (Standardized Global Policy) -->
 @if (_showCreateModal)
 {
-    <div class="tw-fixed tw-inset-0 tw-z-50 tw-flex tw-items-center tw-justify-center tw-bg-slate-900/50 tw-p-4">
-        <div class="tw-bg-white tw-rounded-lg tw-shadow-xl tw-max-w-2xl tw-w-full tw-p-6 tw-overflow-y-auto tw-max-h-[90vh]">
-            <div class="tw-flex tw-justify-between tw-items-center tw-border-b tw-border-slate-200 tw-pb-3 tw-mb-4">
-                <h3 class="tw-text-lg tw-font-bold tw-text-slate-900">
-                    @(_newVoucherType == WarehouseVoucherType.InboundReceipt ? "Lập Phiếu Nhập Kho (Mẫu 01-VT)" : "Lập Phiếu Xuất Kho (Mẫu 02-VT)")
-                </h3>
-                <button type="button" class="tw-text-slate-400 hover:tw-text-slate-600" @onclick="() => _showCreateModal = false">&times;</button>
+    <div class="tf-modal-overlay"
+         @onclick="HandleModalBackdropClick"
+         @onkeydown="HandleModalKeyDown"
+         tabindex="-1"
+         role="presentation">
+        <div class="tw-bg-white tw-rounded-xl tw-shadow-2xl tw-max-w-2xl tw-w-full tw-p-6 tw-overflow-y-auto tw-max-h-[90vh] tw-relative tw-border tw-border-slate-200"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="voucher-create-modal-title"
+             @onclick:stopPropagation="true">
+
+            <div class="tw-flex tw-justify-between tw-items-center tw-border-b tw-border-slate-200 tw-pb-3.5 tw-mb-4">
+                <div class="tw-flex tw-items-center tw-gap-2.5">
+                    <div class="tw-w-8 tw-h-8 tw-rounded-lg tw-bg-blue-100 tw-text-blue-700 tw-flex tw-items-center tw-justify-center">
+                        <svg class="tw-w-4 tw-h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 id="voucher-create-modal-title" class="tw-text-base tw-font-bold tw-text-slate-900 tw-m-0">
+                            @(_newVoucherType == WarehouseVoucherType.InboundReceipt ? "Lập Phiếu Nhập Kho (Mẫu 01-VT)" : "Lập Phiếu Xuất Kho (Mẫu 02-VT)")
+                        </h3>
+                        <div class="tw-text-xs tw-text-slate-500">
+                            Theo chế độ kế toán và hóa đơn chứng từ Bộ Tài chính
+                        </div>
+                    </div>
+                </div>
+
+                <button type="button"
+                        class="tf-modal-close-btn"
+                        @onclick="RequestCloseCreateModal"
+                        disabled="@_isSubmitting"
+                        aria-label="Đóng"
+                        title="Đóng">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
             </div>
+
+            @if (!string.IsNullOrEmpty(_saveError))
+            {
+                <div class="tw-bg-red-50 tw-border tw-border-red-200 tw-rounded-lg tw-p-3 tw-mb-4 tw-text-xs tw-text-red-700 tw-flex tw-items-start tw-gap-2">
+                    <svg class="tw-w-4 tw-h-4 tw-text-red-600 tw-shrink-0 tw-mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div class="tw-flex-1">
+                        <span class="tw-font-semibold">Lỗi lập phiếu: </span>@_saveError
+                    </div>
+                </div>
+            }
 
             <div class="tw-space-y-4">
                 <div class="tw-grid tw-grid-cols-2 tw-gap-4">
                     <div>
-                        <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-700 tw-mb-1">Kho hàng *</label>
-                        <select class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300" @bind="_newWarehouseId">
+                        <label class="tw-block tw-text-xs tw-font-semibold tw-text-slate-700 tw-mb-1.5">Kho hàng *</label>
+                        <select class="tf-form-control tw-w-full tw-h-9 tw-px-2.5 tw-text-sm tw-rounded-lg tw-border tw-border-slate-300 focus:tw-border-blue-500 focus:tw-outline-none"
+                                @bind="_newWarehouseId"
+                                disabled="@_isSubmitting">
                             @foreach (var wh in _warehouses)
                             {
                                 <option value="@wh.Id">@wh.Name (@wh.Code)</option>
@@ -233,58 +286,139 @@
                         </select>
                     </div>
                     <div>
-                        <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-700 tw-mb-1">Ngày chứng từ *</label>
-                        <input type="date" class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300" @bind="_newVoucherDate" />
+                        <label class="tw-block tw-text-xs tw-font-semibold tw-text-slate-700 tw-mb-1.5">Ngày chứng từ *</label>
+                        <input type="date"
+                               class="tf-form-control tw-w-full tw-h-9 tw-px-2.5 tw-text-sm tw-rounded-lg tw-border tw-border-slate-300 focus:tw-border-blue-500 focus:tw-outline-none"
+                               @bind="_newVoucherDate"
+                               disabled="@_isSubmitting" />
                     </div>
                 </div>
 
                 <div class="tw-grid tw-grid-cols-2 tw-gap-4">
                     <div>
-                        <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-700 tw-mb-1">Đối tác / Đơn vị giao nhận</label>
-                        <input type="text" class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300" placeholder="Tên đối tác hoặc nhà cung cấp" @bind="_newPartnerName" />
+                        <label class="tw-block tw-text-xs tw-font-semibold tw-text-slate-700 tw-mb-1.5">Đối tác / Đơn vị giao nhận</label>
+                        <input type="text"
+                               class="tf-form-control tw-w-full tw-h-9 tw-px-2.5 tw-text-sm tw-rounded-lg tw-border tw-border-slate-300 focus:tw-border-blue-500 focus:tw-outline-none"
+                               placeholder="Tên đối tác hoặc nhà cung cấp"
+                               @bind="_newPartnerName"
+                               disabled="@_isSubmitting" />
                     </div>
                     <div>
-                        <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-700 tw-mb-1">Họ tên người giao / nhận hàng</label>
-                        <input type="text" class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300" placeholder="Người đại diện giao nhận" @bind="_newDeliverer" />
+                        <label class="tw-block tw-text-xs tw-font-semibold tw-text-slate-700 tw-mb-1.5">Họ tên người giao / nhận hàng</label>
+                        <input type="text"
+                               class="tf-form-control tw-w-full tw-h-9 tw-px-2.5 tw-text-sm tw-rounded-lg tw-border tw-border-slate-300 focus:tw-border-blue-500 focus:tw-outline-none"
+                               placeholder="Người đại diện giao nhận"
+                               @bind="_newDeliverer"
+                               disabled="@_isSubmitting" />
                     </div>
                 </div>
 
                 <div>
-                    <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-700 tw-mb-1">Lý do nhập / xuất *</label>
-                    <input type="text" class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300" placeholder="Ví dụ: Nhập hàng theo hợp đồng, Xuất hàng theo đơn..." @bind="_newReason" />
+                    <label class="tw-block tw-text-xs tw-font-semibold tw-text-slate-700 tw-mb-1.5">Lý do nhập / xuất *</label>
+                    <input type="text"
+                           class="tf-form-control tw-w-full tw-h-9 tw-px-2.5 tw-text-sm tw-rounded-lg tw-border tw-border-slate-300 focus:tw-border-blue-500 focus:tw-outline-none"
+                           placeholder="Ví dụ: Nhập hàng theo hợp đồng, Xuất hàng theo đơn..."
+                           @bind="_newReason"
+                           disabled="@_isSubmitting" />
                 </div>
 
                 <!-- Product Lines -->
                 <div class="tw-border-t tw-border-slate-200 tw-pt-3">
                     <div class="tw-flex tw-justify-between tw-items-center tw-mb-2">
                         <span class="tw-font-semibold tw-text-sm tw-text-slate-800">Danh mục hàng hóa</span>
-                        <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm tw-text-emerald-600" @onclick="AddVoucherItemRow">
+                        <button type="button"
+                                class="tf-btn tf-btn-ghost tf-btn-sm tw-text-blue-600"
+                                @onclick="AddVoucherItemRow"
+                                disabled="@_isSubmitting">
                             + Thêm sản phẩm
                         </button>
                     </div>
 
                     @foreach (var row in _newItems)
                     {
-                        <div class="tw-flex tw-gap-2 tw-items-center tw-mb-2">
-                            <select class="tf-form-control tw-flex-1 tw-h-8 tw-text-xs tw-px-2 tw-rounded tw-border tw-border-slate-300" @bind="row.ProductId">
+                        <div class="tw-flex tw-gap-2.5 tw-items-center tw-mb-2">
+                            <select class="tf-form-control tw-flex-1 tw-h-9 tw-text-xs tw-px-2.5 tw-rounded-lg tw-border tw-border-slate-300 focus:tw-border-blue-500 focus:tw-outline-none"
+                                    @bind="row.ProductId"
+                                    disabled="@_isSubmitting">
                                 <option value="0">-- Chọn sản phẩm --</option>
                                 @foreach (var prod in _products)
                                 {
                                     <option value="@prod.Id">@prod.Code - @prod.Name</option>
                                 }
                             </select>
-                            <input type="number" step="1" min="1" class="tf-form-control tw-w-20 tw-h-8 tw-text-xs tw-px-2 tw-rounded tw-border tw-border-slate-300" placeholder="Số lượng" @bind="row.ActualQuantity" />
-                            <input type="number" step="1000" min="0" class="tf-form-control tw-w-28 tw-h-8 tw-text-xs tw-px-2 tw-rounded tw-border tw-border-slate-300" placeholder="Đơn giá" @bind="row.UnitPrice" />
-                            <button type="button" class="tw-text-red-500 hover:tw-text-red-700 tw-px-2" @onclick="() => _newItems.Remove(row)">&times;</button>
+                            <input type="number" step="1" min="1"
+                                   class="tf-form-control tw-w-24 tw-h-9 tw-text-xs tw-px-2.5 tw-rounded-lg tw-border tw-border-slate-300 focus:tw-border-blue-500 focus:tw-outline-none"
+                                   placeholder="Số lượng"
+                                   @bind="row.ActualQuantity"
+                                   disabled="@_isSubmitting" />
+                            <input type="number" step="1000" min="0"
+                                   class="tf-form-control tw-w-32 tw-h-9 tw-text-xs tw-px-2.5 tw-rounded-lg tw-border tw-border-slate-300 focus:tw-border-blue-500 focus:tw-outline-none"
+                                   placeholder="Đơn giá"
+                                   @bind="row.UnitPrice"
+                                   disabled="@_isSubmitting" />
+                            <button type="button"
+                                    class="tf-modal-close-btn tw-w-8 tw-h-8 tw-min-w-[32px] tw-min-h-[32px] tw-text-slate-400 hover:tw-text-red-600"
+                                    @onclick="() => _newItems.Remove(row)"
+                                    disabled="@_isSubmitting"
+                                    title="Xóa dòng">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
                         </div>
                     }
                 </div>
             </div>
 
-            <div class="tw-flex tw-justify-end tw-gap-2 tw-border-t tw-border-slate-200 tw-pt-4 tw-mt-6">
-                <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showCreateModal = false">Đóng</button>
-                <button type="button" class="tf-btn tf-btn-primary" @onclick="SaveVoucherAsync">Lưu chứng từ</button>
+            <div class="tw-flex tw-justify-end tw-gap-2.5 tw-border-t tw-border-slate-200 tw-pt-4 tw-mt-5">
+                <button type="button"
+                        class="tf-btn tf-btn-secondary"
+                        @onclick="RequestCloseCreateModal"
+                        disabled="@_isSubmitting">
+                    Đóng
+                </button>
+                <button type="button"
+                        class="tf-btn tf-btn-primary"
+                        @onclick="SaveVoucherAsync"
+                        disabled="@_isSubmitting">
+                    @if (_isSubmitting)
+                    {
+                        <span class="tw-inline-block tw-animate-spin tw-rounded-full tw-h-3.5 tw-w-3.5 tw-border-b-2 tw-border-white tw-mr-1.5"></span>
+                        <span>Đang ghi sổ chứng từ...</span>
+                    }
+                    else
+                    {
+                        <span>Lưu chứng từ</span>
+                    }
+                </button>
             </div>
+
+            @* Unsaved Changes Confirm Dialog *@
+            @if (_showDiscardConfirm)
+            {
+                <div class="tf-modal-confirm-overlay" @onclick:stopPropagation="true">
+                    <div class="tf-modal-confirm-box tw-text-center">
+                        <div class="tw-w-12 tw-h-12 tw-rounded-full tw-bg-amber-100 tw-text-amber-600 tw-flex tw-items-center tw-justify-center tw-mx-auto tw-mb-3">
+                            <svg class="tw-w-6 tw-h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <h4 class="tw-text-base tw-font-bold tw-text-slate-900 tw-mb-1.5">Bạn có thay đổi chưa lưu</h4>
+                        <p class="tw-text-xs tw-text-slate-500 tw-mb-5 tw-leading-relaxed">
+                            Bạn có chắc muốn đóng và hủy thay đổi? Thông tin chứng từ kho bạn đang soạn thảo sẽ không được lưu.
+                        </p>
+                        <div class="tw-flex tw-items-center tw-justify-center tw-gap-2.5">
+                            <button type="button" class="tf-btn tf-btn-secondary tw-text-xs" @onclick="() => _showDiscardConfirm = false">
+                                Tiếp tục chỉnh sửa
+                            </button>
+                            <button type="button" class="tf-btn tf-btn-danger tw-text-xs" @onclick="ConfirmDiscard">
+                                Hủy thay đổi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
         </div>
     </div>
 }
@@ -303,6 +437,9 @@
 
     // Create Modal state
     private bool _showCreateModal = false;
+    private bool _showDiscardConfirm = false;
+    private bool _isSubmitting = false;
+    private string? _saveError;
     private WarehouseVoucherType _newVoucherType = WarehouseVoucherType.InboundReceipt;
     private int _newWarehouseId;
     private DateTime _newVoucherDate = DateTime.Today;
@@ -377,6 +514,11 @@
         _ => "tw-bg-slate-100 tw-text-slate-800"
     };
 
+    private bool IsModalDirty =>
+        !string.IsNullOrWhiteSpace(_newPartnerName) ||
+        !string.IsNullOrWhiteSpace(_newDeliverer) ||
+        _newItems.Count > 1;
+
     private void OpenCreateModal(WarehouseVoucherType type)
     {
         _newVoucherType = type;
@@ -388,7 +530,66 @@
         {
             new() { ProductId = _products.FirstOrDefault()?.Id ?? 0, ActualQuantity = 10, UnitPrice = 1000000 }
         };
+        _saveError = null;
+        _isSubmitting = false;
+        _showDiscardConfirm = false;
         _showCreateModal = true;
+    }
+
+    private void RequestCloseCreateModal()
+    {
+        if (_isSubmitting) return;
+
+        if (IsModalDirty)
+        {
+            _showDiscardConfirm = true;
+            return;
+        }
+
+        CloseCreateModalDirectly();
+    }
+
+    private void HandleModalBackdropClick()
+    {
+        if (_isSubmitting) return;
+
+        if (IsModalDirty)
+        {
+            _showDiscardConfirm = true;
+            return;
+        }
+
+        CloseCreateModalDirectly();
+    }
+
+    private void HandleModalKeyDown(KeyboardEventArgs e)
+    {
+        if (_isSubmitting) return;
+
+        if (e.Key == "Escape")
+        {
+            if (_showDiscardConfirm)
+            {
+                _showDiscardConfirm = false;
+                return;
+            }
+
+            RequestCloseCreateModal();
+        }
+    }
+
+    private void ConfirmDiscard()
+    {
+        _showDiscardConfirm = false;
+        CloseCreateModalDirectly();
+    }
+
+    private void CloseCreateModalDirectly()
+    {
+        _showCreateModal = false;
+        _saveError = null;
+        _isSubmitting = false;
+        _showDiscardConfirm = false;
     }
 
     private void AddVoucherItemRow()
@@ -403,29 +604,47 @@
 
     private async Task SaveVoucherAsync()
     {
-        if (_newWarehouseId == 0 || string.IsNullOrWhiteSpace(_newReason)) return;
-
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-        var userName = user.Identity?.Name ?? "Admin";
-        var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "admin";
-
-        var dto = new WarehouseVoucherDto
+        if (_newWarehouseId == 0 || string.IsNullOrWhiteSpace(_newReason))
         {
-            VoucherType = _newVoucherType,
-            VoucherDate = _newVoucherDate,
-            WarehouseId = _newWarehouseId,
-            PartnerName = _newPartnerName,
-            DelivererOrReceiverName = _newDeliverer,
-            Reason = _newReason,
-            Status = WarehouseVoucherStatus.Draft,
-            Items = _newItems.Where(i => i.ProductId > 0 && i.ActualQuantity > 0).ToList()
-        };
+            _saveError = "Vui lòng chọn kho hàng và nhập lý do chứng từ.";
+            return;
+        }
 
-        var created = await WarehouseService.CreateVoucherAsync(dto, userId, userName);
-        _showCreateModal = false;
-        await LoadDataAsync();
-        Nav.NavigateTo($"/kho/phieu-kho/{created.Id}");
+        _isSubmitting = true;
+        _saveError = null;
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userName = user.Identity?.Name ?? "Admin";
+            var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "admin";
+
+            var dto = new WarehouseVoucherDto
+            {
+                VoucherType = _newVoucherType,
+                VoucherDate = _newVoucherDate,
+                WarehouseId = _newWarehouseId,
+                PartnerName = _newPartnerName.Trim(),
+                DelivererOrReceiverName = _newDeliverer.Trim(),
+                Reason = _newReason.Trim(),
+                Status = WarehouseVoucherStatus.Draft,
+                Items = _newItems.Where(i => i.ProductId > 0 && i.ActualQuantity > 0).ToList()
+            };
+
+            var created = await WarehouseService.CreateVoucherAsync(dto, userId, userName);
+            CloseCreateModalDirectly();
+            await LoadDataAsync();
+            Nav.NavigateTo($"/kho/phieu-kho/{created.Id}");
+        }
+        catch (Exception ex)
+        {
+            _saveError = $"Không thể lưu chứng từ: {ex.Message}";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
     }
 
     private async Task ApproveVoucher(int voucherId)

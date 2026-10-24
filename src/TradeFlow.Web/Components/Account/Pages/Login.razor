@@ -132,13 +132,23 @@
 
                 @* Submit button *@
                 <button type="submit"
-                        class="tf-btn tf-btn-primary tf-btn-lg tf-btn-full">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/>
-                        <polyline points="10 17 15 12 10 7"/>
-                        <line x1="15" y1="12" x2="3" y2="12"/>
-                    </svg>
-                    <span>Đăng nhập</span>
+                        class="tf-btn tf-btn-primary tf-btn-lg tf-btn-full"
+                        disabled="@_isSubmitting"
+                        aria-busy="@(_isSubmitting ? "true" : "false")">
+                    @if (_isSubmitting)
+                    {
+                        <span class="tf-spinner-sm" style="margin-right:8px;border-width:2px;border-top-color:#ffffff;border-right-color:transparent;border-bottom-color:transparent;border-left-color:transparent;" aria-hidden="true"></span>
+                        <span>Đang đăng nhập...</span>
+                    }
+                    else
+                    {
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/>
+                            <polyline points="10 17 15 12 10 7"/>
+                            <line x1="15" y1="12" x2="3" y2="12"/>
+                        </svg>
+                        <span>Đăng nhập</span>
+                    }
                 </button>
             </EditForm>
         </div>
@@ -152,6 +162,7 @@
     private EditContext _editContext = default!;
     private bool _usernameHasError;
     private bool _passwordHasError;
+    private bool _isSubmitting;
 
     private string UsernameInputClass => _usernameHasError ? "tf-input tf-input-error" : "tf-input";
     private string PasswordInputClass => _passwordHasError ? "tf-input tf-input-error" : "tf-input";
@@ -187,83 +198,105 @@
 
     public async Task LoginUser()
     {
-        _errorMessage = null;
-        _usernameHasError = false;
-        _passwordHasError = false;
+        if (_isSubmitting) return;
+        _isSubmitting = true;
 
-        if (!_editContext.Validate())
+        try
         {
-            _usernameHasError = _editContext.GetValidationMessages(() => Input.Username).Any();
-            _passwordHasError = _editContext.GetValidationMessages(() => Input.Password).Any();
-            return;
-        }
+            _errorMessage = null;
+            _usernameHasError = false;
+            _passwordHasError = false;
 
-        // Support login by username OR email
-        ApplicationUser? user = null;
-        var loginInput = Input.Username.Trim();
+            if (!_editContext.Validate())
+            {
+                _usernameHasError = _editContext.GetValidationMessages(() => Input.Username).Any();
+                _passwordHasError = _editContext.GetValidationMessages(() => Input.Password).Any();
+                return;
+            }
 
-        // Try by email first
-        if (loginInput.Contains('@'))
-        {
-            user = await UserManager.FindByEmailAsync(loginInput);
-        }
-        // Then by username
-        if (user == null)
-        {
-            user = await UserManager.FindByNameAsync(loginInput);
-        }
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
 
-        if (user == null)
-        {
-            _errorMessage = "Tên đăng nhập hoặc mật khẩu không chính xác.";
-            _usernameHasError = true;
-            _passwordHasError = true;
-            return;
-        }
+            // Support login by username OR email
+            ApplicationUser? user = null;
+            var loginInput = Input.Username.Trim();
 
-        // Check account status (custom field)
-        if (user.Status == TradeFlow.Domain.Enums.UserStatus.Locked)
-        {
-            Logger.LogWarning("Attempt to log in to locked account: {Username}", loginInput);
-            RedirectManager.RedirectTo("Account/Lockout");
-            return;
-        }
+            // Try by email first
+            if (loginInput.Contains('@'))
+            {
+                user = await UserManager.FindByEmailAsync(loginInput);
+            }
+            // Then by username
+            if (user == null)
+            {
+                user = await UserManager.FindByNameAsync(loginInput);
+            }
 
-        if (user.Status != TradeFlow.Domain.Enums.UserStatus.Active)
-        {
-            _errorMessage = "Tài khoản của bạn đang bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.";
-            return;
-        }
+            if (user == null)
+            {
+                _errorMessage = "Tên đăng nhập hoặc mật khẩu không chính xác.";
+                _usernameHasError = true;
+                _passwordHasError = true;
+                return;
+            }
 
-        // Sign in using the actual username (not the input which could be email)
-        var result = await SignInManager.PasswordSignInAsync(
-            user.UserName!, Input.Password, Input.RememberMe, lockoutOnFailure: true);
+            // Check account status (custom field)
+            if (user.Status == TradeFlow.Domain.Enums.UserStatus.Locked)
+            {
+                Logger.LogWarning("Attempt to log in to locked account: {Username}", loginInput);
+                RedirectManager.RedirectTo("Account/Lockout");
+                return;
+            }
 
-        if (result.Succeeded)
-        {
-            Logger.LogInformation("User {Username} logged in successfully.", user.UserName);
-            RedirectManager.RedirectTo(ReturnUrl);
+            if (user.Status != TradeFlow.Domain.Enums.UserStatus.Active)
+            {
+                _errorMessage = "Tài khoản của bạn đang bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.";
+                return;
+            }
+
+            // Sign in using the actual username (not the input which could be email)
+            var result = await SignInManager.PasswordSignInAsync(
+                user.UserName!, Input.Password, Input.RememberMe, lockoutOnFailure: true);
+
+            if (result.Succeeded)
+            {
+                Logger.LogInformation("User {Username} logged in successfully.", user.UserName);
+                RedirectManager.RedirectTo(ReturnUrl);
+            }
+            else if (result.RequiresTwoFactor)
+            {
+                RedirectManager.RedirectTo(
+                    "Account/LoginWith2fa",
+                    new() { ["returnUrl"] = ReturnUrl, ["rememberMe"] = Input.RememberMe });
+            }
+            else if (result.IsLockedOut)
+            {
+                Logger.LogWarning("User account {Username} locked out.", user.UserName);
+                RedirectManager.RedirectTo("Account/Lockout");
+            }
+            else if (result.IsNotAllowed)
+            {
+                _errorMessage = "Tài khoản của bạn chưa được kích hoạt hoặc chưa xác minh email.";
+            }
+            else
+            {
+                Logger.LogWarning("Failed login attempt for user {Username}.", user.UserName);
+                _errorMessage = "Mật khẩu không chính xác.";
+                _passwordHasError = true;
+            }
         }
-        else if (result.RequiresTwoFactor)
+        catch (OperationCanceledException)
         {
-            RedirectManager.RedirectTo(
-                "Account/LoginWith2fa",
-                new() { ["returnUrl"] = ReturnUrl, ["rememberMe"] = Input.RememberMe });
+            Logger.LogWarning("Login operation timed out for input {Username}.", Input?.Username);
+            _errorMessage = "Yêu cầu đăng nhập quá thời gian phản hồi. Vui lòng thử lại.";
         }
-        else if (result.IsLockedOut)
+        catch (Exception ex)
         {
-            Logger.LogWarning("User account {Username} locked out.", user.UserName);
-            RedirectManager.RedirectTo("Account/Lockout");
+            Logger.LogError(ex, "Unexpected error during login for input {Username}.", Input?.Username);
+            _errorMessage = "Không thể kết nối đến máy chủ xác thực. Vui lòng thử lại sau giây lát.";
         }
-        else if (result.IsNotAllowed)
+        finally
         {
-            _errorMessage = "Tài khoản của bạn chưa được kích hoạt hoặc chưa xác minh email.";
-        }
-        else
-        {
-            Logger.LogWarning("Failed login attempt for user {Username}.", user.UserName);
-            _errorMessage = "Mật khẩu không chính xác.";
-            _passwordHasError = true;
+            _isSubmitting = false;
         }
     }
 

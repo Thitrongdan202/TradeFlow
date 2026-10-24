@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using ClosedXML.Excel;
 using TradeFlow.Application.Common.Interfaces;
 using TradeFlow.Application.Common.Models.Warehouse;
@@ -339,9 +340,13 @@ public class WarehouseService : IWarehouseService
 
     public async Task<bool> ApproveVoucherAsync(int voucherId, string userId, string userName, CancellationToken cancellationToken = default)
     {
-        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-        try
+        var strategy = _context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
         {
+            var isInMemory = _context.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory";
+            IDbContextTransaction? transaction = isInMemory ? null : await _context.Database.BeginTransactionAsync(cancellationToken);
+            try
+            {
             var voucher = await _context.WarehouseVouchers
                 .Include(v => v.Items)
                 .FirstOrDefaultAsync(v => v.Id == voucherId, cancellationToken);
@@ -434,7 +439,10 @@ public class WarehouseService : IWarehouseService
             await RegisterToCentralDocumentsAsync(voucher, cancellationToken);
 
             await _context.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
 
             await _auditService.LogAsync(
                 AuditEventType.WarehouseVoucherApproved,
@@ -448,9 +456,20 @@ public class WarehouseService : IWarehouseService
         }
         catch
         {
-            await transaction.RollbackAsync(cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+            }
             throw;
         }
+        finally
+        {
+            if (transaction != null)
+            {
+                await transaction.DisposeAsync();
+            }
+        }
+        });
     }
 
     public async Task<bool> CancelVoucherAsync(int voucherId, string reason, string userId, string userName, CancellationToken cancellationToken = default)
@@ -799,9 +818,13 @@ public class WarehouseService : IWarehouseService
         if (session.Status != StocktakeStatus.PendingReview && session.Status != StocktakeStatus.Approved)
             return false;
 
-        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-        try
+        var strategy = _context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
         {
+            var isInMemory = _context.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory";
+            IDbContextTransaction? transaction = isInMemory ? null : await _context.Database.BeginTransactionAsync(cancellationToken);
+            try
+            {
             session.ReviewedByUserId = userId;
             session.ReviewedByName = userName;
             session.ReviewedAt = DateTime.UtcNow;
@@ -1036,7 +1059,10 @@ public class WarehouseService : IWarehouseService
             session.CompletedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
 
             await _auditService.LogAsync(
                 AuditEventType.StocktakeApproved,
@@ -1050,9 +1076,20 @@ public class WarehouseService : IWarehouseService
         }
         catch
         {
-            await transaction.RollbackAsync(cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+            }
             throw;
         }
+        finally
+        {
+            if (transaction != null)
+            {
+                await transaction.DisposeAsync();
+            }
+        }
+        });
     }
 
     public async Task<bool> CancelStocktakeAsync(int sessionId, string reason, string userId, string userName, CancellationToken cancellationToken = default)
@@ -1270,9 +1307,13 @@ public class WarehouseService : IWarehouseService
         if (order.Status != WarehouseReturnStatus.Inspected && order.Status != WarehouseReturnStatus.Approved)
             return false;
 
-        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-        try
+        var strategy = _context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
         {
+            var isInMemory = _context.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory";
+            IDbContextTransaction? transaction = isInMemory ? null : await _context.Database.BeginTransactionAsync(cancellationToken);
+            try
+            {
             order.Status = WarehouseReturnStatus.Completed;
             order.ApprovedByUserId = userId;
             order.ApprovedByName = userName;
@@ -1522,7 +1563,10 @@ public class WarehouseService : IWarehouseService
             }
 
             await _context.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
 
             await _auditService.LogAsync(
                 AuditEventType.WarehouseReturnCompleted,
@@ -1536,9 +1580,20 @@ public class WarehouseService : IWarehouseService
         }
         catch
         {
-            await transaction.RollbackAsync(cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+            }
             throw;
         }
+        finally
+        {
+            if (transaction != null)
+            {
+                await transaction.DisposeAsync();
+            }
+        }
+        });
     }
 
     public async Task<bool> RejectReturnOrderAsync(int returnOrderId, string reason, string userId, string userName, CancellationToken cancellationToken = default)
@@ -1649,12 +1704,16 @@ public class WarehouseService : IWarehouseService
 
     public async Task<bool> QuarantineDirectStockAsync(int warehouseId, int productId, decimal quantity, string defectReason, string sourceRef, string userId, string userName, CancellationToken cancellationToken = default)
     {
-        var product = await _context.Products.Include(p => p.Unit).FirstOrDefaultAsync(p => p.Id == productId, cancellationToken);
-        if (product == null) return false;
-
-        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-        try
+        var strategy = _context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
         {
+            var product = await _context.Products.Include(p => p.Unit).FirstOrDefaultAsync(p => p.Id == productId, cancellationToken);
+            if (product == null) return false;
+
+            var isInMemory = _context.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory";
+            IDbContextTransaction? transaction = isInMemory ? null : await _context.Database.BeginTransactionAsync(cancellationToken);
+            try
+            {
             // Trừ số lượng tồn khả dụng (Saleable)
             var saleableStock = await _context.InventoryStocks.FirstOrDefaultAsync(s => s.WarehouseId == warehouseId && s.ProductId == productId && s.Condition == StockCondition.Saleable, cancellationToken);
             if (saleableStock != null)
@@ -1739,7 +1798,10 @@ public class WarehouseService : IWarehouseService
             });
 
             await _context.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
 
             await _auditService.LogAsync(
                 AuditEventType.DefectiveStockQuarantined,
@@ -1753,155 +1815,231 @@ public class WarehouseService : IWarehouseService
         }
         catch
         {
-            await transaction.RollbackAsync(cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+            }
             throw;
         }
+        finally
+        {
+            if (transaction != null)
+            {
+                await transaction.DisposeAsync();
+            }
+        }
+        });
     }
 
     public async Task<bool> ResolveQuarantineAsync(int quarantineId, QuarantineStatus targetStatus, string resolutionNotes, string userId, string userName, CancellationToken cancellationToken = default)
     {
-        var item = await _context.QuarantinedInventoryItems.FirstOrDefaultAsync(q => q.Id == quarantineId, cancellationToken);
-        if (item == null || item.Status != QuarantineStatus.InQuarantine)
-            return false;
-
-        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-        try
+        var strategy = _context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
         {
-            item.Status = targetStatus;
-            item.ResolutionNotes = resolutionNotes;
-            item.ResolvedAt = DateTime.UtcNow;
-            item.ResolvedByName = userName;
+            var item = await _context.QuarantinedInventoryItems.FirstOrDefaultAsync(q => q.Id == quarantineId, cancellationToken);
+            if (item == null || item.Status != QuarantineStatus.InQuarantine)
+                return false;
 
-            // Giảm tồn kho Defective
-            var defStock = await _context.InventoryStocks.FirstOrDefaultAsync(s => s.WarehouseId == item.WarehouseId && s.ProductId == item.ProductId && s.Condition == StockCondition.Defective, cancellationToken);
-            if (defStock != null)
+            var isInMemory = _context.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory";
+            IDbContextTransaction? transaction = isInMemory ? null : await _context.Database.BeginTransactionAsync(cancellationToken);
+            try
             {
-                decimal prevDef = defStock.Quantity;
-                decimal nextDef = Math.Max(0, prevDef - item.Quantity);
-                defStock.Quantity = nextDef;
-                defStock.LastMovementAt = DateTime.UtcNow;
+                item.Status = targetStatus;
+                item.ResolutionNotes = resolutionNotes;
+                item.ResolvedAt = DateTime.UtcNow;
+                item.ResolvedByName = userName;
 
-                _context.InventoryMovements.Add(new InventoryMovement
+                // Giảm tồn kho Defective
+                var defStock = await _context.InventoryStocks.FirstOrDefaultAsync(s => s.WarehouseId == item.WarehouseId && s.ProductId == item.ProductId && s.Condition == StockCondition.Defective, cancellationToken);
+                if (defStock != null)
                 {
-                    MovementDate = DateTime.UtcNow,
-                    MovementType = InventoryMovementType.QuarantineDisposition,
-                    WarehouseId = item.WarehouseId,
-                    ProductId = item.ProductId,
-                    Condition = StockCondition.Defective,
-                    Quantity = item.Quantity,
-                    Direction = "OUT",
-                    PreviousBalance = prevDef,
-                    NewBalance = nextDef,
-                    SourceReference = item.Code,
-                    Notes = $"Giải tỏa cách ly: {targetStatus} ({resolutionNotes})",
-                    CreatedByUserId = userId,
-                    CreatedByName = userName
-                });
-            }
+                    decimal prevDef = defStock.Quantity;
+                    decimal nextDef = Math.Max(0, prevDef - item.Quantity);
+                    defStock.Quantity = nextDef;
+                    defStock.LastMovementAt = DateTime.UtcNow;
 
-            // Nếu phục hồi -> Chuyển về kho Saleable
-            if (targetStatus == QuarantineStatus.Restored)
-            {
-                var saleableStock = await _context.InventoryStocks.FirstOrDefaultAsync(s => s.WarehouseId == item.WarehouseId && s.ProductId == item.ProductId && s.Condition == StockCondition.Saleable, cancellationToken);
-                if (saleableStock == null)
-                {
-                    saleableStock = new InventoryStock
+                    _context.InventoryMovements.Add(new InventoryMovement
                     {
+                        MovementDate = DateTime.UtcNow,
+                        MovementType = InventoryMovementType.QuarantineDisposition,
+                        WarehouseId = item.WarehouseId,
+                        ProductId = item.ProductId,
+                        Condition = StockCondition.Defective,
+                        Quantity = item.Quantity,
+                        Direction = "OUT",
+                        PreviousBalance = prevDef,
+                        NewBalance = nextDef,
+                        SourceReference = item.Code,
+                        Notes = $"Giải tỏa cách ly: {targetStatus} ({resolutionNotes})",
+                        CreatedByUserId = userId,
+                        CreatedByName = userName
+                    });
+                }
+
+                // Nếu phục hồi -> Chuyển về kho Saleable
+                if (targetStatus == QuarantineStatus.Restored)
+                {
+                    var saleableStock = await _context.InventoryStocks.FirstOrDefaultAsync(s => s.WarehouseId == item.WarehouseId && s.ProductId == item.ProductId && s.Condition == StockCondition.Saleable, cancellationToken);
+                    if (saleableStock == null)
+                    {
+                        saleableStock = new InventoryStock
+                        {
+                            WarehouseId = item.WarehouseId,
+                            ProductId = item.ProductId,
+                            Condition = StockCondition.Saleable,
+                            Quantity = 0,
+                            LastMovementAt = DateTime.UtcNow
+                        };
+                        _context.InventoryStocks.Add(saleableStock);
+                    }
+
+                    decimal prev = saleableStock.Quantity;
+                    decimal next = prev + item.Quantity;
+                    saleableStock.Quantity = next;
+                    saleableStock.LastMovementAt = DateTime.UtcNow;
+
+                    _context.InventoryMovements.Add(new InventoryMovement
+                    {
+                        MovementDate = DateTime.UtcNow,
+                        MovementType = InventoryMovementType.QuarantineDisposition,
                         WarehouseId = item.WarehouseId,
                         ProductId = item.ProductId,
                         Condition = StockCondition.Saleable,
-                        Quantity = 0,
-                        LastMovementAt = DateTime.UtcNow
+                        Quantity = item.Quantity,
+                        Direction = "IN",
+                        PreviousBalance = prev,
+                        NewBalance = next,
+                        SourceReference = item.Code,
+                        Notes = $"Phục hồi hàng cách ly về hàng tốt: {resolutionNotes}",
+                        CreatedByUserId = userId,
+                        CreatedByName = userName
+                    });
+                }
+                // Nếu xuất trả Nhà cung cấp / Hãng
+                else if (targetStatus == QuarantineStatus.ReturnedToSupplier)
+                {
+                    string vNum = await GenerateCodeAsync("IssueVoucher", "PXK-NCC-", cancellationToken);
+                    var voucher = new WarehouseVoucher
+                    {
+                        VoucherType = WarehouseVoucherType.OutboundIssue,
+                        VoucherNumber = vNum,
+                        VoucherDate = DateTime.UtcNow,
+                        WarehouseId = item.WarehouseId,
+                        Reason = $"Xuất trả nhà cung cấp hàng cách ly {item.Code} ({item.DefectReason})",
+                        PartnerName = "Nhà cung cấp / Hãng bảo hành",
+                        SourceModule = "Quarantine",
+                        SourceRecordId = item.Id,
+                        SourceReference = item.Code,
+                        Status = WarehouseVoucherStatus.Approved,
+                        TotalQuantity = item.Quantity,
+                        TotalAmount = 0,
+                        CreatedByUserId = userId,
+                        CreatedByName = userName,
+                        ApprovedByUserId = userId,
+                        ApprovedByName = userName,
+                        ApprovedAt = DateTime.UtcNow,
+                        Notes = resolutionNotes
                     };
-                    _context.InventoryStocks.Add(saleableStock);
+
+                    voucher.Items.Add(new WarehouseVoucherItem
+                    {
+                        ProductId = item.ProductId,
+                        ProductCode = item.ProductCode,
+                        ProductName = item.ProductName,
+                        UnitName = item.UnitName,
+                        Condition = StockCondition.Defective,
+                        DocumentQuantity = item.Quantity,
+                        ActualQuantity = item.Quantity,
+                        UnitPrice = 0,
+                        LineTotal = 0,
+                        Notes = resolutionNotes
+                    });
+
+                    _context.WarehouseVouchers.Add(voucher);
+                    await _context.SaveChangesAsync(cancellationToken);
+                    item.ResultingVoucherId = voucher.Id;
+
+                    await RegisterToCentralDocumentsAsync(voucher, cancellationToken);
+                }
+                // Nếu tiêu hủy -> Lập Phiếu xuất kho tiêu hủy (Mẫu 02-VT)
+                else if (targetStatus == QuarantineStatus.Scrapped)
+                {
+                    string vNum = await GenerateCodeAsync("IssueVoucher", "PXK-", cancellationToken);
+                    var voucher = new WarehouseVoucher
+                    {
+                        VoucherType = WarehouseVoucherType.OutboundIssue,
+                        VoucherNumber = vNum,
+                        VoucherDate = DateTime.UtcNow,
+                        WarehouseId = item.WarehouseId,
+                        Reason = $"Xuất tiêu hủy / thanh lý hàng cách ly {item.Code} ({item.DefectReason})",
+                        PartnerName = "Hội đồng thanh lý",
+                        SourceModule = "Quarantine",
+                        SourceRecordId = item.Id,
+                        SourceReference = item.Code,
+                        Status = WarehouseVoucherStatus.Approved,
+                        TotalQuantity = item.Quantity,
+                        TotalAmount = 0,
+                        CreatedByUserId = userId,
+                        CreatedByName = userName,
+                        ApprovedByUserId = userId,
+                        ApprovedByName = userName,
+                        ApprovedAt = DateTime.UtcNow,
+                        Notes = resolutionNotes
+                    };
+
+                    voucher.Items.Add(new WarehouseVoucherItem
+                    {
+                        ProductId = item.ProductId,
+                        ProductCode = item.ProductCode,
+                        ProductName = item.ProductName,
+                        UnitName = item.UnitName,
+                        Condition = StockCondition.Defective,
+                        DocumentQuantity = item.Quantity,
+                        ActualQuantity = item.Quantity,
+                        UnitPrice = 0,
+                        LineTotal = 0,
+                        Notes = resolutionNotes
+                    });
+
+                    _context.WarehouseVouchers.Add(voucher);
+                    await _context.SaveChangesAsync(cancellationToken);
+                    item.ResultingVoucherId = voucher.Id;
+
+                    await RegisterToCentralDocumentsAsync(voucher, cancellationToken);
                 }
 
-                decimal prev = saleableStock.Quantity;
-                decimal next = prev + item.Quantity;
-                saleableStock.Quantity = next;
-                saleableStock.LastMovementAt = DateTime.UtcNow;
-
-                _context.InventoryMovements.Add(new InventoryMovement
+                await _context.SaveChangesAsync(cancellationToken);
+                if (transaction != null)
                 {
-                    MovementDate = DateTime.UtcNow,
-                    MovementType = InventoryMovementType.QuarantineDisposition,
-                    WarehouseId = item.WarehouseId,
-                    ProductId = item.ProductId,
-                    Condition = StockCondition.Saleable,
-                    Quantity = item.Quantity,
-                    Direction = "IN",
-                    PreviousBalance = prev,
-                    NewBalance = next,
-                    SourceReference = item.Code,
-                    Notes = $"Phục hồi hàng cách ly về hàng tốt: {resolutionNotes}",
-                    CreatedByUserId = userId,
-                    CreatedByName = userName
-                });
+                    await transaction.CommitAsync(cancellationToken);
+                }
+
+                await _auditService.LogAsync(
+                    AuditEventType.DefectiveStockDisposed,
+                    performedBy: userName,
+                    targetEntity: "QuarantinedInventoryItem",
+                    targetId: item.Code,
+                    details: $"Xử lý giải tỏa hàng cách ly {item.Code} -> {targetStatus}: {resolutionNotes}",
+                    cancellationToken: cancellationToken);
+
+                return true;
             }
-            // Nếu tiêu hủy -> Lập Phiếu xuất kho tiêu hủy (Mẫu 02-VT)
-            else if (targetStatus == QuarantineStatus.Scrapped)
+            catch
             {
-                string vNum = await GenerateCodeAsync("IssueVoucher", "PXK-", cancellationToken);
-                var voucher = new WarehouseVoucher
+                if (transaction != null)
                 {
-                    VoucherType = WarehouseVoucherType.OutboundIssue,
-                    VoucherNumber = vNum,
-                    VoucherDate = DateTime.UtcNow,
-                    WarehouseId = item.WarehouseId,
-                    Reason = $"Xuất tiêu hủy / thanh lý hàng cách ly {item.Code} ({item.DefectReason})",
-                    PartnerName = "Hội đồng thanh lý",
-                    SourceModule = "Quarantine",
-                    SourceRecordId = item.Id,
-                    SourceReference = item.Code,
-                    Status = WarehouseVoucherStatus.Approved,
-                    TotalQuantity = item.Quantity,
-                    TotalAmount = 0,
-                    CreatedByUserId = userId,
-                    CreatedByName = userName,
-                    ApprovedByUserId = userId,
-                    ApprovedByName = userName,
-                    ApprovedAt = DateTime.UtcNow,
-                    Notes = resolutionNotes
-                };
-
-                voucher.Items.Add(new WarehouseVoucherItem
-                {
-                    ProductId = item.ProductId,
-                    ProductCode = item.ProductCode,
-                    ProductName = item.ProductName,
-                    UnitName = item.UnitName,
-                    Condition = StockCondition.Defective,
-                    DocumentQuantity = item.Quantity,
-                    ActualQuantity = item.Quantity,
-                    UnitPrice = 0,
-                    LineTotal = 0,
-                    Notes = resolutionNotes
-                });
-
-                _context.WarehouseVouchers.Add(voucher);
-                item.ResultingVoucherId = voucher.Id;
-
-                await RegisterToCentralDocumentsAsync(voucher, cancellationToken);
+                    await transaction.RollbackAsync(cancellationToken);
+                }
+                throw;
             }
-
-            await _context.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-
-            await _auditService.LogAsync(
-                AuditEventType.DefectiveStockDisposed,
-                performedBy: userName,
-                targetEntity: "QuarantinedInventoryItem",
-                targetId: item.Code,
-                details: $"Xử lý giải tỏa hàng cách ly {item.Code} -> {targetStatus}: {resolutionNotes}",
-                cancellationToken: cancellationToken);
-
-            return true;
-        }
-        catch
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            throw;
-        }
+            finally
+            {
+                if (transaction != null)
+                {
+                    await transaction.DisposeAsync();
+                }
+            }
+        });
     }
 
     #endregion

@@ -22,7 +22,11 @@ builder.Services.AddApplication();
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options => { options.MultipartBodyLengthLimit = 10L * 1024 * 1024 * 1024; });
 builder.WebHost.ConfigureKestrel(serverOptions => { serverOptions.Limits.MaxRequestBodySize = 10L * 1024 * 1024 * 1024; });
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents()
+    .AddInteractiveServerComponents(options =>
+    {
+        options.DisconnectedCircuitRetentionPeriod = TimeSpan.FromHours(1);
+        options.DisconnectedCircuitMaxRetained = 200;
+    })
     .AddHubOptions(options =>
     {
         options.MaximumReceiveMessageSize = 64 * 1024 * 1024; // 64 MB

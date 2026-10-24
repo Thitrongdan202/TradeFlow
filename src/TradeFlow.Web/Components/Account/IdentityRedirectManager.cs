@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
 using TradeFlow.Infrastructure.Persistence;
 
@@ -26,7 +26,7 @@ internal sealed class IdentityRedirectManager(NavigationManager navigationManage
             uri = navigationManager.ToBaseRelativePath(uri);
         }
 
-        navigationManager.NavigateTo(uri);
+        navigationManager.NavigateTo(uri, forceLoad: true);
     }
 
     public void RedirectTo(string uri, Dictionary<string, object?> queryParameters)

@@ -1733,6 +1733,75 @@ h1:focus { outline: none; }
   gap: var(--tf-space-2);
 }
 
+/* Standardized Modal Close Button (Global Policy) */
+.tf-modal-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--tf-radius-md, 8px);
+  background-color: transparent;
+  color: #64748B;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  outline: none;
+  text-decoration: none;
+  line-height: 1;
+}
+
+.tf-modal-close-btn:hover {
+  background-color: #F1F5F9;
+  color: #0F172A;
+  border-color: #E2E8F0;
+}
+
+.tf-modal-close-btn:active {
+  background-color: #E2E8F0;
+  transform: scale(0.96);
+}
+
+.tf-modal-close-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px #2563EB;
+}
+
+.tf-modal-close-btn svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.25;
+}
+
+/* Modal Unsaved Changes Confirmation Dialog */
+.tf-modal-confirm-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+  border-radius: inherit;
+  animation: tfBackdropFadeIn 0.15s ease-out forwards;
+}
+
+.tf-modal-confirm-box {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
+  max-width: 440px;
+  width: 100%;
+  padding: 24px;
+  animation: tfModalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* ============================================================
    DROPDOWN MENU
    ============================================================ */

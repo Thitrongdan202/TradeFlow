@@ -8,6 +8,7 @@
          tabindex="-1"
          role="presentation">
         <div class="@ComputedModalClass"
+             style="position: relative;"
              role="dialog"
              aria-modal="true"
              aria-labelledby="@(string.IsNullOrEmpty(Title) ? null : "tf-modal-title-id")"
@@ -21,8 +22,9 @@
                 {
                     <h3 id="tf-modal-title-id" class="tf-modal-title">@Title</h3>
                     <button type="button"
-                            class="tf-btn-icon tf-btn-ghost tf-btn-sm"
-                            @onclick="CloseAsync"
+                            class="tf-modal-close-btn"
+                            @onclick="RequestCloseAsync"
+                            disabled="@IsSubmitting"
                             aria-label="Đóng"
                             title="Đóng">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -50,6 +52,32 @@
                     @FooterContent
                 </div>
             }
+
+            @* Unsaved Changes Confirmation Modal Overlay *@
+            @if (_showDirtyConfirm)
+            {
+                <div class="tf-modal-confirm-overlay" @onclick:stopPropagation="true">
+                    <div class="tf-modal-confirm-box text-center">
+                        <div class="tw-w-12 tw-h-12 tw-rounded-full tw-bg-amber-100 tw-text-amber-600 tw-flex tw-items-center tw-justify-center tw-mx-auto tw-mb-3">
+                            <svg class="tw-w-6 tw-h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <h4 class="tw-text-base tw-font-bold tw-text-slate-900 tw-mb-1.5">Bạn có thay đổi chưa lưu</h4>
+                        <p class="tw-text-xs tw-text-slate-500 tw-mb-5 tw-leading-relaxed">
+                            Bạn có chắc muốn đóng và hủy thay đổi? Dữ liệu bạn vừa nhập sẽ không được lưu.
+                        </p>
+                        <div class="tw-flex tw-items-center tw-justify-center tw-gap-2.5">
+                            <button type="button" class="tf-btn tf-btn-secondary tw-text-xs" @onclick="() => _showDirtyConfirm = false">
+                                Tiếp tục chỉnh sửa
+                            </button>
+                            <button type="button" class="tf-btn tf-btn-danger tw-text-xs" @onclick="ConfirmDiscardAsync">
+                                Hủy thay đổi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
         </div>
     </div>
 }
@@ -65,7 +93,11 @@
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public bool CloseOnBackdropClick { get; set; } = true;
     [Parameter] public bool CloseOnEscape { get; set; } = true;
+    [Parameter] public bool IsDirty { get; set; } = false;
+    [Parameter] public bool IsSubmitting { get; set; } = false;
     [Parameter] public string? Class { get; set; }
+
+    private bool _showDirtyConfirm = false;
 
     private string ComputedModalClass
     {
@@ -86,6 +118,15 @@
 
     private async Task HandleBackdropClick()
     {
+        if (IsSubmitting) return;
+
+        // If form has unsaved changes, prevent accidental backdrop dismissal
+        if (IsDirty)
+        {
+            _showDirtyConfirm = true;
+            return;
+        }
+
         if (CloseOnBackdropClick)
         {
             await CloseAsync();
@@ -94,10 +135,37 @@
 
     private async Task HandleKeyDown(KeyboardEventArgs e)
     {
+        if (IsSubmitting) return;
+
         if (CloseOnEscape && e.Key == "Escape")
         {
-            await CloseAsync();
+            if (_showDirtyConfirm)
+            {
+                _showDirtyConfirm = false;
+                return;
+            }
+
+            await RequestCloseAsync();
         }
+    }
+
+    public async Task RequestCloseAsync()
+    {
+        if (IsSubmitting) return;
+
+        if (IsDirty)
+        {
+            _showDirtyConfirm = true;
+            return;
+        }
+
+        await CloseAsync();
+    }
+
+    private async Task ConfirmDiscardAsync()
+    {
+        _showDirtyConfirm = false;
+        await CloseAsync();
     }
 
     private async Task CloseAsync()

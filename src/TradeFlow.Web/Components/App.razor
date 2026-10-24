@@ -296,106 +296,147 @@
     <script src="js/backup-restore.js"></script>
     <script>
         (function () {
-            var loader = document.getElementById('tf-startup-loader');
-            if (!loader) return;
-
-            var dismissed = false;
-            function dismissStartupLoader() {
-                if (dismissed) return;
-                dismissed = true;
-
-                // 1. Immediately disable pointer-events so user interactions are never blocked
-                loader.style.pointerEvents = 'none';
-                loader.classList.remove('is-active');
-                loader.classList.add('is-fading-out');
-
-                // 2. Remove cleanly from DOM after natural Google decelerate fade-out (250ms)
-                setTimeout(function () {
-                    if (loader && loader.parentNode) {
-                        loader.parentNode.removeChild(loader);
-                    }
-                }, 280);
-            }
-
-            window.tfDismissStartupLoader = dismissStartupLoader;
-
-            function showStartupError() {
-                if (dismissed) return;
-                var normalContent = document.getElementById('tf-startup-normal-content');
-                var errorBox = document.getElementById('tf-startup-error-box');
-                if (normalContent) normalContent.style.display = 'none';
-                if (errorBox) {
-                    errorBox.style.display = 'flex';
-                    loader.setAttribute('aria-busy', 'false');
-                }
-            }
-
-            window.tfShowStartupError = showStartupError;
-
             // Check if application UI or auth page is rendered in DOM
             function isAppContentReady() {
                 return !!(
                     document.querySelector('.tf-app') ||
                     document.querySelector('.tf-content') ||
                     document.querySelector('.tf-login-page') ||
+                    document.querySelector('.tf-login-card') ||
                     document.querySelector('.tf-login-redirect') ||
                     document.querySelector('.tf-sales-workspace') ||
-                    document.querySelector('.container-fluid')
+                    document.querySelector('.container-fluid') ||
+                    document.querySelector('.tf-page-header') ||
+                    document.querySelector('#blazor-error-ui[style*="display: block"]')
                 );
+            }
+
+            function dismissLoaderElement(loaderEl) {
+                if (!loaderEl || loaderEl._tfDismissed) return;
+                loaderEl._tfDismissed = true;
+
+                // 1. Immediately disable pointer-events so user interactions are never blocked
+                loaderEl.style.pointerEvents = 'none';
+                loaderEl.classList.remove('is-active');
+                loaderEl.classList.add('is-fading-out');
+
+                // 2. Remove cleanly from DOM after smooth fade-out (250ms)
+                setTimeout(function () {
+                    if (loaderEl && loaderEl.parentNode) {
+                        loaderEl.parentNode.removeChild(loaderEl);
+                    }
+                }, 280);
+            }
+
+            function dismissAllStartupLoaders() {
+                var loaders = document.querySelectorAll('#tf-startup-loader, .tf-loading-overlay.is-active:not(.is-preview-mode)');
+                for (var i = 0; i < loaders.length; i++) {
+                    dismissLoaderElement(loaders[i]);
+                }
+            }
+
+            // Expose globally for Blazor Interop and inline callers
+            window.tfDismissStartupLoader = dismissAllStartupLoaders;
+
+            function showStartupError() {
+                var normalContent = document.getElementById('tf-startup-normal-content');
+                var errorBox = document.getElementById('tf-startup-error-box');
+                var loader = document.getElementById('tf-startup-loader');
+                if (normalContent) normalContent.style.display = 'none';
+                if (errorBox) {
+                    errorBox.style.display = 'flex';
+                }
+                if (loader) {
+                    loader.setAttribute('aria-busy', 'false');
+                    loader.style.pointerEvents = 'auto';
+                }
+            }
+
+            window.tfShowStartupError = showStartupError;
+
+            // Ensure every loader found has a safety watchdog (max 1500ms)
+            function armWatchdogs() {
+                var loaders = document.querySelectorAll('#tf-startup-loader, .tf-loading-overlay.is-active:not(.is-preview-mode)');
+                for (var i = 0; i < loaders.length; i++) {
+                    var el = loaders[i];
+                    if (!el._tfWatchdogArmed) {
+                        el._tfWatchdogArmed = true;
+                        (function (target) {
+                            setTimeout(function () {
+                                dismissLoaderElement(target);
+                            }, 1500);
+                        })(el);
+                    }
+                }
             }
 
             // Continuous mutation watcher for instant dismissal as soon as Blazor paints
             if (document.body) {
                 var bodyObserver = new MutationObserver(function () {
-                    if (!dismissed && isAppContentReady()) {
-                        bodyObserver.disconnect();
-                        // Dismiss on next animation frame for a buttery smooth 60fps transition
+                    armWatchdogs();
+                    if (isAppContentReady()) {
                         requestAnimationFrame(function () {
-                            dismissStartupLoader();
+                            dismissAllStartupLoaders();
                         });
                     }
                 });
                 bodyObserver.observe(document.body, { childList: true, subtree: true });
             }
 
-            // Also check on DOM readiness states
+            // DOM readiness checks
             if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                armWatchdogs();
                 if (isAppContentReady()) {
-                    dismissStartupLoader();
+                    dismissAllStartupLoaders();
                 }
             } else {
                 document.addEventListener('DOMContentLoaded', function () {
+                    armWatchdogs();
                     if (isAppContentReady()) {
-                        dismissStartupLoader();
+                        dismissAllStartupLoaders();
                     }
                 });
             }
 
-            // Blazor enhanced page load hook
+            // Blazor enhanced page load hook: always dismiss on enhanced load
             if (window.Blazor && window.Blazor.addEventListener) {
                 window.Blazor.addEventListener('enhancedload', function () {
-                    dismissStartupLoader();
+                    armWatchdogs();
+                    requestAnimationFrame(function () {
+                        dismissAllStartupLoaders();
+                    });
                 });
             }
+
+            // Tab visibility / page restore hook (e.g. user returns to inactive tab)
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'visible') {
+                    if (isAppContentReady()) {
+                        dismissAllStartupLoaders();
+                    }
+                }
+            });
+
+            window.addEventListener('pageshow', function () {
+                if (isAppContentReady()) {
+                    dismissAllStartupLoaders();
+                }
+            });
 
             // Watch specifically for real Blazor circuit crashes
             var blazorErrorUi = document.getElementById('blazor-error-ui');
             if (blazorErrorUi) {
                 var errObserver = new MutationObserver(function () {
                     var display = window.getComputedStyle(blazorErrorUi).display;
-                    if (display !== 'none' && !dismissed) {
+                    if (display !== 'none') {
                         showStartupError();
                     }
                 });
                 errObserver.observe(blazorErrorUi, { attributes: true, attributeFilter: ['style', 'class'] });
             }
 
-            // Safe liveness watchdog: smoothly dismiss after 2s without crashing into fake error
-            setTimeout(function () {
-                if (!dismissed) {
-                    dismissStartupLoader();
-                }
-            }, 2000);
+            // Initial immediate arming
+            armWatchdogs();
         })();
 
         window.tradeflow = {

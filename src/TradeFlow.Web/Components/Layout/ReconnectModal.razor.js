@@ -1,18 +1,27 @@
 // Set up event handlers
 const reconnectModal = document.getElementById("components-reconnect-modal");
-reconnectModal.addEventListener("components-reconnect-state-changed", handleReconnectStateChanged);
+if (reconnectModal) {
+    reconnectModal.addEventListener("components-reconnect-state-changed", handleReconnectStateChanged);
+}
 
 const retryButton = document.getElementById("components-reconnect-button");
-retryButton.addEventListener("click", retry);
+if (retryButton) {
+    retryButton.addEventListener("click", retry);
+}
 
 const resumeButton = document.getElementById("components-resume-button");
-resumeButton.addEventListener("click", resume);
+if (resumeButton) {
+    resumeButton.addEventListener("click", resume);
+}
 
 function handleReconnectStateChanged(event) {
+    if (!reconnectModal) return;
+
     if (event.detail.state === "show") {
-        reconnectModal.showModal();
+        try { reconnectModal.showModal(); } catch (e) { }
     } else if (event.detail.state === "hide") {
-        reconnectModal.close();
+        try { reconnectModal.close(); } catch (e) { }
+        document.removeEventListener("visibilitychange", retryWhenDocumentBecomesVisible);
     } else if (event.detail.state === "failed") {
         document.addEventListener("visibilitychange", retryWhenDocumentBecomesVisible);
     } else if (event.detail.state === "rejected") {
@@ -24,35 +33,41 @@ async function retry() {
     document.removeEventListener("visibilitychange", retryWhenDocumentBecomesVisible);
 
     try {
-        // Reconnect will asynchronously return:
-        // - true to mean success
-        // - false to mean we reached the server, but it rejected the connection (e.g., unknown circuit ID)
-        // - exception to mean we didn't reach the server (this can be sync or async)
-        const successful = await Blazor.reconnect();
+        if (!window.Blazor || !window.Blazor.reconnect) {
+            location.reload();
+            return;
+        }
+
+        const successful = await window.Blazor.reconnect();
         if (!successful) {
-            // We have been able to reach the server, but the circuit is no longer available.
-            // We'll reload the page so the user can continue using the app as quickly as possible.
-            const resumeSuccessful = await Blazor.resumeCircuit();
+            // Circuit expired or discarded by server; reload to establish fresh circuit
+            const resumeSuccessful = window.Blazor.resumeCircuit ? await window.Blazor.resumeCircuit() : false;
             if (!resumeSuccessful) {
                 location.reload();
             } else {
-                reconnectModal.close();
+                if (reconnectModal) reconnectModal.close();
             }
+        } else {
+            if (reconnectModal) reconnectModal.close();
         }
     } catch (err) {
-        // We got an exception, server is currently unavailable
+        // Network or server unreachable; register visible hook
         document.addEventListener("visibilitychange", retryWhenDocumentBecomesVisible);
     }
 }
 
 async function resume() {
     try {
-        const successful = await Blazor.resumeCircuit();
+        const successful = window.Blazor.resumeCircuit ? await window.Blazor.resumeCircuit() : false;
         if (!successful) {
             location.reload();
+        } else {
+            if (reconnectModal) reconnectModal.close();
         }
     } catch {
-        reconnectModal.classList.replace("components-reconnect-paused", "components-reconnect-resume-failed");
+        if (reconnectModal) {
+            reconnectModal.classList.replace("components-reconnect-paused", "components-reconnect-resume-failed");
+        }
     }
 }
 

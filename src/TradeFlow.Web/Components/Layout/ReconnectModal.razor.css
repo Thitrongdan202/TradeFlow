@@ -15,6 +15,10 @@
 #components-reconnect-modal.components-reconnect-retrying .components-reconnect-repeated-attempt-visible,
 #components-reconnect-modal.components-reconnect-retrying .components-rejoining-animation,
 #components-reconnect-modal.components-reconnect-failed,
+#components-reconnect-modal.components-reconnect-failed div.components-reconnect-failed-visible {
+    display: flex !important;
+}
+
 #components-reconnect-modal.components-reconnect-failed .components-reconnect-failed-visible {
     display: block;
 }

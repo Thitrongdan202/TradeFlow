@@ -2,6 +2,12 @@
 
 @Body
 
+<script>
+    if (typeof window.tfDismissStartupLoader === 'function') {
+        window.tfDismissStartupLoader();
+    }
+</script>
+
 <div id="blazor-error-ui" data-nosnippet>
     Đã xảy ra lỗi không mong đợi.
     <a href="." class="reload">Tải lại</a>

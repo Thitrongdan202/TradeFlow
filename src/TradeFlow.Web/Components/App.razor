@@ -596,8 +596,25 @@
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+            },
+            autoResizeTextarea: function (el, minH, maxH) {
+                if (!el) return;
+                minH = minH || 180;
+                maxH = maxH || 450;
+                el.style.height = 'auto';
+                var scrollH = el.scrollHeight;
+                var targetH = Math.min(Math.max(scrollH, minH), maxH);
+                el.style.height = targetH + 'px';
+                el.style.overflowY = scrollH > maxH ? 'auto' : 'hidden';
             }
         };
+
+        // Auto-resize listener for terms editor
+        document.addEventListener('input', function (e) {
+            if (e.target && e.target.classList && e.target.classList.contains('tf-terms-editor')) {
+                window.tradeflow.autoResizeTextarea(e.target, 180, 450);
+            }
+        });
 
         // Attach global keyboard shortcuts (Ctrl+B, Escape)
         document.addEventListener('keydown', function (e) {

@@ -1,7 +1,20 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using TradeFlow.Domain.Enums;
 
 namespace TradeFlow.Application.Common.Models.Contracts;
+
+public class EmploymentContractClauseDto
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string ArticleNumber { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public bool IsMandatory { get; set; } = true;
+    public bool IsOptional { get; set; } = false;
+    public int DisplayOrder { get; set; }
+}
 
 public class EmploymentContractDto
 {
@@ -14,6 +27,8 @@ public class EmploymentContractDto
         EmploymentContractType.IndefiniteTerm => "Không xác định thời hạn",
         EmploymentContractType.FixedTerm => "Xác định thời hạn (tối đa 36 tháng)",
         EmploymentContractType.Probation => "Hợp đồng thử việc",
+        EmploymentContractType.Internship => "Thỏa thuận thực tập sinh",
+        EmploymentContractType.VocationalTraining => "Hợp đồng đào tạo nghề (Đ.61 BLLĐ)",
         _ => "Chưa xác định"
     };
 
@@ -69,26 +84,34 @@ public class EmploymentContractDto
     public string WorkingSchedule { get; set; } = string.Empty;
     public int AnnualLeaveDays { get; set; } = 12;
 
-    // Tiền lương (Bảo mật theo Luật 91/2025/QH15)
-    public decimal BasicSalary { get; set; }
+    // Tiền lương & Thỏa thuận thù lao
+    public decimal? BasicSalary { get; set; }
+    public string? SalaryClauseText { get; set; }
     public string SalaryType { get; set; } = string.Empty;
     public string PaymentPeriod { get; set; } = string.Empty;
     public string PaymentMethod { get; set; } = string.Empty;
-    public decimal PositionAllowance { get; set; }
-    public decimal LunchAllowance { get; set; }
-    public decimal OtherAllowances { get; set; }
+    public decimal? PositionAllowance { get; set; }
+    public decimal? LunchAllowance { get; set; }
+    public decimal? OtherAllowances { get; set; }
     public string SalaryReviewPolicy { get; set; } = string.Empty;
     public decimal SocialInsuranceRate { get; set; } = 32m;
     public string LaborProtection { get; set; } = string.Empty;
 
-    // Điều khoản tùy chọn
+    // Điều khoản tùy chọn & Thực tập/Đào tạo
     public bool HasNonDisclosureAgreement { get; set; }
     public string? NdaClauseDetails { get; set; }
     public bool HasTrainingReimbursement { get; set; }
     public string? TrainingClauseDetails { get; set; }
     public bool HasSpecialBenefits { get; set; }
     public string? SpecialBenefitsDetails { get; set; }
+
+    public string? TrainingSupervisor { get; set; }
+    public string? TrainingObjectives { get; set; }
+    public string? InternshipProgramme { get; set; }
+
     public string? CustomTerms { get; set; }
+    public string? CustomClausesJson { get; set; }
+    public List<EmploymentContractClauseDto> Clauses { get; set; } = new();
 
     // Ký kết
     public EmploymentSigningMethod SigningMethod { get; set; }
@@ -129,13 +152,13 @@ public class EmploymentContractDto
 
 public class CreateEmploymentContractDto
 {
-    [Required(ErrorMessage = "Vui lòng chọn nhân viên")]
+    [Required(ErrorMessage = "Vui lòng chọn nhân sự")]
     public int EmployeeId { get; set; }
 
-    [Required(ErrorMessage = "Vui lòng chọn loại hợp đồng")]
+    [Required(ErrorMessage = "Vui lòng chọn loại văn bản hợp đồng")]
     public EmploymentContractType ContractType { get; set; } = EmploymentContractType.FixedTerm;
 
-    [Required(ErrorMessage = "Tiêu đề hợp đồng không được để trống")]
+    [Required(ErrorMessage = "Tiêu đề không được để trống")]
     [MaxLength(255)]
     public string Title { get; set; } = "HỢP ĐỒNG LAO ĐỘNG";
 
@@ -144,7 +167,7 @@ public class CreateEmploymentContractDto
     [MaxLength(100)]
     public string ContractPlace { get; set; } = "Cần Thơ";
 
-    [Required(ErrorMessage = "Ngày bắt đầu làm việc không được để trống")]
+    [Required(ErrorMessage = "Ngày bắt đầu không được để trống")]
     public DateTime StartDate { get; set; } = DateTime.UtcNow.Date;
 
     public DateTime? EndDate { get; set; }
@@ -152,15 +175,15 @@ public class CreateEmploymentContractDto
     public int? ProbationDurationDays { get; set; }
     public decimal? ProbationSalaryPercentage { get; set; } = 85m;
 
-    // Bên A override (nếu cần chỉnh so với cấu hình mặc định)
+    // Bên A override
     public string? EmployerName { get; set; }
     public string? EmployerTaxCode { get; set; }
     public string? EmployerAddress { get; set; }
     public string? EmployerRepresentativeName { get; set; }
     public string? EmployerRepresentativePosition { get; set; }
 
-    // Công việc
-    [Required(ErrorMessage = "Chức danh công việc không được để trống")]
+    // Công việc / Vị trí (Bắt buộc theo từng loại hợp đồng)
+    [Required(ErrorMessage = "Vui lòng nhập Chức danh / Vị trí công việc")]
     [MaxLength(150)]
     public string JobTitle { get; set; } = string.Empty;
 
@@ -168,7 +191,7 @@ public class CreateEmploymentContractDto
     [MaxLength(150)]
     public string DepartmentName { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Địa điểm làm việc không được để trống")]
+    [Required(ErrorMessage = "Địa điểm làm việc / thực tập không được để trống")]
     [MaxLength(500)]
     public string Workplace { get; set; } = "Showroom & Văn phòng LACASA, Số 123 Đường Nguyễn Văn Cừ, TP. Cần Thơ";
 
@@ -179,20 +202,27 @@ public class CreateEmploymentContractDto
     public string WorkingSchedule { get; set; } = "Từ Thứ Hai đến Thứ Bảy: Sáng 08:00 - 12:00, Chiều 13:00 - 17:00 (Nghỉ Chủ Nhật)";
     public int AnnualLeaveDays { get; set; } = 12;
 
-    // Tiền lương & Phúc lợi
-    [Range(0, 1000000000, ErrorMessage = "Mức lương cơ bản phải lớn hơn hoặc bằng 0")]
-    public decimal BasicSalary { get; set; }
+    // Tiền lương & Thỏa thuận thù lao (Không bắt buộc nhập số tiền đối với bản nháp)
+    [Range(0, 1000000000, ErrorMessage = "Mức lương cơ bản nếu nhập phải lớn hơn hoặc bằng 0")]
+    public decimal? BasicSalary { get; set; }
+
+    public string? SalaryClauseText { get; set; }
 
     public string SalaryType { get; set; } = "Lương thời gian (Lương tháng)";
     public string PaymentPeriod { get; set; } = "Chi trả định kỳ 01 lần/tháng vào ngày 05 đến 10 của tháng kế tiếp";
     public string PaymentMethod { get; set; } = "Chuyển khoản qua tài khoản ngân hàng của Người lao động";
 
-    public decimal PositionAllowance { get; set; } = 0;
-    public decimal LunchAllowance { get; set; } = 730000;
-    public decimal OtherAllowances { get; set; } = 0;
+    public decimal? PositionAllowance { get; set; } = 0;
+    public decimal? LunchAllowance { get; set; } = 730000;
+    public decimal? OtherAllowances { get; set; } = 0;
     public string SalaryReviewPolicy { get; set; } = "Được xem xét nâng lương định kỳ 01 năm/lần dựa trên hiệu quả công việc và kết quả kinh doanh của Công ty";
     public decimal SocialInsuranceRate { get; set; } = 32m;
     public string LaborProtection { get; set; } = "Được trang bị đồng phục công ty, thiết bị và công cụ bảo hộ lao động đạt chuẩn an toàn vệ sinh lao động theo vị trí làm việc";
+
+    // Thực tập / Đào tạo nghề
+    public string? TrainingSupervisor { get; set; }
+    public string? TrainingObjectives { get; set; }
+    public string? InternshipProgramme { get; set; }
 
     // Điều khoản tùy chọn
     public bool HasNonDisclosureAgreement { get; set; } = true;
@@ -205,6 +235,9 @@ public class CreateEmploymentContractDto
     public string? SpecialBenefitsDetails { get; set; } = "Thưởng lễ, Tết theo quy chế tài chính; Chế độ du lịch nghỉ mát thường niên; Khám sức khỏe định kỳ hàng năm";
 
     public string? CustomTerms { get; set; }
+    public string? CustomClausesJson { get; set; }
+    public List<EmploymentContractClauseDto> Clauses { get; set; } = new();
+
     public string? Notes { get; set; }
 }
 
@@ -225,12 +258,13 @@ public class RenewEmploymentContractDto
 
     public DateTime? EndDate { get; set; }
 
-    [Range(0, 1000000000, ErrorMessage = "Mức lương cơ bản phải lớn hơn hoặc bằng 0")]
-    public decimal BasicSalary { get; set; }
+    [Range(0, 1000000000, ErrorMessage = "Mức lương nếu nhập phải lớn hơn hoặc bằng 0")]
+    public decimal? BasicSalary { get; set; }
 
-    public decimal PositionAllowance { get; set; }
-    public decimal LunchAllowance { get; set; }
-    public decimal OtherAllowances { get; set; }
+    public string? SalaryClauseText { get; set; }
+    public decimal? PositionAllowance { get; set; }
+    public decimal? LunchAllowance { get; set; }
+    public decimal? OtherAllowances { get; set; }
 
     public string? Notes { get; set; }
 }

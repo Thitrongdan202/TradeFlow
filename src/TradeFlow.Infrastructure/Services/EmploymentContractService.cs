@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using QuestPDF.Fluent;
@@ -160,7 +161,17 @@ public class EmploymentContractService : IEmploymentContractService
         if (employee == null)
             throw new InvalidOperationException($"Không tìm thấy nhân viên với ID {dto.EmployeeId}");
 
-        // 2. Legal duration validation (BLLĐ 2026)
+        // 2. Position information validation
+        if (string.IsNullOrWhiteSpace(dto.JobTitle))
+        {
+            if (dto.ContractType == EmploymentContractType.Internship || dto.ContractType == EmploymentContractType.VocationalTraining)
+                throw new InvalidOperationException("Vui lòng nhập vị trí thực tập / chương trình đào tạo / nghề đào tạo.");
+            if (dto.ContractType == EmploymentContractType.Probation)
+                throw new InvalidOperationException("Vui lòng nhập chức danh / công việc thử việc.");
+            throw new InvalidOperationException("Vui lòng nhập chức danh / vị trí công việc.");
+        }
+
+        // 3. Legal duration validation (BLLĐ 2026)
         if (dto.ContractType == EmploymentContractType.FixedTerm)
         {
             if (!dto.EndDate.HasValue)
@@ -182,16 +193,27 @@ public class EmploymentContractService : IEmploymentContractService
             if (days > 180)
                 throw new InvalidOperationException("Thời gian thử việc tối đa không được vượt quá 180 ngày (theo Điều 25 Bộ luật Lao động).");
         }
+        else if (dto.ContractType == EmploymentContractType.Internship || dto.ContractType == EmploymentContractType.VocationalTraining)
+        {
+            if (dto.EndDate.HasValue && dto.EndDate.Value <= dto.StartDate)
+                throw new InvalidOperationException("Ngày kết thúc phải lớn hơn ngày bắt đầu.");
+        }
 
-        // 3. Generate sequential contract number
-        var prefix = dto.ContractType == EmploymentContractType.Probation ? "HDTV" : "HDLD";
+        // 4. Generate sequential contract number
+        var prefix = dto.ContractType switch
+        {
+            EmploymentContractType.Probation => "HDTV",
+            EmploymentContractType.Internship => "TTTT",
+            EmploymentContractType.VocationalTraining => "HDDT",
+            _ => "HDLD"
+        };
         var year = DateTime.UtcNow.Year;
         var seqPattern = $"{prefix}-{year}-";
         var countThisYear = await _context.EmploymentContracts
             .CountAsync(c => c.ContractNumber.StartsWith(seqPattern), cancellationToken);
         var contractNumber = $"{seqPattern}{(countThisYear + 1):D4}";
 
-        // 4. Resolve Employer Settings (Party A)
+        // 5. Resolve Employer Settings (Party A)
         var partyASettings = await _context.ContractPartyASettings.FirstOrDefaultAsync(cancellationToken);
 
         var employerName = !string.IsNullOrWhiteSpace(dto.EmployerName) ? dto.EmployerName : (partyASettings?.CompanyName ?? "CÔNG TY TNHH THIẾT BỊ VỆ SINH LACASA VIỆT NAM");
@@ -202,10 +224,19 @@ public class EmploymentContractService : IEmploymentContractService
         var employerRepAuth = partyASettings?.RepresentativeAuthority ?? "Đại diện theo pháp luật";
         var employerPhone = partyASettings?.Phone ?? "0909 123 456";
 
+        var defaultTitle = dto.ContractType switch
+        {
+            EmploymentContractType.Probation => "HỢP ĐỒNG THỬ VIỆC",
+            EmploymentContractType.Internship => "THỎA THUẬN THỰC TẬP SINH",
+            EmploymentContractType.VocationalTraining => "HỢP ĐỒNG ĐÀO TẠO NGHỀ (ĐIỀU 61 BLLĐ)",
+            EmploymentContractType.IndefiniteTerm => "HỢP ĐỒNG LAO ĐỘNG (KHÔNG XÁC ĐỊNH THỜI HẠN)",
+            _ => "HỢP ĐỒNG LAO ĐỘNG"
+        };
+
         var contract = new EmploymentContract
         {
             ContractNumber = contractNumber,
-            Title = string.IsNullOrWhiteSpace(dto.Title) ? (dto.ContractType == EmploymentContractType.Probation ? "HỢP ĐỒNG THỬ VIỆC" : "HỢP ĐỒNG LAO ĐỘNG") : dto.Title,
+            Title = string.IsNullOrWhiteSpace(dto.Title) ? defaultTitle : dto.Title,
             ContractType = dto.ContractType,
             Status = EmploymentContractStatus.Draft,
             ContractDate = dto.ContractDate,
@@ -237,7 +268,7 @@ public class EmploymentContractService : IEmploymentContractService
             EmployeeBankInformation = employee.BankInformation,
 
             // Work details
-            JobTitle = !string.IsNullOrWhiteSpace(dto.JobTitle) ? dto.JobTitle : (employee.Position?.Name ?? "Nhân viên"),
+            JobTitle = dto.JobTitle,
             DepartmentName = !string.IsNullOrWhiteSpace(dto.DepartmentName) ? dto.DepartmentName : (employee.Department?.Name ?? "Khối Nghiệp vụ"),
             Workplace = dto.Workplace,
             JobDescription = dto.JobDescription,
@@ -247,6 +278,7 @@ public class EmploymentContractService : IEmploymentContractService
 
             // Remuneration
             BasicSalary = dto.BasicSalary,
+            SalaryClauseText = dto.SalaryClauseText,
             SalaryType = dto.SalaryType,
             PaymentPeriod = dto.PaymentPeriod,
             PaymentMethod = dto.PaymentMethod,
@@ -257,6 +289,11 @@ public class EmploymentContractService : IEmploymentContractService
             SocialInsuranceRate = dto.SocialInsuranceRate,
             LaborProtection = dto.LaborProtection,
 
+            // Internship / Vocational Training
+            TrainingSupervisor = dto.TrainingSupervisor,
+            TrainingObjectives = dto.TrainingObjectives,
+            InternshipProgramme = dto.InternshipProgramme,
+
             // Clauses
             HasNonDisclosureAgreement = dto.HasNonDisclosureAgreement,
             NdaClauseDetails = dto.NdaClauseDetails,
@@ -265,6 +302,7 @@ public class EmploymentContractService : IEmploymentContractService
             HasSpecialBenefits = dto.HasSpecialBenefits,
             SpecialBenefitsDetails = dto.SpecialBenefitsDetails,
             CustomTerms = dto.CustomTerms,
+            CustomClausesJson = (dto.Clauses != null && dto.Clauses.Any()) ? JsonSerializer.Serialize(dto.Clauses) : dto.CustomClausesJson,
 
             Notes = dto.Notes,
             CreatedAt = DateTime.UtcNow,
@@ -300,15 +338,42 @@ public class EmploymentContractService : IEmploymentContractService
         if (contract.Status != EmploymentContractStatus.Draft && contract.Status != EmploymentContractStatus.PendingSignature)
             throw new InvalidOperationException("Chỉ được chỉnh sửa hợp đồng ở trạng thái Bản nháp hoặc Chờ ký.");
 
+        // Position information validation
+        if (string.IsNullOrWhiteSpace(dto.JobTitle))
+        {
+            if (dto.ContractType == EmploymentContractType.Internship || dto.ContractType == EmploymentContractType.VocationalTraining)
+                throw new InvalidOperationException("Vui lòng nhập vị trí thực tập / chương trình đào tạo / nghề đào tạo.");
+            if (dto.ContractType == EmploymentContractType.Probation)
+                throw new InvalidOperationException("Vui lòng nhập chức danh / công việc thử việc.");
+            throw new InvalidOperationException("Vui lòng nhập chức danh / vị trí công việc.");
+        }
+
         // Legal duration validation
         if (dto.ContractType == EmploymentContractType.FixedTerm)
         {
             if (!dto.EndDate.HasValue)
                 throw new InvalidOperationException("Hợp đồng xác định thời hạn bắt buộc phải có ngày kết thúc.");
 
+            if (dto.EndDate.Value <= dto.StartDate)
+                throw new InvalidOperationException("Ngày kết thúc phải lớn hơn ngày bắt đầu hợp đồng.");
+
             var months = ((dto.EndDate.Value.Year - dto.StartDate.Year) * 12) + dto.EndDate.Value.Month - dto.StartDate.Month;
             if (months > 36)
                 throw new InvalidOperationException("Thời hạn hợp đồng xác định thời hạn không được vượt quá 36 tháng.");
+        }
+        else if (dto.ContractType == EmploymentContractType.Probation)
+        {
+            if (!dto.EndDate.HasValue)
+                throw new InvalidOperationException("Hợp đồng thử việc bắt buộc phải có ngày kết thúc.");
+
+            var days = (dto.EndDate.Value - dto.StartDate).TotalDays;
+            if (days > 180)
+                throw new InvalidOperationException("Thời gian thử việc tối đa không được vượt quá 180 ngày (theo Điều 25 Bộ luật Lao động).");
+        }
+        else if (dto.ContractType == EmploymentContractType.Internship || dto.ContractType == EmploymentContractType.VocationalTraining)
+        {
+            if (dto.EndDate.HasValue && dto.EndDate.Value <= dto.StartDate)
+                throw new InvalidOperationException("Ngày kết thúc phải lớn hơn ngày bắt đầu.");
         }
 
         contract.Title = dto.Title;
@@ -329,6 +394,7 @@ public class EmploymentContractService : IEmploymentContractService
         contract.AnnualLeaveDays = dto.AnnualLeaveDays;
 
         contract.BasicSalary = dto.BasicSalary;
+        contract.SalaryClauseText = dto.SalaryClauseText;
         contract.SalaryType = dto.SalaryType;
         contract.PaymentPeriod = dto.PaymentPeriod;
         contract.PaymentMethod = dto.PaymentMethod;
@@ -339,6 +405,10 @@ public class EmploymentContractService : IEmploymentContractService
         contract.SocialInsuranceRate = dto.SocialInsuranceRate;
         contract.LaborProtection = dto.LaborProtection;
 
+        contract.TrainingSupervisor = dto.TrainingSupervisor;
+        contract.TrainingObjectives = dto.TrainingObjectives;
+        contract.InternshipProgramme = dto.InternshipProgramme;
+
         contract.HasNonDisclosureAgreement = dto.HasNonDisclosureAgreement;
         contract.NdaClauseDetails = dto.NdaClauseDetails;
         contract.HasTrainingReimbursement = dto.HasTrainingReimbursement;
@@ -346,6 +416,7 @@ public class EmploymentContractService : IEmploymentContractService
         contract.HasSpecialBenefits = dto.HasSpecialBenefits;
         contract.SpecialBenefitsDetails = dto.SpecialBenefitsDetails;
         contract.CustomTerms = dto.CustomTerms;
+        contract.CustomClausesJson = (dto.Clauses != null && dto.Clauses.Any()) ? JsonSerializer.Serialize(dto.Clauses) : dto.CustomClausesJson;
         contract.Notes = dto.Notes;
 
         contract.UpdatedAt = DateTime.UtcNow;
@@ -375,6 +446,21 @@ public class EmploymentContractService : IEmploymentContractService
 
         if (contract.Status != EmploymentContractStatus.Draft)
             throw new InvalidOperationException("Chỉ có thể chốt nội dung hợp đồng từ trạng thái Bản nháp.");
+
+        // Statutory validation before finalizing
+        if (contract.ContractType == EmploymentContractType.IndefiniteTerm || contract.ContractType == EmploymentContractType.FixedTerm || contract.ContractType == EmploymentContractType.Probation)
+        {
+            if (string.IsNullOrWhiteSpace(contract.JobTitle))
+                throw new InvalidOperationException("Hợp đồng lao động yêu cầu phải có Chức danh / Vị trí công việc.");
+
+            if ((!contract.BasicSalary.HasValue || contract.BasicSalary.Value <= 0) && string.IsNullOrWhiteSpace(contract.SalaryClauseText))
+                throw new InvalidOperationException("Vui lòng hoàn thiện điều khoản tiền lương hoặc mức lương trước khi chốt hợp đồng để ký kết.");
+        }
+        else if (contract.ContractType == EmploymentContractType.Internship || contract.ContractType == EmploymentContractType.VocationalTraining)
+        {
+            if (string.IsNullOrWhiteSpace(contract.JobTitle))
+                throw new InvalidOperationException("Hợp đồng/thỏa thuận đào tạo - thực tập yêu cầu vị trí hoặc chương trình đào tạo.");
+        }
 
         contract.Status = EmploymentContractStatus.PendingSignature;
         contract.UpdatedAt = DateTime.UtcNow;
@@ -563,16 +649,21 @@ public class EmploymentContractService : IEmploymentContractService
             WorkingSchedule = parent.WorkingSchedule,
             AnnualLeaveDays = parent.AnnualLeaveDays,
 
-            BasicSalary = dto.BasicSalary > 0 ? dto.BasicSalary : parent.BasicSalary,
+            BasicSalary = dto.BasicSalary.HasValue && dto.BasicSalary.Value > 0 ? dto.BasicSalary : parent.BasicSalary,
+            SalaryClauseText = dto.SalaryClauseText ?? parent.SalaryClauseText,
             SalaryType = parent.SalaryType,
             PaymentPeriod = parent.PaymentPeriod,
             PaymentMethod = parent.PaymentMethod,
-            PositionAllowance = dto.PositionAllowance > 0 ? dto.PositionAllowance : parent.PositionAllowance,
-            LunchAllowance = dto.LunchAllowance > 0 ? dto.LunchAllowance : parent.LunchAllowance,
-            OtherAllowances = dto.OtherAllowances > 0 ? dto.OtherAllowances : parent.OtherAllowances,
+            PositionAllowance = dto.PositionAllowance.HasValue && dto.PositionAllowance.Value > 0 ? dto.PositionAllowance : parent.PositionAllowance,
+            LunchAllowance = dto.LunchAllowance.HasValue && dto.LunchAllowance.Value > 0 ? dto.LunchAllowance : parent.LunchAllowance,
+            OtherAllowances = dto.OtherAllowances.HasValue && dto.OtherAllowances.Value > 0 ? dto.OtherAllowances : parent.OtherAllowances,
             SalaryReviewPolicy = parent.SalaryReviewPolicy,
             SocialInsuranceRate = parent.SocialInsuranceRate,
             LaborProtection = parent.LaborProtection,
+
+            TrainingSupervisor = parent.TrainingSupervisor,
+            TrainingObjectives = parent.TrainingObjectives,
+            InternshipProgramme = parent.InternshipProgramme,
 
             HasNonDisclosureAgreement = parent.HasNonDisclosureAgreement,
             NdaClauseDetails = parent.NdaClauseDetails,
@@ -581,6 +672,7 @@ public class EmploymentContractService : IEmploymentContractService
             HasSpecialBenefits = parent.HasSpecialBenefits,
             SpecialBenefitsDetails = parent.SpecialBenefitsDetails,
             CustomTerms = parent.CustomTerms,
+            CustomClausesJson = parent.CustomClausesJson,
 
             Notes = dto.Notes,
             CreatedAt = DateTime.UtcNow,
@@ -778,16 +870,21 @@ public class EmploymentContractService : IEmploymentContractService
             WorkingSchedule = entity.WorkingSchedule,
             AnnualLeaveDays = entity.AnnualLeaveDays,
 
-            BasicSalary = canViewSensitiveData ? entity.BasicSalary : 0,
+            BasicSalary = canViewSensitiveData ? entity.BasicSalary : null,
+            SalaryClauseText = entity.SalaryClauseText,
             SalaryType = entity.SalaryType,
             PaymentPeriod = entity.PaymentPeriod,
             PaymentMethod = entity.PaymentMethod,
-            PositionAllowance = canViewSensitiveData ? entity.PositionAllowance : 0,
-            LunchAllowance = canViewSensitiveData ? entity.LunchAllowance : 0,
-            OtherAllowances = canViewSensitiveData ? entity.OtherAllowances : 0,
+            PositionAllowance = canViewSensitiveData ? entity.PositionAllowance : null,
+            LunchAllowance = canViewSensitiveData ? entity.LunchAllowance : null,
+            OtherAllowances = canViewSensitiveData ? entity.OtherAllowances : null,
             SalaryReviewPolicy = entity.SalaryReviewPolicy,
             SocialInsuranceRate = entity.SocialInsuranceRate,
             LaborProtection = entity.LaborProtection,
+
+            TrainingSupervisor = entity.TrainingSupervisor,
+            TrainingObjectives = entity.TrainingObjectives,
+            InternshipProgramme = entity.InternshipProgramme,
 
             HasNonDisclosureAgreement = entity.HasNonDisclosureAgreement,
             NdaClauseDetails = entity.NdaClauseDetails,
@@ -796,6 +893,7 @@ public class EmploymentContractService : IEmploymentContractService
             HasSpecialBenefits = entity.HasSpecialBenefits,
             SpecialBenefitsDetails = entity.SpecialBenefitsDetails,
             CustomTerms = entity.CustomTerms,
+            CustomClausesJson = entity.CustomClausesJson,
 
             SigningMethod = entity.SigningMethod,
             EmployeeSignedAt = entity.EmployeeSignedAt,
@@ -819,6 +917,22 @@ public class EmploymentContractService : IEmploymentContractService
             UpdatedBy = entity.UpdatedBy,
             CanViewSensitiveData = canViewSensitiveData
         };
+
+        if (!string.IsNullOrWhiteSpace(entity.CustomClausesJson))
+        {
+            try
+            {
+                dto.Clauses = JsonSerializer.Deserialize<List<EmploymentContractClauseDto>>(entity.CustomClausesJson) ?? new();
+            }
+            catch
+            {
+                dto.Clauses = EmploymentContractClauseDefaults.GenerateDefaultClauses(dto);
+            }
+        }
+        else
+        {
+            dto.Clauses = EmploymentContractClauseDefaults.GenerateDefaultClauses(dto);
+        }
 
         return dto;
     }

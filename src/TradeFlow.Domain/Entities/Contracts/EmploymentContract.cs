@@ -107,8 +107,11 @@ public class EmploymentContract : AuditableEntity<int>
     // 5. TIỀN LƯƠNG, PHỤ CẤP VÀ CHẾ ĐỘ PHÚC LỢI
     // ==========================================
 
-    /// <summary>Mức lương chính theo tháng (VND)</summary>
-    public decimal BasicSalary { get; set; }
+    /// <summary>Mức lương chính theo tháng (VND) - Không bắt buộc đối với bản nháp</summary>
+    public decimal? BasicSalary { get; set; }
+
+    /// <summary>Văn bản điều khoản tiền lương tùy biến (Customizable Salary Clause)</summary>
+    public string? SalaryClauseText { get; set; }
 
     /// <summary>Hình thức trả lương (Lương thời gian, Lương khoán, Lương sản phẩm)</summary>
     public string SalaryType { get; set; } = "Lương thời gian (Lương tháng)";
@@ -120,13 +123,13 @@ public class EmploymentContract : AuditableEntity<int>
     public string PaymentMethod { get; set; } = "Chuyển khoản qua tài khoản ngân hàng của Người lao động";
 
     /// <summary>Phụ cấp chức vụ / trách nhiệm (VND/tháng)</summary>
-    public decimal PositionAllowance { get; set; } = 0;
+    public decimal? PositionAllowance { get; set; } = 0;
 
     /// <summary>Phụ cấp tiền ăn trưa (VND/tháng)</summary>
-    public decimal LunchAllowance { get; set; } = 730000;
+    public decimal? LunchAllowance { get; set; } = 730000;
 
     /// <summary>Các khoản phụ cấp và bổ sung khác (xăng xe, điện thoại... VND/tháng)</summary>
-    public decimal OtherAllowances { get; set; } = 0;
+    public decimal? OtherAllowances { get; set; } = 0;
 
     /// <summary>Chính sách xét nâng bậc / nâng lương</summary>
     public string SalaryReviewPolicy { get; set; } = "Được xem xét nâng lương định kỳ 01 năm/lần dựa trên hiệu quả công việc và kết quả kinh doanh của Công ty";
@@ -138,7 +141,7 @@ public class EmploymentContract : AuditableEntity<int>
     public string LaborProtection { get; set; } = "Được trang bị đồng phục công ty, thiết bị và công cụ bảo hộ lao động đạt chuẩn an toàn vệ sinh lao động theo vị trí làm việc";
 
     // ==========================================
-    // 6. ĐIỀU KHOẢN TÙY CHỌN HỢP PHÁP
+    // 6. ĐIỀU KHOẢN TÙY CHỌN & THỰC TẬP/ĐÀO TẠO
     // ==========================================
 
     /// <summary>Bật/tắt thỏa thuận bảo mật thông tin & bí mật thương mại (NDA)</summary>
@@ -159,8 +162,20 @@ public class EmploymentContract : AuditableEntity<int>
     /// <summary>Nội dung chi tiết chế độ phúc lợi</summary>
     public string? SpecialBenefitsDetails { get; set; } = "Thưởng lễ, Tết theo quy chế tài chính; Chế độ du lịch nghỉ mát thường niên; Khám sức khỏe định kỳ hàng năm";
 
+    /// <summary>Người hướng dẫn thực tập / đào tạo nghề</summary>
+    public string? TrainingSupervisor { get; set; }
+
+    /// <summary>Mục tiêu đào tạo / thực tập</summary>
+    public string? TrainingObjectives { get; set; }
+
+    /// <summary>Chương trình thực tập / Nghề đào tạo</summary>
+    public string? InternshipProgramme { get; set; }
+
     /// <summary>Điều khoản riêng biệt bổ sung khác (nếu có)</summary>
     public string? CustomTerms { get; set; }
+
+    /// <summary>Chuỗi JSON lưu các điều khoản hợp đồng có thể tùy chỉnh (Custom Clauses JSON)</summary>
+    public string? CustomClausesJson { get; set; }
 
     // ==========================================
     // 7. PHƯƠNG THỨC KÝ & XÁC THỰC PHÁP LÝ

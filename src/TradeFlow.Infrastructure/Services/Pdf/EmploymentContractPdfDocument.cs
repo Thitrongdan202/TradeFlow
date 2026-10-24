@@ -152,205 +152,237 @@ public class EmploymentContractPdfDocument : IDocument
 
             col.Item().PaddingTop(8).Text("Hai bên thống nhất ký kết Hợp đồng lao động với các điều khoản và điều kiện sau đây:").Italic();
 
-            // ==========================================
-            // ĐIỀU 1: LOẠI HỢP ĐỒNG, CÔNG VIỆC, ĐỊA ĐIỂM
-            // ==========================================
-            col.Item().PaddingTop(8).Column(c =>
+            if (_contract.Clauses != null && _contract.Clauses.Any())
             {
-                c.Item().Text("Điều 1. Loại hợp đồng, thời hạn và địa điểm làm việc").Bold();
-                c.Item().PaddingLeft(10).Column(sub =>
+                foreach (var clause in _contract.Clauses.OrderBy(c => c.DisplayOrder))
                 {
-                    sub.Item().Text(t =>
+                    col.Item().PaddingTop(8).Column(c =>
                     {
-                        t.Span("1.1. Loại hợp đồng: ").Bold();
-                        t.Span(_contract.ContractTypeName);
+                        var heading = string.IsNullOrWhiteSpace(clause.ArticleNumber)
+                            ? clause.Title
+                            : $"{clause.ArticleNumber}. {clause.Title}";
+                        c.Item().Text(heading).Bold();
+                        c.Item().PaddingLeft(10).Text(clause.Content ?? string.Empty);
                     });
-                    sub.Item().Text(t =>
+                }
+            }
+            else
+            {
+                // ==========================================
+                // ĐIỀU 1: LOẠI HỢP ĐỒNG, CÔNG VIỆC, ĐỊA ĐIỂM
+                // ==========================================
+                col.Item().PaddingTop(8).Column(c =>
+                {
+                    c.Item().Text("Điều 1. Loại hợp đồng, thời hạn và địa điểm làm việc").Bold();
+                    c.Item().PaddingLeft(10).Column(sub =>
                     {
-                        t.Span("1.2. Thời hạn hợp đồng: ").Bold();
-                        if (_contract.ContractType == EmploymentContractType.IndefiniteTerm)
+                        sub.Item().Text(t =>
                         {
-                            t.Span($"Không xác định thời hạn, bắt đầu có hiệu lực từ ngày {_contract.StartDate:dd/MM/yyyy}.");
-                        }
-                        else
+                            t.Span("1.1. Loại hợp đồng: ").Bold();
+                            t.Span(_contract.ContractTypeName);
+                        });
+                        sub.Item().Text(t =>
                         {
-                            t.Span($"Từ ngày {_contract.StartDate:dd/MM/yyyy} đến ngày {_contract.EndDate:dd/MM/yyyy}");
-                            if (_contract.ContractType == EmploymentContractType.Probation && _contract.ProbationDurationDays.HasValue)
+                            t.Span("1.2. Thời hạn hợp đồng: ").Bold();
+                            if (_contract.ContractType == EmploymentContractType.IndefiniteTerm)
                             {
-                                t.Span($" (Thời gian thử việc: {_contract.ProbationDurationDays.Value} ngày làm việc theo Điều 25 BLLĐ).");
+                                t.Span($"Không xác định thời hạn, bắt đầu có hiệu lực từ ngày {_contract.StartDate:dd/MM/yyyy}.");
                             }
                             else
                             {
-                                t.Span(".");
+                                t.Span($"Từ ngày {_contract.StartDate:dd/MM/yyyy} đến ngày {_contract.EndDate:dd/MM/yyyy}");
+                                if (_contract.ContractType == EmploymentContractType.Probation && _contract.ProbationDurationDays.HasValue)
+                                {
+                                    t.Span($" (Thời gian thử việc: {_contract.ProbationDurationDays.Value} ngày làm việc theo Điều 25 BLLĐ).");
+                                }
+                                else
+                                {
+                                    t.Span(".");
+                                }
                             }
-                        }
-                    });
-                    sub.Item().Text(t =>
-                    {
-                        t.Span("1.3. Chức danh / Vị trí công tác: ").Bold();
-                        t.Span(_contract.JobTitle);
-                        t.Span(" - Phòng ban: ").Bold();
-                        t.Span(_contract.DepartmentName);
-                    });
-                    sub.Item().Text(t =>
-                    {
-                        t.Span("1.4. Địa điểm làm việc: ").Bold();
-                        t.Span(_contract.Workplace);
-                    });
-                    if (!string.IsNullOrWhiteSpace(_contract.JobDescription))
-                    {
+                        });
                         sub.Item().Text(t =>
                         {
-                            t.Span("1.5. Mô tả nhiệm vụ chính: ").Bold();
-                            t.Span(_contract.JobDescription);
+                            t.Span("1.3. Chức danh / Vị trí công tác: ").Bold();
+                            t.Span(_contract.JobTitle);
+                            t.Span(" - Phòng ban: ").Bold();
+                            t.Span(_contract.DepartmentName);
                         });
-                    }
-                });
-            });
-
-            // ==========================================
-            // ĐIỀU 2: THỜI GIỜ LÀM VIỆC & NGHỈ NGƠI
-            // ==========================================
-            col.Item().PaddingTop(8).Column(c =>
-            {
-                c.Item().Text("Điều 2. Thời giờ làm việc và thời giờ nghỉ ngơi").Bold();
-                c.Item().PaddingLeft(10).Column(sub =>
-                {
-                    sub.Item().Text(t =>
-                    {
-                        t.Span("2.1. Thời giờ làm việc: ").Bold();
-                        t.Span($"{_contract.WorkingHoursPerWeek} giờ/tuần. {_contract.WorkingSchedule}");
-                    });
-                    sub.Item().Text(t =>
-                    {
-                        t.Span("2.2. Chế độ nghỉ ngơi: ").Bold();
-                        t.Span($"Nghỉ hàng tuần theo lịch công tác; Nghỉ các ngày Lễ, Tết theo quy định của Bộ luật Lao động. Được hưởng {_contract.AnnualLeaveDays} ngày nghỉ phép năm hưởng nguyên lương theo quy định tại Điều 113 BLLĐ.");
-                    });
-                });
-            });
-
-            // ==========================================
-            // ĐIỀU 3: TIỀN LƯƠNG & CHẾ ĐỘ PHỤ CẤP
-            // ==========================================
-            col.Item().PaddingTop(8).Column(c =>
-            {
-                c.Item().Text("Điều 3. Tiền lương, phụ cấp và hình thức chi trả").Bold();
-                c.Item().PaddingLeft(10).Column(sub =>
-                {
-                    sub.Item().Text(t =>
-                    {
-                        t.Span("3.1. Mức lương chính: ").Bold();
-                        t.Span($"{_contract.BasicSalary:N0} đồng/tháng ({_contract.SalaryType}).");
-                        if (_contract.ContractType == EmploymentContractType.Probation && _contract.ProbationSalaryPercentage.HasValue)
-                        {
-                            var probSalary = _contract.BasicSalary * (_contract.ProbationSalaryPercentage.Value / 100m);
-                            t.Span($" Lương trong thời gian thử việc bằng {_contract.ProbationSalaryPercentage.Value}% lương chính, tương đương {probSalary:N0} đồng/tháng theo Điều 26 BLLĐ.");
-                        }
-                    });
-                    if (_contract.PositionAllowance > 0 || _contract.LunchAllowance > 0 || _contract.OtherAllowances > 0)
-                    {
                         sub.Item().Text(t =>
                         {
-                            t.Span("3.2. Các khoản phụ cấp: ").Bold();
-                            t.Span($"Phụ cấp trách nhiệm: {_contract.PositionAllowance:N0} đ/tháng; Tiền ăn trưa: {_contract.LunchAllowance:N0} đ/tháng; Phụ cấp khác: {_contract.OtherAllowances:N0} đ/tháng.");
+                            t.Span("1.4. Địa điểm làm việc: ").Bold();
+                            t.Span(_contract.Workplace);
                         });
-                    }
-                    sub.Item().Text(t =>
-                    {
-                        t.Span("3.3. Kỳ hạn và phương thức thanh toán: ").Bold();
-                        t.Span($"{_contract.PaymentPeriod}. Hình thức: {_contract.PaymentMethod}.");
-                    });
-                    sub.Item().Text(t =>
-                    {
-                        t.Span("3.4. Chế độ nâng lương: ").Bold();
-                        t.Span(_contract.SalaryReviewPolicy);
+                        if (!string.IsNullOrWhiteSpace(_contract.JobDescription))
+                        {
+                            sub.Item().Text(t =>
+                            {
+                                t.Span("1.5. Mô tả nhiệm vụ chính: ").Bold();
+                                t.Span(_contract.JobDescription);
+                            });
+                        }
                     });
                 });
-            });
 
-            // ==========================================
-            // ĐIỀU 4: BẢO HỘ LAO ĐỘNG & BẢO HIỂM
-            // ==========================================
-            col.Item().PaddingTop(8).Column(c =>
-            {
-                c.Item().Text("Điều 4. Bảo hộ lao động và chế độ bảo hiểm").Bold();
-                c.Item().PaddingLeft(10).Column(sub =>
-                {
-                    sub.Item().Text(t =>
-                    {
-                        t.Span("4.1. Trang bị bảo hộ lao động: ").Bold();
-                        t.Span(_contract.LaborProtection);
-                    });
-                    sub.Item().Text(t =>
-                    {
-                        t.Span("4.2. Bảo hiểm xã hội, BHYT, BHTN: ").Bold();
-                        t.Span($"Hai bên thực hiện nghĩa vụ đóng BHXH, BHYT, BHTN theo tỷ lệ luật định (tổng cộng {_contract.SocialInsuranceRate}%: NSDLĐ đóng 21.5%, NLĐ đóng 10.5%). Đối với hợp đồng thử việc, tiền bảo hiểm được tính gộp vào tiền lương chi trả trực tiếp cho người lao động.");
-                    });
-                });
-            });
-
-            // ==========================================
-            // ĐIỀU 5: ĐIỀU KHOẢN TÙY CHỌN & BẢO MẬT (NẾU CÓ)
-            // ==========================================
-            if (_contract.HasNonDisclosureAgreement || _contract.HasTrainingReimbursement || _contract.HasSpecialBenefits || !string.IsNullOrWhiteSpace(_contract.CustomTerms))
-            {
+                // ==========================================
+                // ĐIỀU 2: THỜI GIỜ LÀM VIỆC & NGHỈ NGƠI
+                // ==========================================
                 col.Item().PaddingTop(8).Column(c =>
                 {
-                    c.Item().Text("Điều 5. Thỏa thuận bảo mật thông tin và chế độ bổ sung").Bold();
+                    c.Item().Text("Điều 2. Thời giờ làm việc và thời giờ nghỉ ngơi").Bold();
                     c.Item().PaddingLeft(10).Column(sub =>
                     {
-                        if (_contract.HasNonDisclosureAgreement && !string.IsNullOrWhiteSpace(_contract.NdaClauseDetails))
+                        sub.Item().Text(t =>
+                        {
+                            t.Span("2.1. Thời giờ làm việc: ").Bold();
+                            t.Span($"{_contract.WorkingHoursPerWeek} giờ/tuần. {_contract.WorkingSchedule}");
+                        });
+                        sub.Item().Text(t =>
+                        {
+                            t.Span("2.2. Chế độ nghỉ ngơi: ").Bold();
+                            t.Span($"Nghỉ hàng tuần theo lịch công tác; Nghỉ các ngày Lễ, Tết theo quy định của Bộ luật Lao động. Được hưởng {_contract.AnnualLeaveDays} ngày nghỉ phép năm hưởng nguyên lương theo quy định tại Điều 113 BLLĐ.");
+                        });
+                    });
+                });
+
+                // ==========================================
+                // ĐIỀU 3: TIỀN LƯƠNG & CHẾ ĐỘ PHỤ CẤP
+                // ==========================================
+                col.Item().PaddingTop(8).Column(c =>
+                {
+                    c.Item().Text("Điều 3. Tiền lương, phụ cấp và hình thức chi trả").Bold();
+                    c.Item().PaddingLeft(10).Column(sub =>
+                    {
+                        sub.Item().Text(t =>
+                        {
+                            t.Span("3.1. Thỏa thuận tiền lương / phụ cấp: ").Bold();
+                            if (!string.IsNullOrWhiteSpace(_contract.SalaryClauseText))
+                            {
+                                t.Span(_contract.SalaryClauseText);
+                            }
+                            else if (_contract.BasicSalary.HasValue && _contract.BasicSalary.Value > 0)
+                            {
+                                t.Span($"{_contract.BasicSalary.Value:N0} đồng/tháng ({_contract.SalaryType}).");
+                                if (_contract.ContractType == EmploymentContractType.Probation && _contract.ProbationSalaryPercentage.HasValue)
+                                {
+                                    var probSalary = _contract.BasicSalary.Value * (_contract.ProbationSalaryPercentage.Value / 100m);
+                                    t.Span($" Lương trong thời gian thử việc bằng {_contract.ProbationSalaryPercentage.Value}% lương chính, tương đương {probSalary:N0} đồng/tháng theo Điều 26 BLLĐ.");
+                                }
+                            }
+                            else if (_contract.ContractType == EmploymentContractType.Internship)
+                            {
+                                t.Span("Thỏa thuận phụ cấp hỗ trợ thực tập theo quy chế đào tạo của Công ty.");
+                            }
+                            else
+                            {
+                                t.Span("Thỏa thuận theo phụ lục chi tiết và quy chế nội bộ Công ty.");
+                            }
+                        });
+                        if ((_contract.PositionAllowance ?? 0) > 0 || (_contract.LunchAllowance ?? 0) > 0 || (_contract.OtherAllowances ?? 0) > 0)
                         {
                             sub.Item().Text(t =>
                             {
-                                t.Span("5.1. Bảo vệ bí mật kinh doanh & bảo mật dữ liệu: ").Bold();
-                                t.Span(_contract.NdaClauseDetails);
+                                t.Span("3.2. Các khoản phụ cấp: ").Bold();
+                                t.Span($"Phụ cấp trách nhiệm: {(_contract.PositionAllowance ?? 0):N0} đ/tháng; Tiền ăn trưa: {(_contract.LunchAllowance ?? 0):N0} đ/tháng; Phụ cấp khác: {(_contract.OtherAllowances ?? 0):N0} đ/tháng.");
                             });
                         }
-                        if (_contract.HasTrainingReimbursement && !string.IsNullOrWhiteSpace(_contract.TrainingClauseDetails))
+                        sub.Item().Text(t =>
                         {
-                            sub.Item().Text(t =>
-                            {
-                                t.Span("5.2. Cam kết đào tạo nghề: ").Bold();
-                                t.Span(_contract.TrainingClauseDetails);
-                            });
-                        }
-                        if (_contract.HasSpecialBenefits && !string.IsNullOrWhiteSpace(_contract.SpecialBenefitsDetails))
+                            t.Span("3.3. Kỳ hạn và phương thức thanh toán: ").Bold();
+                            t.Span($"{_contract.PaymentPeriod}. Hình thức: {_contract.PaymentMethod}.");
+                        });
+                        sub.Item().Text(t =>
                         {
-                            sub.Item().Text(t =>
-                            {
-                                t.Span("5.3. Phúc lợi nội bộ LACASA: ").Bold();
-                                t.Span(_contract.SpecialBenefitsDetails);
-                            });
-                        }
-                        if (!string.IsNullOrWhiteSpace(_contract.CustomTerms))
+                            t.Span("3.4. Chế độ nâng lương: ").Bold();
+                            t.Span(_contract.SalaryReviewPolicy);
+                        });
+                    });
+                });
+
+                // ==========================================
+                // ĐIỀU 4: BẢO HỘ LAO ĐỘNG & BẢO HIỂM
+                // ==========================================
+                col.Item().PaddingTop(8).Column(c =>
+                {
+                    c.Item().Text("Điều 4. Bảo hộ lao động và chế độ bảo hiểm").Bold();
+                    c.Item().PaddingLeft(10).Column(sub =>
+                    {
+                        sub.Item().Text(t =>
                         {
-                            sub.Item().Text(t =>
+                            t.Span("4.1. Trang bị bảo hộ lao động: ").Bold();
+                            t.Span(_contract.LaborProtection);
+                        });
+                        sub.Item().Text(t =>
+                        {
+                            t.Span("4.2. Bảo hiểm xã hội, BHYT, BHTN: ").Bold();
+                            t.Span($"Hai bên thực hiện nghĩa vụ đóng BHXH, BHYT, BHTN theo tỷ lệ luật định (tổng cộng {_contract.SocialInsuranceRate}%: NSDLĐ đóng 21.5%, NLĐ đóng 10.5%). Đối với hợp đồng thử việc, tiền bảo hiểm được tính gộp vào tiền lương chi trả trực tiếp cho người lao động.");
+                        });
+                    });
+                });
+
+                // ==========================================
+                // ĐIỀU 5: ĐIỀU KHOẢN TÙY CHỌN & BẢO MẬT (NẾU CÓ)
+                // ==========================================
+                if (_contract.HasNonDisclosureAgreement || _contract.HasTrainingReimbursement || _contract.HasSpecialBenefits || !string.IsNullOrWhiteSpace(_contract.CustomTerms))
+                {
+                    col.Item().PaddingTop(8).Column(c =>
+                    {
+                        c.Item().Text("Điều 5. Thỏa thuận bảo mật thông tin và chế độ bổ sung").Bold();
+                        c.Item().PaddingLeft(10).Column(sub =>
+                        {
+                            if (_contract.HasNonDisclosureAgreement && !string.IsNullOrWhiteSpace(_contract.NdaClauseDetails))
                             {
-                                t.Span("5.4. Thỏa thuận khác: ").Bold();
-                                t.Span(_contract.CustomTerms);
-                            });
+                                sub.Item().Text(t =>
+                                {
+                                    t.Span("5.1. Bảo vệ bí mật kinh doanh & bảo mật dữ liệu: ").Bold();
+                                    t.Span(_contract.NdaClauseDetails);
+                                });
+                            }
+                            if (_contract.HasTrainingReimbursement && !string.IsNullOrWhiteSpace(_contract.TrainingClauseDetails))
+                            {
+                                sub.Item().Text(t =>
+                                {
+                                    t.Span("5.2. Cam kết đào tạo nghề: ").Bold();
+                                    t.Span(_contract.TrainingClauseDetails);
+                                });
+                            }
+                            if (_contract.HasSpecialBenefits && !string.IsNullOrWhiteSpace(_contract.SpecialBenefitsDetails))
+                            {
+                                sub.Item().Text(t =>
+                                {
+                                    t.Span("5.3. Phúc lợi nội bộ LACASA: ").Bold();
+                                    t.Span(_contract.SpecialBenefitsDetails);
+                                });
+                            }
+                            if (!string.IsNullOrWhiteSpace(_contract.CustomTerms))
+                            {
+                                sub.Item().Text(t =>
+                                {
+                                    t.Span("5.4. Thỏa thuận khác: ").Bold();
+                                    t.Span(_contract.CustomTerms);
+                                });
+                            }
+                        });
+                    });
+                }
+
+                // ==========================================
+                // ĐIỀU 6: ĐIỀU KHOẢN THI HÀNH & KÝ KẾT
+                // ==========================================
+                col.Item().PaddingTop(8).Column(c =>
+                {
+                    c.Item().Text("Điều 6. Điều khoản thi hành và phương thức giao kết").Bold();
+                    c.Item().PaddingLeft(10).Column(sub =>
+                    {
+                        sub.Item().Text("6.1. Hợp đồng có hiệu lực thi hành kể từ ngày hai bên hoàn tất việc ký kết hợp pháp.");
+                        sub.Item().Text("6.2. Hợp đồng được lập thành 02 bản có giá trị pháp lý như nhau, mỗi bên giữ 01 bản để theo dõi và thực hiện. Trường hợp giao kết bằng hợp đồng điện tử theo Nghị định 337/2025/NĐ-CP, tệp dữ liệu số lưu trữ trên hệ thống TradeFlow có giá trị toàn vẹn và có giá trị chứng cứ pháp lý.");
+                        if (!string.IsNullOrEmpty(_contract.DigitalSignatureHash))
+                        {
+                            sub.Item().Text($"6.3. Mã xác thực tính toàn vẹn (SHA-256): {_contract.DigitalSignatureHash}").FontSize(8.5f).FontColor(Colors.Grey.Darken2);
                         }
                     });
                 });
             }
-
-            // ==========================================
-            // ĐIỀU 6: ĐIỀU KHOẢN THI HÀNH & KÝ KẾT
-            // ==========================================
-            col.Item().PaddingTop(8).Column(c =>
-            {
-                c.Item().Text("Điều 6. Điều khoản thi hành và phương thức giao kết").Bold();
-                c.Item().PaddingLeft(10).Column(sub =>
-                {
-                    sub.Item().Text("6.1. Hợp đồng có hiệu lực thi hành kể từ ngày hai bên hoàn tất việc ký kết hợp pháp.");
-                    sub.Item().Text("6.2. Hợp đồng được lập thành 02 bản có giá trị pháp lý như nhau, mỗi bên giữ 01 bản để theo dõi và thực hiện. Trường hợp giao kết bằng hợp đồng điện tử theo Nghị định 337/2025/NĐ-CP, tệp dữ liệu số lưu trữ trên hệ thống TradeFlow có giá trị toàn vẹn và có giá trị chứng cứ pháp lý.");
-                    if (!string.IsNullOrEmpty(_contract.DigitalSignatureHash))
-                    {
-                        sub.Item().Text($"6.3. Mã xác thực tính toàn vẹn (SHA-256): {_contract.DigitalSignatureHash}").FontSize(8.5f).FontColor(Colors.Grey.Darken2);
-                    }
-                });
-            });
 
             // ==========================================
             // KHỐI CHỮ KÝ (GIỮ NGUYÊN KHỐI, KHÔNG NGẮT TRANG)

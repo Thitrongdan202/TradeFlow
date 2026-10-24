@@ -117,27 +117,27 @@
     <div class="tw-flex tw-justify-between tw-items-center tw-mb-3">
         <div>
             <h2 class="tw-text-sm tw-font-bold tw-text-slate-800 tw-uppercase tw-tracking-wider tw-flex tw-items-center tw-gap-2">
-                <svg class="tw-w-4 tw-h-4 tw-text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg class="tw-w-4 tw-h-4 tw-text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
                 <span>Tổng quan các kho hàng trong hệ thống (@_warehouseOverviews.Count kho)</span>
             </h2>
-            <p class="tw-text-xs tw-text-slate-500 tw-mt-0.5">Nhấp vào kho để xem chi tiết danh mục hàng hóa và số dư tồn kho của kho đó</p>
+            <p class="tw-text-xs tw-text-slate-500 tw-mt-0.5">Nhấp vào kho để lọc danh mục sản phẩm và kiểm tra số dư tồn kho của kho đó</p>
         </div>
         @if (_selectedWarehouseId.HasValue)
         {
-            <button type="button" class="tw-text-xs tw-font-medium tw-text-indigo-600 hover:tw-text-indigo-800 tw-flex tw-items-center tw-gap-1 tw-bg-indigo-50 tw-px-2.5 tw-py-1 tw-rounded" @onclick="() => _selectedWarehouseId = null">
-                <span>Đang chọn: @_warehouses.FirstOrDefault(w => w.Id == _selectedWarehouseId)?.Name</span>
-                <span class="tw-font-bold">× Bỏ chọn</span>
+            <button type="button" class="tw-text-xs tw-font-medium tw-text-blue-700 hover:tw-text-blue-900 tw-flex tw-items-center tw-gap-1 tw-bg-blue-50 tw-border tw-border-blue-200 tw-px-2.5 tw-py-1 tw-rounded" @onclick="() => _selectedWarehouseId = null">
+                <span>Đang lọc: @_warehouses.FirstOrDefault(w => w.Id == _selectedWarehouseId)?.Name</span>
+                <span class="tw-font-bold ms-1">× Bỏ lọc</span>
             </button>
         }
     </div>
 
-    <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-2 lg:tw-grid-cols-3 tw-gap-3">
+    <div class="tw-grid tw-grid-cols-1 @(_warehouseOverviews.Count == 2 ? "md:tw-grid-cols-2" : (_warehouseOverviews.Count == 1 ? "md:tw-grid-cols-1" : "md:tw-grid-cols-2 lg:tw-grid-cols-3")) tw-gap-3">
         @foreach (var wh in _warehouseOverviews)
         {
             var isSelected = _selectedWarehouseId == wh.WarehouseId;
-            <div class="tw-border @(isSelected ? "tw-border-emerald-500 tw-ring-2 tw-ring-emerald-200 tw-bg-emerald-50/20" : "tw-border-slate-200 tw-bg-slate-50/40") tw-rounded-lg tw-p-3 tw-transition-all hover:tw-border-slate-300">
+            <div class="tw-border @(isSelected ? "tw-border-blue-600 tw-ring-2 tw-ring-blue-100 tw-bg-blue-50/25" : "tw-border-slate-200 tw-bg-slate-50/40") tw-rounded-lg tw-p-3.5 tw-transition-all hover:tw-border-slate-300 shadow-2xs">
                 <div class="tw-flex tw-justify-between tw-items-start tw-mb-2">
                     <div>
                         <div class="tw-flex tw-items-center tw-gap-1.5">
@@ -176,13 +176,13 @@
                     <span>Biến động gần nhất: @(wh.LatestMovementAt?.ToString("dd/MM/yyyy HH:mm") ?? "Chưa có")</span>
                     @if (isSelected)
                     {
-                        <button type="button" class="tw-text-xs tw-font-semibold tw-text-emerald-700 hover:tw-underline" @onclick="() => SelectWarehouse(null)">
-                            ✓ Đang xem
+                        <button type="button" class="tw-text-xs tw-font-semibold tw-text-blue-700 hover:tw-underline" @onclick="() => SelectWarehouse(null)">
+                            ✓ Đang chọn
                         </button>
                     }
                     else
                     {
-                        <button type="button" class="tw-text-xs tw-font-semibold tw-text-indigo-600 hover:tw-text-indigo-800 hover:tw-underline" @onclick="() => SelectWarehouse(wh.WarehouseId)">
+                        <button type="button" class="tw-text-xs tw-font-semibold tw-text-blue-600 hover:tw-text-blue-800 hover:tw-underline" @onclick="() => SelectWarehouse(wh.WarehouseId)">
                             Xem tồn kho →
                         </button>
                     }
@@ -194,7 +194,7 @@
 
 <!-- View Switcher Tabs -->
 <div class="tw-flex tw-items-center tw-gap-2 tw-mb-4 tw-border-b tw-border-slate-200 tw-pb-2">
-    <button type="button" class="tw-text-xs tw-font-semibold tw-px-3 tw-py-2 tw-rounded-md tw-flex tw-items-center tw-gap-1.5 @(_activeView == "detail" ? "tw-bg-emerald-600 tw-text-white shadow-xs" : "tw-bg-white tw-border tw-border-slate-200 tw-text-slate-700 hover:tw-bg-slate-50")"
+    <button type="button" class="tw-text-xs tw-font-semibold tw-px-3 tw-py-2 tw-rounded-md tw-flex tw-items-center tw-gap-1.5 @(_activeView == "detail" ? "tw-bg-blue-600 tw-text-white shadow-xs" : "tw-bg-white tw-border tw-border-slate-200 tw-text-slate-700 hover:tw-bg-slate-50")"
             @onclick='() => _activeView = "detail"'>
         <svg class="tw-w-3.5 tw-h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -203,7 +203,7 @@
         <span class="tw-ml-1 tw-text-2xs tw-px-1.5 tw-py-0.2 tw-rounded-full @(_activeView == "detail" ? "tw-bg-white/20 tw-text-white" : "tw-bg-slate-100 tw-text-slate-600")">@FilteredItems.Count()</span>
     </button>
 
-    <button type="button" class="tw-text-xs tw-font-semibold tw-px-3 tw-py-2 tw-rounded-md tw-flex tw-items-center tw-gap-1.5 @(_activeView == "matrix" ? "tw-bg-emerald-600 tw-text-white shadow-xs" : "tw-bg-white tw-border tw-border-slate-200 tw-text-slate-700 hover:tw-bg-slate-50")"
+    <button type="button" class="tw-text-xs tw-font-semibold tw-px-3 tw-py-2 tw-rounded-md tw-flex tw-items-center tw-gap-1.5 @(_activeView == "matrix" ? "tw-bg-blue-600 tw-text-white shadow-xs" : "tw-bg-white tw-border tw-border-slate-200 tw-text-slate-700 hover:tw-bg-slate-50")"
             @onclick='() => _activeView = "matrix"'>
         <svg class="tw-w-3.5 tw-h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
@@ -226,7 +226,7 @@
                     <span class="tw-font-semibold tw-text-sm tw-text-slate-800">Bộ lọc tồn kho</span>
                     @if (HasActiveFilters)
                     {
-                        <button class="tw-text-xs tw-text-emerald-600 hover:tw-underline" @onclick="ClearFilters">Xóa bộ lọc</button>
+                        <button class="tw-text-xs tw-text-blue-600 hover:tw-underline" @onclick="ClearFilters">Xóa bộ lọc</button>
                     }
                 </div>
 
@@ -290,7 +290,7 @@
                 <!-- Zero-Stock Toggle -->
                 <div class="tw-border-t tw-border-slate-100 tw-pt-3">
                     <label class="tw-flex tw-items-center tw-gap-2 tw-cursor-pointer">
-                        <input type="checkbox" class="tw-rounded tw-text-emerald-600 focus:tw-ring-emerald-500" @bind="_hideZeroStock" />
+                        <input type="checkbox" class="tw-rounded tw-text-blue-600 focus:tw-ring-blue-500" @bind="_hideZeroStock" />
                         <span class="tw-text-xs tw-text-slate-700">Ẩn các mục hết hàng (tồn &le; 0)</span>
                     </label>
                 </div>
@@ -304,7 +304,7 @@
                 <div class="tw-p-3 tw-border-b tw-border-slate-100 tw-flex tw-justify-between tw-items-center tw-gap-3">
                     <div class="tw-relative tw-w-72">
                         <input type="text"
-                               class="tw-w-full tw-h-8 tw-pl-8 tw-pr-3 tw-text-xs tw-rounded tw-border tw-border-slate-300 focus:tw-border-emerald-500 focus:tw-outline-none"
+                               class="tw-w-full tw-h-8 tw-pl-8 tw-pr-3 tw-text-xs tw-rounded tw-border tw-border-slate-300 focus:tw-border-blue-500 focus:tw-outline-none"
                                placeholder="Tìm mã SP, tên sản phẩm..."
                                @bind="_searchTerm"
                                @bind:event="oninput" />
@@ -336,7 +336,7 @@
                             {
                                 <tr>
                                     <td colspan="8" class="tw-p-8 tw-text-center tw-text-slate-500">
-                                        <div class="tw-inline-block tw-animate-spin tw-rounded-full tw-h-6 tw-w-6 tw-border-b-2 tw-border-emerald-600 tw-mr-2"></div>
+                                        <div class="tw-inline-block tw-animate-spin tw-rounded-full tw-h-6 tw-w-6 tw-border-b-2 tw-border-blue-600 tw-mr-2"></div>
                                         <span>Đang tải số liệu tồn kho...</span>
                                     </td>
                                 </tr>
@@ -445,7 +445,7 @@ else
             </div>
             <div class="tw-flex tw-items-center tw-gap-2">
                 <input type="text"
-                       class="tw-w-64 tw-h-8 tw-px-3 tw-text-xs tw-rounded tw-border tw-border-slate-300 focus:tw-border-emerald-500 focus:tw-outline-none"
+                       class="tw-w-64 tw-h-8 tw-px-3 tw-text-xs tw-rounded tw-border tw-border-slate-300 focus:tw-border-blue-500 focus:tw-outline-none"
                        placeholder="Tìm mã hoặc tên sản phẩm..."
                        @bind="_matrixSearchTerm"
                        @bind:event="oninput" />
@@ -477,7 +477,7 @@ else
                     {
                         <tr>
                             <td colspan="@(7 + _warehouses.Count)" class="tw-p-8 tw-text-center tw-text-slate-500">
-                                <div class="tw-inline-block tw-animate-spin tw-rounded-full tw-h-6 tw-w-6 tw-border-b-2 tw-border-emerald-600 tw-mr-2"></div>
+                                <div class="tw-inline-block tw-animate-spin tw-rounded-full tw-h-6 tw-w-6 tw-border-b-2 tw-border-blue-600 tw-mr-2"></div>
                                 <span>Đang tổng hợp ma trận phân bổ tồn kho...</span>
                             </td>
                         </tr>

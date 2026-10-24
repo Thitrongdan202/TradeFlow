@@ -227,11 +227,22 @@
                                     <strong>3.1. Mức lương chính:</strong>
                                     @if (contract.CanViewSensitiveData)
                                     {
-                                        <span>@contract.BasicSalary.ToString("N0") đồng/tháng (@contract.SalaryType).</span>
-                                        if (contract.ContractType == EmploymentContractType.Probation && contract.ProbationSalaryPercentage.HasValue)
+                                        if (contract.BasicSalary.HasValue && contract.BasicSalary.Value > 0)
                                         {
-                                            var pVal = contract.BasicSalary * (contract.ProbationSalaryPercentage.Value / 100m);
-                                            <span> Lương thử việc bằng @contract.ProbationSalaryPercentage.Value% lương chính, tương đương @pVal.ToString("N0") đồng/tháng theo Điều 26 BLLĐ.</span>
+                                            <span>@contract.BasicSalary.Value.ToString("N0") đồng/tháng (@contract.SalaryType).</span>
+                                            if (contract.ContractType == EmploymentContractType.Probation && contract.ProbationSalaryPercentage.HasValue)
+                                            {
+                                                var pVal = contract.BasicSalary.Value * (contract.ProbationSalaryPercentage.Value / 100m);
+                                                <span> Lương thử việc bằng @contract.ProbationSalaryPercentage.Value% lương chính, tương đương @pVal.ToString("N0") đồng/tháng theo Điều 26 BLLĐ.</span>
+                                            }
+                                        }
+                                        else if (!string.IsNullOrWhiteSpace(contract.SalaryClauseText))
+                                        {
+                                            <span>@contract.SalaryClauseText</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-secondary fst-italic">Theo thỏa thuận hợp đồng</span>
                                         }
                                     }
                                     else
@@ -239,13 +250,13 @@
                                         <span class="text-muted fst-italic">[Bị ẩn theo quyền bảo mật dữ liệu lương]</span>
                                     }
                                 </div>
-                                @if (contract.PositionAllowance > 0 || contract.LunchAllowance > 0 || contract.OtherAllowances > 0)
+                                @if ((contract.PositionAllowance ?? 0) > 0 || (contract.LunchAllowance ?? 0) > 0 || (contract.OtherAllowances ?? 0) > 0)
                                 {
                                     <div>
                                         <strong>3.2. Phụ cấp:</strong>
                                         @if (contract.CanViewSensitiveData)
                                         {
-                                            <span>Phụ cấp chức vụ: @contract.PositionAllowance.ToString("N0") đ; Tiền ăn trưa: @contract.LunchAllowance.ToString("N0") đ; Phụ cấp khác: @contract.OtherAllowances.ToString("N0") đ.</span>
+                                            <span>Phụ cấp chức vụ: @((contract.PositionAllowance ?? 0).ToString("N0")) đ; Tiền ăn trưa: @((contract.LunchAllowance ?? 0).ToString("N0")) đ; Phụ cấp khác: @((contract.OtherAllowances ?? 0).ToString("N0")) đ.</span>
                                         }
                                         else
                                         {

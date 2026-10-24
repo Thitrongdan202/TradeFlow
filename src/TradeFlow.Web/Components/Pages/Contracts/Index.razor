@@ -571,6 +571,8 @@
                         <option value="@EmploymentContractType.FixedTerm">Xác định thời hạn (tối đa 36 tháng)</option>
                         <option value="@EmploymentContractType.IndefiniteTerm">Không xác định thời hạn</option>
                         <option value="@EmploymentContractType.Probation">Hợp đồng thử việc</option>
+                        <option value="@EmploymentContractType.Internship">Thỏa thuận thực tập sinh</option>
+                        <option value="@EmploymentContractType.VocationalTraining">Hợp đồng đào tạo nghề (Điều 61 BLLĐ)</option>
                     </select>
                 </div>
                 <div class="col-6 col-md-2">
@@ -635,6 +637,18 @@
                                         </svg>
                                         <div class="small fw-medium">Chưa có hợp đồng lao động nào phù hợp với bộ lọc</div>
                                         <div class="text-muted smaller mt-1">Bấm "Tạo HĐ lao động mới" để bắt đầu soạn thảo</div>
+                                        <div class="mt-3 d-flex align-items-center justify-content-center gap-2">
+                                            <button type="button" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1.5 shadow-xs" @onclick="OpenCreateEmploymentContract">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                                <span>Tạo HĐ lao động mới</span>
+                                            </button>
+                                            @if (HasActiveEmpFilters)
+                                            {
+                                                <button type="button" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1" @onclick="ClearEmpFilters">
+                                                    <span>Xóa bộ lọc</span>
+                                                </button>
+                                            }
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
@@ -684,12 +698,23 @@
                                     <td class="text-end">
                                         @if (c.CanViewSensitiveData)
                                         {
-                                            <span class="tf-amount">@c.BasicSalary.ToString("N0")</span>
-                                            <span class="smaller text-muted ms-1">đ</span>
+                                            @if (c.BasicSalary.HasValue && c.BasicSalary.Value > 0)
+                                            {
+                                                <span class="tf-amount">@c.BasicSalary.Value.ToString("N0")</span>
+                                                <span class="smaller text-muted ms-1">đ</span>
+                                            }
+                                            else if (!string.IsNullOrWhiteSpace(c.SalaryClauseText))
+                                            {
+                                                <span class="text-secondary smaller" title="@c.SalaryClauseText">Thỏa thuận</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted smaller">—</span>
+                                            }
                                         }
                                         else
                                         {
-                                            <span class="text-muted fst-italic smaller">******</span>
+                                            <span class="text-muted fst-italic smaller">••••••</span>
                                         }
                                     </td>
                                     <td class="text-center">
@@ -766,11 +791,12 @@
 <TemplateSelectorModal @bind-IsOpen="showTemplateSelectorModal" />
 
 <!-- Modal Components for Employment Contracts -->
-<EmploymentContractFormModal @ref="empFormModal" OnSaved="LoadEmploymentContractsAsync" />
+<EmploymentContractFormModal @ref="empFormModal" @bind-IsOpen="isCreateEmpModalOpen" OnSaved="LoadEmploymentContractsAsync" />
 <EmploymentContractDetailModal @ref="empDetailModal" OnEdit="OpenEditEmploymentContract" OnStatusChanged="LoadEmploymentContractsAsync" />
 
 @code {
     private string activeModuleTab = "commercial";
+    private bool isCreateEmpModalOpen = false;
 
     // === Commercial Contracts State ===
     private List<ContractDto> contracts = new();
@@ -962,18 +988,22 @@
 
     private async Task OpenCreateEmploymentContract()
     {
+        isCreateEmpModalOpen = true;
         if (empFormModal != null)
         {
             await empFormModal.OpenCreateAsync();
         }
+        StateHasChanged();
     }
 
     private async Task OpenEditEmploymentContract(int id)
     {
+        isCreateEmpModalOpen = true;
         if (empFormModal != null)
         {
             await empFormModal.OpenEditAsync(id);
         }
+        StateHasChanged();
     }
 
     private async Task OpenEmploymentDetail(int id)

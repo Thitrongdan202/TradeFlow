@@ -43,23 +43,28 @@ public class EmploymentContractConfiguration : IEntityTypeConfiguration<Employme
         builder.Property(x => x.WorkingSchedule).HasMaxLength(500);
         builder.Property(x => x.LaborProtection).HasMaxLength(1000);
 
-        // Tiền lương
-        builder.Property(x => x.BasicSalary).HasPrecision(18, 2);
+        // Tiền lương & Thỏa thuận thù lao
+        builder.Property(x => x.BasicSalary).HasPrecision(18, 2).IsRequired(false);
+        builder.Property(x => x.SalaryClauseText).HasMaxLength(4000);
         builder.Property(x => x.SalaryType).HasMaxLength(100);
         builder.Property(x => x.PaymentPeriod).HasMaxLength(255);
         builder.Property(x => x.PaymentMethod).HasMaxLength(255);
-        builder.Property(x => x.PositionAllowance).HasPrecision(18, 2);
-        builder.Property(x => x.LunchAllowance).HasPrecision(18, 2);
-        builder.Property(x => x.OtherAllowances).HasPrecision(18, 2);
+        builder.Property(x => x.PositionAllowance).HasPrecision(18, 2).IsRequired(false);
+        builder.Property(x => x.LunchAllowance).HasPrecision(18, 2).IsRequired(false);
+        builder.Property(x => x.OtherAllowances).HasPrecision(18, 2).IsRequired(false);
         builder.Property(x => x.SalaryReviewPolicy).HasMaxLength(500);
         builder.Property(x => x.SocialInsuranceRate).HasPrecision(5, 2);
         builder.Property(x => x.ProbationSalaryPercentage).HasPrecision(5, 2);
 
-        // Điều khoản tùy chọn
+        // Điều khoản tùy chọn & Thực tập/Đào tạo
         builder.Property(x => x.NdaClauseDetails).HasMaxLength(2000);
         builder.Property(x => x.TrainingClauseDetails).HasMaxLength(2000);
         builder.Property(x => x.SpecialBenefitsDetails).HasMaxLength(2000);
+        builder.Property(x => x.TrainingSupervisor).HasMaxLength(150);
+        builder.Property(x => x.TrainingObjectives).HasMaxLength(2000);
+        builder.Property(x => x.InternshipProgramme).HasMaxLength(255);
         builder.Property(x => x.CustomTerms).HasMaxLength(4000);
+        builder.Property(x => x.CustomClausesJson);
 
         // Ký & Xác thực
         builder.Property(x => x.DigitalSignatureHash).HasMaxLength(128);

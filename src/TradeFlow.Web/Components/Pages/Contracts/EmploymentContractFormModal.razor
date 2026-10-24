@@ -12,52 +12,88 @@
 
 @if (IsOpen)
 {
-    <div class="modal fade show d-block" style="background-color: rgba(15, 23, 42, 0.6); z-index: 1055;" tabindex="-1" role="dialog" aria-modal="true">
-        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content shadow-lg border-0 rounded-3">
-                <!-- Header -->
-                <div class="modal-header bg-white border-bottom px-4 py-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="d-flex align-items-center justify-content-center rounded-3 bg-primary bg-opacity-10 text-primary" style="width: 44px; height: 44px;">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                                <circle cx="9" cy="7" r="4"/>
-                                <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <h5 class="modal-title fw-bold text-dark mb-0">
-                                @(IsEditMode ? $"Chỉnh sửa Hợp đồng lao động: {ContractNumber}" : "Soạn thảo Hợp đồng lao động mới")
-                            </h5>
-                            <div class="text-muted small">
-                                Chuẩn hóa theo Điều 21 Bộ luật Lao động (VB hợp nhất 18/VBHN-VPQH ngày 12/02/2026) &amp; NĐ 337/2025/NĐ-CP
+    <div class="modal fade show d-block" style="background-color: rgba(15, 23, 42, 0.65); z-index: 1055; backdrop-filter: blur(2px);" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-width: 1140px;">
+            <div class="modal-content shadow-2xl border-0 rounded-4 overflow-hidden">
+                <!-- Modal Header with Tabs -->
+                <div class="modal-header bg-white border-bottom px-4 py-3 flex-column align-items-stretch gap-2.5">
+                    <div class="d-flex align-items-center justify-content-between w-100">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="d-flex align-items-center justify-content-center rounded-3 bg-primary bg-opacity-10 text-primary shadow-xs" style="width: 44px; height: 44px;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h5 class="modal-title fw-bold text-dark mb-0">
+                                    @(IsEditMode ? $"Chỉnh sửa Hợp đồng lao động: {ContractNumber}" : "Soạn thảo Hợp đồng lao động mới")
+                                </h5>
+                                <div class="text-muted smaller">
+                                    Bộ luật Lao động (VB hợp nhất 18/VBHN-VPQH ngày 12/02/2026) &amp; NĐ 337/2025/NĐ-CP
+                                </div>
                             </div>
                         </div>
+                        <button type="button" class="btn-close" @onclick="CloseAsync" aria-label="Đóng"></button>
                     </div>
-                    <button type="button" class="btn-close" @onclick="CloseAsync" aria-label="Đóng"></button>
+
+                    <!-- Inner Navigation Tabs -->
+                    <div class="d-flex align-items-center gap-1 border-top pt-2">
+                        <button type="button" class="btn btn-sm @(activeTab == "info" ? "btn-primary shadow-xs fw-semibold" : "btn-light text-secondary border") px-3 py-1.5 rounded-2 d-flex align-items-center gap-1.5"
+                                @onclick='() => activeTab = "info"'>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+                            </svg>
+                            <span>1. Thông tin chung &amp; Nhân sự</span>
+                        </button>
+
+                        <button type="button" class="btn btn-sm @(activeTab == "remuneration" ? "btn-primary shadow-xs fw-semibold" : "btn-light text-secondary border") px-3 py-1.5 rounded-2 d-flex align-items-center gap-1.5"
+                                @onclick='() => activeTab = "remuneration"'>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                            </svg>
+                            <span>2. Tiền lương &amp; Chế độ</span>
+                        </button>
+
+                        <button type="button" class="btn btn-sm @(activeTab == "clauses" ? "btn-primary shadow-xs fw-semibold" : "btn-light text-secondary border") px-3 py-1.5 rounded-2 d-flex align-items-center gap-1.5"
+                                @onclick='() => activeTab = "clauses"'>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                            <span>3. Soạn thảo điều khoản (@(model.Clauses?.Count ?? 0))</span>
+                        </button>
+
+                        <button type="button" class="btn btn-sm @(activeTab == "preview" ? "btn-primary shadow-xs fw-semibold" : "btn-light text-secondary border") px-3 py-1.5 rounded-2 d-flex align-items-center gap-1.5 ms-auto"
+                                @onclick='() => activeTab = "preview"'>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                            </svg>
+                            <span>4. Xem trước văn bản A4</span>
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Body -->
-                <div class="modal-body p-4 bg-light bg-opacity-50">
+                <!-- Modal Body -->
+                <div class="modal-body p-4 bg-light bg-opacity-40">
                     @if (!string.IsNullOrEmpty(errorMessage))
                     {
-                        <div class="alert alert-danger py-2 px-3 small mb-3 d-flex align-items-center gap-2">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <div class="alert alert-danger py-2 px-3 small mb-3 d-flex align-items-center gap-2 rounded-3 shadow-xs">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-danger flex-shrink-0">
                                 <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                             </svg>
                             <span>@errorMessage</span>
                         </div>
                     }
 
-                    <EditForm Model="model" OnValidSubmit="HandleSubmitAsync">
-                        <DataAnnotationsValidator />
-
-                        <!-- Section 1: Thông tin nhân viên & Bên giao kết -->
+                    <!-- TAB 1: THÔNG TIN CHUNG & NHÂN SỰ -->
+                    <div class="@(activeTab == "info" ? "d-block" : "d-none")">
+                        <!-- Card 1: Bên B - Nhân viên -->
                         <div class="card border-0 shadow-sm rounded-3 mb-3">
                             <div class="card-header bg-white border-bottom py-2.5 px-3 d-flex align-items-center justify-content-between">
                                 <span class="fw-semibold text-primary small text-uppercase">1. Người lao động (Bên B)</span>
-                                <span class="badge bg-light text-muted border small">Dữ liệu liên kết nhân sự</span>
+                                <span class="badge bg-light text-muted border small">Dữ liệu hồ sơ nhân sự</span>
                             </div>
                             <div class="card-body p-3">
                                 <div class="row g-3">
@@ -67,7 +103,7 @@
                                         </label>
                                         @if (IsEditMode)
                                         {
-                                            <input type="text" class="form-control form-control-sm" value="@selectedEmployeeDisplay" readonly />
+                                            <input type="text" class="form-control form-control-sm bg-light" value="@selectedEmployeeDisplay" readonly />
                                         }
                                         else
                                         {
@@ -89,7 +125,7 @@
                                         <input type="text" class="form-control form-control-sm bg-light" value="@(selectedEmployee?.DateOfBirth?.ToString("dd/MM/yyyy") ?? "")" readonly />
                                     </div>
                                     <div class="col-12 col-md-6">
-                                        <label class="form-label small fw-medium text-secondary mb-1">Địa chỉ cư trú</label>
+                                        <label class="form-label small fw-medium text-secondary mb-1">Địa chỉ thường trú / Nơi ở hiện nay</label>
                                         <input type="text" class="form-control form-control-sm bg-light" value="@selectedEmployee?.Address" readonly />
                                     </div>
                                     <div class="col-12 col-md-6">
@@ -100,31 +136,39 @@
                             </div>
                         </div>
 
-                        <!-- Section 2: Loại hợp đồng & Thời hạn -->
+                        <!-- Card 2: Loại hợp đồng & Thời hạn -->
                         <div class="card border-0 shadow-sm rounded-3 mb-3">
                             <div class="card-header bg-white border-bottom py-2.5 px-3 d-flex align-items-center justify-content-between">
-                                <span class="fw-semibold text-primary small text-uppercase">2. Loại hợp đồng &amp; Thời hạn (Điều 20, 21, 25 BLLĐ)</span>
+                                <span class="fw-semibold text-primary small text-uppercase">2. Loại hợp đồng &amp; Thời hạn (Bộ luật Lao động)</span>
+                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 small">Quy chuẩn 2026</span>
                             </div>
                             <div class="card-body p-3">
                                 <div class="row g-3">
-                                    <div class="col-12 col-md-4">
-                                        <label class="form-label small fw-medium text-secondary mb-1">Loại hợp đồng <span class="text-danger">*</span></label>
+                                    <div class="col-12 col-md-5">
+                                        <label class="form-label small fw-medium text-secondary mb-1">Loại hợp đồng / văn bản <span class="text-danger">*</span></label>
                                         <select class="form-select form-select-sm" @bind="model.ContractType" @bind:after="OnContractTypeChanged">
-                                            <option value="@EmploymentContractType.FixedTerm">Xác định thời hạn (tối đa 36 tháng)</option>
-                                            <option value="@EmploymentContractType.IndefiniteTerm">Không xác định thời hạn</option>
-                                            <option value="@EmploymentContractType.Probation">Hợp đồng thử việc riêng biệt</option>
+                                            <option value="@EmploymentContractType.FixedTerm">Hợp đồng xác định thời hạn (&le; 36 tháng)</option>
+                                            <option value="@EmploymentContractType.IndefiniteTerm">Hợp đồng không xác định thời hạn</option>
+                                            <option value="@EmploymentContractType.Probation">Hợp đồng thử việc riêng biệt (&le; 180 ngày)</option>
+                                            <option value="@EmploymentContractType.Internship">Thỏa thuận thực tập sinh</option>
+                                            <option value="@EmploymentContractType.VocationalTraining">Hợp đồng đào tạo nghề (Điều 61 BLLĐ)</option>
                                         </select>
                                     </div>
                                     <div class="col-12 col-md-4">
-                                        <label class="form-label small fw-medium text-secondary mb-1">Tiêu đề hợp đồng <span class="text-danger">*</span></label>
+                                        <label class="form-label small fw-medium text-secondary mb-1">Tiêu đề văn bản <span class="text-danger">*</span></label>
                                         <input type="text" class="form-control form-control-sm" @bind="model.Title" />
                                     </div>
-                                    <div class="col-12 col-md-4">
-                                        <label class="form-label small fw-medium text-secondary mb-1">Địa điểm lập hợp đồng</label>
-                                        <input type="text" class="form-control form-control-sm" @bind="model.ContractPlace" placeholder="Cần Thơ, TP.HCM..." />
+                                    <div class="col-12 col-md-3">
+                                        <label class="form-label small fw-medium text-secondary mb-1">Địa điểm lập văn bản</label>
+                                        <input type="text" class="form-control form-control-sm" @bind="model.ContractPlace" placeholder="TP. Cần Thơ, TP.HCM..." />
+                                    </div>
+
+                                    <div class="col-12 col-md-3">
+                                        <label class="form-label small fw-medium text-secondary mb-1">Ngày lập hợp đồng</label>
+                                        <input type="date" class="form-control form-control-sm" @bind="model.ContractDate" />
                                     </div>
                                     <div class="col-12 col-md-3">
-                                        <label class="form-label small fw-medium text-secondary mb-1">Ngày bắt đầu làm việc <span class="text-danger">*</span></label>
+                                        <label class="form-label small fw-medium text-secondary mb-1">Ngày bắt đầu hiệu lực <span class="text-danger">*</span></label>
                                         <input type="date" class="form-control form-control-sm" @bind="model.StartDate" />
                                     </div>
                                     <div class="col-12 col-md-3">
@@ -142,38 +186,55 @@
                                     {
                                         <div class="col-12 col-md-3">
                                             <label class="form-label small fw-medium text-secondary mb-1">Thời gian thử việc (ngày)</label>
-                                            <input type="number" class="form-control form-control-sm" @bind="model.ProbationDurationDays" placeholder="30, 60 hoặc 180" />
-                                            <div class="form-text small text-muted">Điều 25: Max 180 ngày (quản lý), 60 ngày (CĐ/ĐH).</div>
+                                            <input type="number" class="form-control form-control-sm" @bind="model.ProbationDurationDays" placeholder="60 hoặc 180" />
+                                            <div class="form-text smaller text-muted">Điều 25: Tối đa 180 ngày (quản lý), 60 ngày (CĐ/ĐH).</div>
                                         </div>
                                         <div class="col-12 col-md-3">
                                             <label class="form-label small fw-medium text-secondary mb-1">Tỷ lệ lương thử việc (%)</label>
                                             <input type="number" class="form-control form-control-sm" @bind="model.ProbationSalaryPercentage" min="85" max="100" />
-                                            <div class="form-text small text-muted">Điều 26: Tối thiểu 85% lương chính.</div>
+                                            <div class="form-text smaller text-muted">Điều 26: Tối thiểu 85% lương chính.</div>
                                         </div>
                                     }
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Section 3: Vị trí, Địa điểm & Thời giờ làm việc -->
+                        <!-- Card 3: Vị trí, Địa điểm & Chương trình đào tạo/thực tập -->
                         <div class="card border-0 shadow-sm rounded-3 mb-3">
                             <div class="card-header bg-white border-bottom py-2.5 px-3 d-flex align-items-center justify-content-between">
-                                <span class="fw-semibold text-primary small text-uppercase">3. Vị trí, Địa điểm &amp; Thời giờ làm việc (Điều 21 BLLĐ)</span>
+                                <span class="fw-semibold text-primary small text-uppercase">3. Chức danh, Vị trí &amp; Địa điểm làm việc</span>
                             </div>
                             <div class="card-body p-3">
                                 <div class="row g-3">
-                                    <div class="col-12 col-md-4">
-                                        <label class="form-label small fw-medium text-secondary mb-1">Chức danh / Vị trí <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control form-control-sm" @bind="model.JobTitle" />
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label small fw-medium text-secondary mb-1">
+                                            @GetJobTitleLabel() <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control form-control-sm" @bind="model.JobTitle" placeholder="@GetJobTitlePlaceholder()" />
                                     </div>
-                                    <div class="col-12 col-md-4">
-                                        <label class="form-label small fw-medium text-secondary mb-1">Phòng ban <span class="text-danger">*</span></label>
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label small fw-medium text-secondary mb-1">Phòng ban / Đơn vị công tác <span class="text-danger">*</span></label>
                                         <input type="text" class="form-control form-control-sm" @bind="model.DepartmentName" />
                                     </div>
-                                    <div class="col-12 col-md-4">
-                                        <label class="form-label small fw-medium text-secondary mb-1">Số ngày phép năm (Điều 113)</label>
-                                        <input type="number" class="form-control form-control-sm" @bind="model.AnnualLeaveDays" min="12" />
-                                    </div>
+
+                                    @if (model.ContractType == EmploymentContractType.Internship || model.ContractType == EmploymentContractType.VocationalTraining)
+                                    {
+                                        <div class="col-12 col-md-6">
+                                            <label class="form-label small fw-medium text-secondary mb-1">
+                                                @(model.ContractType == EmploymentContractType.Internship ? "Chương trình thực tập sinh" : "Đề cương đào tạo nghề")
+                                            </label>
+                                            <input type="text" class="form-control form-control-sm" @bind="model.InternshipProgramme" placeholder="VD: Chương trình thực tập nghiệp vụ kinh doanh thiết bị LACASA..." />
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label class="form-label small fw-medium text-secondary mb-1">Cán bộ / Người hướng dẫn chuyên môn</label>
+                                            <input type="text" class="form-control form-control-sm" @bind="model.TrainingSupervisor" placeholder="VD: Nguyễn Văn An - Trưởng phòng kỹ thuật" />
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label small fw-medium text-secondary mb-1">Mục tiêu đào tạo / Kỹ năng cần đạt</label>
+                                            <textarea class="form-control form-control-sm" rows="2" @bind="model.TrainingObjectives" placeholder="Nêu rõ các mục tiêu kiến thức, kỹ năng và kết quả mong đợi..."></textarea>
+                                        </div>
+                                    }
+
                                     <div class="col-12">
                                         <label class="form-label small fw-medium text-secondary mb-1">Địa điểm làm việc cụ thể <span class="text-danger">*</span></label>
                                         <input type="text" class="form-control form-control-sm" @bind="model.Workplace" />
@@ -182,47 +243,80 @@
                                         <label class="form-label small fw-medium text-secondary mb-1">Mô tả tóm tắt nhiệm vụ công việc</label>
                                         <textarea class="form-control form-control-sm" rows="2" @bind="model.JobDescription" placeholder="Mô tả quyền hạn và trách nhiệm trọng tâm..."></textarea>
                                     </div>
-                                    <div class="col-12 col-md-4">
+                                    <div class="col-12 col-md-3">
                                         <label class="form-label small fw-medium text-secondary mb-1">Số giờ làm việc / tuần (Max 48h)</label>
                                         <input type="number" class="form-control form-control-sm" @bind="model.WorkingHoursPerWeek" max="48" min="20" />
                                     </div>
-                                    <div class="col-12 col-md-8">
+                                    <div class="col-12 col-md-6">
                                         <label class="form-label small fw-medium text-secondary mb-1">Lịch làm việc chi tiết</label>
                                         <input type="text" class="form-control form-control-sm" @bind="model.WorkingSchedule" />
+                                    </div>
+                                    <div class="col-12 col-md-3">
+                                        <label class="form-label small fw-medium text-secondary mb-1">Số ngày phép năm (Điều 113)</label>
+                                        <input type="number" class="form-control form-control-sm" @bind="model.AnnualLeaveDays" min="12" />
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Section 4: Tiền lương & Chế độ phụ cấp -->
+                    <!-- TAB 2: TIỀN LƯƠNG & CHẾ ĐỘ -->
+                    <div class="@(activeTab == "remuneration" ? "d-block" : "d-none")">
                         <div class="card border-0 shadow-sm rounded-3 mb-3">
                             <div class="card-header bg-white border-bottom py-2.5 px-3 d-flex align-items-center justify-content-between">
-                                <span class="fw-semibold text-primary small text-uppercase">4. Tiền lương, phụ cấp &amp; Bảo hiểm (Điều 21 BLLĐ)</span>
-                                <span class="badge bg-warning bg-opacity-10 text-dark border small">Dữ liệu bảo mật</span>
+                                <span class="fw-semibold text-primary small text-uppercase">Thỏa thuận tiền lương &amp; Trợ cấp</span>
+                                <span class="badge bg-warning bg-opacity-10 text-dark border small">Linh hoạt theo thỏa thuận</span>
                             </div>
                             <div class="card-body p-3">
                                 <div class="row g-3">
-                                    <div class="col-12 col-md-3">
-                                        <label class="form-label small fw-medium text-secondary mb-1">Mức lương cơ bản (VND) <span class="text-danger">*</span></label>
-                                        <input type="number" class="form-control form-control-sm" @bind="model.BasicSalary" step="500000" />
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label small fw-medium text-secondary mb-1">
+                                            Mức lương số học (VND) <span class="badge bg-light text-muted border ms-1">Tùy chọn</span>
+                                        </label>
+                                        <input type="number" class="form-control form-control-sm" @bind="model.BasicSalary" placeholder="Bỏ trống nếu thỏa thuận riêng..." step="500000" />
+                                        <div class="form-text smaller text-muted">
+                                            Không bắt buộc nhập số tiền để lưu bản nháp. Nếu để trống, hệ thống hiển thị "—" hoặc "Theo thỏa thuận", không hiển thị "0 đ".
+                                        </div>
                                     </div>
-                                    <div class="col-12 col-md-3">
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label small fw-medium text-secondary mb-1">Hình thức lương</label>
+                                        <input type="text" class="form-control form-control-sm" @bind="model.SalaryType" placeholder="Lương thời gian, Lương khoán, Thù lao hỗ trợ..." />
+                                    </div>
+
+                                    <!-- Direct Multiline Salary Clause Text Editor -->
+                                    <div class="col-12">
+                                        <div class="d-flex align-items-center justify-content-between mb-1">
+                                            <label class="form-label small fw-bold text-dark mb-0">
+                                                Nội dung thỏa thuận thù lao / tiền lương trong hợp đồng (Điều 3)
+                                            </label>
+                                            <button type="button" class="btn btn-xs btn-outline-primary py-0.5 px-2" @onclick="GenerateSalaryClauseFromFields">
+                                                Tạo mẫu chữ từ thông số
+                                            </button>
+                                        </div>
+                                        <textarea class="form-control form-control-sm font-monospace" rows="3" @bind="model.SalaryClauseText" placeholder="VD: Mức lương theo thỏa thuận tại Phụ lục chi tiết và Quy chế tài chính của Công ty..."></textarea>
+                                        <div class="form-text smaller text-muted">
+                                            Bạn có thể biên soạn trực tiếp câu từ thỏa thuận tiền lương tại đây. Nội dung này sẽ được ưu tiên hiển thị trên bản in/PDF.
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12 col-md-4">
                                         <label class="form-label small fw-medium text-secondary mb-1">Phụ cấp chức vụ (VND)</label>
-                                        <input type="number" class="form-control form-control-sm" @bind="model.PositionAllowance" step="100000" />
-                                    </div>
-                                    <div class="col-12 col-md-3">
-                                        <label class="form-label small fw-medium text-secondary mb-1">Trợ cấp cơm trưa (VND)</label>
-                                        <input type="number" class="form-control form-control-sm" @bind="model.LunchAllowance" step="50000" />
-                                    </div>
-                                    <div class="col-12 col-md-3">
-                                        <label class="form-label small fw-medium text-secondary mb-1">Phụ cấp khác (VND)</label>
-                                        <input type="number" class="form-control form-control-sm" @bind="model.OtherAllowances" step="100000" />
+                                        <input type="number" class="form-control form-control-sm" @bind="model.PositionAllowance" step="100000" placeholder="0" />
                                     </div>
                                     <div class="col-12 col-md-4">
-                                        <label class="form-label small fw-medium text-secondary mb-1">Kỳ hạn trả lương</label>
+                                        <label class="form-label small fw-medium text-secondary mb-1">Trợ cấp cơm trưa (VND)</label>
+                                        <input type="number" class="form-control form-control-sm" @bind="model.LunchAllowance" step="50000" placeholder="0" />
+                                    </div>
+                                    <div class="col-12 col-md-4">
+                                        <label class="form-label small fw-medium text-secondary mb-1">Phụ cấp khác (VND)</label>
+                                        <input type="number" class="form-control form-control-sm" @bind="model.OtherAllowances" step="100000" placeholder="0" />
+                                    </div>
+
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label small fw-medium text-secondary mb-1">Kỳ hạn chi trả</label>
                                         <input type="text" class="form-control form-control-sm" @bind="model.PaymentPeriod" />
                                     </div>
-                                    <div class="col-12 col-md-4">
+                                    <div class="col-12 col-md-6">
                                         <label class="form-label small fw-medium text-secondary mb-1">Hình thức thanh toán</label>
                                         <input type="text" class="form-control form-control-sm" @bind="model.PaymentMethod" />
                                     </div>
@@ -230,11 +324,11 @@
                                         <label class="form-label small fw-medium text-secondary mb-1">Tỷ lệ đóng BHXH, BHYT, BHTN (%)</label>
                                         <input type="number" class="form-control form-control-sm" @bind="model.SocialInsuranceRate" step="0.5" />
                                     </div>
-                                    <div class="col-12 col-md-6">
+                                    <div class="col-12 col-md-4">
                                         <label class="form-label small fw-medium text-secondary mb-1">Chính sách xét nâng lương</label>
                                         <input type="text" class="form-control form-control-sm" @bind="model.SalaryReviewPolicy" />
                                     </div>
-                                    <div class="col-12 col-md-6">
+                                    <div class="col-12 col-md-4">
                                         <label class="form-label small fw-medium text-secondary mb-1">Trang bị bảo hộ lao động</label>
                                         <input type="text" class="form-control form-control-sm" @bind="model.LaborProtection" />
                                     </div>
@@ -242,11 +336,10 @@
                             </div>
                         </div>
 
-                        <!-- Section 5: Điều khoản tùy chọn & Thỏa thuận hợp pháp -->
+                        <!-- Card: Điều khoản tùy chọn phụ -->
                         <div class="card border-0 shadow-sm rounded-3 mb-3">
-                            <div class="card-header bg-white border-bottom py-2.5 px-3 d-flex align-items-center justify-content-between">
-                                <span class="fw-semibold text-primary small text-uppercase">5. Điều khoản tùy chọn (Bảo mật NDA &amp; Phúc lợi)</span>
-                                <span class="badge bg-success bg-opacity-10 text-success border small">Tùy biến an toàn</span>
+                            <div class="card-header bg-white border-bottom py-2.5 px-3">
+                                <span class="fw-semibold text-primary small text-uppercase">Các thỏa thuận cam kết phụ trợ</span>
                             </div>
                             <div class="card-body p-3">
                                 <div class="row g-3">
@@ -290,36 +383,181 @@
                                     </div>
 
                                     <div class="col-12">
-                                        <label class="form-label small fw-medium text-secondary mb-1">Ghi chú nội bộ bộ phận nhân sự</label>
-                                        <input type="text" class="form-control form-control-sm" @bind="model.Notes" placeholder="Ghi chú thêm nếu cần..." />
+                                        <label class="form-label small fw-medium text-secondary mb-1">Ghi chú nội bộ</label>
+                                        <input type="text" class="form-control form-control-sm" @bind="model.Notes" placeholder="Ghi chú nội bộ cho bộ phận nhân sự..." />
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Footer Actions -->
-                        <div class="modal-footer bg-white border-top px-4 py-3 d-flex justify-content-between">
-                            <button type="button" class="btn btn-outline-secondary btn-sm px-3" @onclick="CloseAsync" disabled="@isSubmitting">
-                                Hủy bỏ
-                            </button>
-                            <button type="submit" class="btn btn-primary btn-sm px-4 fw-medium" disabled="@isSubmitting">
-                                @if (isSubmitting)
-                                {
-                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                                    <span>Đang lưu...</span>
-                                }
-                                else
-                                {
-                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
-                                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                                        <polyline points="17 21 17 13 7 13 7 21"/>
-                                        <polyline points="7 3 7 8 15 8"/>
+                    <!-- TAB 3: SOẠN THẢO ĐIỀU KHOẢN (CLAUSE EDITOR) -->
+                    <div class="@(activeTab == "clauses" ? "d-block" : "d-none")">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div>
+                                <span class="fw-bold text-dark">Danh mục điều khoản văn bản</span>
+                                <div class="text-muted smaller">Bạn có thể chỉnh sửa trực tiếp nội dung từng điều, thêm điều khoản mới hoặc xóa điều khoản tùy chọn.</div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" @onclick="ResetAllClausesToDefault">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
                                     </svg>
-                                    <span>@(IsEditMode ? "Cập nhật hợp đồng" : "Lưu bản nháp hợp đồng")</span>
-                                }
-                            </button>
+                                    <span>Khôi phục mẫu mặc định</span>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1" @onclick="AddNewClause">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                                    </svg>
+                                    <span>+ Thêm điều khoản mới</span>
+                                </button>
+                            </div>
                         </div>
-                    </EditForm>
+
+                        @if (model.Clauses != null)
+                        {
+                            <div class="d-flex flex-column gap-3">
+                                @for (int i = 0; i < model.Clauses.Count; i++)
+                                {
+                                    var index = i;
+                                    var clause = model.Clauses[i];
+                                    <div class="card border shadow-xs rounded-3">
+                                        <div class="card-header bg-white py-2 px-3 d-flex align-items-center justify-content-between">
+                                            <div class="d-flex align-items-center gap-2 flex-grow-1 me-3">
+                                                <input type="text" class="form-control form-control-sm fw-bold border-0 bg-light px-2" style="max-width: 90px;" @bind="clause.ArticleNumber" />
+                                                <input type="text" class="form-control form-control-sm fw-semibold" @bind="clause.Title" />
+                                            </div>
+                                            <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                                                @if (clause.IsMandatory)
+                                                {
+                                                    <span class="badge bg-secondary bg-opacity-10 text-secondary border small">Bắt buộc</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-info bg-opacity-10 text-info border small">Tùy chọn</span>
+                                                    <button type="button" class="btn btn-xs btn-outline-danger py-0.5 px-1.5" title="Xóa điều khoản này" @onclick="() => RemoveClause(index)">
+                                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                                        </svg>
+                                                    </button>
+                                                }
+                                            </div>
+                                        </div>
+                                        <div class="card-body p-3">
+                                            <textarea class="form-control form-control-sm font-monospace" rows="4" @bind="clause.Content" style="font-size: 13px; line-height: 1.5;"></textarea>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    <!-- TAB 4: LIVE PREVIEW A4 -->
+                    <div class="@(activeTab == "preview" ? "d-block" : "d-none")">
+                        <div class="d-flex justify-content-center">
+                            <div class="bg-white shadow-md border rounded-2 p-5" style="width: 100%; max-width: 820px; min-height: 950px; font-family: 'Times New Roman', Times, serif; color: #1e293b; line-height: 1.45;">
+                                <!-- Header Preview -->
+                                <div class="text-center mb-4">
+                                    <div class="fw-bold" style="font-size: 14pt;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+                                    <div class="fw-bold" style="font-size: 13pt;">Độc lập - Tự do - Hạnh phúc</div>
+                                    <div style="width: 140px; height: 1.5px; background: #000; margin: 6px auto;"></div>
+                                    <div class="fst-italic text-muted mt-2" style="font-size: 11pt;">
+                                        @(string.IsNullOrWhiteSpace(model.ContractPlace) ? "TP. Cần Thơ" : model.ContractPlace), ngày @model.ContractDate.ToString("dd") tháng @model.ContractDate.ToString("MM") năm @model.ContractDate.ToString("yyyy")
+                                    </div>
+                                </div>
+
+                                <div class="text-center mb-4">
+                                    <div class="fw-bold text-uppercase" style="font-size: 16pt;">@model.Title</div>
+                                    <div class="fw-bold" style="font-size: 11.5pt;">Số: @(string.IsNullOrEmpty(ContractNumber) ? "HDLD-YYYY-XXXX (Bản nháp)" : ContractNumber)</div>
+                                    <div class="fst-italic text-muted" style="font-size: 10pt;">(Căn cứ Bộ luật Lao động &amp; VB hợp nhất 18/VBHN-VPQH)</div>
+                                </div>
+
+                                <!-- Parties Preview -->
+                                <div class="mb-3" style="font-size: 11pt;">
+                                    <div class="fw-bold mb-1">BÊN A - NGƯỜI SỬ DỤNG LAO ĐỘNG:</div>
+                                    <div class="ps-3">
+                                        <div><span class="fw-bold">Tên doanh nghiệp:</span> CÔNG TY TNHH THIẾT BỊ VỆ SINH LACASA VIỆT NAM</div>
+                                        <div><span class="fw-bold">Mã số thuế:</span> 0316899999</div>
+                                        <div><span class="fw-bold">Địa chỉ:</span> Số 123 Đường Nguyễn Văn Cừ, Phường An Khánh, Quận Ninh Kiều, TP. Cần Thơ</div>
+                                        <div><span class="fw-bold">Đại diện:</span> Nguyễn Văn An — <span class="fw-bold">Chức vụ:</span> Giám đốc (Đại diện theo pháp luật)</div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-4" style="font-size: 11pt;">
+                                    <div class="fw-bold mb-1">BÊN B - NGƯỜI LAO ĐỘNG / THỰC TẬP SINH:</div>
+                                    <div class="ps-3">
+                                        <div><span class="fw-bold">Họ và tên:</span> @(selectedEmployee != null ? selectedEmployee.FullName.ToUpper() : "CHƯA CHỌN NHÂN VIÊN") — <span class="fw-bold">Mã NV:</span> @(selectedEmployee?.Code ?? "---")</div>
+                                        <div><span class="fw-bold">Ngày sinh:</span> @(selectedEmployee?.DateOfBirth?.ToString("dd/MM/yyyy") ?? "---") — <span class="fw-bold">Giới tính:</span> @(selectedEmployee?.Gender ?? "---")</div>
+                                        <div><span class="fw-bold">Số CCCD:</span> @(selectedEmployee?.NationalId ?? "---")</div>
+                                        <div><span class="fw-bold">Địa chỉ:</span> @(selectedEmployee?.Address ?? "---")</div>
+                                        <div><span class="fw-bold">Tài khoản nhận lương:</span> @(selectedEmployee?.BankInformation ?? "---")</div>
+                                    </div>
+                                </div>
+
+                                <div class="fst-italic mb-3" style="font-size: 11pt;">Hai bên thống nhất ký kết hợp đồng với các điều khoản và điều kiện sau đây:</div>
+
+                                <!-- Dynamic Clauses Preview -->
+                                @if (model.Clauses != null)
+                                {
+                                    @foreach (var clause in model.Clauses.OrderBy(c => c.DisplayOrder))
+                                    {
+                                        <div class="mb-3" style="font-size: 11pt;">
+                                            <div class="fw-bold">@clause.ArticleNumber. @clause.Title</div>
+                                            <div class="ps-3 mt-1" style="white-space: pre-line;">@clause.Content</div>
+                                        </div>
+                                    }
+                                }
+
+                                <!-- Signature block preview -->
+                                <div class="row pt-4 mt-4 border-top" style="page-break-inside: avoid;">
+                                    <div class="col-6 text-center">
+                                        <div class="fw-bold" style="font-size: 11.5pt;">NGƯỜI LAO ĐỘNG</div>
+                                        <div class="fst-italic smaller text-muted">(Ký và ghi rõ họ tên)</div>
+                                        <div style="height: 70px;"></div>
+                                        <div class="fw-bold">@(selectedEmployee?.FullName ?? "---")</div>
+                                    </div>
+                                    <div class="col-6 text-center">
+                                        <div class="fw-bold" style="font-size: 11.5pt;">ĐẠI DIỆN BÊN A</div>
+                                        <div class="fst-italic smaller text-muted">(Ký, ghi rõ họ tên và đóng dấu)</div>
+                                        <div style="height: 70px;"></div>
+                                        <div class="fw-bold">Nguyễn Văn An</div>
+                                        <div class="fst-italic smaller text-muted">Giám đốc</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Actions -->
+                <div class="modal-footer bg-white border-top px-4 py-3 d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-secondary btn-sm px-3" @onclick="CloseAsync" disabled="@isSubmitting">
+                        Đóng
+                    </button>
+                    <div class="d-flex align-items-center gap-2">
+                        @if (activeTab != "preview")
+                        {
+                            <button type="button" class="btn btn-outline-primary btn-sm px-3" @onclick='() => activeTab = "preview"'>
+                                Xem trước văn bản
+                            </button>
+                        }
+                        <button type="button" class="btn btn-primary btn-sm px-4 fw-medium shadow-xs" @onclick="HandleSubmitAsync" disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                <span>Đang lưu...</span>
+                            }
+                            else
+                            {
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                    <polyline points="17 21 17 13 7 13 7 21"/>
+                                    <polyline points="7 3 7 8 15 8"/>
+                                </svg>
+                                <span>@(IsEditMode ? "Cập nhật hợp đồng" : "Lưu bản nháp hợp đồng")</span>
+                            }
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -331,6 +569,7 @@
     [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
     [Parameter] public EventCallback OnSaved { get; set; }
 
+    private string activeTab = "info";
     private bool IsEditMode => EditContractId.HasValue && EditContractId.Value > 0;
     public int? EditContractId { get; set; }
     public string ContractNumber { get; set; } = string.Empty;
@@ -374,26 +613,44 @@
         EditContractId = null;
         ContractNumber = string.Empty;
         errorMessage = string.Empty;
+        activeTab = "info";
+
         model = new CreateEmploymentContractDto
         {
-            ContractDate = DateTime.UtcNow,
+            ContractDate = DateTime.UtcNow.Date,
             StartDate = DateTime.UtcNow.Date,
             EndDate = DateTime.UtcNow.Date.AddYears(1),
-            BasicSalary = 10000000m,
-            Workplace = "Showroom & Văn phòng LACASA, Số 123 Đường Nguyễn Văn Cừ, TP. Cần Thơ"
+            ContractPlace = "TP. Cần Thơ",
+            Title = "HỢP ĐỒNG LAO ĐỘNG (XÁC ĐỊNH THỜI HẠN)",
+            ContractType = EmploymentContractType.FixedTerm,
+            Workplace = "Showroom & Văn phòng LACASA, Số 123 Đường Nguyễn Văn Cừ, TP. Cần Thơ",
+            WorkingHoursPerWeek = 48,
+            WorkingSchedule = "Từ Thứ Hai đến Thứ Bảy, sáng 08h00 - 12h00, chiều 13h30 - 17h30",
+            AnnualLeaveDays = 12,
+            SalaryType = "Lương thời gian",
+            PaymentPeriod = "Ngày 05 hàng tháng",
+            PaymentMethod = "Chuyển khoản qua tài khoản ngân hàng",
+            SocialInsuranceRate = 32m,
+            LaborProtection = "Đồng phục và bảo hộ lao động theo quy định",
+            SalaryReviewPolicy = "Định kỳ hàng năm hoặc theo năng lực và kết quả công việc"
         };
+
         selectedEmployee = null;
         selectedEmployeeDisplay = string.Empty;
 
         await LoadEmployeesAsync();
+        RegenerateClauses();
+
         IsOpen = true;
         await IsOpenChanged.InvokeAsync(true);
+        StateHasChanged();
     }
 
     public async Task OpenEditAsync(int contractId)
     {
         EditContractId = contractId;
         errorMessage = string.Empty;
+        activeTab = "info";
         await LoadEmployeesAsync();
 
         var existing = await EmploymentContractService.GetContractByIdAsync(contractId, canViewSensitiveData: true);
@@ -423,6 +680,7 @@
             WorkingSchedule = existing.WorkingSchedule,
             AnnualLeaveDays = existing.AnnualLeaveDays,
             BasicSalary = existing.BasicSalary,
+            SalaryClauseText = existing.SalaryClauseText,
             SalaryType = existing.SalaryType,
             PaymentPeriod = existing.PaymentPeriod,
             PaymentMethod = existing.PaymentMethod,
@@ -432,6 +690,9 @@
             SalaryReviewPolicy = existing.SalaryReviewPolicy,
             SocialInsuranceRate = existing.SocialInsuranceRate,
             LaborProtection = existing.LaborProtection,
+            TrainingSupervisor = existing.TrainingSupervisor,
+            TrainingObjectives = existing.TrainingObjectives,
+            InternshipProgramme = existing.InternshipProgramme,
             HasNonDisclosureAgreement = existing.HasNonDisclosureAgreement,
             NdaClauseDetails = existing.NdaClauseDetails,
             HasTrainingReimbursement = existing.HasTrainingReimbursement,
@@ -439,14 +700,21 @@
             HasSpecialBenefits = existing.HasSpecialBenefits,
             SpecialBenefitsDetails = existing.SpecialBenefitsDetails,
             CustomTerms = existing.CustomTerms,
-            Notes = existing.Notes
+            Notes = existing.Notes,
+            Clauses = existing.Clauses ?? new()
         };
 
         selectedEmployee = employees.FirstOrDefault(e => e.Id == existing.EmployeeId);
         selectedEmployeeDisplay = $"{existing.EmployeeCode} — {existing.EmployeeFullName}";
 
+        if (model.Clauses == null || !model.Clauses.Any())
+        {
+            RegenerateClauses();
+        }
+
         IsOpen = true;
         await IsOpenChanged.InvokeAsync(true);
+        StateHasChanged();
     }
 
     private void OnEmployeeSelected()
@@ -459,6 +727,8 @@
                 model.JobTitle = selectedEmployee.Position?.Name ?? "Nhân viên";
             if (string.IsNullOrWhiteSpace(model.DepartmentName))
                 model.DepartmentName = selectedEmployee.Department?.Name ?? "Khối Nghiệp vụ";
+
+            RegenerateClauses();
         }
     }
 
@@ -481,6 +751,168 @@
             model.EndDate = model.StartDate.AddDays(60);
             model.Title = "HỢP ĐỒNG THỬ VIỆC";
         }
+        else if (model.ContractType == EmploymentContractType.Internship)
+        {
+            model.EndDate = model.StartDate.AddMonths(3);
+            model.Title = "THỎA THUẬN THỰC TẬP SINH";
+            if (string.IsNullOrWhiteSpace(model.JobTitle))
+                model.JobTitle = "Thực tập sinh nghiệp vụ";
+        }
+        else if (model.ContractType == EmploymentContractType.VocationalTraining)
+        {
+            model.EndDate = model.StartDate.AddMonths(6);
+            model.Title = "HỢP ĐỒNG ĐÀO TẠO NGHỀ (ĐIỀU 61 BLLĐ)";
+            if (string.IsNullOrWhiteSpace(model.JobTitle))
+                model.JobTitle = "Học viên tập nghề kỹ thuật";
+        }
+
+        RegenerateClauses();
+    }
+
+    private string GetJobTitleLabel()
+    {
+        return model.ContractType switch
+        {
+            EmploymentContractType.Internship => "Vị trí thực tập / Chương trình thực tập",
+            EmploymentContractType.VocationalTraining => "Nghề đào tạo / Vị trí tập nghề",
+            EmploymentContractType.Probation => "Chức danh / Công việc thử việc",
+            _ => "Chức danh / Vị trí công việc"
+        };
+    }
+
+    private string GetJobTitlePlaceholder()
+    {
+        return model.ContractType switch
+        {
+            EmploymentContractType.Internship => "VD: Thực tập sinh Marketing, Thực tập sinh Kỹ thuật...",
+            EmploymentContractType.VocationalTraining => "VD: Nghề lắp đặt thiết bị vệ sinh cao cấp...",
+            EmploymentContractType.Probation => "VD: Nhân viên thử việc kinh doanh thiết bị...",
+            _ => "VD: Chuyên viên kinh doanh, Kỹ sư giám sát..."
+        };
+    }
+
+    private void GenerateSalaryClauseFromFields()
+    {
+        if (model.ContractType == EmploymentContractType.Internship)
+        {
+            model.SalaryClauseText = model.BasicSalary.HasValue && model.BasicSalary.Value > 0
+                ? $"Hỗ trợ kinh phí thực tập sinh: {model.BasicSalary.Value:N0} đ/tháng. Hỗ trợ cơm trưa và phương tiện làm việc tại công ty."
+                : "Phụ cấp hỗ trợ thực tập sinh chi trả theo thỏa thuận và quy chế đào tạo sinh viên của Công ty.";
+        }
+        else if (model.ContractType == EmploymentContractType.VocationalTraining)
+        {
+            model.SalaryClauseText = model.BasicSalary.HasValue && model.BasicSalary.Value > 0
+                ? $"Tiền công trong thời gian học nghề, tập nghề: {model.BasicSalary.Value:N0} đ/tháng theo Điều 61 BLLĐ. Doanh nghiệp đài thọ tài liệu và trang bị thực hành."
+                : "Hưởng thù lao học việc theo thỏa thuận phù hợp với quy định tại Khoản 5 Điều 61 Bộ luật Lao động.";
+        }
+        else if (model.BasicSalary.HasValue && model.BasicSalary.Value > 0)
+        {
+            var text = $"Mức lương cơ bản: {model.BasicSalary.Value:N0} đồng/tháng ({model.SalaryType}).";
+            if (model.ContractType == EmploymentContractType.Probation && model.ProbationSalaryPercentage.HasValue)
+            {
+                var prob = model.BasicSalary.Value * (model.ProbationSalaryPercentage.Value / 100m);
+                text += $" Lương thời gian thử việc bằng {model.ProbationSalaryPercentage.Value}% lương chính, tương đương {prob:N0} đồng/tháng theo Điều 26 BLLĐ.";
+            }
+            if ((model.PositionAllowance ?? 0) > 0 || (model.LunchAllowance ?? 0) > 0 || (model.OtherAllowances ?? 0) > 0)
+            {
+                text += $" Phụ cấp chức vụ: {(model.PositionAllowance ?? 0):N0} đ; Tiền ăn trưa: {(model.LunchAllowance ?? 0):N0} đ; Phụ cấp khác: {(model.OtherAllowances ?? 0):N0} đ.";
+            }
+            model.SalaryClauseText = text;
+        }
+        else
+        {
+            model.SalaryClauseText = "Mức lương và chế độ đãi ngộ thực hiện theo thỏa thuận chi tiết tại Phụ lục hợp đồng và Quy chế lương thưởng nội bộ của Công ty.";
+        }
+
+        // Also update clause 3 in model.Clauses
+        var clause3 = model.Clauses.FirstOrDefault(c => c.ArticleNumber == "Điều 3" || c.Id == "clause_3");
+        if (clause3 != null)
+        {
+            clause3.Content = model.SalaryClauseText;
+        }
+    }
+
+    private void RegenerateClauses()
+    {
+        var tempDto = new EmploymentContractDto
+        {
+            ContractType = model.ContractType,
+            Title = model.Title,
+            ContractDate = model.ContractDate,
+            ContractPlace = string.IsNullOrWhiteSpace(model.ContractPlace) ? "TP. Cần Thơ" : model.ContractPlace,
+            StartDate = model.StartDate,
+            EndDate = model.EndDate,
+            ProbationDurationDays = model.ProbationDurationDays,
+            ProbationSalaryPercentage = model.ProbationSalaryPercentage,
+            JobTitle = string.IsNullOrWhiteSpace(model.JobTitle) ? (selectedEmployee?.Position?.Name ?? "Chuyên viên") : model.JobTitle,
+            DepartmentName = string.IsNullOrWhiteSpace(model.DepartmentName) ? (selectedEmployee?.Department?.Name ?? "Khối Nghiệp vụ") : model.DepartmentName,
+            Workplace = string.IsNullOrWhiteSpace(model.Workplace) ? "Showroom & Văn phòng LACASA, Số 123 Đường Nguyễn Văn Cừ, TP. Cần Thơ" : model.Workplace,
+            JobDescription = model.JobDescription,
+            WorkingHoursPerWeek = model.WorkingHoursPerWeek,
+            WorkingSchedule = model.WorkingSchedule,
+            AnnualLeaveDays = model.AnnualLeaveDays,
+            BasicSalary = model.BasicSalary,
+            SalaryClauseText = model.SalaryClauseText,
+            SalaryType = model.SalaryType,
+            PaymentPeriod = model.PaymentPeriod,
+            PaymentMethod = model.PaymentMethod,
+            PositionAllowance = model.PositionAllowance,
+            LunchAllowance = model.LunchAllowance,
+            OtherAllowances = model.OtherAllowances,
+            SalaryReviewPolicy = model.SalaryReviewPolicy,
+            SocialInsuranceRate = model.SocialInsuranceRate,
+            LaborProtection = model.LaborProtection,
+            TrainingSupervisor = model.TrainingSupervisor,
+            TrainingObjectives = model.TrainingObjectives,
+            InternshipProgramme = model.InternshipProgramme,
+            HasNonDisclosureAgreement = model.HasNonDisclosureAgreement,
+            NdaClauseDetails = model.NdaClauseDetails,
+            HasTrainingReimbursement = model.HasTrainingReimbursement,
+            TrainingClauseDetails = model.TrainingClauseDetails,
+            HasSpecialBenefits = model.HasSpecialBenefits,
+            SpecialBenefitsDetails = model.SpecialBenefitsDetails,
+            CustomTerms = model.CustomTerms
+        };
+
+        model.Clauses = EmploymentContractClauseDefaults.GenerateDefaultClauses(tempDto);
+    }
+
+    private void ResetAllClausesToDefault()
+    {
+        RegenerateClauses();
+    }
+
+    private void AddNewClause()
+    {
+        model.Clauses ??= new();
+        int nextNum = model.Clauses.Count + 1;
+        model.Clauses.Add(new EmploymentContractClauseDto
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            ArticleNumber = $"Điều {nextNum}",
+            Title = "Thỏa thuận bổ sung đặc thù",
+            Content = "Nội dung điều khoản thỏa thuận bổ sung được sự nhất trí của hai bên...",
+            IsMandatory = false,
+            IsOptional = true,
+            DisplayOrder = nextNum
+        });
+    }
+
+    private void RemoveClause(int index)
+    {
+        if (model.Clauses != null && index >= 0 && index < model.Clauses.Count)
+        {
+            var clause = model.Clauses[index];
+            if (clause.IsOptional)
+            {
+                model.Clauses.RemoveAt(index);
+                // Renumber display order
+                for (int i = 0; i < model.Clauses.Count; i++)
+                {
+                    model.Clauses[i].DisplayOrder = i + 1;
+                }
+            }
+        }
     }
 
     private async Task HandleSubmitAsync()
@@ -490,6 +922,35 @@
 
         try
         {
+            // Client validation for draft
+            if (model.EmployeeId <= 0)
+            {
+                errorMessage = "Vui lòng chọn nhân viên từ danh bạ trước khi lưu hợp đồng.";
+                activeTab = "info";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(model.JobTitle))
+            {
+                errorMessage = $"Vui lòng nhập {GetJobTitleLabel().ToLower()} trước khi lưu.";
+                activeTab = "info";
+                return;
+            }
+
+            if (model.ContractType != EmploymentContractType.IndefiniteTerm && !model.EndDate.HasValue)
+            {
+                errorMessage = "Loại hợp đồng này yêu cầu phải có ngày kết thúc.";
+                activeTab = "info";
+                return;
+            }
+
+            if (model.EndDate.HasValue && model.EndDate.Value <= model.StartDate)
+            {
+                errorMessage = "Ngày kết thúc phải lớn hơn ngày bắt đầu hợp đồng.";
+                activeTab = "info";
+                return;
+            }
+
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
             var userName = authState.User.Identity?.Name ?? "system";
             var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0";
@@ -516,6 +977,7 @@
                     WorkingSchedule = model.WorkingSchedule,
                     AnnualLeaveDays = model.AnnualLeaveDays,
                     BasicSalary = model.BasicSalary,
+                    SalaryClauseText = model.SalaryClauseText,
                     SalaryType = model.SalaryType,
                     PaymentPeriod = model.PaymentPeriod,
                     PaymentMethod = model.PaymentMethod,
@@ -525,6 +987,9 @@
                     SalaryReviewPolicy = model.SalaryReviewPolicy,
                     SocialInsuranceRate = model.SocialInsuranceRate,
                     LaborProtection = model.LaborProtection,
+                    TrainingSupervisor = model.TrainingSupervisor,
+                    TrainingObjectives = model.TrainingObjectives,
+                    InternshipProgramme = model.InternshipProgramme,
                     HasNonDisclosureAgreement = model.HasNonDisclosureAgreement,
                     NdaClauseDetails = model.NdaClauseDetails,
                     HasTrainingReimbursement = model.HasTrainingReimbursement,
@@ -532,7 +997,8 @@
                     HasSpecialBenefits = model.HasSpecialBenefits,
                     SpecialBenefitsDetails = model.SpecialBenefitsDetails,
                     CustomTerms = model.CustomTerms,
-                    Notes = model.Notes
+                    Notes = model.Notes,
+                    Clauses = model.Clauses ?? new()
                 };
 
                 await EmploymentContractService.UpdateContractAsync(updateDto, userId, userName);
@@ -544,6 +1010,7 @@
 
             IsOpen = false;
             await IsOpenChanged.InvokeAsync(false);
+            StateHasChanged();
             await OnSaved.InvokeAsync();
         }
         catch (Exception ex)
@@ -560,5 +1027,6 @@
     {
         IsOpen = false;
         await IsOpenChanged.InvokeAsync(false);
+        StateHasChanged();
     }
 }

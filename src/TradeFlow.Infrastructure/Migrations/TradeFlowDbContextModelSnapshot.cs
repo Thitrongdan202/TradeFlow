@@ -742,7 +742,7 @@ namespace TradeFlow.Infrastructure.Migrations
                     b.Property<int>("AnnualLeaveDays")
                         .HasColumnType("integer");
 
-                    b.Property<decimal>("BasicSalary")
+                    b.Property<decimal?>("BasicSalary")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
@@ -770,6 +770,9 @@ namespace TradeFlow.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CustomClausesJson")
                         .HasColumnType("text");
 
                     b.Property<string>("CustomTerms")
@@ -889,6 +892,10 @@ namespace TradeFlow.Infrastructure.Migrations
                     b.Property<bool>("HasTrainingReimbursement")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("InternshipProgramme")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
                     b.Property<string>("JobDescription")
                         .IsRequired()
                         .HasMaxLength(2000)
@@ -904,7 +911,7 @@ namespace TradeFlow.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
-                    b.Property<decimal>("LunchAllowance")
+                    b.Property<decimal?>("LunchAllowance")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
@@ -920,7 +927,7 @@ namespace TradeFlow.Infrastructure.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
-                    b.Property<decimal>("OtherAllowances")
+                    b.Property<decimal?>("OtherAllowances")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
@@ -941,7 +948,7 @@ namespace TradeFlow.Infrastructure.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
-                    b.Property<decimal>("PositionAllowance")
+                    b.Property<decimal?>("PositionAllowance")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
@@ -954,6 +961,10 @@ namespace TradeFlow.Infrastructure.Migrations
 
                     b.Property<int>("RenewalCount")
                         .HasColumnType("integer");
+
+                    b.Property<string>("SalaryClauseText")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
 
                     b.Property<string>("SalaryReviewPolicy")
                         .IsRequired()
@@ -997,6 +1008,14 @@ namespace TradeFlow.Infrastructure.Migrations
                     b.Property<string>("TrainingClauseDetails")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("TrainingObjectives")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("TrainingSupervisor")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");

@@ -140,6 +140,7 @@ public class EmploymentContractTests : IDisposable
         {
             EmployeeId = _testEmployee.Id,
             ContractType = EmploymentContractType.FixedTerm,
+            JobTitle = "Chuyên viên",
             StartDate = startDate,
             EndDate = startDate.AddMonths(37),
             BasicSalary = 15_000_000m
@@ -160,6 +161,7 @@ public class EmploymentContractTests : IDisposable
         {
             EmployeeId = _testEmployee.Id,
             ContractType = EmploymentContractType.Probation,
+            JobTitle = "Nhân viên thử việc",
             StartDate = startDate,
             EndDate = startDate.AddDays(181),
             BasicSalary = 12_000_000m
@@ -263,13 +265,154 @@ public class EmploymentContractTests : IDisposable
 
         // Assert 2: Masked
         maskedView.Should().NotBeNull();
-        maskedView!.BasicSalary.Should().Be(0m);
-        maskedView.PositionAllowance.Should().Be(0m);
-        maskedView.LunchAllowance.Should().Be(0m);
+        maskedView!.BasicSalary.Should().BeNull();
+        maskedView.PositionAllowance.Should().BeNull();
+        maskedView.LunchAllowance.Should().BeNull();
         maskedView.EmployeeNationalId.Should().Be("********1234");
         maskedView.EmployeeBankInformation.Should().EndWith("VCB");
         maskedView.EmployeeBankInformation.Should().StartWith("***********");
         maskedView.CanViewSensitiveData.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CreateContract_Draft_WithNullSalary_AndEditableClauses_Succeeds()
+    {
+        // Arrange
+        var customClauses = new List<EmploymentContractClauseDto>
+        {
+            new() { ArticleNumber = "Điều 1", Title = "Chức danh", Content = "Kỹ sư điện nước LACASA", IsMandatory = true, DisplayOrder = 1 },
+            new() { ArticleNumber = "Điều 2", Title = "Tiền lương", Content = "Thù lao theo thỏa thuận tại phụ lục", IsMandatory = true, DisplayOrder = 2 }
+        };
+
+        var dto = new CreateEmploymentContractDto
+        {
+            EmployeeId = _testEmployee.Id,
+            ContractType = EmploymentContractType.FixedTerm,
+            JobTitle = "Kỹ thuật viên cao cấp",
+            DepartmentName = "Khối Dự án",
+            StartDate = DateTime.UtcNow.Date,
+            EndDate = DateTime.UtcNow.Date.AddYears(1),
+            BasicSalary = null, // Null numeric salary for draft
+            SalaryClauseText = "Thỏa thuận theo phụ lục chi tiết và quy chế nội bộ Công ty",
+            Clauses = customClauses
+        };
+
+        // Act
+        var created = await _sut.CreateContractAsync(dto, "user-1", "Admin");
+
+        // Assert
+        created.Should().NotBeNull();
+        created.BasicSalary.Should().BeNull();
+        created.SalaryClauseText.Should().Be("Thỏa thuận theo phụ lục chi tiết và quy chế nội bộ Công ty");
+        created.Clauses.Should().HaveCount(2);
+        created.Clauses[0].Content.Should().Be("Kỹ sư điện nước LACASA");
+    }
+
+    [Fact]
+    public async Task FinalizeContract_FormalEmployment_WithoutSalary_Blocks()
+    {
+        // Arrange: Fixed term contract without basic salary or salary clause text
+        var contract = new EmploymentContract
+        {
+            ContractNumber = "HDLD-2026-9001",
+            Title = "HỢP ĐỒNG LAO ĐỘNG",
+            ContractType = EmploymentContractType.FixedTerm,
+            Status = EmploymentContractStatus.Draft,
+            ContractDate = DateTime.UtcNow,
+            StartDate = DateTime.UtcNow,
+            EndDate = DateTime.UtcNow.AddYears(1),
+            JobTitle = "Chuyên viên bán hàng",
+            DepartmentName = "Phòng Kinh doanh",
+            EmployerName = "LACASA",
+            EmployeeId = _testEmployee.Id,
+            EmployeeCode = _testEmployee.Code,
+            EmployeeFullName = _testEmployee.FullName,
+            BasicSalary = null,
+            SalaryClauseText = null // Missing remuneration
+        };
+        _context.EmploymentContracts.Add(contract);
+        await _context.SaveChangesAsync();
+
+        // Act & Assert
+        var act = () => _sut.FinalizeContractAsync(contract.Id, "user-1", "Admin");
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Vui lòng hoàn thiện điều khoản tiền lương*");
+    }
+
+    [Fact]
+    public async Task FinalizeContract_WithSalaryClauseText_Succeeds()
+    {
+        // Arrange: Contract with text salary clause but no numeric basic salary
+        var contract = new EmploymentContract
+        {
+            ContractNumber = "HDLD-2026-9002",
+            Title = "HỢP ĐỒNG LAO ĐỘNG",
+            ContractType = EmploymentContractType.FixedTerm,
+            Status = EmploymentContractStatus.Draft,
+            ContractDate = DateTime.UtcNow,
+            StartDate = DateTime.UtcNow,
+            EndDate = DateTime.UtcNow.AddYears(1),
+            JobTitle = "Chuyên viên kinh doanh",
+            DepartmentName = "Phòng Kinh doanh",
+            EmployerName = "LACASA",
+            EmployeeId = _testEmployee.Id,
+            EmployeeCode = _testEmployee.Code,
+            EmployeeFullName = _testEmployee.FullName,
+            BasicSalary = null,
+            SalaryClauseText = "Hưởng mức thù lao 12.000.000 đ/tháng cùng hoa hồng dự án"
+        };
+        _context.EmploymentContracts.Add(contract);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _sut.FinalizeContractAsync(contract.Id, "user-1", "Admin");
+
+        // Assert
+        result.Should().BeTrue();
+        var updated = await _context.EmploymentContracts.FindAsync(contract.Id);
+        updated!.Status.Should().Be(EmploymentContractStatus.PendingSignature);
+    }
+
+    [Fact]
+    public async Task CreateContract_InternshipAndVocationalTraining_GeneratesCorrectPrefixAndClauses()
+    {
+        // 1. Internship
+        var internDto = new CreateEmploymentContractDto
+        {
+            EmployeeId = _testEmployee.Id,
+            ContractType = EmploymentContractType.Internship,
+            JobTitle = "Thực tập sinh Marketing",
+            DepartmentName = "Phòng Marketing",
+            StartDate = DateTime.UtcNow.Date,
+            EndDate = DateTime.UtcNow.Date.AddMonths(3),
+            InternshipProgramme = "Đề cương phát triển thương hiệu thiết bị vệ sinh cao cấp",
+            TrainingSupervisor = "Nguyễn Văn An"
+        };
+
+        var internResult = await _sut.CreateContractAsync(internDto, "user-1", "Admin");
+        internResult.ContractNumber.Should().StartWith("TTTT-");
+        internResult.ContractType.Should().Be(EmploymentContractType.Internship);
+        internResult.Clauses.Should().NotBeEmpty();
+        internResult.Clauses.First(c => c.ArticleNumber == "Điều 1").Content.Should().Contain("Đề cương phát triển thương hiệu");
+
+        // 2. Vocational Training
+        var trainDto = new CreateEmploymentContractDto
+        {
+            EmployeeId = _testEmployee.Id,
+            ContractType = EmploymentContractType.VocationalTraining,
+            JobTitle = "Tập nghề kỹ thuật lắp đặt",
+            DepartmentName = "Khối Kỹ thuật",
+            StartDate = DateTime.UtcNow.Date,
+            EndDate = DateTime.UtcNow.Date.AddMonths(6),
+            TrainingObjectives = "Nắm vững kỹ thuật lắp ráp và bảo trì thiết bị",
+            TrainingSupervisor = "Trưởng phòng Kỹ thuật"
+        };
+
+        var trainResult = await _sut.CreateContractAsync(trainDto, "user-1", "Admin");
+        trainResult.ContractNumber.Should().StartWith("HDDT-");
+        trainResult.ContractType.Should().Be(EmploymentContractType.VocationalTraining);
+        trainResult.Clauses.Should().NotBeEmpty();
+        trainResult.Clauses.First(c => c.ArticleNumber == "Điều 1").Content.Should().Contain("Điều 61 Bộ luật Lao động");
     }
 
     [Fact]

@@ -83,27 +83,29 @@
     </div>
 
     <!-- High-level Navigation Tabs (Module Switcher) -->
-    <div class="d-flex align-items-center gap-2 mb-4 border-bottom pb-2">
-        <button type="button" class="btn btn-sm @(activeModuleTab == "commercial" ? "btn-primary" : "btn-light border text-secondary") d-flex align-items-center gap-2 px-3 py-2 fw-medium shadow-2xs"
-                @onclick='() => SwitchModuleTab("commercial")'>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-            </svg>
-            <span>Hợp đồng kinh tế / Thương mại</span>
-            <span class="badge @(activeModuleTab == "commercial" ? "bg-white text-primary" : "bg-secondary text-white") rounded-pill ms-1">@contracts.Count</span>
-        </button>
+    <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
+        <div class="tf-segmented-tabs">
+            <button type="button" class="tf-segmented-tab @(activeModuleTab == "commercial" ? "is-active" : "")"
+                    @onclick='() => SwitchModuleTab("commercial")'>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                </svg>
+                <span>Hợp đồng kinh tế / Thương mại</span>
+                <span class="badge @(activeModuleTab == "commercial" ? "bg-primary text-white" : "bg-secondary bg-opacity-25 text-secondary") rounded-pill ms-1">@contracts.Count</span>
+            </button>
 
-        <button type="button" class="btn btn-sm @(activeModuleTab == "employment" ? "btn-primary" : "btn-light border text-secondary") d-flex align-items-center gap-2 px-3 py-2 fw-medium shadow-2xs"
-                @onclick='() => SwitchModuleTab("employment")'>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-            <span>Hợp đồng lao động</span>
-            <span class="badge @(activeModuleTab == "employment" ? "bg-white text-primary" : "bg-success text-white") rounded-pill ms-1">@employmentStats.TotalCount</span>
-        </button>
+            <button type="button" class="tf-segmented-tab @(activeModuleTab == "employment" ? "is-active" : "")"
+                    @onclick='() => SwitchModuleTab("employment")'>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                <span>Hợp đồng lao động</span>
+                <span class="badge @(activeModuleTab == "employment" ? "bg-primary text-white" : "bg-secondary bg-opacity-25 text-secondary") rounded-pill ms-1">@employmentStats.TotalCount</span>
+            </button>
+        </div>
     </div>
 
     @if (activeModuleTab == "commercial")
@@ -432,7 +434,7 @@
         <!-- Quick Stats Cards (KPI) -->
         <div class="row g-3 mb-4">
             <div class="col-12 col-sm-6 col-xl-3">
-                <div class="tf-kpi-card tf-kpi-blue">
+                <div class="tf-kpi-card tf-kpi-blue tf-card-interactive">
                     <div>
                         <div class="tf-kpi-header">
                             <span class="tf-kpi-label">Tổng số HĐ lao động</span>
@@ -451,7 +453,7 @@
                 </div>
             </div>
             <div class="col-12 col-sm-6 col-xl-3">
-                <div class="tf-kpi-card tf-kpi-success">
+                <div class="tf-kpi-card tf-kpi-success tf-card-interactive">
                     <div>
                         <div class="tf-kpi-header">
                             <span class="tf-kpi-label">Đang có hiệu lực</span>
@@ -470,7 +472,7 @@
                 </div>
             </div>
             <div class="col-12 col-sm-6 col-xl-3">
-                <div class="tf-kpi-card tf-kpi-warning">
+                <div class="tf-kpi-card tf-kpi-warning tf-card-interactive">
                     <div>
                         <div class="tf-kpi-header">
                             <span class="tf-kpi-label">Sắp hết hạn (&le; 30 ngày)</span>
@@ -490,7 +492,7 @@
                 </div>
             </div>
             <div class="col-12 col-sm-6 col-xl-3">
-                <div class="tf-kpi-card tf-kpi-info">
+                <div class="tf-kpi-card tf-kpi-info tf-card-interactive">
                     <div>
                         <div class="tf-kpi-header">
                             <span class="tf-kpi-label">Chờ ký &amp; Bản nháp</span>
@@ -566,8 +568,8 @@
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <select class="tf-select-control" @bind="selectedEmpType">
-                        <option value="">-- Loại hợp đồng --</option>
+                    <select class="tf-custom-select w-100" @bind="selectedEmpType">
+                        <option value="">-- Tất cả loại hợp đồng --</option>
                         <option value="@EmploymentContractType.FixedTerm">Xác định thời hạn (tối đa 36 tháng)</option>
                         <option value="@EmploymentContractType.IndefiniteTerm">Không xác định thời hạn</option>
                         <option value="@EmploymentContractType.Probation">Hợp đồng thử việc</option>
@@ -576,8 +578,8 @@
                     </select>
                 </div>
                 <div class="col-6 col-md-2">
-                    <select class="tf-select-control" @bind="selectedEmpDepartment">
-                        <option value="">-- Phòng ban --</option>
+                    <select class="tf-custom-select w-100" @bind="selectedEmpDepartment">
+                        <option value="">-- Tất cả phòng ban --</option>
                         @foreach (var dept in empDepartments)
                         {
                             <option value="@dept">@dept</option>

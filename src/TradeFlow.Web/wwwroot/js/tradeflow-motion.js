@@ -184,6 +184,40 @@
     }
 
     /**
+     * Animate tab or section content transition (fade & slide)
+     * @param {HTMLElement|string} contentEl 
+     */
+    function animateTabContent(contentEl) {
+        const el = typeof contentEl === 'string' ? document.querySelector(contentEl) : contentEl;
+        const gsap = getGsap();
+        if (isReducedMotion() || !gsap || !el) return;
+
+        gsap.killTweensOf(el);
+        gsap.fromTo(el,
+            { opacity: 0.6, y: 8 },
+            { opacity: 1, y: 0, duration: 0.2, ease: 'power2.out', clearProps: 'transform' }
+        );
+    }
+
+    /**
+     * Programmatic or event-driven hover animation for cards
+     * @param {HTMLElement|string} cardEl 
+     * @param {boolean} isHover 
+     * @param {number} [liftPx=3] 
+     */
+    function animateCardHover(cardEl, isHover, liftPx = 3) {
+        const el = typeof cardEl === 'string' ? document.querySelector(cardEl) : cardEl;
+        const gsap = getGsap();
+        if (isReducedMotion() || !gsap || !el) return;
+
+        if (isHover) {
+            gsap.to(el, { y: -liftPx, duration: 0.18, ease: 'power2.out', overwrite: 'auto' });
+        } else {
+            gsap.to(el, { y: 0, duration: 0.2, ease: 'power2.out', overwrite: 'auto' });
+        }
+    }
+
+    /**
      * Register interactive hover response on card elements
      * @param {HTMLElement} cardEl 
      * @param {number} [liftPx=2] 
@@ -261,7 +295,7 @@
         }
     }
 
-    return {
+    const api = {
         isReducedMotion,
         lockScroll,
         unlockScroll,
@@ -269,8 +303,17 @@
         animateModalExit,
         animateDropdown,
         animatePageContent,
+        animateTabContent,
+        animateCardHover,
         registerInteractiveCard,
         cleanupElement,
         initGlobalTransitions
     };
+
+    if (typeof window !== 'undefined') {
+        window.TradeFlowMotion = api;
+        window.tradeflowMotion = api;
+    }
+
+    return api;
 }));

@@ -3330,6 +3330,231 @@ button.tf-search-spinner {
 }
 
 /* ============================================================
+   PREMIUM ENTERPRISE UI REDESIGN: CONTRACTS & WAREHOUSES
+   Consistent Design, Custom Form Selects, GSAP-Friendly Containers
+   ============================================================ */
+
+/* Segmented Pill Tabs Control (Modal & Page Switchers) */
+.tf-segmented-tabs {
+  display: inline-flex;
+  align-items: center;
+  background-color: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 3px;
+  gap: 3px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.tf-segmented-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748B;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+}
+
+.tf-segmented-tab:hover {
+  color: #1E293B;
+  background-color: rgba(255, 255, 255, 0.6);
+}
+
+.tf-segmented-tab.is-active,
+.tf-segmented-tab.active {
+  color: #1D4ED8;
+  font-weight: 600;
+  background-color: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.tf-segmented-tab.is-active-primary {
+  color: #FFFFFF;
+  font-weight: 600;
+  background-color: #2563EB;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+}
+
+/* Custom Styled Select Controls - Overrides native OS dropdown look */
+.tf-custom-select,
+.form-select.tf-custom-select,
+.tf-select-control {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  height: 38px;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: #1E293B;
+  background-color: #FFFFFF;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px 10px;
+  border: 1px solid #CBD5E1;
+  border-radius: 8px;
+  padding: 6px 32px 6px 12px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.tf-custom-select:hover,
+.form-select.tf-custom-select:hover,
+.tf-select-control:hover {
+  border-color: #94A3B8;
+}
+
+.tf-custom-select:focus,
+.form-select.tf-custom-select:focus,
+.tf-select-control:focus {
+  border-color: #2563EB;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.tf-custom-select:disabled,
+.form-select.tf-custom-select:disabled,
+.tf-select-control:disabled {
+  background-color: #F8FAFC;
+  color: #94A3B8;
+  cursor: not-allowed;
+  border-color: #E2E8F0;
+}
+
+/* Custom Styled Inputs for Forms */
+.tf-custom-input,
+.form-control.tf-custom-input {
+  height: 38px;
+  font-size: 13.5px;
+  color: #1E293B;
+  background-color: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 8px;
+  padding: 6px 12px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tf-custom-input:hover,
+.form-control.tf-custom-input:hover {
+  border-color: #94A3B8;
+}
+
+.tf-custom-input:focus,
+.form-control.tf-custom-input:focus {
+  border-color: #2563EB;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.tf-custom-input[readonly],
+.form-control.tf-custom-input[readonly] {
+  background-color: #F8FAFC;
+  color: #475569;
+  border-color: #E2E8F0;
+}
+
+/* Clean Form Sections (Eliminates nested card noise) */
+.tf-form-section {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.tf-form-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.tf-form-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #1E293B;
+  margin: 0;
+}
+
+.tf-form-section-title svg {
+  color: #2563EB;
+}
+
+/* Multi-Warehouse Card Redesign */
+.tf-wh-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 18px;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.tf-wh-card:hover {
+  transform: translateY(-2px);
+  border-color: #CBD5E1;
+  box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+.tf-wh-card.is-selected {
+  border-color: #2563EB;
+  background-color: #FAFCFF;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12), 0 6px 16px -2px rgba(37, 99, 235, 0.08);
+}
+
+.tf-wh-card.is-selected::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: #2563EB;
+}
+
+/* Custom Radio & Checkbox styling for Filters */
+.tf-filter-radio,
+.tf-filter-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #2563EB;
+  cursor: pointer;
+}
+
+/* Authentic A4 Document Canvas Preview */
+.tf-a4-preview-canvas {
+  background: #FFFFFF;
+  width: 100%;
+  max-width: 820px;
+  min-height: 980px;
+  padding: 48px 56px;
+  margin: 0 auto;
+  border-radius: 4px;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+  font-family: 'Times New Roman', Times, serif;
+  color: #111827;
+  line-height: 1.5;
+}
+
+/* ============================================================
    STRICT DOCUMENT & PRINT PROTECTION
    Preserves 100% pure white paper background and zero UI bleeding
    for Sales Invoices, VAT Invoices, Orders, Quotations, Warehouse Vouchers & Contracts

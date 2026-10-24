@@ -81,6 +81,7 @@ public class DatabaseSeeder
             await SeedEmployeeMasterDataAsync();
             await SeedSampleEmployeesAsync();
             await SeedContractDataAsync();
+            await SeedEmploymentContractsDataAsync();
             await SeedWarehouseOperationsDataAsync();
         }
         catch (Exception ex)
@@ -538,6 +539,7 @@ public class DatabaseSeeder
             ("BIEN_BAN",     "Biên bản nghiệm thu",  DocumentTypeCategory.Internal,   "Biên bản bàn giao, kiểm định, nghiệm thu", 8),
             ("CHUNG_TU",     "Chứng từ kế toán",     DocumentTypeCategory.Accounting, "Chứng từ thu chi, ủy nhiệm chi, đối chiếu công nợ", 9),
             ("HO_SO",        "Hồ sơ pháp lý / CO-CQ",DocumentTypeCategory.Attachment, "Chứng chỉ xuất xứ, chất lượng, hồ sơ năng lực", 10),
+            ("HD_LAO_DONG",  "Hợp đồng lao động",    DocumentTypeCategory.Internal,   "Hợp đồng lao động và phụ lục nhân sự", 11),
             ("KHAC",         "Tài liệu khác",        DocumentTypeCategory.Attachment, "Các tài liệu, hình ảnh hoặc đính kèm khác", 99)
         };
 
@@ -1168,6 +1170,225 @@ public class DatabaseSeeder
 
             _context.ContractTemplates.AddRange(templates);
             await _context.SaveChangesAsync();
+        }
+    }
+
+    private async Task SeedEmploymentContractsDataAsync()
+    {
+        _logger.LogInformation("Seeding employment contracts data and permissions...");
+        var now = DateTime.UtcNow;
+
+        // 1. Permissions for Manager role
+        var managerRole = await _roleManager.FindByNameAsync("Manager");
+        if (managerRole != null)
+        {
+            var empPerms = new[]
+            {
+                (ResourceType.EmploymentContracts, PermissionAction.View),
+                (ResourceType.EmploymentContracts, PermissionAction.Create),
+                (ResourceType.EmploymentContracts, PermissionAction.Edit),
+                (ResourceType.EmploymentContracts, PermissionAction.Approve),
+                (ResourceType.EmploymentContracts, PermissionAction.Export),
+            };
+            foreach (var (res, act) in empPerms)
+            {
+                if (!await _context.RolePermissions.AnyAsync(p => p.RoleId == managerRole.Id && p.Resource == res && p.Action == act))
+                {
+                    _context.RolePermissions.Add(new RolePermission { RoleId = managerRole.Id, Resource = res, Action = act, IsGranted = true, GrantedBy = "System" });
+                }
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        // 2. Seed Sample Employment Contracts
+        if (!await _context.EmploymentContracts.AnyAsync())
+        {
+            var empAn = await _context.Employees.FirstOrDefaultAsync(e => e.Code == "NV00001");
+            var empMai = await _context.Employees.FirstOrDefaultAsync(e => e.Code == "NV00002");
+            var empKhoa = await _context.Employees.FirstOrDefaultAsync(e => e.Code == "NV00003");
+
+            var partyA = await _context.ContractPartyASettings.FirstOrDefaultAsync();
+            var employerName = partyA?.CompanyName ?? "CÔNG TY TNHH THIẾT BỊ VỆ SINH LACASA VIỆT NAM";
+            var employerTaxCode = partyA?.TaxCode ?? "0316899999";
+            var employerAddress = partyA?.RegisteredAddress ?? "Số 123 Đường Nguyễn Văn Cừ, Phường An Khánh, Quận Ninh Kiều, TP. Cần Thơ";
+            var employerRep = partyA?.RepresentativeName ?? "Nguyễn Văn An";
+            var employerPos = partyA?.RepresentativePosition ?? "Giám đốc";
+
+            if (empAn != null)
+            {
+                _context.EmploymentContracts.Add(new EmploymentContract
+                {
+                    ContractNumber = "HDLD-2024-0001",
+                    Title = "HỢP ĐỒNG LAO ĐỘNG",
+                    ContractType = EmploymentContractType.IndefiniteTerm,
+                    Status = EmploymentContractStatus.Active,
+                    ContractDate = new DateTime(2024, 1, 10, 0, 0, 0, DateTimeKind.Utc),
+                    ContractPlace = "Cần Thơ",
+                    StartDate = new DateTime(2024, 1, 10, 0, 0, 0, DateTimeKind.Utc),
+                    EndDate = null,
+                    EmployerName = employerName,
+                    EmployerTaxCode = employerTaxCode,
+                    EmployerAddress = employerAddress,
+                    EmployerRepresentativeName = employerRep,
+                    EmployerRepresentativePosition = employerPos,
+                    EmployerRepresentativeAuthority = "Đại diện theo pháp luật",
+                    EmployeeId = empAn.Id,
+                    EmployeeCode = empAn.Code,
+                    EmployeeFullName = empAn.FullName,
+                    EmployeeDateOfBirth = empAn.DateOfBirth,
+                    EmployeeGender = empAn.Gender,
+                    EmployeeNationalId = empAn.NationalId,
+                    EmployeeAddress = empAn.Address,
+                    EmployeePhone = empAn.Phone,
+                    EmployeeEmail = empAn.Email,
+                    EmployeeBankInformation = empAn.BankInformation,
+                    JobTitle = "Trưởng phòng Kinh doanh",
+                    DepartmentName = "Phòng Kinh doanh",
+                    Workplace = "Showroom & Văn phòng LACASA Cần Thơ",
+                    JobDescription = "Quản lý kinh doanh phân phối thiết bị vệ sinh, phát triển mạng lưới đại lý và dự án xây dựng",
+                    WorkingHoursPerWeek = 48,
+                    WorkingSchedule = "Từ Thứ Hai đến Thứ Bảy: 08:00 - 17:00",
+                    AnnualLeaveDays = 14,
+                    BasicSalary = 25000000m,
+                    SalaryType = "Lương tháng",
+                    PaymentPeriod = "Ngày 05 - 10 hàng tháng",
+                    PaymentMethod = "Chuyển khoản ngân hàng",
+                    PositionAllowance = 3000000m,
+                    LunchAllowance = 730000m,
+                    OtherAllowances = 1500000m,
+                    SalaryReviewPolicy = "Xét nâng lương định kỳ hàng năm",
+                    SocialInsuranceRate = 32m,
+                    LaborProtection = "Trang bị đồng phục công sở, máy tính làm việc và công cụ bán hàng",
+                    HasNonDisclosureAgreement = true,
+                    NdaClauseDetails = "Cam kết bảo mật thông tin khách hàng, bảng giá đại lý và chiến lược phân phối",
+                    HasSpecialBenefits = true,
+                    SpecialBenefitsDetails = "Bảo hiểm sức khỏe cao cấp, thưởng KPI doanh số quý, du lịch hàng năm",
+                    SigningMethod = EmploymentSigningMethod.PaperSigned,
+                    EmployerSignedAt = new DateTime(2024, 1, 10, 0, 0, 0, DateTimeKind.Utc),
+                    EmployeeSignedAt = new DateTime(2024, 1, 10, 0, 0, 0, DateTimeKind.Utc),
+                    CreatedAt = new DateTime(2024, 1, 10, 0, 0, 0, DateTimeKind.Utc),
+                    CreatedBy = "System"
+                });
+            }
+
+            if (empMai != null)
+            {
+                _context.EmploymentContracts.Add(new EmploymentContract
+                {
+                    ContractNumber = "HDLD-2025-0002",
+                    Title = "HỢP ĐỒNG LAO ĐỘNG",
+                    ContractType = EmploymentContractType.FixedTerm,
+                    Status = EmploymentContractStatus.Active,
+                    ContractDate = new DateTime(2025, 3, 1, 0, 0, 0, DateTimeKind.Utc),
+                    ContractPlace = "Cần Thơ",
+                    StartDate = new DateTime(2025, 3, 1, 0, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2027, 2, 28, 0, 0, 0, DateTimeKind.Utc),
+                    EmployerName = employerName,
+                    EmployerTaxCode = employerTaxCode,
+                    EmployerAddress = employerAddress,
+                    EmployerRepresentativeName = employerRep,
+                    EmployerRepresentativePosition = employerPos,
+                    EmployerRepresentativeAuthority = "Đại diện theo pháp luật",
+                    EmployeeId = empMai.Id,
+                    EmployeeCode = empMai.Code,
+                    EmployeeFullName = empMai.FullName,
+                    EmployeeDateOfBirth = empMai.DateOfBirth,
+                    EmployeeGender = empMai.Gender,
+                    EmployeeNationalId = empMai.NationalId,
+                    EmployeeAddress = empMai.Address,
+                    EmployeePhone = empMai.Phone,
+                    EmployeeEmail = empMai.Email,
+                    EmployeeBankInformation = empMai.BankInformation,
+                    JobTitle = "Chuyên viên Kế toán thanh toán",
+                    DepartmentName = "Phòng Kế toán",
+                    Workplace = "Văn phòng LACASA Cần Thơ",
+                    JobDescription = "Theo dõi công nợ, đối chiếu chứng từ ngân hàng, xuất hóa đơn điện tử",
+                    WorkingHoursPerWeek = 48,
+                    WorkingSchedule = "Từ Thứ Hai đến Thứ Bảy: 08:00 - 17:00",
+                    AnnualLeaveDays = 12,
+                    BasicSalary = 15000000m,
+                    SalaryType = "Lương tháng",
+                    PaymentPeriod = "Ngày 05 - 10 hàng tháng",
+                    PaymentMethod = "Chuyển khoản ngân hàng",
+                    PositionAllowance = 1000000m,
+                    LunchAllowance = 730000m,
+                    OtherAllowances = 500000m,
+                    SalaryReviewPolicy = "Xét nâng lương định kỳ 1 năm/lần",
+                    SocialInsuranceRate = 32m,
+                    LaborProtection = "Đồng phục công sở và máy tính nghiệp vụ kế toán",
+                    HasNonDisclosureAgreement = true,
+                    NdaClauseDetails = "Bảo mật tuyệt đối số liệu kế toán tài chính của công ty",
+                    HasSpecialBenefits = true,
+                    SpecialBenefitsDetails = "Khám sức khỏe định kỳ, thưởng lễ tết theo quy chế",
+                    SigningMethod = EmploymentSigningMethod.InternalDigitalSignature,
+                    EmployerSignedAt = new DateTime(2025, 3, 1, 0, 0, 0, DateTimeKind.Utc),
+                    EmployeeSignedAt = new DateTime(2025, 3, 1, 0, 0, 0, DateTimeKind.Utc),
+                    CreatedAt = new DateTime(2025, 3, 1, 0, 0, 0, DateTimeKind.Utc),
+                    CreatedBy = "System"
+                });
+            }
+
+            if (empKhoa != null)
+            {
+                var startDate = now.Date.AddMonths(-11);
+                var endDate = now.Date.AddDays(20);
+                _context.EmploymentContracts.Add(new EmploymentContract
+                {
+                    ContractNumber = "HDLD-2025-0003",
+                    Title = "HỢP ĐỒNG LAO ĐỘNG",
+                    ContractType = EmploymentContractType.FixedTerm,
+                    Status = EmploymentContractStatus.Active,
+                    ContractDate = startDate,
+                    ContractPlace = "Cần Thơ",
+                    StartDate = startDate,
+                    EndDate = endDate,
+                    EmployerName = employerName,
+                    EmployerTaxCode = employerTaxCode,
+                    EmployerAddress = employerAddress,
+                    EmployerRepresentativeName = employerRep,
+                    EmployerRepresentativePosition = employerPos,
+                    EmployerRepresentativeAuthority = "Đại diện theo pháp luật",
+                    EmployeeId = empKhoa.Id,
+                    EmployeeCode = empKhoa.Code,
+                    EmployeeFullName = empKhoa.FullName,
+                    EmployeeDateOfBirth = empKhoa.DateOfBirth,
+                    EmployeeGender = empKhoa.Gender,
+                    EmployeeNationalId = empKhoa.NationalId,
+                    EmployeeAddress = empKhoa.Address,
+                    EmployeePhone = empKhoa.Phone,
+                    EmployeeEmail = empKhoa.Email,
+                    EmployeeBankInformation = empKhoa.BankInformation,
+                    JobTitle = "Thủ kho chính",
+                    DepartmentName = "Phòng Kho vận",
+                    Workplace = "Tổng kho LACASA Miền Tây",
+                    JobDescription = "Quản lý xuất nhập tồn kho, kiểm kê định kỳ, kiểm soát hàng bảo hành và cách ly",
+                    WorkingHoursPerWeek = 48,
+                    WorkingSchedule = "Từ Thứ Hai đến Thứ Bảy: 08:00 - 17:00",
+                    AnnualLeaveDays = 12,
+                    BasicSalary = 14000000m,
+                    SalaryType = "Lương tháng",
+                    PaymentPeriod = "Ngày 05 - 10 hàng tháng",
+                    PaymentMethod = "Chuyển khoản ngân hàng",
+                    PositionAllowance = 1500000m,
+                    LunchAllowance = 730000m,
+                    OtherAllowances = 800000m,
+                    SalaryReviewPolicy = "Xét nâng lương định kỳ 1 năm/lần",
+                    SocialInsuranceRate = 32m,
+                    LaborProtection = "Đồng phục kho, giày bảo hộ mũi sắt, găng tay và áo phản quang",
+                    HasNonDisclosureAgreement = true,
+                    NdaClauseDetails = "Bảo mật thông tin tồn kho, đối tác vận chuyển và nguồn nhập hàng",
+                    HasSpecialBenefits = true,
+                    SpecialBenefitsDetails = "Khám sức khỏe, thưởng KPI hoàn thành kiểm kê chính xác",
+                    SigningMethod = EmploymentSigningMethod.PaperSigned,
+                    EmployerSignedAt = startDate,
+                    EmployeeSignedAt = startDate,
+                    CreatedAt = startDate,
+                    CreatedBy = "System"
+                });
+            }
+
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Sample employment contracts seeded successfully.");
         }
     }
 

@@ -83,6 +83,7 @@ public class TradeFlowDbContext
     public DbSet<TradeFlow.Domain.Entities.Contracts.ContractItem> ContractItems => Set<TradeFlow.Domain.Entities.Contracts.ContractItem>();
     public DbSet<TradeFlow.Domain.Entities.Contracts.ContractTemplate> ContractTemplates => Set<TradeFlow.Domain.Entities.Contracts.ContractTemplate>();
     public DbSet<TradeFlow.Domain.Entities.Contracts.ContractPartyASettings> ContractPartyASettings => Set<TradeFlow.Domain.Entities.Contracts.ContractPartyASettings>();
+    public DbSet<TradeFlow.Domain.Entities.Contracts.EmploymentContract> EmploymentContracts => Set<TradeFlow.Domain.Entities.Contracts.EmploymentContract>();
 
     // === Quản lý Kho, Kiểm kê, Hàng trả & Chứng từ kho ===
     public DbSet<InventoryStock> InventoryStocks => Set<InventoryStock>();

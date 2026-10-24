@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using ClosedXML.Excel;
 using TradeFlow.Application.Common.Interfaces;
 using TradeFlow.Application.Common.Models.Warehouse;
 using TradeFlow.Domain.Entities.Documents;
@@ -2061,6 +2062,207 @@ public class WarehouseService : IWarehouseService
 
     public Task<bool> ResolveQuarantineItemAsync(int quarantineId, QuarantineStatus targetStatus, string resolutionNotes, string userId, string userName, CancellationToken cancellationToken = default)
         => ResolveQuarantineAsync(quarantineId, targetStatus, resolutionNotes, userId, userName, cancellationToken);
+
+    public async Task<List<WarehouseOverviewDto>> GetWarehouseOverviewAsync(CancellationToken cancellationToken = default)
+    {
+        var warehouses = await _context.Warehouses
+            .AsNoTracking()
+            .OrderBy(w => w.Name)
+            .ToListAsync(cancellationToken);
+
+        var stocks = await _context.InventoryStocks
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        var movements = await _context.InventoryMovements
+            .AsNoTracking()
+            .GroupBy(m => m.ProductId)
+            .Select(g => new { ProductId = g.Key, AvgCost = g.Average(m => m.UnitCost) })
+            .ToListAsync(cancellationToken);
+
+        var costDict = movements.ToDictionary(m => m.ProductId, m => m.AvgCost > 0 ? m.AvgCost : 1000000m);
+
+        var latestMovements = await _context.InventoryMovements
+            .AsNoTracking()
+            .GroupBy(m => m.WarehouseId)
+            .Select(g => new { WarehouseId = g.Key, Latest = g.Max(m => m.MovementDate) })
+            .ToListAsync(cancellationToken);
+        var latestDict = latestMovements.ToDictionary(m => m.WarehouseId, m => (DateTime?)m.Latest);
+
+        var result = new List<WarehouseOverviewDto>();
+        foreach (var wh in warehouses)
+        {
+            var whStocks = stocks.Where(s => s.WarehouseId == wh.Id).ToList();
+            var distinctSkus = whStocks.Where(s => s.Quantity > 0).Select(s => s.ProductId).Distinct().Count();
+            var lowStockSkus = whStocks.Where(s => s.Condition == StockCondition.Saleable && s.Quantity > 0 && s.Quantity < 15).Select(s => s.ProductId).Distinct().Count();
+            var defectiveCount = whStocks.Where(s => s.Condition == StockCondition.Defective && s.Quantity > 0).Select(s => s.ProductId).Distinct().Count();
+            var totalValuation = whStocks.Sum(s => s.Quantity * (costDict.TryGetValue(s.ProductId, out var c) ? c : 1000000m));
+            latestDict.TryGetValue(wh.Id, out var latest);
+
+            result.Add(new WarehouseOverviewDto
+            {
+                WarehouseId = wh.Id,
+                WarehouseCode = wh.Code,
+                WarehouseName = wh.Name,
+                Address = wh.Address,
+                ManagerName = wh.ManagerName,
+                Phone = wh.Phone,
+                IsActive = wh.IsActive,
+                DistinctSkuCount = distinctSkus,
+                LowStockSkuCount = lowStockSkus,
+                DefectiveItemCount = defectiveCount,
+                TotalValuation = totalValuation,
+                LatestMovementAt = latest
+            });
+        }
+
+        return result;
+    }
+
+    public async Task<List<CrossWarehouseMatrixItemDto>> GetCrossWarehouseMatrixAsync(
+        string? searchTerm = null,
+        int? categoryId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var prodQuery = _context.Products
+            .Include(p => p.Category)
+            .Include(p => p.Unit)
+            .AsNoTracking()
+            .Where(p => p.IsActive);
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.Trim().ToLower();
+            prodQuery = prodQuery.Where(p => p.Code.ToLower().Contains(term) || p.Name.ToLower().Contains(term));
+        }
+
+        if (categoryId.HasValue && categoryId.Value > 0)
+        {
+            prodQuery = prodQuery.Where(p => p.CategoryId == categoryId.Value);
+        }
+
+        var products = await prodQuery.OrderBy(p => p.Name).ToListAsync(cancellationToken);
+        var productIds = products.Select(p => p.Id).ToList();
+
+        var stocks = await _context.InventoryStocks
+            .AsNoTracking()
+            .Where(s => productIds.Contains(s.ProductId) && s.Condition == StockCondition.Saleable)
+            .ToListAsync(cancellationToken);
+
+        var movements = await _context.InventoryMovements
+            .AsNoTracking()
+            .Where(m => productIds.Contains(m.ProductId))
+            .GroupBy(m => m.ProductId)
+            .Select(g => new { ProductId = g.Key, AvgCost = g.Average(m => m.UnitCost) })
+            .ToListAsync(cancellationToken);
+        var costDict = movements.ToDictionary(m => m.ProductId, m => m.AvgCost > 0 ? m.AvgCost : 1000000m);
+
+        var result = new List<CrossWarehouseMatrixItemDto>();
+        foreach (var p in products)
+        {
+            var pStocks = stocks.Where(s => s.ProductId == p.Id).ToList();
+            var whDict = pStocks.GroupBy(s => s.WarehouseId).ToDictionary(g => g.Key, g => g.Sum(s => s.Quantity));
+            var totalQty = whDict.Values.Sum();
+            var cost = costDict.TryGetValue(p.Id, out var c) ? c : 1000000m;
+
+            result.Add(new CrossWarehouseMatrixItemDto
+            {
+                ProductId = p.Id,
+                ProductCode = p.Code,
+                ProductName = p.Name,
+                UnitName = p.Unit?.Name ?? "Cái",
+                CategoryName = p.Category?.Name,
+                WarehouseQuantities = whDict,
+                TotalQuantity = totalQty,
+                EstimatedCost = cost
+            });
+        }
+
+        return result;
+    }
+
+    public async Task<byte[]> ExportStockExcelAsync(
+        int? warehouseId = null,
+        StockCondition? condition = null,
+        CancellationToken cancellationToken = default)
+    {
+        var items = await GetStocksAsync(warehouseId, condition, null, cancellationToken);
+        
+        var movements = await _context.InventoryMovements
+            .AsNoTracking()
+            .GroupBy(m => m.ProductId)
+            .Select(g => new { ProductId = g.Key, AvgCost = g.Average(m => m.UnitCost) })
+            .ToListAsync(cancellationToken);
+        var costDict = movements.ToDictionary(m => m.ProductId, m => m.AvgCost > 0 ? m.AvgCost : 1000000m);
+
+        using var workbook = new XLWorkbook();
+        var ws = workbook.Worksheets.Add("BaoCaoTonKho");
+
+        // Title
+        ws.Cell(1, 1).Value = "CÔNG TY TNHH THIẾT BỊ VỆ SINH LACASA VIỆT NAM";
+        ws.Cell(1, 1).Style.Font.Bold = true;
+        ws.Cell(1, 1).Style.Font.FontSize = 13;
+
+        ws.Cell(2, 1).Value = "BÁO CÁO TỒN KHO THỰC TẾ THEO KHO BÃI";
+        ws.Cell(2, 1).Style.Font.Bold = true;
+        ws.Cell(2, 1).Style.Font.FontSize = 15;
+        ws.Cell(2, 1).Style.Font.FontColor = XLColor.FromArgb(15, 23, 42);
+
+        ws.Cell(3, 1).Value = $"Thời điểm xuất báo cáo: {DateTime.Now:dd/MM/yyyy HH:mm}";
+        ws.Cell(3, 1).Style.Font.Italic = true;
+
+        // Table Header
+        string[] headers = { "STT", "Mã SP", "Tên sản phẩm", "ĐVT", "Nhóm hàng", "Kho hàng", "Phẩm chất", "Tồn thực tế", "Giá vốn (VND)", "Tổng giá trị (VND)" };
+        for (int i = 0; i < headers.Length; i++)
+        {
+            var cell = ws.Cell(5, i + 1);
+            cell.Value = headers[i];
+            cell.Style.Font.Bold = true;
+            cell.Style.Fill.BackgroundColor = XLColor.FromArgb(241, 245, 249);
+            cell.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+            cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        }
+
+        int row = 6;
+        int stt = 1;
+        foreach (var item in items)
+        {
+            var unitCost = costDict.TryGetValue(item.ProductId, out var c) ? c : 1000000m;
+            var totalVal = item.Quantity * unitCost;
+
+            ws.Cell(row, 1).Value = stt++;
+            ws.Cell(row, 2).Value = item.ProductCode;
+            ws.Cell(row, 3).Value = item.ProductName;
+            ws.Cell(row, 4).Value = item.UnitName;
+            ws.Cell(row, 5).Value = item.CategoryName ?? "";
+            ws.Cell(row, 6).Value = item.WarehouseName;
+            ws.Cell(row, 7).Value = item.ConditionName;
+            ws.Cell(row, 8).Value = item.Quantity;
+            ws.Cell(row, 9).Value = unitCost;
+            ws.Cell(row, 10).Value = totalVal;
+
+            ws.Cell(row, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            ws.Cell(row, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            ws.Cell(row, 4).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            ws.Cell(row, 8).Style.NumberFormat.Format = "#,##0";
+            ws.Cell(row, 9).Style.NumberFormat.Format = "#,##0";
+            ws.Cell(row, 10).Style.NumberFormat.Format = "#,##0";
+
+            for (int col = 1; col <= 10; col++)
+            {
+                ws.Cell(row, col).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+                ws.Cell(row, col).Style.Border.OutsideBorderColor = XLColor.FromArgb(226, 232, 240);
+            }
+
+            row++;
+        }
+
+        ws.Columns().AdjustToContents();
+
+        using var ms = new MemoryStream();
+        workbook.SaveAs(ms);
+        return ms.ToArray();
+    }
 
     #endregion
 }

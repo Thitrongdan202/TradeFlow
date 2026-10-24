@@ -123,6 +123,7 @@ public static class InfrastructureServiceExtensions
         // Register Contracts services
         services.AddScoped<IContractPdfService, Services.Pdf.ContractPdfService>();
         services.AddScoped<IContractService, Services.ContractService>();
+        services.AddScoped<IEmploymentContractService, Services.EmploymentContractService>();
 
         // Register Warehouse Management & Operations services
         services.AddScoped<IWarehouseService, Services.WarehouseService>();

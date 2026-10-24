@@ -82,6 +82,7 @@ public class ContractDto
     public DateTime? PartyBSignedAt { get; set; }
     public string? PartyBSignedBy { get; set; }
     public string? PartyBSignatureData { get; set; }
+    public bool IsDigitallySigned => PartyASignedAt.HasValue || PartyBSignedAt.HasValue;
     public string DocumentHash { get; set; } = string.Empty;
 
     public bool IsPaperPrinted { get; set; }

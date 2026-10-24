@@ -87,5 +87,8 @@ public enum ResourceType
     // === Quản lý Hợp đồng & Phụ lục ===
 
     /// <summary>Hợp đồng thương mại & phụ lục</summary>
-    Contracts = 50
+    Contracts = 50,
+
+    /// <summary>Hợp đồng lao động & Phụ lục nhân sự</summary>
+    EmploymentContracts = 51
 }

@@ -135,12 +135,26 @@ app.MapGet("/api/contracts/{id:int}/export-pdf", async (int id, IContractService
     return Results.File(bytes, "application/pdf", $"HopDong_{contract.ContractNumber}.pdf");
 }).RequireAuthorization("Permission:Contracts:View");
 
+app.MapGet("/api/contracts/employment/{id:int}/export-pdf", async (int id, IEmploymentContractService employmentContractService) =>
+{
+    var contract = await employmentContractService.GetContractByIdAsync(id, canViewSensitiveData: true);
+    if (contract == null) return Results.NotFound();
+    var bytes = await employmentContractService.GeneratePdfAsync(id);
+    return Results.File(bytes, "application/pdf", $"HDLD_{contract.ContractNumber}.pdf");
+}).RequireAuthorization("Permission:EmploymentContracts:View");
+
 app.MapGet("/api/warehouses/vouchers/{id:int}/export-pdf", async (int id, IWarehouseService warehouseService) =>
 {
     var voucher = await warehouseService.GetVoucherByIdAsync(id);
     if (voucher == null) return Results.NotFound();
     var bytes = await warehouseService.GenerateVoucherPdfAsync(id);
     return Results.File(bytes, "application/pdf", $"PhieuKho_{voucher.VoucherNumber}.pdf");
+}).RequireAuthorization("Permission:Warehouses:View");
+
+app.MapGet("/api/warehouses/stock/export-excel", async (int? warehouseId, StockCondition? condition, IWarehouseService warehouseService) =>
+{
+    var bytes = await warehouseService.ExportStockExcelAsync(warehouseId, condition);
+    return Results.File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"BaoCaoTonKho_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
 }).RequireAuthorization("Permission:Warehouses:View");
 
 app.MapGet("/api/documents/{id:int}/download", async (int id, IDocumentService documentService) =>

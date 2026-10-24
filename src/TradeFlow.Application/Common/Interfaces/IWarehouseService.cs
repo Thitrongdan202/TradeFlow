@@ -8,6 +8,9 @@ public interface IWarehouseService
     // === 1. Tồn kho & Thẻ kho biến động ===
     Task<List<InventoryStockDto>> GetStocksAsync(int? warehouseId = null, StockCondition? condition = null, string? searchTerm = null, CancellationToken cancellationToken = default);
     Task<List<InventoryStockDto>> GetStockBalancesAsync(int? warehouseId = null, StockCondition? condition = null, string? searchTerm = null, CancellationToken cancellationToken = default);
+    Task<List<WarehouseOverviewDto>> GetWarehouseOverviewAsync(CancellationToken cancellationToken = default);
+    Task<List<CrossWarehouseMatrixItemDto>> GetCrossWarehouseMatrixAsync(string? searchTerm = null, int? categoryId = null, CancellationToken cancellationToken = default);
+    Task<byte[]> ExportStockExcelAsync(int? warehouseId = null, StockCondition? condition = null, CancellationToken cancellationToken = default);
     Task<List<InventoryMovementDto>> GetMovementsAsync(int? warehouseId = null, int? productId = null, StockCondition? condition = null, DateTime? fromDate = null, DateTime? toDate = null, CancellationToken cancellationToken = default);
     Task EnsureInitialStockAsync(int warehouseId, int productId, decimal quantity, string user, CancellationToken cancellationToken = default);
 

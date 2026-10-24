@@ -2,10 +2,14 @@
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = "Permission:Contracts:View")]
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
 @using TradeFlow.Application.Common.Interfaces
 @using TradeFlow.Application.Common.Models.Contracts
 @using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
 @inject IContractService ContractService
+@inject IEmploymentContractService EmploymentContractService
+@inject IDbContextFactory<TradeFlowDbContext> DbContextFactory
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthStateProvider
 
@@ -13,409 +17,762 @@
 
 <div class="container-fluid p-3 p-sm-4 tf-contracts-page">
     <!-- Header Section -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
         <div>
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 <h1 class="tf-header-title mb-0">Quản lý Hợp đồng &amp; Phụ lục</h1>
                 <span class="tf-legal-badge">
-                    BLDS 2015 &amp; Luật GDĐT 2023
+                    @(activeModuleTab == "commercial" ? "BLDS 2015 & Luật GDĐT 2023" : "BLLĐ 18/VBHN-VPQH & NĐ 337/2025")
                 </span>
             </div>
             <p class="tf-header-subtitle mb-0 mt-1">
-                Lập, quản lý, ký điện tử và lưu trữ toàn vẹn hợp đồng mua bán, cung cấp lắp đặt thiết bị vệ sinh LACASA.
+                @(activeModuleTab == "commercial" 
+                    ? "Lập, quản lý, ký điện tử và lưu trữ toàn vẹn hợp đồng mua bán, cung cấp lắp đặt thiết bị vệ sinh LACASA." 
+                    : "Lập, quản lý, ký điện tử và lưu trữ hợp đồng lao động theo chuẩn Điều 21 Bộ luật Lao động & bảo mật dữ liệu cá nhân.")
             </p>
         </div>
+
+        <!-- Header Actions -->
         <div class="d-flex flex-wrap align-items-center gap-2">
-            <button type="button" class="tf-header-btn"
-                    @onclick="() => showPartyASettingsModal = true"
-                    title="Cấu hình thông tin pháp nhân Bên A mặc định cho hợp đồng">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-secondary">
-                    <circle cx="12" cy="12" r="3"/>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                </svg>
-                <span>Thiết lập Bên A</span>
-            </button>
-            <a href="/hop-dong/mau-hop-dong" class="tf-header-btn"
-               title="Xem tuyển tập 7 mẫu hợp đồng tiêu chuẩn A4">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-secondary">
-                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                </svg>
-                <span>Thư viện mẫu HĐ</span>
-            </a>
-            <AuthorizeView Policy="Permission:Contracts:Create">
-                <button type="button" class="tf-primary-btn"
-                        @onclick="() => showTemplateSelectorModal = true"
-                        title="Soạn thảo hợp đồng mới theo mẫu quy chuẩn">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <line x1="12" y1="5" x2="12" y2="19"/>
-                        <line x1="5" y1="12" x2="19" y2="12"/>
+            @if (activeModuleTab == "commercial")
+            {
+                <button type="button" class="tf-header-btn"
+                        @onclick="() => showPartyASettingsModal = true"
+                        title="Cấu hình thông tin pháp nhân Bên A mặc định cho hợp đồng">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-secondary">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                     </svg>
-                    <span>Tạo hợp đồng mới</span>
+                    <span>Thiết lập Bên A</span>
                 </button>
-            </AuthorizeView>
-        </div>
-    </div>
-
-    <!-- Quick Stats Cards (KPI) -->
-    <div class="row g-3 mb-4">
-        <div class="col-12 col-sm-6 col-xl-3">
-            <div class="tf-kpi-card tf-kpi-blue">
-                <div>
-                    <div class="tf-kpi-header">
-                        <span class="tf-kpi-label">Tổng số hợp đồng</span>
-                        <div class="tf-kpi-icon-badge">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="tf-kpi-value">@contracts.Count</div>
-                </div>
-                <div class="tf-kpi-subtext">
-                    Giá trị: <strong class="text-dark">@contracts.Sum(c => c.TotalAmount).ToString("N0") đ</strong>
-                </div>
-            </div>
-        </div>
-        <div class="col-12 col-sm-6 col-xl-3">
-            <div class="tf-kpi-card tf-kpi-warning">
-                <div>
-                    <div class="tf-kpi-header">
-                        <span class="tf-kpi-label">Chờ ký kết</span>
-                        <div class="tf-kpi-icon-badge">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <polyline points="12 6 12 12 16 14"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="tf-kpi-value">@contracts.Count(c => c.Status == ContractStatus.PendingSignature)</div>
-                </div>
-                <div class="tf-kpi-subtext">
-                    Đã sẵn sàng ký điện tử / giấy
-                </div>
-            </div>
-        </div>
-        <div class="col-12 col-sm-6 col-xl-3">
-            <div class="tf-kpi-card tf-kpi-success">
-                <div>
-                    <div class="tf-kpi-header">
-                        <span class="tf-kpi-label">Đã hoàn tất ký</span>
-                        <div class="tf-kpi-icon-badge">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                                <polyline points="22 4 12 14.01 9 11.01"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="tf-kpi-value">@contracts.Count(c => c.Status == ContractStatus.Signed)</div>
-                </div>
-                <div class="tf-kpi-subtext">
-                    Có đầy đủ hiệu lực pháp lý
-                </div>
-            </div>
-        </div>
-        <div class="col-12 col-sm-6 col-xl-3">
-            <div class="tf-kpi-card tf-kpi-info">
-                <div>
-                    <div class="tf-kpi-header">
-                        <span class="tf-kpi-label">Đã thanh lý</span>
-                        <div class="tf-kpi-icon-badge">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="tf-kpi-value">@contracts.Count(c => c.Status == ContractStatus.Liquidated)</div>
-                </div>
-                <div class="tf-kpi-subtext">
-                    Hoàn tất mọi quyền và nghĩa vụ
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Filter & Search Toolbar Card -->
-    <div class="tf-filter-card">
-        <!-- Status Navigation Tabs -->
-        <div class="tf-status-container mb-3">
-            <button type="button" class="tf-status-tab @(selectedStatus == null ? "active" : "")"
-                    @onclick="() => FilterByStatus(null)">
-                <span>Tất cả</span>
-                <span class="tf-tab-count">@contracts.Count</span>
-            </button>
-            <button type="button" class="tf-status-tab @(selectedStatus == ContractStatus.Draft ? "active" : "")"
-                    @onclick="() => FilterByStatus(ContractStatus.Draft)">
-                <span>Bản nháp</span>
-                <span class="tf-tab-count">@contracts.Count(c => c.Status == ContractStatus.Draft)</span>
-            </button>
-            <button type="button" class="tf-status-tab @(selectedStatus == ContractStatus.PendingSignature ? "active" : "")"
-                    @onclick="() => FilterByStatus(ContractStatus.PendingSignature)">
-                <span>Chờ ký</span>
-                <span class="tf-tab-count">@contracts.Count(c => c.Status == ContractStatus.PendingSignature)</span>
-            </button>
-            <button type="button" class="tf-status-tab @(selectedStatus == ContractStatus.Signed ? "active" : "")"
-                    @onclick="() => FilterByStatus(ContractStatus.Signed)">
-                <span>Đã ký</span>
-                <span class="tf-tab-count">@contracts.Count(c => c.Status == ContractStatus.Signed)</span>
-            </button>
-            <button type="button" class="tf-status-tab @(selectedStatus == ContractStatus.Printed ? "active" : "")"
-                    @onclick="() => FilterByStatus(ContractStatus.Printed)">
-                <span>Đã in giấy</span>
-                <span class="tf-tab-count">@contracts.Count(c => c.Status == ContractStatus.Printed)</span>
-            </button>
-            <button type="button" class="tf-status-tab @(selectedStatus == ContractStatus.Liquidated ? "active" : "")"
-                    @onclick="() => FilterByStatus(ContractStatus.Liquidated)">
-                <span>Đã thanh lý</span>
-                <span class="tf-tab-count">@contracts.Count(c => c.Status == ContractStatus.Liquidated)</span>
-            </button>
-            <button type="button" class="tf-status-tab @(selectedStatus == ContractStatus.Cancelled ? "active" : "")"
-                    @onclick="() => FilterByStatus(ContractStatus.Cancelled)">
-                <span>Đã hủy</span>
-                <span class="tf-tab-count">@contracts.Count(c => c.Status == ContractStatus.Cancelled)</span>
-            </button>
-        </div>
-
-        <!-- Filter Controls Row -->
-        <div class="row g-2 align-items-center">
-            <div class="col-12 col-md-5 col-lg-5">
-                <div class="tf-contract-search-group">
-                    <svg class="tf-contract-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"/>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                <a href="/hop-dong/mau-hop-dong" class="tf-header-btn"
+                   title="Xem tuyển tập 7 mẫu hợp đồng tiêu chuẩn A4">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-secondary">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
                     </svg>
-                    <input type="text" class="form-control tf-contract-search-input"
-                           placeholder="Tìm theo Số HĐ, Tiêu đề, Tên Bên B, MST, SĐT..."
-                           value="@searchTerm" @oninput="OnSearchInput" />
-                    @if (!string.IsNullOrEmpty(searchTerm))
+                    <span>Thư viện mẫu HĐ</span>
+                </a>
+                <AuthorizeView Policy="Permission:Contracts:Create">
+                    <button type="button" class="tf-primary-btn"
+                            @onclick="() => showTemplateSelectorModal = true"
+                            title="Soạn thảo hợp đồng mới theo mẫu quy chuẩn">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        <span>Tạo hợp đồng mới</span>
+                    </button>
+                </AuthorizeView>
+            }
+            else
+            {
+                <AuthorizeView Policy="Permission:EmploymentContracts:Create">
+                    <button type="button" class="tf-primary-btn"
+                            @onclick="OpenCreateEmploymentContract"
+                            title="Soạn thảo hợp đồng lao động mới theo chuẩn Điều 21 BLLĐ">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        <span>Tạo HĐ lao động mới</span>
+                    </button>
+                </AuthorizeView>
+            }
+        </div>
+    </div>
+
+    <!-- High-level Navigation Tabs (Module Switcher) -->
+    <div class="d-flex align-items-center gap-2 mb-4 border-bottom pb-2">
+        <button type="button" class="btn btn-sm @(activeModuleTab == "commercial" ? "btn-primary" : "btn-light border text-secondary") d-flex align-items-center gap-2 px-3 py-2 fw-medium shadow-2xs"
+                @onclick='() => SwitchModuleTab("commercial")'>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+            </svg>
+            <span>Hợp đồng kinh tế / Thương mại</span>
+            <span class="badge @(activeModuleTab == "commercial" ? "bg-white text-primary" : "bg-secondary text-white") rounded-pill ms-1">@contracts.Count</span>
+        </button>
+
+        <button type="button" class="btn btn-sm @(activeModuleTab == "employment" ? "btn-primary" : "btn-light border text-secondary") d-flex align-items-center gap-2 px-3 py-2 fw-medium shadow-2xs"
+                @onclick='() => SwitchModuleTab("employment")'>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            <span>Hợp đồng lao động</span>
+            <span class="badge @(activeModuleTab == "employment" ? "bg-white text-primary" : "bg-success text-white") rounded-pill ms-1">@employmentStats.TotalCount</span>
+        </button>
+    </div>
+
+    @if (activeModuleTab == "commercial")
+    {
+        <!-- ========================================== -->
+        <!-- TAB 1: HỢP ĐỒNG KINH TẾ / THƯƠNG MẠI       -->
+        <!-- ========================================== -->
+
+        <!-- Quick Stats Cards (KPI) -->
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="tf-kpi-card tf-kpi-blue">
+                    <div>
+                        <div class="tf-kpi-header">
+                            <span class="tf-kpi-label">Tổng số hợp đồng</span>
+                            <div class="tf-kpi-icon-badge">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="tf-kpi-value">@contracts.Count</div>
+                    </div>
+                    <div class="tf-kpi-subtext">
+                        Giá trị: <strong class="text-dark">@contracts.Sum(c => c.TotalAmount).ToString("N0") đ</strong>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="tf-kpi-card tf-kpi-warning">
+                    <div>
+                        <div class="tf-kpi-header">
+                            <span class="tf-kpi-label">Bản nháp &amp; Chờ ký</span>
+                            <div class="tf-kpi-icon-badge">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polyline points="12 6 12 12 16 14"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="tf-kpi-value">@contracts.Count(c => c.Status == ContractStatus.Draft || c.Status == ContractStatus.PendingSignature)</div>
+                    </div>
+                    <div class="tf-kpi-subtext">
+                        Cần hoàn thiện và trình ký
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="tf-kpi-card tf-kpi-success">
+                    <div>
+                        <div class="tf-kpi-header">
+                            <span class="tf-kpi-label">Đã ký kết hợp pháp</span>
+                            <div class="tf-kpi-icon-badge">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                    <polyline points="22 4 12 14.01 9 11.01"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="tf-kpi-value">@contracts.Count(c => c.Status == ContractStatus.Signed)</div>
+                    </div>
+                    <div class="tf-kpi-subtext">
+                        Có đầy đủ hiệu lực pháp lý
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="tf-kpi-card tf-kpi-info">
+                    <div>
+                        <div class="tf-kpi-header">
+                            <span class="tf-kpi-label">Đã thanh lý</span>
+                            <div class="tf-kpi-icon-badge">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="tf-kpi-value">@contracts.Count(c => c.Status == ContractStatus.Liquidated)</div>
+                    </div>
+                    <div class="tf-kpi-subtext">
+                        Hoàn tất mọi quyền và nghĩa vụ
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter & Search Toolbar Card -->
+        <div class="tf-filter-card">
+            <!-- Status Navigation Tabs -->
+            <div class="tf-status-container mb-3">
+                <button type="button" class="tf-status-tab @(selectedStatus == null ? "active" : "")"
+                        @onclick="() => FilterByStatus(null)">
+                    <span>Tất cả</span>
+                    <span class="tf-tab-count">@contracts.Count</span>
+                </button>
+                <button type="button" class="tf-status-tab @(selectedStatus == ContractStatus.Draft ? "active" : "")"
+                        @onclick="() => FilterByStatus(ContractStatus.Draft)">
+                    <span>Bản nháp</span>
+                    <span class="tf-tab-count">@contracts.Count(c => c.Status == ContractStatus.Draft)</span>
+                </button>
+                <button type="button" class="tf-status-tab @(selectedStatus == ContractStatus.PendingSignature ? "active" : "")"
+                        @onclick="() => FilterByStatus(ContractStatus.PendingSignature)">
+                    <span>Chờ ký</span>
+                    <span class="tf-tab-count">@contracts.Count(c => c.Status == ContractStatus.PendingSignature)</span>
+                </button>
+                <button type="button" class="tf-status-tab @(selectedStatus == ContractStatus.Signed ? "active" : "")"
+                        @onclick="() => FilterByStatus(ContractStatus.Signed)">
+                    <span>Đã ký</span>
+                    <span class="tf-tab-count">@contracts.Count(c => c.Status == ContractStatus.Signed)</span>
+                </button>
+                <button type="button" class="tf-status-tab @(selectedStatus == ContractStatus.Printed ? "active" : "")"
+                        @onclick="() => FilterByStatus(ContractStatus.Printed)">
+                    <span>Đã in giấy</span>
+                    <span class="tf-tab-count">@contracts.Count(c => c.Status == ContractStatus.Printed)</span>
+                </button>
+                <button type="button" class="tf-status-tab @(selectedStatus == ContractStatus.Liquidated ? "active" : "")"
+                        @onclick="() => FilterByStatus(ContractStatus.Liquidated)">
+                    <span>Đã thanh lý</span>
+                    <span class="tf-tab-count">@contracts.Count(c => c.Status == ContractStatus.Liquidated)</span>
+                </button>
+                <button type="button" class="tf-status-tab @(selectedStatus == ContractStatus.Cancelled ? "active" : "")"
+                        @onclick="() => FilterByStatus(ContractStatus.Cancelled)">
+                    <span>Đã hủy</span>
+                    <span class="tf-tab-count">@contracts.Count(c => c.Status == ContractStatus.Cancelled)</span>
+                </button>
+            </div>
+
+            <!-- Filter Controls Row -->
+            <div class="row g-2 align-items-center">
+                <div class="col-12 col-md-4 col-lg-5">
+                    <div class="tf-search-input-wrapper">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tf-search-icon">
+                            <circle cx="11" cy="11" r="8"/>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        </svg>
+                        <input type="text" class="tf-search-input"
+                               placeholder="Tìm theo số HĐ, tiêu đề, tên khách hàng/đối tác..."
+                               value="@searchTerm"
+                               @oninput="OnSearchInput" />
+                    </div>
+                </div>
+                <div class="col-6 col-md-3 col-lg-3">
+                    <select class="tf-select-control" @bind="selectedTemplateCode">
+                        <option value="">-- Mẫu hợp đồng --</option>
+                        <option value="B2B_SALE">Mua bán B2B</option>
+                        <option value="B2C_RETAIL">Bán lẻ B2C</option>
+                        <option value="SUPPLY_INSTALL">Cung cấp &amp; Lắp đặt</option>
+                        <option value="PRINCIPLE_AGREEMENT">Hợp đồng nguyên tắc</option>
+                        <option value="DEPOSIT_AGREEMENT">Thỏa thuận đặt cọc</option>
+                        <option value="CONTRACT_LIQUIDATION">Biên bản thanh lý</option>
+                        <option value="CONTRACT_APPENDIX">Phụ lục hợp đồng</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-3 col-lg-2">
+                    <select class="tf-select-control" @bind="selectedPartyType">
+                        <option value="">-- Bên B --</option>
+                        <option value="Company">Doanh nghiệp</option>
+                        <option value="Individual">Cá nhân</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-2 col-lg-2 text-md-end">
+                    @if (HasActiveFilters)
                     {
-                        <button type="button" class="tf-contract-search-clear" @onclick="() => searchTerm = string.Empty" title="Xóa từ khóa tìm kiếm">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <button type="button" class="tf-clear-filter-btn" @onclick="ClearFilters">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="18" y1="6" x2="6" y2="18"/>
                                 <line x1="6" y1="6" x2="18" y2="18"/>
                             </svg>
+                            <span>Xóa bộ lọc</span>
                         </button>
                     }
                 </div>
             </div>
-            <div class="col-12 col-sm-6 col-md-3 col-lg-3">
-                <select class="form-select tf-filter-select" @bind="selectedTemplateCode">
-                    <option value="">Tất cả mẫu hợp đồng</option>
-                    <option value="B2B_SALE">Mua bán thương mại (B2B)</option>
-                    <option value="B2C_RETAIL">Bán lẻ tiêu dùng (B2C)</option>
-                    <option value="SUPPLY_INSTALL">Cung cấp &amp; Lắp đặt</option>
-                    <option value="PRINCIPLE_AGREEMENT">Hợp đồng nguyên tắc</option>
-                    <option value="DEPOSIT_AGREEMENT">Thỏa thuận đặt cọc</option>
-                    <option value="CONTRACT_LIQUIDATION">Biên bản thanh lý</option>
-                    <option value="CONTRACT_APPENDIX">Phụ lục hợp đồng</option>
-                </select>
-            </div>
-            <div class="col-12 col-sm-6 col-md-2 col-lg-2">
-                <select class="form-select tf-filter-select" @bind="selectedPartyType">
-                    <option value="">Mọi chủ thể Bên B</option>
-                    <option value="Company">Doanh nghiệp</option>
-                    <option value="Individual">Cá nhân</option>
-                </select>
-            </div>
-            <div class="col-12 col-md-2 col-lg-2 text-md-end d-flex align-items-center justify-content-between justify-content-md-end gap-2">
-                @if (HasActiveFilters)
-                {
-                    <button type="button" class="btn btn-sm btn-link text-decoration-none text-muted p-0 small" @onclick="ClearFilters" title="Đặt lại bộ lọc về mặc định">
-                        Đặt lại
-                    </button>
-                }
-                <span class="tf-counter-badge">
-                    Hiển thị <strong>@FilteredContracts.Count()</strong> / @contracts.Count
-                </span>
-            </div>
         </div>
-    </div>
 
-    <!-- Contracts Table Card -->
-    <div class="tf-table-card">
-        <div class="table-responsive">
-            <table class="table tf-table align-middle">
-                <thead>
-                    <tr>
-                        <th class="ps-3" style="width: 150px;">Số hợp đồng</th>
-                        <th>Tiêu đề &amp; Mẫu hợp đồng</th>
-                        <th>Bên B (Khách hàng / Đối tác)</th>
-                        <th class="text-end" style="width: 150px;">Tổng giá trị</th>
-                        <th class="text-center" style="width: 130px;">Phương thức</th>
-                        <th class="text-center" style="width: 130px;">Trạng thái</th>
-                        <th class="pe-3 text-end" style="width: 120px;">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (isLoading)
-                    {
+        <!-- Contracts Data Table Card -->
+        <div class="tf-table-card">
+            <div class="table-responsive">
+                <table class="table tf-contracts-table mb-0">
+                    <thead>
                         <tr>
-                            <td colspan="7" class="text-center py-5">
-                                <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
-                                <span class="text-muted small ms-2">Đang tải danh sách hợp đồng...</span>
-                            </td>
+                            <th style="width: 140px;">Số hợp đồng</th>
+                            <th>Tiêu đề &amp; Loại mẫu</th>
+                            <th>Bên B (Khách hàng)</th>
+                            <th style="width: 110px;">Ngày lập</th>
+                            <th style="width: 130px;" class="text-end">Giá trị (VNĐ)</th>
+                            <th style="width: 120px;" class="text-center">Trạng thái</th>
+                            <th style="width: 100px;" class="text-center">Ký số</th>
+                            <th style="width: 110px;" class="text-center">Thao tác</th>
                         </tr>
-                    }
-                    else if (!FilteredContracts.Any())
-                    {
-                        <tr>
-                            <td colspan="7">
-                                <div class="tf-empty-state">
-                                    <div class="tf-empty-icon-wrap">
-                                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    </thead>
+                    <tbody>
+                        @if (isLoading)
+                        {
+                            <tr>
+                                <td colspan="8" class="text-center py-5">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                    <span class="ms-2 small text-muted">Đang tải dữ liệu hợp đồng...</span>
+                                </td>
+                            </tr>
+                        }
+                        else if (!FilteredContracts.Any())
+                        {
+                            <tr>
+                                <td colspan="8" class="text-center py-5 text-muted">
+                                    <div class="tf-empty-state">
+                                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-secondary opacity-50 mb-2">
                                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                                             <polyline points="14 2 14 8 20 8"/>
-                                            <line x1="16" y1="13" x2="8" y2="13"/>
-                                            <line x1="16" y1="17" x2="8" y2="17"/>
+                                            <line x1="9" y1="15" x2="15" y2="15"/>
                                         </svg>
-                                    </div>
-                                    <div class="tf-empty-title">Không tìm thấy hợp đồng phù hợp</div>
-                                    <div class="tf-empty-desc">
-                                        @if (HasActiveFilters)
-                                        {
-                                            <span>Không có bản ghi nào khớp với điều kiện lọc hiện tại. Bấm <a href="javascript:void(0)" @onclick="ClearFilters" class="text-primary fw-semibold text-decoration-none">Đặt lại bộ lọc</a> để xem tất cả.</span>
-                                        }
-                                        else
-                                        {
-                                            <span>Hệ thống chưa có hợp đồng nào. Bấm "Tạo hợp đồng mới" để bắt đầu soạn thảo văn bản.</span>
-                                        }
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                    }
-                    else
-                    {
-                        @foreach (var c in FilteredContracts)
-                        {
-                            <tr class="tf-table-row">
-                                <td class="ps-3">
-                                    <a href="/hop-dong/@c.Id" class="tf-contract-number">
-                                        @c.ContractNumber
-                                    </a>
-                                    <div class="tf-contract-date">
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                            <line x1="16" y1="2" x2="16" y2="6"/>
-                                            <line x1="8" y1="2" x2="8" y2="6"/>
-                                            <line x1="3" y1="10" x2="21" y2="10"/>
-                                        </svg>
-                                        <span>@c.ContractDate.ToString("dd/MM/yyyy")</span>
-                                    </div>
-                                </td>
-                                <td>
-                                    <a href="/hop-dong/@c.Id" class="tf-contract-title-link">
-                                        @c.Title
-                                    </a>
-                                    <span class="tf-template-badge">
-                                        @GetTemplateTitle(c.TemplateCode)
-                                    </span>
-                                </td>
-                                <td>
-                                    <div class="tf-party-name">@c.PartyBName</div>
-                                    <div class="tf-party-sub">
-                                        @if (!string.IsNullOrEmpty(c.PartyBTaxCode))
-                                        {
-                                            <span class="tf-party-tag">MST: @c.PartyBTaxCode</span>
-                                        }
-                                        else if (!string.IsNullOrEmpty(c.PartyBIdCardNumber))
-                                        {
-                                            <span class="tf-party-tag">CCCD: @c.PartyBIdCardNumber</span>
-                                        }
-                                        @if (!string.IsNullOrEmpty(c.PartyBPhone))
-                                        {
-                                            <span>SĐT: @c.PartyBPhone</span>
-                                        }
-                                    </div>
-                                </td>
-                                <td class="text-end">
-                                    <div class="tf-amount-main">@c.TotalAmount.ToString("N0") @c.CurrencyCode</div>
-                                    @if (c.DepositAmount > 0)
-                                    {
-                                        <div class="tf-amount-deposit">
-                                            Cọc: @c.DepositAmount.ToString("N0") @c.CurrencyCode
-                                        </div>
-                                    }
-                                </td>
-                                <td class="text-center">
-                                    @if (c.ExecutionMethod == ContractExecutionMethod.Electronic)
-                                    {
-                                        <span class="tf-method-badge tf-method-electronic">
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                                            </svg>
-                                            <span>Ký điện tử</span>
-                                        </span>
-                                    }
-                                    else if (c.ExecutionMethod == ContractExecutionMethod.PaperPrinted)
-                                    {
-                                        <span class="tf-method-badge tf-method-paper">
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <polyline points="6 9 6 2 18 2 18 9"/>
-                                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                                                <rect x="6" y="14" width="12" height="8"/>
-                                            </svg>
-                                            <span>Bản in giấy</span>
-                                        </span>
-                                    }
-                                    else if (c.ExecutionMethod == ContractExecutionMethod.Both)
-                                    {
-                                        <span class="tf-method-badge tf-method-both">
-                                            <span>Điện tử &amp; Giấy</span>
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted small">---</span>
-                                    }
-                                </td>
-                                <td class="text-center">
-                                    <span class="tf-status-pill @GetStatusPillClass(c.Status)">
-                                        <span class="tf-status-dot"></span>
-                                        <span>@GetStatusVietnamese(c.Status)</span>
-                                    </span>
-                                </td>
-                                <td class="pe-3 text-end">
-                                    <div class="tf-action-group">
-                                        <a href="/hop-dong/@c.Id" class="tf-action-btn" title="Xem chi tiết">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"/>
-                                                <circle cx="12" cy="12" r="3"/>
-                                            </svg>
-                                        </a>
-                                        <a href="/api/contracts/@c.Id/export-pdf" target="_blank" class="tf-action-btn" title="Xuất PDF (Times New Roman)">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                                <polyline points="7 10 12 15 17 10"/>
-                                                <line x1="12" y1="15" x2="12" y2="3"/>
-                                            </svg>
-                                        </a>
-                                        @if (c.Status == ContractStatus.Draft)
-                                        {
-                                            <button type="button" class="tf-action-btn tf-action-btn-danger" title="Xóa bản nháp" @onclick="() => DeleteContract(c.Id)">
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                    <polyline points="3 6 5 6 21 6"/>
-                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                                                </svg>
-                                            </button>
-                                        }
+                                        <div class="small fw-medium">Chưa có hợp đồng nào phù hợp với bộ lọc</div>
+                                        <div class="text-muted smaller mt-1">Bấm "Tạo hợp đồng mới" hoặc thay đổi tiêu chí tìm kiếm</div>
                                     </div>
                                 </td>
                             </tr>
                         }
-                    }
-                </tbody>
-            </table>
+                        else
+                        {
+                            @foreach (var c in FilteredContracts)
+                            {
+                                <tr>
+                                    <td>
+                                        <a href="/hop-dong/@c.Id" class="tf-contract-number">
+                                            @c.ContractNumber
+                                        </a>
+                                        @if (c.ParentContractId.HasValue)
+                                        {
+                                            <span class="badge bg-light text-secondary border small mt-1 d-inline-block">Phụ lục</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="tf-contract-title">@c.Title</div>
+                                        <div class="tf-template-badge">
+                                            @GetTemplateTitle(c.TemplateCode)
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="tf-party-b-name">@c.PartyBName</div>
+                                        <div class="tf-party-b-sub">
+                                            @if (c.PartyBType == ContractPartyBType.Company && !string.IsNullOrEmpty(c.PartyBTaxCode))
+                                            {
+                                                <span>MST: @c.PartyBTaxCode</span>
+                                            }
+                                            else if (!string.IsNullOrEmpty(c.PartyBPhone))
+                                            {
+                                                <span>SĐT: @c.PartyBPhone</span>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="small text-dark">@c.ContractDate.ToString("dd/MM/yyyy")</div>
+                                        @if (c.ExpirationDate.HasValue)
+                                        {
+                                            <div class="smaller text-muted">Hết: @c.ExpirationDate.Value.ToString("dd/MM/yyyy")</div>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="tf-amount">@c.TotalAmount.ToString("N0")</span>
+                                        <span class="smaller text-muted ms-1">đ</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="tf-status-pill @GetStatusPillClass(c.Status)">
+                                            @GetStatusVietnamese(c.Status)
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        @if (c.PartyASignedAt.HasValue || c.PartyBSignedAt.HasValue)
+                                        {
+                                            <span class="tf-sig-badge tf-sig-verified" title="Đã ký số điện tử bảo đảm toàn vẹn">
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                                    <polyline points="9 12 11 14 15 10"/>
+                                                </svg>
+                                                <span>Đã ký</span>
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="tf-sig-badge tf-sig-none" title="Chưa ký điện tử">
+                                                Chưa ký
+                                            </span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="tf-action-group">
+                                            <a href="/hop-dong/@c.Id" class="tf-action-btn" title="Xem chi tiết">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"/>
+                                                    <circle cx="12" cy="12" r="3"/>
+                                                </svg>
+                                            </a>
+                                            <a href="/api/contracts/@c.Id/export-pdf" target="_blank" class="tf-action-btn" title="Xuất PDF (Times New Roman)">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                                    <polyline points="7 10 12 15 17 10"/>
+                                                    <line x1="12" y1="15" x2="12" y2="3"/>
+                                                </svg>
+                                            </a>
+                                            @if (c.Status == ContractStatus.Draft)
+                                            {
+                                                <button type="button" class="tf-action-btn tf-action-btn-danger" title="Xóa bản nháp" @onclick="() => DeleteContract(c.Id)">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                        <polyline points="3 6 5 6 21 6"/>
+                                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                                    </svg>
+                                                </button>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
+    }
+    else
+    {
+        <!-- ========================================== -->
+        <!-- TAB 2: HỢP ĐỒNG LAO ĐỘNG (BLLĐ 2026)      -->
+        <!-- ========================================== -->
+
+        <!-- Quick Stats Cards (KPI) -->
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="tf-kpi-card tf-kpi-blue">
+                    <div>
+                        <div class="tf-kpi-header">
+                            <span class="tf-kpi-label">Tổng số HĐ lao động</span>
+                            <div class="tf-kpi-icon-badge">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="tf-kpi-value">@employmentStats.TotalCount</div>
+                    </div>
+                    <div class="tf-kpi-subtext">
+                        KXD: <strong>@employmentStats.IndefiniteTermCount</strong> | XĐ: <strong>@employmentStats.FixedTermCount</strong> | Thử việc: <strong>@employmentStats.ProbationCount</strong>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="tf-kpi-card tf-kpi-success">
+                    <div>
+                        <div class="tf-kpi-header">
+                            <span class="tf-kpi-label">Đang có hiệu lực</span>
+                            <div class="tf-kpi-icon-badge">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                    <polyline points="22 4 12 14.01 9 11.01"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="tf-kpi-value">@employmentStats.ActiveCount</div>
+                    </div>
+                    <div class="tf-kpi-subtext">
+                        Thực hiện đầy đủ quyền &amp; nghĩa vụ lao động
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="tf-kpi-card tf-kpi-warning">
+                    <div>
+                        <div class="tf-kpi-header">
+                            <span class="tf-kpi-label">Sắp hết hạn (&le; 30 ngày)</span>
+                            <div class="tf-kpi-icon-badge">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <line x1="12" y1="8" x2="12" y2="12"/>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="tf-kpi-value text-warning">@employmentStats.ExpiringSoonCount</div>
+                    </div>
+                    <div class="tf-kpi-subtext">
+                        Cần xem xét tái ký hoặc chuyển loại hợp đồng
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="tf-kpi-card tf-kpi-info">
+                    <div>
+                        <div class="tf-kpi-header">
+                            <span class="tf-kpi-label">Chờ ký &amp; Bản nháp</span>
+                            <div class="tf-kpi-icon-badge">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polyline points="12 6 12 12 16 14"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="tf-kpi-value">@(employmentStats.DraftCount + employmentStats.PendingSignatureCount)</div>
+                    </div>
+                    <div class="tf-kpi-subtext">
+                        Chờ nhân sự hoặc người lao động hoàn tất ký
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter & Search Toolbar Card -->
+        <div class="tf-filter-card">
+            <!-- Status Navigation Tabs -->
+            <div class="tf-status-container mb-3">
+                <button type="button" class="tf-status-tab @(selectedEmpStatus == null ? "active" : "")"
+                        @onclick="() => FilterEmpByStatus(null)">
+                    <span>Tất cả</span>
+                    <span class="tf-tab-count">@employmentContracts.Count</span>
+                </button>
+                <button type="button" class="tf-status-tab @(selectedEmpStatus == EmploymentContractStatus.Draft ? "active" : "")"
+                        @onclick="() => FilterEmpByStatus(EmploymentContractStatus.Draft)">
+                    <span>Bản nháp</span>
+                    <span class="tf-tab-count">@employmentContracts.Count(c => c.Status == EmploymentContractStatus.Draft)</span>
+                </button>
+                <button type="button" class="tf-status-tab @(selectedEmpStatus == EmploymentContractStatus.PendingSignature ? "active" : "")"
+                        @onclick="() => FilterEmpByStatus(EmploymentContractStatus.PendingSignature)">
+                    <span>Chờ ký</span>
+                    <span class="tf-tab-count">@employmentContracts.Count(c => c.Status == EmploymentContractStatus.PendingSignature)</span>
+                </button>
+                <button type="button" class="tf-status-tab @(selectedEmpStatus == EmploymentContractStatus.Active ? "active" : "")"
+                        @onclick="() => FilterEmpByStatus(EmploymentContractStatus.Active)">
+                    <span>Đang hiệu lực</span>
+                    <span class="tf-tab-count">@employmentContracts.Count(c => c.Status == EmploymentContractStatus.Active)</span>
+                </button>
+                <button type="button" class="tf-status-tab @(selectedEmpStatus == EmploymentContractStatus.ExpiringSoon ? "active" : "")"
+                        @onclick="() => FilterEmpByStatus(EmploymentContractStatus.ExpiringSoon)">
+                    <span>Sắp hết hạn</span>
+                    <span class="tf-tab-count text-warning">@employmentContracts.Count(c => c.Status == EmploymentContractStatus.ExpiringSoon)</span>
+                </button>
+                <button type="button" class="tf-status-tab @(selectedEmpStatus == EmploymentContractStatus.Expired ? "active" : "")"
+                        @onclick="() => FilterEmpByStatus(EmploymentContractStatus.Expired)">
+                    <span>Đã hết hạn</span>
+                    <span class="tf-tab-count">@employmentContracts.Count(c => c.Status == EmploymentContractStatus.Expired)</span>
+                </button>
+                <button type="button" class="tf-status-tab @(selectedEmpStatus == EmploymentContractStatus.Terminated ? "active" : "")"
+                        @onclick="() => FilterEmpByStatus(EmploymentContractStatus.Terminated)">
+                    <span>Đã chấm dứt</span>
+                    <span class="tf-tab-count">@employmentContracts.Count(c => c.Status == EmploymentContractStatus.Terminated)</span>
+                </button>
+            </div>
+
+            <!-- Filter Controls Row -->
+            <div class="row g-2 align-items-center">
+                <div class="col-12 col-md-5">
+                    <div class="tf-search-input-wrapper">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tf-search-icon">
+                            <circle cx="11" cy="11" r="8"/>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        </svg>
+                        <input type="text" class="tf-search-input"
+                               placeholder="Tìm theo số HĐ, họ tên nhân viên, chức danh, phòng ban..."
+                               value="@empSearchTerm"
+                               @oninput="OnEmpSearchInput" />
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <select class="tf-select-control" @bind="selectedEmpType">
+                        <option value="">-- Loại hợp đồng --</option>
+                        <option value="@EmploymentContractType.FixedTerm">Xác định thời hạn (tối đa 36 tháng)</option>
+                        <option value="@EmploymentContractType.IndefiniteTerm">Không xác định thời hạn</option>
+                        <option value="@EmploymentContractType.Probation">Hợp đồng thử việc</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <select class="tf-select-control" @bind="selectedEmpDepartment">
+                        <option value="">-- Phòng ban --</option>
+                        @foreach (var dept in empDepartments)
+                        {
+                            <option value="@dept">@dept</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-md-2 text-md-end">
+                    @if (HasActiveEmpFilters)
+                    {
+                        <button type="button" class="tf-clear-filter-btn" @onclick="ClearEmpFilters">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                            <span>Xóa bộ lọc</span>
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Employment Contracts Data Table Card -->
+        <div class="tf-table-card">
+            <div class="table-responsive">
+                <table class="table tf-contracts-table mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 140px;">Số hợp đồng</th>
+                            <th>Người lao động (Bên B)</th>
+                            <th>Loại hợp đồng</th>
+                            <th>Vị trí &amp; Phòng ban</th>
+                            <th style="width: 130px;">Thời hạn HĐ</th>
+                            <th style="width: 130px;" class="text-end">Lương cơ bản</th>
+                            <th style="width: 120px;" class="text-center">Trạng thái</th>
+                            <th style="width: 110px;" class="text-center">Phương thức ký</th>
+                            <th style="width: 110px;" class="text-center">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (isEmpLoading)
+                        {
+                            <tr>
+                                <td colspan="9" class="text-center py-5">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                    <span class="ms-2 small text-muted">Đang tải danh sách hợp đồng lao động...</span>
+                                </td>
+                            </tr>
+                        }
+                        else if (!FilteredEmpContracts.Any())
+                        {
+                            <tr>
+                                <td colspan="9" class="text-center py-5 text-muted">
+                                    <div class="tf-empty-state">
+                                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-secondary opacity-50 mb-2">
+                                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                            <circle cx="9" cy="7" r="4"/>
+                                        </svg>
+                                        <div class="small fw-medium">Chưa có hợp đồng lao động nào phù hợp với bộ lọc</div>
+                                        <div class="text-muted smaller mt-1">Bấm "Tạo HĐ lao động mới" để bắt đầu soạn thảo</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var c in FilteredEmpContracts)
+                            {
+                                <tr>
+                                    <td>
+                                        <button type="button" class="btn btn-link tf-contract-number p-0 text-start border-0" @onclick="() => OpenEmploymentDetail(c.Id)">
+                                            @c.ContractNumber
+                                        </button>
+                                        @if (c.ParentContractId.HasValue)
+                                        {
+                                            <span class="badge bg-info-subtle text-info border small mt-1 d-inline-block">Tái ký Lần @c.RenewalCount</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-dark">@c.EmployeeFullName</div>
+                                        <div class="smaller text-muted">Mã: @c.EmployeeCode</div>
+                                    </td>
+                                    <td>
+                                        <div class="small fw-medium text-dark">@c.ContractTypeName</div>
+                                        @if (c.ContractType == EmploymentContractType.Probation && c.ProbationDurationDays.HasValue)
+                                        {
+                                            <span class="badge bg-light text-secondary border smaller">Thử việc @c.ProbationDurationDays ngày</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="small fw-medium text-dark">@c.JobTitle</div>
+                                        <div class="smaller text-muted">@c.DepartmentName</div>
+                                    </td>
+                                    <td>
+                                        <div class="small">@c.StartDate.ToString("dd/MM/yyyy")</div>
+                                        @if (c.EndDate.HasValue)
+                                        {
+                                            <div class="smaller @(c.Status == EmploymentContractStatus.ExpiringSoon ? "text-warning fw-bold" : "text-muted")">
+                                                Hết: @c.EndDate.Value.ToString("dd/MM/yyyy")
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="smaller text-success">Không thời hạn</div>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        @if (c.CanViewSensitiveData)
+                                        {
+                                            <span class="tf-amount">@c.BasicSalary.ToString("N0")</span>
+                                            <span class="smaller text-muted ms-1">đ</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted fst-italic smaller">******</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge @GetEmpStatusBadgeClass(c.Status) px-2 py-1 small">
+                                            @c.StatusName
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        @if (c.SigningMethod == EmploymentSigningMethod.PaperSigned)
+                                        {
+                                            <span class="badge bg-light text-dark border small" title="Ký giấy truyền thống">Ký giấy scan</span>
+                                        }
+                                        else if (c.SigningMethod == EmploymentSigningMethod.InAppDrawnSignature)
+                                        {
+                                            <span class="badge bg-success bg-opacity-10 text-success border border-success small" title="Ký tay điện tử">Ký trực tiếp</span>
+                                        }
+                                        else if (c.SigningMethod == EmploymentSigningMethod.InternalDigitalSignature)
+                                        {
+                                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary small" title="Ký số nội bộ">Ký số SHA-256</span>
+                                        }
+                                        else if (c.SigningMethod == EmploymentSigningMethod.NationalPlatform)
+                                        {
+                                            <span class="badge bg-info bg-opacity-10 text-info border border-info small" title="Chứng thực quốc gia">NĐ 337/2025</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted smaller">Chưa ký</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="tf-action-group">
+                                            <button type="button" class="tf-action-btn" title="Xem chi tiết" @onclick="() => OpenEmploymentDetail(c.Id)">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"/>
+                                                    <circle cx="12" cy="12" r="3"/>
+                                                </svg>
+                                            </button>
+                                            <a href="/api/contracts/employment/@c.Id/export-pdf" target="_blank" class="tf-action-btn" title="Xuất PDF A4">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                                    <polyline points="7 10 12 15 17 10"/>
+                                                    <line x1="12" y1="15" x2="12" y2="3"/>
+                                                </svg>
+                                            </a>
+                                            @if (c.Status == EmploymentContractStatus.Draft || c.Status == EmploymentContractStatus.PendingSignature)
+                                            {
+                                                <button type="button" class="tf-action-btn" title="Chỉnh sửa" @onclick="() => OpenEditEmploymentContract(c.Id)">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                                    </svg>
+                                                </button>
+                                                <button type="button" class="tf-action-btn tf-action-btn-danger" title="Xóa" @onclick="() => DeleteEmploymentContract(c.Id)">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                        <polyline points="3 6 5 6 21 6"/>
+                                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                                    </svg>
+                                                </button>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
 </div>
 
-<!-- Modal Components -->
+<!-- Modal Components for Commercial Contracts -->
 <PartyASettingsModal @bind-IsOpen="showPartyASettingsModal" OnSaved="OnPartyASaved" />
 <TemplateSelectorModal @bind-IsOpen="showTemplateSelectorModal" />
 
+<!-- Modal Components for Employment Contracts -->
+<EmploymentContractFormModal @ref="empFormModal" OnSaved="LoadEmploymentContractsAsync" />
+<EmploymentContractDetailModal @ref="empDetailModal" OnEdit="OpenEditEmploymentContract" OnStatusChanged="LoadEmploymentContractsAsync" />
+
 @code {
+    private string activeModuleTab = "commercial";
+
+    // === Commercial Contracts State ===
     private List<ContractDto> contracts = new();
     private bool isLoading = true;
     private bool showPartyASettingsModal = false;
@@ -426,9 +783,36 @@
     private string selectedTemplateCode = string.Empty;
     private string selectedPartyType = string.Empty;
 
+    // === Employment Contracts State ===
+    private List<EmploymentContractDto> employmentContracts = new();
+    private EmploymentContractStatsDto employmentStats = new();
+    private List<string> empDepartments = new();
+    private bool isEmpLoading = true;
+    private string empSearchTerm = string.Empty;
+    private EmploymentContractStatus? selectedEmpStatus;
+    private EmploymentContractType? selectedEmpType;
+    private string? selectedEmpDepartment;
+
+    private EmploymentContractFormModal? empFormModal;
+    private EmploymentContractDetailModal? empDetailModal;
+
     protected override async Task OnInitializedAsync()
     {
+        // Check query param for default tab
+        var uri = new Uri(Nav.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("tab", out var tabVal) && tabVal == "employment")
+        {
+            activeModuleTab = "employment";
+        }
+
         await LoadContractsAsync();
+        await LoadEmploymentContractsAsync();
+    }
+
+    private void SwitchModuleTab(string tab)
+    {
+        activeModuleTab = tab;
     }
 
     private async Task LoadContractsAsync()
@@ -445,15 +829,32 @@
         }
     }
 
-    private void FilterByStatus(ContractStatus? status)
+    private async Task LoadEmploymentContractsAsync()
     {
-        selectedStatus = status;
+        isEmpLoading = true;
+        try
+        {
+            employmentStats = await EmploymentContractService.GetStatisticsAsync();
+            var filter = new EmploymentContractFilterDto();
+            employmentContracts = await EmploymentContractService.GetContractsAsync(filter, canViewSensitiveData: true);
+
+            empDepartments = employmentContracts
+                .Select(c => c.DepartmentName)
+                .Where(d => !string.IsNullOrEmpty(d))
+                .Distinct()
+                .OrderBy(d => d)
+                .ToList();
+        }
+        catch (Exception) { }
+        finally
+        {
+            isEmpLoading = false;
+        }
     }
 
-    private void OnSearchInput(ChangeEventArgs e)
-    {
-        searchTerm = e.Value?.ToString() ?? string.Empty;
-    }
+    // === Commercial Contracts Actions ===
+    private void FilterByStatus(ContractStatus? status) => selectedStatus = status;
+    private void OnSearchInput(ChangeEventArgs e) => searchTerm = e.Value?.ToString() ?? string.Empty;
 
     private bool HasActiveFilters =>
         !string.IsNullOrWhiteSpace(searchTerm) ||
@@ -476,22 +877,13 @@
             var query = contracts.AsEnumerable();
 
             if (selectedStatus.HasValue)
-            {
                 query = query.Where(c => c.Status == selectedStatus.Value);
-            }
 
             if (!string.IsNullOrWhiteSpace(selectedTemplateCode))
-            {
                 query = query.Where(c => c.TemplateCode == selectedTemplateCode);
-            }
 
-            if (!string.IsNullOrWhiteSpace(selectedPartyType))
-            {
-                if (Enum.TryParse<ContractPartyBType>(selectedPartyType, out var pt))
-                {
-                    query = query.Where(c => c.PartyBType == pt);
-                }
-            }
+            if (!string.IsNullOrWhiteSpace(selectedPartyType) && Enum.TryParse<ContractPartyBType>(selectedPartyType, out var pt))
+                query = query.Where(c => c.PartyBType == pt);
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
@@ -518,9 +910,91 @@
         }
     }
 
-    private async Task OnPartyASaved()
+    private async Task OnPartyASaved() => await LoadContractsAsync();
+
+    // === Employment Contracts Actions ===
+    private void FilterEmpByStatus(EmploymentContractStatus? status) => selectedEmpStatus = status;
+    private void OnEmpSearchInput(ChangeEventArgs e) => empSearchTerm = e.Value?.ToString() ?? string.Empty;
+
+    private bool HasActiveEmpFilters =>
+        !string.IsNullOrWhiteSpace(empSearchTerm) ||
+        selectedEmpStatus.HasValue ||
+        selectedEmpType.HasValue ||
+        !string.IsNullOrWhiteSpace(selectedEmpDepartment);
+
+    private void ClearEmpFilters()
     {
-        await LoadContractsAsync();
+        empSearchTerm = string.Empty;
+        selectedEmpStatus = null;
+        selectedEmpType = null;
+        selectedEmpDepartment = null;
+    }
+
+    private IEnumerable<EmploymentContractDto> FilteredEmpContracts
+    {
+        get
+        {
+            var query = employmentContracts.AsEnumerable();
+
+            if (selectedEmpStatus.HasValue)
+                query = query.Where(c => c.Status == selectedEmpStatus.Value);
+
+            if (selectedEmpType.HasValue)
+                query = query.Where(c => c.ContractType == selectedEmpType.Value);
+
+            if (!string.IsNullOrWhiteSpace(selectedEmpDepartment))
+                query = query.Where(c => c.DepartmentName == selectedEmpDepartment);
+
+            if (!string.IsNullOrWhiteSpace(empSearchTerm))
+            {
+                var term = empSearchTerm.Trim().ToLower();
+                query = query.Where(c =>
+                    c.ContractNumber.ToLower().Contains(term) ||
+                    c.EmployeeFullName.ToLower().Contains(term) ||
+                    c.EmployeeCode.ToLower().Contains(term) ||
+                    c.JobTitle.ToLower().Contains(term) ||
+                    c.DepartmentName.ToLower().Contains(term));
+            }
+
+            return query;
+        }
+    }
+
+    private async Task OpenCreateEmploymentContract()
+    {
+        if (empFormModal != null)
+        {
+            await empFormModal.OpenCreateAsync();
+        }
+    }
+
+    private async Task OpenEditEmploymentContract(int id)
+    {
+        if (empFormModal != null)
+        {
+            await empFormModal.OpenEditAsync(id);
+        }
+    }
+
+    private async Task OpenEmploymentDetail(int id)
+    {
+        if (empDetailModal != null)
+        {
+            await empDetailModal.OpenAsync(id);
+        }
+    }
+
+    private async Task DeleteEmploymentContract(int id)
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userName = auth.User.Identity?.Name ?? "Admin";
+        var userId = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0";
+
+        var ok = await EmploymentContractService.DeleteContractAsync(id, userId, userName);
+        if (ok)
+        {
+            await LoadEmploymentContractsAsync();
+        }
     }
 
     private static string GetTemplateTitle(string code) => code switch
@@ -546,17 +1020,6 @@
         _ => status.ToString()
     };
 
-    private static string GetStatusBadgeClass(ContractStatus status) => status switch
-    {
-        ContractStatus.Draft => "bg-secondary text-white",
-        ContractStatus.PendingSignature => "bg-warning text-dark",
-        ContractStatus.Signed => "bg-success text-white",
-        ContractStatus.Printed => "bg-info text-dark",
-        ContractStatus.Liquidated => "bg-primary text-white",
-        ContractStatus.Cancelled => "bg-danger text-white",
-        _ => "bg-light text-dark"
-    };
-
     private static string GetStatusPillClass(ContractStatus status) => status switch
     {
         ContractStatus.Draft => "tf-status-draft",
@@ -566,5 +1029,17 @@
         ContractStatus.Liquidated => "tf-status-liquidated",
         ContractStatus.Cancelled => "tf-status-cancelled",
         _ => "tf-status-draft"
+    };
+
+    private static string GetEmpStatusBadgeClass(EmploymentContractStatus status) => status switch
+    {
+        EmploymentContractStatus.Draft => "bg-secondary text-white",
+        EmploymentContractStatus.PendingSignature => "bg-warning text-dark",
+        EmploymentContractStatus.Active => "bg-success text-white",
+        EmploymentContractStatus.ExpiringSoon => "bg-warning text-dark border border-warning",
+        EmploymentContractStatus.Expired => "bg-danger text-white",
+        EmploymentContractStatus.Terminated => "bg-dark text-white",
+        EmploymentContractStatus.Cancelled => "bg-light text-muted border",
+        _ => "bg-light text-dark"
     };
 }

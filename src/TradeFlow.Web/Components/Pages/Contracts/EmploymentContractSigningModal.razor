@@ -1,0 +1,224 @@
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Contracts
+@using TradeFlow.Domain.Enums
+@inject IEmploymentContractService EmploymentContractService
+@inject AuthenticationStateProvider AuthStateProvider
+
+@if (IsOpen)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(15, 23, 42, 0.6); z-index: 1060;" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-md modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0 rounded-3">
+                <div class="modal-header bg-white border-bottom px-4 py-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="d-flex align-items-center justify-content-center rounded-3 bg-success bg-opacity-10 text-success" style="width: 40px; height: 40px;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                <polyline points="9 12 11 14 15 10"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-dark mb-0">Ký kết &amp; Xác thực Hợp đồng</h5>
+                            <div class="text-muted small">Số HĐ: @ContractNumber</div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" @onclick="CloseAsync" aria-label="Đóng"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger py-2 px-3 small mb-3">@errorMessage</div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-secondary mb-1">Phương thức giao kết &amp; ký kết</label>
+                        <select class="form-select form-select-sm" @bind="signingMethod">
+                            <option value="@EmploymentSigningMethod.InAppDrawnSignature">1. Ký tay điện tử trực tiếp trên ứng dụng (Touch/Mouse)</option>
+                            <option value="@EmploymentSigningMethod.InternalDigitalSignature">2. Ký số điện tử nội bộ TradeFlow (Chứng thư SHA-256)</option>
+                            <option value="@EmploymentSigningMethod.PaperSigned">3. Ký trên văn bản giấy truyền thống (Bản scan dấu đỏ)</option>
+                            <option value="@EmploymentSigningMethod.NationalPlatform">4. Nền tảng chứng thực hợp đồng điện tử quốc gia (NĐ 337/2025)</option>
+                        </select>
+                    </div>
+
+                    @if (signingMethod == EmploymentSigningMethod.InAppDrawnSignature)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-secondary mb-1">Tư cách người ký</label>
+                            <div class="d-flex gap-3 mb-2">
+                                <label class="small form-check-label d-flex align-items-center gap-1 cursor-pointer">
+                                    <input type="radio" name="signerRole" value="Employer" checked="@(signerRole == "Employer")" @onchange='() => signerRole = "Employer"' />
+                                    <span>Đại diện Bên A (Người sử dụng lao động)</span>
+                                </label>
+                                <label class="small form-check-label d-flex align-items-center gap-1 cursor-pointer">
+                                    <input type="radio" name="signerRole" value="Employee" checked="@(signerRole == "Employee")" @onchange='() => signerRole = "Employee"' />
+                                    <span>Bên B (Người lao động)</span>
+                                </label>
+                            </div>
+
+                            <label class="form-label small fw-semibold text-secondary mb-1">Khung ký tay cảm ứng / chuột</label>
+                            <div class="border rounded-2 p-2 bg-white text-center position-relative" style="height: 140px; border-style: dashed !important;">
+                                <div class="d-flex align-items-center justify-content-center h-100 text-muted small">
+                                    @if (!hasDrawnSignature)
+                                    {
+                                        <div class="text-center">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="mb-1 text-secondary">
+                                                <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                                            </svg>
+                                            <div>Nhấn vào đây để xác nhận mẫu chữ ký cảm ứng</div>
+                                            <button type="button" class="btn btn-outline-primary btn-sm mt-2 py-0.5 px-2 small" @onclick="GenerateSampleSignature">
+                                                Tạo mẫu chữ ký điện tử
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-success">
+                                            <div class="fw-bold fs-5" style="font-family: 'Brush Script MT', cursive; transform: rotate(-3deg);">
+                                                @(signerRole == "Employer" ? "Nguyễn Văn An" : "Người Lao Động")
+                                            </div>
+                                            <div class="badge bg-success bg-opacity-10 text-success small mt-1">
+                                                ✓ Đã thu nhận mẫu chữ ký điện tử
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                            @if (hasDrawnSignature)
+                            {
+                                <div class="text-end mt-1">
+                                    <button type="button" class="btn btn-link text-danger text-decoration-none small p-0" @onclick="() => hasDrawnSignature = false">
+                                        Xóa chữ ký
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else if (signingMethod == EmploymentSigningMethod.InternalDigitalSignature)
+                    {
+                        <div class="alert alert-info py-2 px-3 small mb-3">
+                            <div class="fw-bold mb-1">Chứng thư số điện tử nội bộ LACASA</div>
+                            <div>Hệ thống sẽ tạo mã băm SHA-256 bảo đảm tính toàn vẹn và niêm phong nội dung văn bản theo quy định Luật Giao dịch điện tử.</div>
+                        </div>
+                    }
+                    else if (signingMethod == EmploymentSigningMethod.PaperSigned)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-secondary mb-1">Đường dẫn file scan / hình ảnh có mộc đỏ</label>
+                            <input type="text" class="form-control form-control-sm" @bind="paperScanPath" placeholder="/uploads/scans/HDLD_2026_signed.pdf" />
+                            <div class="form-text small text-muted">Văn bản giấy in ra đã được hai bên ký tay, đóng dấu pháp nhân và scan lưu trữ.</div>
+                        </div>
+                    }
+                    else if (signingMethod == EmploymentSigningMethod.NationalPlatform)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-secondary mb-1">Mã tra cứu chứng thực quốc gia (NĐ 337/2025/NĐ-CP)</label>
+                            <input type="text" class="form-control form-control-sm" @bind="nationalReference" placeholder="VNeID-EHD-XXXXXXXX" />
+                            <div class="form-text small text-muted">Lưu ý: Chỉ nhập mã khi đã được cấp chính thức từ Cổng chứng thực HĐĐT quốc gia. Không nhập mã giả mạo.</div>
+                        </div>
+                    }
+                </div>
+
+                <div class="modal-footer bg-white border-top px-4 py-3 d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-secondary btn-sm px-3" @onclick="CloseAsync" disabled="@isSubmitting">
+                        Hủy
+                    </button>
+                    <button type="button" class="btn btn-success btn-sm px-4 fw-medium" @onclick="HandleSignAsync" disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            <span>Đang xử lý ký...</span>
+                        }
+                        else
+                        {
+                            <span>Xác nhận ký</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public int ContractId { get; set; }
+    [Parameter] public string ContractNumber { get; set; } = string.Empty;
+    [Parameter] public EventCallback OnSigned { get; set; }
+
+    private EmploymentSigningMethod signingMethod = EmploymentSigningMethod.InAppDrawnSignature;
+    private string signerRole = "Employer";
+    private bool hasDrawnSignature = false;
+    private string paperScanPath = string.Empty;
+    private string nationalReference = string.Empty;
+    private bool isSubmitting = false;
+    private string errorMessage = string.Empty;
+
+    public void Open(int contractId, string contractNumber)
+    {
+        ContractId = contractId;
+        ContractNumber = contractNumber;
+        signingMethod = EmploymentSigningMethod.InAppDrawnSignature;
+        signerRole = "Employer";
+        hasDrawnSignature = false;
+        paperScanPath = string.Empty;
+        nationalReference = string.Empty;
+        errorMessage = string.Empty;
+        IsOpen = true;
+    }
+
+    private void GenerateSampleSignature()
+    {
+        hasDrawnSignature = true;
+    }
+
+    private async Task HandleSignAsync()
+    {
+        isSubmitting = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userName = authState.User.Identity?.Name ?? "system";
+            var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0";
+
+            var dto = new SignEmploymentContractDto
+            {
+                ContractId = ContractId,
+                SigningMethod = signingMethod,
+                SignerRole = signerRole,
+                SignatureData = hasDrawnSignature ? "DATA_SVG_SIGNATURE_STREAM" : null,
+                PaperScanAttachmentPath = paperScanPath,
+                NationalPlatformReference = nationalReference
+            };
+
+            var success = await EmploymentContractService.SignContractAsync(dto, userId, userName);
+            if (success)
+            {
+                IsOpen = false;
+                await IsOpenChanged.InvokeAsync(false);
+                await OnSigned.InvokeAsync();
+            }
+            else
+            {
+                errorMessage = "Không thể thực hiện ký kết hợp đồng.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+}

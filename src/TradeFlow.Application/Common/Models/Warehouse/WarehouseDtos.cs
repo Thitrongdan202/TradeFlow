@@ -340,3 +340,37 @@ public class QuarantinedItemDto
     public int? ResultingVoucherId { get; set; }
     public string? ResultingVoucherNumber { get; set; }
 }
+
+public class WarehouseOverviewDto
+{
+    public int WarehouseId { get; set; }
+    public string WarehouseCode { get; set; } = string.Empty;
+    public string WarehouseName { get; set; } = string.Empty;
+    public string? Address { get; set; }
+    public string? ManagerName { get; set; }
+    public string? Phone { get; set; }
+    public bool IsActive { get; set; } = true;
+
+    public int DistinctSkuCount { get; set; }
+    public int LowStockSkuCount { get; set; }
+    public int DefectiveItemCount { get; set; }
+    public decimal TotalValuation { get; set; }
+    public DateTime? LatestMovementAt { get; set; }
+}
+
+public class CrossWarehouseMatrixItemDto
+{
+    public int ProductId { get; set; }
+    public string ProductCode { get; set; } = string.Empty;
+    public string ProductName { get; set; } = string.Empty;
+    public string UnitName { get; set; } = string.Empty;
+    public string? CategoryName { get; set; }
+
+    public Dictionary<int, decimal> WarehouseQuantities { get; set; } = new();
+    public decimal TotalQuantity { get; set; }
+    public decimal EstimatedCost { get; set; }
+    public decimal TotalValuation => TotalQuantity * EstimatedCost;
+
+    public bool IsLowStock => TotalQuantity > 0 && TotalQuantity < 15;
+    public bool IsOutOfStock => TotalQuantity <= 0;
+}

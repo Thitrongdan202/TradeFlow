@@ -167,5 +167,16 @@ public enum AuditEventType
     WarehouseReturnApproved = 231,
     WarehouseReturnCompleted = 232,
     DefectiveStockQuarantined = 233,
-    DefectiveStockDisposed = 234
+    DefectiveStockDisposed = 234,
+
+    // === Quản lý Hợp đồng lao động ===
+    EmploymentContractCreated = 240,
+    EmploymentContractUpdated = 241,
+    EmploymentContractFinalized = 242,
+    EmploymentContractSigned = 243,
+    EmploymentContractRenewed = 244,
+    EmploymentContractTerminated = 245,
+    EmploymentContractCancelled = 246,
+    EmploymentContractExportedPdf = 247,
+    EmploymentContractDeleted = 248
 }

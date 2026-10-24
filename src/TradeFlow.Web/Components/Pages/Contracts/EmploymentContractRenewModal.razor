@@ -1,0 +1,193 @@
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Contracts
+@using TradeFlow.Domain.Enums
+@inject IEmploymentContractService EmploymentContractService
+@inject AuthenticationStateProvider AuthStateProvider
+
+@if (IsOpen)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(15, 23, 42, 0.6); z-index: 1060;" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0 rounded-3">
+                <div class="modal-header bg-white border-bottom px-4 py-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="d-flex align-items-center justify-content-center rounded-3 bg-info bg-opacity-10 text-info" style="width: 40px; height: 40px;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-dark mb-0">Gia hạn / Tái ký Hợp đồng lao động</h5>
+                            <div class="text-muted small">Từ hợp đồng gốc: @parentContract?.ContractNumber — @parentContract?.EmployeeFullName</div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" @onclick="CloseAsync" aria-label="Đóng"></button>
+                </div>
+
+                <div class="modal-body p-4 bg-light bg-opacity-50">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger py-2 px-3 small mb-3">@errorMessage</div>
+                    }
+
+                    @if (isMustConvertToIndefinite)
+                    {
+                        <div class="alert alert-warning py-2.5 px-3 small mb-3 border-warning">
+                            <div class="fw-bold d-flex align-items-center gap-1.5 mb-1 text-dark">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-warning">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                                </svg>
+                                <span>Quy định pháp lý bắt buộc theo Khoản 2 Điều 20 Bộ luật Lao động:</span>
+                            </div>
+                            <div>
+                                Hợp đồng xác định thời hạn đã được tái ký 01 lần trước đó. Khi tiếp tục ký kết, hai bên <strong>bắt buộc phải chuyển đổi sang loại Hợp đồng không xác định thời hạn</strong>. Hệ thống đã tự động khóa lựa chọn này để bảo đảm tính tuân thủ pháp luật.
+                            </div>
+                        </div>
+                    }
+
+                    <div class="card border-0 shadow-sm rounded-3 mb-3">
+                        <div class="card-body p-3">
+                            <div class="row g-3">
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label small fw-medium text-secondary mb-1">Loại hợp đồng gia hạn / tái ký <span class="text-danger">*</span></label>
+                                    <select class="form-select form-select-sm" @bind="model.NewContractType" disabled="@isMustConvertToIndefinite">
+                                        <option value="@EmploymentContractType.FixedTerm">Xác định thời hạn (tối đa 36 tháng)</option>
+                                        <option value="@EmploymentContractType.IndefiniteTerm">Không xác định thời hạn</option>
+                                    </select>
+                                </div>
+                                <div class="col-12 col-md-3">
+                                    <label class="form-label small fw-medium text-secondary mb-1">Ngày bắt đầu hiệu lực <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control form-control-sm" @bind="model.StartDate" />
+                                </div>
+                                <div class="col-12 col-md-3">
+                                    <label class="form-label small fw-medium text-secondary mb-1">
+                                        Ngày kết thúc
+                                        @if (model.NewContractType == EmploymentContractType.FixedTerm)
+                                        {
+                                            <span class="text-danger">*</span>
+                                        }
+                                    </label>
+                                    <input type="date" class="form-control form-control-sm" @bind="model.EndDate" disabled="@(model.NewContractType == EmploymentContractType.IndefiniteTerm)" />
+                                </div>
+
+                                <div class="col-12 col-md-3">
+                                    <label class="form-label small fw-medium text-secondary mb-1">Mức lương cơ bản mới (VND)</label>
+                                    <input type="number" class="form-control form-control-sm" @bind="model.BasicSalary" step="500000" />
+                                </div>
+                                <div class="col-12 col-md-3">
+                                    <label class="form-label small fw-medium text-secondary mb-1">Phụ cấp chức vụ (VND)</label>
+                                    <input type="number" class="form-control form-control-sm" @bind="model.PositionAllowance" step="100000" />
+                                </div>
+                                <div class="col-12 col-md-3">
+                                    <label class="form-label small fw-medium text-secondary mb-1">Tiền ăn trưa (VND)</label>
+                                    <input type="number" class="form-control form-control-sm" @bind="model.LunchAllowance" step="50000" />
+                                </div>
+                                <div class="col-12 col-md-3">
+                                    <label class="form-label small fw-medium text-secondary mb-1">Phụ cấp khác (VND)</label>
+                                    <input type="number" class="form-control form-control-sm" @bind="model.OtherAllowances" step="100000" />
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label small fw-medium text-secondary mb-1">Ghi chú lý do gia hạn / điều chỉnh</label>
+                                    <input type="text" class="form-control form-control-sm" @bind="model.Notes" placeholder="VD: Tái ký hợp đồng sau khi kết thúc thời hạn 12 tháng..." />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-white border-top px-4 py-3 d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-secondary btn-sm px-3" @onclick="CloseAsync" disabled="@isSubmitting">
+                        Hủy
+                    </button>
+                    <button type="button" class="btn btn-primary btn-sm px-4 fw-medium" @onclick="HandleRenewAsync" disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            <span>Đang tạo bản ghi gia hạn...</span>
+                        }
+                        else
+                        {
+                            <span>Xác nhận tái ký</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public EventCallback OnRenewed { get; set; }
+
+    private EmploymentContractDto? parentContract;
+    private RenewEmploymentContractDto model = new();
+    private bool isMustConvertToIndefinite = false;
+    private bool isSubmitting = false;
+    private string errorMessage = string.Empty;
+
+    public void Open(EmploymentContractDto contract)
+    {
+        parentContract = contract;
+        errorMessage = string.Empty;
+
+        // Article 20 check:
+        // If parent contract is FixedTerm and already renewed once, must become IndefiniteTerm
+        isMustConvertToIndefinite = (contract.ContractType == EmploymentContractType.FixedTerm && contract.RenewalCount >= 1);
+
+        var newType = isMustConvertToIndefinite ? EmploymentContractType.IndefiniteTerm : EmploymentContractType.FixedTerm;
+        var startDate = contract.EndDate.HasValue ? contract.EndDate.Value.AddDays(1) : DateTime.UtcNow.Date;
+        var endDate = newType == EmploymentContractType.IndefiniteTerm ? (DateTime?)null : startDate.AddYears(1);
+
+        model = new RenewEmploymentContractDto
+        {
+            ContractId = contract.Id,
+            NewContractType = newType,
+            StartDate = startDate,
+            EndDate = endDate,
+            BasicSalary = contract.BasicSalary,
+            PositionAllowance = contract.PositionAllowance,
+            LunchAllowance = contract.LunchAllowance,
+            OtherAllowances = contract.OtherAllowances,
+            Notes = $"Tái ký hợp đồng từ số {contract.ContractNumber}"
+        };
+
+        IsOpen = true;
+    }
+
+    private async Task HandleRenewAsync()
+    {
+        isSubmitting = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userName = authState.User.Identity?.Name ?? "system";
+            var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0";
+
+            await EmploymentContractService.RenewContractAsync(model, userId, userName);
+
+            IsOpen = false;
+            await IsOpenChanged.InvokeAsync(false);
+            await OnRenewed.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+}

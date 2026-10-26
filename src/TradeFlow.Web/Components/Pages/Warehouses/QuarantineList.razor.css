@@ -1,0 +1,75 @@
+/* Quarantine and Defective Stock Page Styles */
+
+/* 1. Isolation Notice Warning Banner */
+.tf-quarantine-warning-banner {
+    background-color: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: #78350f;
+}
+
+.tf-quarantine-warning-banner .tf-banner-title {
+    color: #78350f;
+    font-weight: 700;
+}
+
+.tf-quarantine-warning-banner .tf-banner-text {
+    color: #92400e;
+}
+
+.tf-quarantine-warning-banner svg {
+    color: #d97706;
+}
+
+/* 2. KPI Cards */
+.tf-wh-kpi-card {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* ==========================================================================
+   Dark Mode System — Quarantine & Defective Stock
+   ========================================================================== */
+[data-bs-theme="dark"] .tf-quarantine-warning-banner,
+[data-theme="dark"] .tf-quarantine-warning-banner {
+    background-color: rgba(245, 158, 11, 0.12) !important;
+    border-color: rgba(245, 158, 11, 0.45) !important;
+    color: #fef3c7 !important;
+}
+
+[data-bs-theme="dark"] .tf-quarantine-warning-banner .tf-banner-title,
+[data-theme="dark"] .tf-quarantine-warning-banner .tf-banner-title {
+    color: #fde68a !important;
+    font-weight: 700 !important;
+}
+
+[data-bs-theme="dark"] .tf-quarantine-warning-banner .tf-banner-text,
+[data-theme="dark"] .tf-quarantine-warning-banner .tf-banner-text {
+    color: #fef3c7 !important;
+}
+
+[data-bs-theme="dark"] .tf-quarantine-warning-banner svg,
+[data-theme="dark"] .tf-quarantine-warning-banner svg {
+    color: #fbbf24 !important;
+}
+
+[data-bs-theme="dark"] .tf-wh-kpi-card,
+[data-theme="dark"] .tf-wh-kpi-card {
+    background-color: #222630 !important;
+    border-color: #2e3542 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-bs-theme="dark"] .tf-quarantine-code-badge,
+[data-theme="dark"] .tf-quarantine-code-badge {
+    background-color: rgba(245, 158, 11, 0.18) !important;
+    color: #fde68a !important;
+    border: 1px solid rgba(245, 158, 11, 0.35) !important;
+}

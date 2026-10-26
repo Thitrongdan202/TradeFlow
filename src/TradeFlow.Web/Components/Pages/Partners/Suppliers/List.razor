@@ -282,17 +282,17 @@
                         <table class="tf-table">
                             <thead>
                                 <tr>
-                                    <th style="width: 40px; text-align: center;">
+                                    <th style="width: 38px; text-align: center;">
                                         <input type="checkbox" @onchange="ToggleSelectAll" checked="@(_pagedResult.Items.Any() && _selectedIds.Count == _pagedResult.Items.Count)" />
                                     </th>
-                                    <th style="min-width: 120px;">Mã NCC</th>
-                                    <th style="min-width: 220px;">Tên nhà cung cấp</th>
-                                    <th style="min-width: 120px;">Điện thoại</th>
-                                    <th style="min-width: 160px;">Email / Địa chỉ</th>
-                                    <th style="min-width: 140px; text-align: right;">Nợ cần trả</th>
-                                    <th style="min-width: 140px; text-align: right;">Tổng mua</th>
-                                    <th style="min-width: 110px; text-align: center;">Trạng thái</th>
-                                    <th style="min-width: 130px; text-align: right;">Thao tác</th>
+                                    <th style="min-width: 105px; width: 105px;">Mã NCC</th>
+                                    <th style="min-width: 200px;">Tên nhà cung cấp</th>
+                                    <th style="min-width: 100px; width: 100px;">Điện thoại</th>
+                                    <th style="min-width: 150px; width: 150px;">Email / Địa chỉ</th>
+                                    <th style="min-width: 115px; width: 115px; text-align: right;">Nợ cần trả</th>
+                                    <th style="min-width: 115px; width: 115px; text-align: right;">Tổng mua</th>
+                                    <th style="min-width: 100px; width: 100px; text-align: center;">Trạng thái</th>
+                                    <th class="tf-col-actions" style="min-width: 88px; width: 88px; text-align: center;">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -365,23 +365,23 @@
                                                      Dot="true"
                                                      Text="@(item.IsActive ? "Hoạt động" : "Tạm dừng")" />
                                         </td>
-                                        <td style="text-align: right;" @onclick:stopPropagation="true">
-                                            <div class="tf-row-actions">
-                                                <button type="button" class="tf-btn-action" title="Xem chi tiết" @onclick="() => OpenSupplierDrawer(item.Id)">
+                                        <td class="tf-col-actions" style="text-align: center;" @onclick:stopPropagation="true">
+                                            <div class="tf-row-actions-stack">
+                                                <button type="button" class="tf-btn-action-stack detail" title="Xem chi tiết" @onclick="() => OpenSupplierDrawer(item.Id)">
                                                     Chi tiết
                                                 </button>
                                                 <AuthorizeView Policy="Permission:Suppliers:Edit">
-                                                    <button type="button" class="tf-btn-action" title="Lập phiếu chi tiền nhà cung cấp" @onclick="() => OpenRowPaymentModal(item)">
+                                                    <button type="button" class="tf-btn-action-stack pay" title="Lập phiếu chi tiền nhà cung cấp" @onclick="() => OpenRowPaymentModal(item)">
                                                         Chi tiền
                                                     </button>
-                                                    <a href="/doi-tac/nha-cung-cap/sua/@item.Id" class="tf-btn-action edit" title="Sửa thông tin">
+                                                    <a href="/doi-tac/nha-cung-cap/sua/@item.Id" class="tf-btn-action-stack edit" title="Sửa thông tin">
                                                         Sửa
                                                     </a>
                                                 </AuthorizeView>
                                                 <AuthorizeView Roles="Administrator">
                                                     @if (!item.IsActive)
                                                     {
-                                                        <button type="button" class="tf-btn-action delete" title="Xóa nhà cung cấp đã ngừng hoạt động" @onclick="() => ConfirmDelete(item.Id, item.Name, item.Code)">
+                                                        <button type="button" class="tf-btn-action-stack delete" title="Xóa nhà cung cấp đã ngừng hoạt động" @onclick="() => ConfirmDelete(item.Id, item.Name, item.Code)">
                                                             Xóa
                                                         </button>
                                                     }

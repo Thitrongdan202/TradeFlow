@@ -338,18 +338,18 @@
                         <table class="tf-table">
                             <thead>
                                 <tr>
-                                    <th style="width: 40px; text-align: center;">
+                                    <th style="width: 38px; text-align: center;">
                                         <input type="checkbox" checked="@IsAllSelected" @onchange="ToggleSelectAll" title="Chọn tất cả trang này" />
                                     </th>
-                                    <th style="min-width: 170px;">Hướng công nợ</th>
-                                    <th style="min-width: 110px;">Mã đối tác</th>
-                                    <th style="min-width: 200px;">Tên đối tác</th>
-                                    <th style="min-width: 170px;">Chứng từ gốc</th>
-                                    <th style="min-width: 130px; text-align: right;">Giá trị ban đầu</th>
-                                    <th style="min-width: 130px; text-align: right;">Đã trả</th>
-                                    <th style="min-width: 140px; text-align: right;">Còn phải thu / trả</th>
-                                    <th style="min-width: 120px; text-align: center;">Trạng thái</th>
-                                    <th style="min-width: 150px; text-align: right;">Thao tác</th>
+                                    <th style="min-width: 140px; width: 140px;">Hướng công nợ</th>
+                                    <th style="min-width: 105px; width: 105px;">Mã đối tác</th>
+                                    <th style="min-width: 180px;">Tên đối tác</th>
+                                    <th style="min-width: 140px; width: 140px;">Chứng từ gốc</th>
+                                    <th style="min-width: 115px; width: 115px; text-align: right;">Giá trị ban đầu</th>
+                                    <th style="min-width: 110px; width: 110px; text-align: right;">Đã trả</th>
+                                    <th style="min-width: 125px; width: 125px; text-align: right;">Còn phải thu / trả</th>
+                                    <th style="min-width: 110px; width: 110px; text-align: center;">Trạng thái</th>
+                                    <th class="tf-col-actions" style="min-width: 88px; width: 88px; text-align: center;">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -448,38 +448,29 @@
                                                     break;
                                             }
                                         </td>
-                                        <td style="text-align: right;">
-                                            <div class="tf-row-actions">
+                                        <td class="tf-col-actions" style="text-align: center;">
+                                            <div class="tf-row-actions-stack">
                                                 @if (item.OutstandingAmount > 0)
                                                 {
                                                     @if (item.Direction == DebtDirection.Receivable)
                                                     {
-                                                        <button type="button" class="tf-btn-action pay-action" title="Thu tiền khách hàng (Lập phiếu thu)" @onclick="() => OpenInlinePaymentModal(item)">
-                                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                                                <line x1="12" y1="1" x2="12" y2="23"></line>
-                                                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                                                            </svg>
-                                                            <span>Thu tiền</span>
+                                                        <button type="button" class="tf-btn-action-stack receipt" title="Thu tiền khách hàng (Lập phiếu thu)" @onclick="() => OpenInlinePaymentModal(item)">
+                                                            Thu tiền
                                                         </button>
                                                     }
                                                     else
                                                     {
-                                                        <button type="button" class="tf-btn-action pay-action supplier" title="Thanh toán nợ nhà cung cấp (Lập phiếu chi)" @onclick="() => OpenInlinePaymentModal(item)">
-                                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                                                <rect x="2" y="4" width="20" height="16" rx="2"></rect>
-                                                                <line x1="12" y1="8" x2="12" y2="12"></line>
-                                                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                                                            </svg>
-                                                            <span>Chi tiền</span>
+                                                        <button type="button" class="tf-btn-action-stack pay" title="Thanh toán nợ nhà cung cấp (Lập phiếu chi)" @onclick="() => OpenInlinePaymentModal(item)">
+                                                            Chi tiền
                                                         </button>
                                                     }
                                                 }
-                                                <button type="button" class="tf-btn-action" title="Xem hồ sơ đối tác" @onclick="() => OpenPartnerDrawer(item.PartnerType, item.PartnerId)">
+                                                <button type="button" class="tf-btn-action-stack detail" title="Xem hồ sơ đối tác" @onclick="() => OpenPartnerDrawer(item.PartnerType, item.PartnerId)">
                                                     Hồ sơ
                                                 </button>
                                                 @if (!string.IsNullOrEmpty(item.LinkUrl))
                                                 {
-                                                    <a href="@item.LinkUrl" class="tf-btn-action source-doc" title="Xem chi tiết chứng từ phát sinh">
+                                                    <a href="@item.LinkUrl" class="tf-btn-action-stack doc" title="Xem chi tiết chứng từ phát sinh">
                                                         Chứng từ
                                                     </a>
                                                 }

@@ -1,0 +1,474 @@
+/* Price List Comparison Page Styles */
+
+/* 1. View Mode Selector */
+.tf-compare-mode-selector {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+/* 2. Informational Notice Banner */
+.tf-compare-notice-banner {
+    padding: 16px 20px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.tf-compare-notice-banner svg {
+    color: #16a34a;
+    flex-shrink: 0;
+}
+
+.tf-compare-notice-content {
+    font-size: 13px;
+    color: #166534;
+    line-height: 1.5;
+}
+
+.tf-compare-notice-content strong {
+    color: #14532d;
+}
+
+/* 3. Filter Card */
+.tf-compare-filter-card {
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+}
+
+/* 4. Table Header Styling - Light Mode */
+.tf-table thead tr.tf-compare-tr {
+    background-color: #f8fafc;
+}
+
+/* Standard Header Cells */
+.tf-table th.tf-th-standard {
+    background-color: #f8fafc;
+    color: #334155;
+    font-weight: 700;
+    font-size: 11.5px;
+    letter-spacing: 0.04em;
+    border-bottom: 2px solid #e2e8f0;
+    padding: 12px 14px;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+/* Dynamic Period Headers */
+.tf-table th.tf-th-period {
+    background-color: #eff6ff;
+    border-bottom: 2px solid #bfdbfe;
+    border-left: 1px solid #dbeafe;
+    border-right: 1px solid #dbeafe;
+    padding: 10px 14px;
+    text-align: right;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.tf-th-period-title {
+    color: #1d4ed8;
+    font-weight: 700;
+    font-size: 12px;
+}
+
+.tf-th-period-sub {
+    font-size: 10px;
+    color: #64748b;
+    font-weight: 500;
+    margin-top: 2px;
+}
+
+/* Current Price Column Header */
+.tf-table th.tf-th-current-price {
+    background-color: #ecfdf5;
+    border-bottom: 2px solid #a7f3d0;
+    border-left: 1px solid #d1fae5;
+    border-right: 1px solid #d1fae5;
+    padding: 10px 14px;
+    text-align: right;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.tf-th-current-title {
+    color: #047857;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.03em;
+}
+
+.tf-th-current-sub {
+    font-size: 10px;
+    color: #059669;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+/* 5. Table Body Cells */
+.tf-code-new {
+    color: #dc2626;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.tf-code-legacy {
+    color: #475569;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+}
+
+.tf-product-name {
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.tf-period-price {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 13px;
+}
+
+/* Current Price Body Cell */
+.tf-table td.tf-td-current-price {
+    background-color: #f0fdf4;
+    border-left: 1px solid #dcfce7;
+    border-right: 1px solid #dcfce7;
+    text-align: right;
+    vertical-align: middle;
+}
+
+.tf-current-price-val {
+    font-weight: 700;
+    color: #047857;
+    font-size: 14px;
+}
+
+/* 6. Two-Period Detailed Comparison Mode Elements */
+.tf-compare-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.tf-compare-kpi-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.tf-kpi-subtitle {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.tf-kpi-num {
+    font-size: 22px;
+    font-weight: 700;
+    margin-top: 4px;
+    line-height: 1.2;
+}
+
+/* KPI Variant Highlights */
+.tf-compare-kpi-card.increased {
+    border-left: 4px solid #ea580c;
+}
+.tf-compare-kpi-card.increased .tf-kpi-subtitle,
+.tf-compare-kpi-card.increased .tf-kpi-num {
+    color: #ea580c;
+}
+
+.tf-compare-kpi-card.decreased {
+    border-left: 4px solid #059669;
+}
+.tf-compare-kpi-card.decreased .tf-kpi-subtitle,
+.tf-compare-kpi-card.decreased .tf-kpi-num {
+    color: #059669;
+}
+
+.tf-compare-kpi-card.unchanged {
+    border-left: 4px solid #64748b;
+}
+.tf-compare-kpi-card.unchanged .tf-kpi-subtitle,
+.tf-compare-kpi-card.unchanged .tf-kpi-num {
+    color: #64748b;
+}
+
+.tf-compare-kpi-card.new-product {
+    border-left: 4px solid #2563eb;
+}
+.tf-compare-kpi-card.new-product .tf-kpi-subtitle,
+.tf-compare-kpi-card.new-product .tf-kpi-num {
+    color: #2563eb;
+}
+
+.tf-compare-kpi-card.discontinued {
+    border-left: 4px solid #9ca3af;
+}
+.tf-compare-kpi-card.discontinued .tf-kpi-subtitle,
+.tf-compare-kpi-card.discontinued .tf-kpi-num {
+    color: #6b7280;
+}
+
+/* Two-Period Table Diff Badges */
+.tf-diff-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.tf-diff-badge.increased {
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #fed7aa;
+}
+
+.tf-diff-badge.decreased {
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+}
+
+.tf-diff-badge.unchanged {
+    background: #f8fafc;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+.tf-diff-badge.new-product {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+.tf-diff-badge.discontinued {
+    background: #f3f4f6;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+}
+
+/* ==========================================================================
+   Dark Theme System — Price Comparison
+   ========================================================================== */
+[data-bs-theme="dark"] .tf-compare-notice-banner,
+[data-theme="dark"] .tf-compare-notice-banner {
+    background-color: rgba(16, 185, 129, 0.12) !important;
+    border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+[data-bs-theme="dark"] .tf-compare-notice-banner svg,
+[data-theme="dark"] .tf-compare-notice-banner svg {
+    color: #34d399 !important;
+}
+
+[data-bs-theme="dark"] .tf-compare-notice-content,
+[data-theme="dark"] .tf-compare-notice-content {
+    color: #a7f3d0 !important;
+}
+
+[data-bs-theme="dark"] .tf-compare-notice-content strong,
+[data-theme="dark"] .tf-compare-notice-content strong {
+    color: #6ee7b7 !important;
+}
+
+[data-bs-theme="dark"] .tf-compare-filter-card,
+[data-theme="dark"] .tf-compare-filter-card {
+    background-color: #222630 !important;
+    border-color: #2e3542 !important;
+}
+
+/* Dark Mode Table Headers */
+[data-bs-theme="dark"] .tf-table thead tr.tf-compare-tr,
+[data-theme="dark"] .tf-table thead tr.tf-compare-tr {
+    background-color: #1d2028 !important;
+}
+
+[data-bs-theme="dark"] .tf-table th.tf-th-standard,
+[data-theme="dark"] .tf-table th.tf-th-standard {
+    background-color: #1d2028 !important;
+    color: #cbd5e1 !important;
+    border-bottom-color: #2e3542 !important;
+}
+
+[data-bs-theme="dark"] .tf-table th.tf-th-period,
+[data-theme="dark"] .tf-table th.tf-th-period {
+    background-color: rgba(59, 130, 246, 0.16) !important;
+    border-bottom-color: rgba(59, 130, 246, 0.45) !important;
+    border-left-color: rgba(59, 130, 246, 0.25) !important;
+    border-right-color: rgba(59, 130, 246, 0.25) !important;
+}
+
+[data-bs-theme="dark"] .tf-th-period-title,
+[data-theme="dark"] .tf-th-period-title {
+    color: #93c5fd !important;
+}
+
+[data-bs-theme="dark"] .tf-th-period-sub,
+[data-theme="dark"] .tf-th-period-sub {
+    color: #94a3b8 !important;
+}
+
+[data-bs-theme="dark"] .tf-table th.tf-th-current-price,
+[data-theme="dark"] .tf-table th.tf-th-current-price {
+    background-color: rgba(16, 185, 129, 0.18) !important;
+    border-bottom-color: rgba(16, 185, 129, 0.45) !important;
+    border-left-color: rgba(16, 185, 129, 0.25) !important;
+    border-right-color: rgba(16, 185, 129, 0.25) !important;
+}
+
+[data-bs-theme="dark"] .tf-th-current-title,
+[data-theme="dark"] .tf-th-current-title {
+    color: #6ee7b7 !important;
+}
+
+[data-bs-theme="dark"] .tf-th-current-sub,
+[data-theme="dark"] .tf-th-current-sub {
+    color: #a7f3d0 !important;
+}
+
+/* Dark Mode Table Body */
+[data-bs-theme="dark"] .tf-code-new,
+[data-theme="dark"] .tf-code-new {
+    color: #f87171 !important;
+}
+
+[data-bs-theme="dark"] .tf-code-legacy,
+[data-theme="dark"] .tf-code-legacy {
+    color: #94a3b8 !important;
+}
+
+[data-bs-theme="dark"] .tf-product-name,
+[data-theme="dark"] .tf-product-name {
+    color: #f1f5f9 !important;
+}
+
+[data-bs-theme="dark"] .tf-period-price,
+[data-theme="dark"] .tf-period-price {
+    color: #e2e8f0 !important;
+}
+
+[data-bs-theme="dark"] .tf-table td.tf-td-current-price,
+[data-theme="dark"] .tf-table td.tf-td-current-price {
+    background-color: rgba(16, 185, 129, 0.10) !important;
+    border-left-color: rgba(16, 185, 129, 0.2) !important;
+    border-right-color: rgba(16, 185, 129, 0.2) !important;
+}
+
+[data-bs-theme="dark"] .tf-current-price-val,
+[data-theme="dark"] .tf-current-price-val {
+    color: #34d399 !important;
+}
+
+/* Dark Mode KPI Cards */
+[data-bs-theme="dark"] .tf-compare-kpi-card,
+[data-theme="dark"] .tf-compare-kpi-card {
+    background-color: #222630 !important;
+    border-color: #2e3542 !important;
+}
+
+[data-bs-theme="dark"] .tf-compare-kpi-card.increased,
+[data-theme="dark"] .tf-compare-kpi-card.increased {
+    border-left: 4px solid #f97316 !important;
+}
+[data-bs-theme="dark"] .tf-compare-kpi-card.increased .tf-kpi-subtitle,
+[data-bs-theme="dark"] .tf-compare-kpi-card.increased .tf-kpi-num,
+[data-theme="dark"] .tf-compare-kpi-card.increased .tf-kpi-subtitle,
+[data-theme="dark"] .tf-compare-kpi-card.increased .tf-kpi-num {
+    color: #fb923c !important;
+}
+
+[data-bs-theme="dark"] .tf-compare-kpi-card.decreased,
+[data-theme="dark"] .tf-compare-kpi-card.decreased {
+    border-left: 4px solid #10b981 !important;
+}
+[data-bs-theme="dark"] .tf-compare-kpi-card.decreased .tf-kpi-subtitle,
+[data-bs-theme="dark"] .tf-compare-kpi-card.decreased .tf-kpi-num,
+[data-theme="dark"] .tf-compare-kpi-card.decreased .tf-kpi-subtitle,
+[data-theme="dark"] .tf-compare-kpi-card.decreased .tf-kpi-num {
+    color: #34d399 !important;
+}
+
+[data-bs-theme="dark"] .tf-compare-kpi-card.unchanged,
+[data-theme="dark"] .tf-compare-kpi-card.unchanged {
+    border-left: 4px solid #64748b !important;
+}
+[data-bs-theme="dark"] .tf-compare-kpi-card.unchanged .tf-kpi-subtitle,
+[data-bs-theme="dark"] .tf-compare-kpi-card.unchanged .tf-kpi-num,
+[data-theme="dark"] .tf-compare-kpi-card.unchanged .tf-kpi-subtitle,
+[data-theme="dark"] .tf-compare-kpi-card.unchanged .tf-kpi-num {
+    color: #94a3b8 !important;
+}
+
+[data-bs-theme="dark"] .tf-compare-kpi-card.new-product,
+[data-theme="dark"] .tf-compare-kpi-card.new-product {
+    border-left: 4px solid #3b82f6 !important;
+}
+[data-bs-theme="dark"] .tf-compare-kpi-card.new-product .tf-kpi-subtitle,
+[data-bs-theme="dark"] .tf-compare-kpi-card.new-product .tf-kpi-num,
+[data-theme="dark"] .tf-compare-kpi-card.new-product .tf-kpi-subtitle,
+[data-theme="dark"] .tf-compare-kpi-card.new-product .tf-kpi-num {
+    color: #60a5fa !important;
+}
+
+[data-bs-theme="dark"] .tf-compare-kpi-card.discontinued,
+[data-theme="dark"] .tf-compare-kpi-card.discontinued {
+    border-left: 4px solid #64748b !important;
+}
+[data-bs-theme="dark"] .tf-compare-kpi-card.discontinued .tf-kpi-subtitle,
+[data-bs-theme="dark"] .tf-compare-kpi-card.discontinued .tf-kpi-num,
+[data-theme="dark"] .tf-compare-kpi-card.discontinued .tf-kpi-subtitle,
+[data-theme="dark"] .tf-compare-kpi-card.discontinued .tf-kpi-num {
+    color: #94a3b8 !important;
+}
+
+/* Dark Mode Badges */
+[data-bs-theme="dark"] .tf-diff-badge.increased,
+[data-theme="dark"] .tf-diff-badge.increased {
+    background: rgba(234, 88, 12, 0.18) !important;
+    color: #fb923c !important;
+    border-color: rgba(234, 88, 12, 0.35) !important;
+}
+
+[data-bs-theme="dark"] .tf-diff-badge.decreased,
+[data-theme="dark"] .tf-diff-badge.decreased {
+    background: rgba(16, 185, 129, 0.18) !important;
+    color: #34d399 !important;
+    border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+[data-bs-theme="dark"] .tf-diff-badge.unchanged,
+[data-theme="dark"] .tf-diff-badge.unchanged {
+    background: #282d37 !important;
+    color: #94a3b8 !important;
+    border-color: #383e4b !important;
+}
+
+[data-bs-theme="dark"] .tf-diff-badge.new-product,
+[data-theme="dark"] .tf-diff-badge.new-product {
+    background: rgba(37, 99, 235, 0.18) !important;
+    color: #93c5fd !important;
+    border-color: rgba(59, 130, 246, 0.35) !important;
+}
+
+[data-bs-theme="dark"] .tf-diff-badge.discontinued,
+[data-theme="dark"] .tf-diff-badge.discontinued {
+    background: #282d37 !important;
+    color: #64748b !important;
+    border-color: #383e4b !important;
+}

@@ -35,14 +35,14 @@
 </div>
 
 <!-- Isolation Notice Banner -->
-<div class="tw-bg-amber-50 tw-border tw-border-amber-200 tw-rounded-lg tw-p-4 tw-mb-4 tw-text-sm tw-text-amber-900">
+<div class="tf-quarantine-warning-banner tw-bg-amber-50 tw-border tw-border-amber-200 tw-rounded-lg tw-p-4 tw-mb-4 tw-text-sm tw-text-amber-900">
     <div class="tw-flex tw-items-start tw-gap-3">
         <svg class="tw-w-5 tw-h-5 tw-text-amber-600 tw-shrink-0 tw-mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
         <div>
-            <span class="tw-font-bold">Quy chuẩn kiểm soát chất lượng & Cách ly vật lý:</span>
-            <span class="tw-ml-1">
+            <span class="tw-font-bold tf-banner-title">Quy chuẩn kiểm soát chất lượng &amp; Cách ly vật lý:</span>
+            <span class="tw-ml-1 tf-banner-text">
                 Tất cả hàng hóa ghi nhận tại danh mục cách ly này đều được tự động loại trừ khỏi tồn khả dụng (Available Stock), ngăn chặn tuyệt đối rủi ro xuất bán hoặc giao hàng lỗi cho khách hàng. Các phương án xử lý (Khôi phục, Xuất trả hãng bảo hành, Tiêu hủy) đều sinh phiếu kho và bút toán thẻ kho tương ứng.
             </span>
         </div>
@@ -51,22 +51,22 @@
 
 <!-- KPI Cards -->
 <div class="tw-grid tw-grid-cols-1 sm:tw-grid-cols-2 lg:tw-grid-cols-4 tw-gap-4 tw-mb-4">
-    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
+    <div class="tf-wh-kpi-card tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
         <span class="tw-text-xs tw-font-semibold tw-text-slate-500 tw-uppercase">Tổng số lượng cách ly</span>
         <div class="tw-text-2xl tw-font-bold tw-text-slate-900 tw-mt-1">@_items.Sum(i => i.Quantity).ToString("N0")</div>
         <div class="tw-text-xs tw-text-slate-400 tw-mt-1">Tổng cộng các đợt phát hiện</div>
     </div>
-    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
+    <div class="tf-wh-kpi-card tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
         <span class="tw-text-xs tw-font-semibold tw-text-amber-600 tw-uppercase">Đang trong kho cách ly</span>
         <div class="tw-text-2xl tw-font-bold tw-text-amber-700 tw-mt-1">@_items.Where(i => i.Status == QuarantineStatus.InQuarantine).Sum(i => i.Quantity).ToString("N0")</div>
-        <div class="tw-text-xs tw-text-slate-400 tw-mt-1">Chờ thẩm định & giải tỏa</div>
+        <div class="tw-text-xs tw-text-slate-400 tw-mt-1">Chờ thẩm định &amp; giải tỏa</div>
     </div>
-    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
+    <div class="tf-wh-kpi-card tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
         <span class="tw-text-xs tw-font-semibold tw-text-blue-600 tw-uppercase">Đã xuất trả Nhà sản xuất</span>
         <div class="tw-text-2xl tw-font-bold tw-text-blue-700 tw-mt-1">@_items.Where(i => i.Status == QuarantineStatus.ReturnedToSupplier).Sum(i => i.Quantity).ToString("N0")</div>
         <div class="tw-text-xs tw-text-slate-400 tw-mt-1">Bảo hành hoặc đổi mới từ NCC</div>
     </div>
-    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
+    <div class="tf-wh-kpi-card tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
         <span class="tw-text-xs tw-font-semibold tw-text-emerald-600 tw-uppercase">Đã sửa chữa / Phục hồi</span>
         <div class="tw-text-2xl tw-font-bold tw-text-emerald-700 tw-mt-1">@_items.Where(i => i.Status == QuarantineStatus.Restored).Sum(i => i.Quantity).ToString("N0")</div>
         <div class="tw-text-xs tw-text-slate-400 tw-mt-1">Đạt chuẩn tái nhập kho bán hàng</div>
@@ -146,7 +146,7 @@
                     {
                         <tr class="hover:tw-bg-slate-50/70 tw-transition-colors">
                             <td class="tw-p-3">
-                                <span class="tw-font-mono tw-font-bold tw-text-amber-800 tw-bg-amber-50 tw-px-2 tw-py-0.5 tw-rounded tw-text-xs">
+                                <span class="tf-quarantine-code-badge tw-font-mono tw-font-bold tw-text-amber-800 tw-bg-amber-50 tw-px-2 tw-py-0.5 tw-rounded tw-text-xs">
                                     @it.Code
                                 </span>
                             </td>

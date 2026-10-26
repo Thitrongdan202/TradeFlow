@@ -1562,6 +1562,134 @@ textarea.tf-form-control {
 
 .tf-table tr:hover td { background-color: var(--tf-gray-50); }
 
+/* Sticky Right Action Column */
+.tf-table th.tf-col-actions,
+.tf-table th.tf-sticky-action {
+  position: sticky;
+  right: 0;
+  z-index: 5;
+  background-color: var(--tf-gray-50, #f8fafc);
+  box-shadow: -4px 0 8px -2px rgba(0, 0, 0, 0.06);
+}
+
+.tf-table td.tf-col-actions,
+.tf-table td.tf-sticky-action {
+  position: sticky;
+  right: 0;
+  z-index: 4;
+  background-color: #ffffff;
+  box-shadow: -4px 0 8px -2px rgba(0, 0, 0, 0.06);
+}
+
+.tf-table tr:hover td.tf-col-actions,
+.tf-table tr:hover td.tf-sticky-action {
+  background-color: var(--tf-gray-50, #f8fafc);
+}
+
+.tf-table tr.row-selected td.tf-col-actions,
+.tf-table tr.row-selected td.tf-sticky-action {
+  background-color: #f5f3ff;
+}
+
+.tf-col-actions .tf-row-actions,
+.tf-sticky-action .tf-row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  flex-wrap: nowrap;
+}
+
+/* Vertical Action Stack for High-Density Tables */
+.tf-row-actions-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: stretch;
+  justify-content: center;
+  width: 100%;
+  max-width: 78px;
+  margin: 0 auto;
+}
+
+.tf-btn-action-stack {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  border-radius: 4px;
+  border: 1px solid var(--tf-border, #e2e8f0);
+  background: var(--tf-surface-card, #ffffff);
+  color: var(--tf-text-secondary, #475569);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.tf-btn-action-stack:hover {
+  background: var(--tf-gray-50, #f8fafc);
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.tf-btn-action-stack.detail:hover {
+  color: #2563eb;
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.tf-btn-action-stack.receipt {
+  color: #047857;
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+}
+
+.tf-btn-action-stack.receipt:hover {
+  color: #065f46;
+  border-color: #6ee7b7;
+  background: #d1fae5;
+}
+
+.tf-btn-action-stack.pay {
+  color: #d97706;
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.tf-btn-action-stack.pay:hover {
+  color: #b45309;
+  border-color: #fcd34d;
+  background: #fef3c7;
+}
+
+.tf-btn-action-stack.edit:hover {
+  color: #4f46e5;
+  border-color: #c7d2fe;
+  background: #eef2ff;
+}
+
+.tf-btn-action-stack.doc:hover {
+  color: #0284c7;
+  border-color: #bae6fd;
+  background: #f0f9ff;
+}
+
+.tf-btn-action-stack.delete {
+  color: #ef4444;
+}
+
+.tf-btn-action-stack.delete:hover {
+  color: #b91c1c;
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
 .tf-table-compact th,
 .tf-table-compact td {
   padding: var(--tf-space-2) var(--tf-space-3);
@@ -3582,6 +3710,33 @@ button.tf-search-spinner {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
+/* Segmented Tab Count Badge Styling */
+.tf-segmented-tab span:last-child {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1;
+  padding: 2px 6.5px;
+  border-radius: 9999px;
+  margin-left: 6px;
+  background-color: #e2e8f0;
+  color: #475569;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.tf-segmented-tab:hover span:last-child {
+  color: #1e293b;
+}
+
+.tf-segmented-tab.is-active span:last-child,
+.tf-segmented-tab.active span:last-child {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
 .tf-segmented-tab.is-active-primary {
   color: #FFFFFF;
   font-weight: 600;
@@ -5370,9 +5525,18 @@ body,
   }
 
   /* Universal Tailwind Utility Overrides in Dark Mode */
-  .tw-bg-white:not(.quotation-print-sheet):not(#print-quotation-area):not(.a4-contract-page):not(.a4-contract-sheet):not(.invoice-print-sheet):not(#print-employment-contract):not(.a4-preview):not(.document-preview-paper),
-  .bg-white:not(.quotation-print-sheet):not(#print-quotation-area):not(.a4-contract-page):not(.a4-contract-sheet):not(.invoice-print-sheet):not(#print-employment-contract):not(.a4-preview):not(.document-preview-paper) {
+  .tw-bg-white:not(.quotation-print-sheet):not(#print-quotation-area):not(.a4-contract-page):not(.a4-contract-sheet):not(.invoice-print-sheet):not(#print-employment-contract):not(.a4-preview):not(.document-preview-paper):not(.voucher-a4-sheet):not(#print-warehouse-voucher):not(.tf-document-paper):not(.voucher-print-sheet),
+  .bg-white:not(.quotation-print-sheet):not(#print-quotation-area):not(.a4-contract-page):not(.a4-contract-sheet):not(.invoice-print-sheet):not(#print-employment-contract):not(.a4-preview):not(.document-preview-paper):not(.voucher-a4-sheet):not(#print-warehouse-voucher):not(.tf-document-paper):not(.voucher-print-sheet) {
     background-color: #222630 !important;
+  }
+
+  /* Formal Category B Printable Vouchers & Documents Protection */
+  .voucher-a4-sheet,
+  #print-warehouse-voucher,
+  .tf-document-paper {
+    background-color: #ffffff !important;
+    background: #ffffff !important;
+    color: #111827 !important;
   }
 
   .tw-bg-slate-50,
@@ -5414,19 +5578,64 @@ body,
   }
 
   .tw-bg-amber-50 {
-    background-color: rgba(245, 158, 11, 0.16) !important;
-    border-color: rgba(245, 158, 11, 0.3) !important;
+    background-color: rgba(245, 158, 11, 0.12) !important;
+    border-color: rgba(245, 158, 11, 0.45) !important;
+  }
+  .tw-text-amber-900,
+  .tw-text-amber-800 {
+    color: #FEF3C7 !important;
   }
   .tw-text-amber-700, .tw-text-amber-600 {
     color: #FBBF24 !important;
+  }
+
+  .tw-bg-amber-100 {
+    background-color: rgba(245, 158, 11, 0.2) !important;
+    border-color: rgba(245, 158, 11, 0.45) !important;
+  }
+
+  .tw-bg-blue-100 {
+    background-color: rgba(37, 99, 235, 0.2) !important;
+    border-color: rgba(59, 130, 246, 0.45) !important;
+  }
+
+  .tw-bg-emerald-100 {
+    background-color: rgba(16, 185, 129, 0.2) !important;
+    border-color: rgba(16, 185, 129, 0.45) !important;
+  }
+
+  .tw-bg-red-50 {
+    background-color: rgba(239, 68, 68, 0.12) !important;
+    border-color: rgba(239, 68, 68, 0.4) !important;
+  }
+
+  .tw-bg-red-100 {
+    background-color: rgba(239, 68, 68, 0.2) !important;
+    border-color: rgba(239, 68, 68, 0.45) !important;
+  }
+  .tw-text-red-700,
+  .tw-text-red-800,
+  .tw-text-red-900 {
+    color: #FCA5A5 !important;
   }
 
   .tw-bg-purple-50 {
     background-color: rgba(168, 85, 247, 0.16) !important;
     border-color: rgba(168, 85, 247, 0.3) !important;
   }
-  .tw-text-purple-700, .tw-text-purple-600 {
+  .tw-bg-purple-100 {
+    background-color: rgba(168, 85, 247, 0.2) !important;
+    border-color: rgba(168, 85, 247, 0.45) !important;
+  }
+  .tw-text-purple-700, .tw-text-purple-600,
+  .tw-text-purple-800, .tw-text-purple-900 {
     color: #C084FC !important;
+  }
+
+  .tw-bg-slate-200\/80,
+  .tw-bg-slate-200 {
+    background-color: #282D37 !important;
+    border-color: #383E4B !important;
   }
 
   /* Form Controls */
@@ -5522,26 +5731,151 @@ body,
     border-color: #383E4B !important;
   }
 
-  /* Segmented Tabs */
+  /* Segmented Tabs & Count Badges in Dark Mode */
   .tf-segmented-tabs {
-    background-color: #1D2028 !important;
-    border-color: #383E4B !important;
+    background-color: #17191F !important;
+    border-color: #2E3542 !important;
   }
 
   .tf-segmented-tab {
-    color: #929BAC !important;
+    color: #CBD5E1 !important;
   }
 
   .tf-segmented-tab:hover {
     color: #FFFFFF !important;
-    background-color: rgba(255, 255, 255, 0.08) !important;
+    background-color: #282D37 !important;
+  }
+
+  .tf-segmented-tab:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px #60A5FA !important;
   }
 
   .tf-segmented-tab.is-active,
   .tf-segmented-tab.active {
-    background-color: #292E39 !important;
+    background-color: #252B36 !important;
     color: #60A5FA !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) !important;
+    border: 1px solid rgba(59, 130, 246, 0.45) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  /* Segmented Tab Count Badges in Dark Mode */
+  .tf-segmented-tab span:last-child {
+    background-color: #282D37 !important;
+    color: #94A3B8 !important;
+    border: 1px solid #383E4B !important;
+    font-weight: 600 !important;
+  }
+
+  .tf-segmented-tab:hover span:last-child {
+    color: #F1F5F9 !important;
+    border-color: #4B5563 !important;
+  }
+
+  .tf-segmented-tab.is-active span:last-child,
+  .tf-segmented-tab.active span:last-child {
+    background-color: rgba(59, 130, 246, 0.25) !important;
+    border-color: rgba(59, 130, 246, 0.5) !important;
+    color: #93C5FD !important;
+    font-weight: 700 !important;
+  }
+
+  /* Universal Sticky Actions Column in Dark Mode */
+  .tf-table th.tf-col-actions,
+  .tf-table th.tf-sticky-action,
+  .table th.tf-col-actions,
+  .table th.tf-sticky-action {
+    background-color: #1d2028 !important;
+    color: #94a3b8 !important;
+    border-color: #2e3542 !important;
+    box-shadow: -4px 0 8px -2px rgba(0, 0, 0, 0.45) !important;
+  }
+
+  .tf-table td.tf-col-actions,
+  .tf-table td.tf-sticky-action,
+  .table td.tf-col-actions,
+  .table td.tf-sticky-action {
+    background-color: #222630 !important;
+    border-color: #252a34 !important;
+    box-shadow: -4px 0 8px -2px rgba(0, 0, 0, 0.45) !important;
+  }
+
+  .tf-table tr:hover td.tf-col-actions,
+  .tf-table tr:hover td.tf-sticky-action,
+  .table tr:hover td.tf-col-actions,
+  .table tr:hover td.tf-sticky-action {
+    background-color: #282d37 !important;
+  }
+
+  .tf-table tr.row-selected td.tf-col-actions,
+  .table tr.row-selected td.tf-col-actions {
+    background-color: #2e2640 !important;
+  }
+
+  /* Vertical Action Stack in Dark Mode */
+  .tf-btn-action-stack {
+    background: #1d2028 !important;
+    border-color: #2e3542 !important;
+    color: #cbd5e1 !important;
+  }
+
+  .tf-btn-action-stack:hover {
+    background: #282d37 !important;
+    border-color: #383e4b !important;
+    color: #f8fafc !important;
+  }
+
+  .tf-btn-action-stack.detail:hover {
+    color: #93c5fd !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
+    background: rgba(59, 130, 246, 0.15) !important;
+  }
+
+  .tf-btn-action-stack.receipt {
+    color: #34d399 !important;
+    border-color: rgba(16, 185, 129, 0.35) !important;
+    background: rgba(16, 185, 129, 0.12) !important;
+  }
+
+  .tf-btn-action-stack.receipt:hover {
+    color: #6ee7b7 !important;
+    border-color: rgba(16, 185, 129, 0.5) !important;
+    background: rgba(16, 185, 129, 0.2) !important;
+  }
+
+  .tf-btn-action-stack.pay {
+    color: #fbbf24 !important;
+    border-color: rgba(245, 158, 11, 0.35) !important;
+    background: rgba(245, 158, 11, 0.12) !important;
+  }
+
+  .tf-btn-action-stack.pay:hover {
+    color: #fde68a !important;
+    border-color: rgba(245, 158, 11, 0.5) !important;
+    background: rgba(245, 158, 11, 0.2) !important;
+  }
+
+  .tf-btn-action-stack.edit:hover {
+    color: #a5b4fc !important;
+    border-color: rgba(99, 102, 241, 0.4) !important;
+    background: rgba(99, 102, 241, 0.15) !important;
+  }
+
+  .tf-btn-action-stack.doc:hover {
+    color: #38bdf8 !important;
+    border-color: rgba(14, 165, 233, 0.4) !important;
+    background: rgba(14, 165, 233, 0.15) !important;
+  }
+
+  .tf-btn-action-stack.delete {
+    color: #f87171 !important;
+    border-color: rgba(239, 68, 68, 0.3) !important;
+  }
+
+  .tf-btn-action-stack.delete:hover {
+    color: #fca5a5 !important;
+    border-color: rgba(239, 68, 68, 0.5) !important;
+    background: rgba(239, 68, 68, 0.15) !important;
   }
 
   /* Buttons in Dark Mode */

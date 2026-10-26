@@ -28,7 +28,7 @@
 </div>
 
 @* View Mode Selector *@
-<div style="display: flex; gap: 8px; margin-bottom: 20px;">
+<div class="tf-compare-mode-selector">
     <button type="button" 
             class="tf-btn @(_activeMode == "multi" ? "tf-btn-primary" : "tf-btn-secondary")" 
             style="display:flex; align-items:center; gap: 6px; padding: 8px 16px;" 
@@ -55,18 +55,16 @@
 @if (_activeMode == "multi")
 {
     @* Multi-Period Dynamic Comparison View *@
-    <div class="tf-card tf-mb-4" style="padding: 16px 20px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;">
-        <div style="display:flex; align-items:center; gap: 10px;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-            <div style="font-size: 13px; color: #166534;">
-                <strong>Nguyên tắc so sánh:</strong> Tất cả các mức giá đều dùng chung cơ sở <strong>"Giá chưa VAT"</strong> (giá niêm yết đại lý trước thuế).
-                Cột <strong>"Giá hiện tại"</strong> được truy vấn tự động từ Bảng giá đang có hiệu lực theo ngày áp dụng.
-            </div>
+    <div class="tf-compare-notice-banner">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <div class="tf-compare-notice-content">
+            <strong>Nguyên tắc so sánh:</strong> Tất cả các mức giá đều dùng chung cơ sở <strong>"Giá chưa VAT"</strong> (giá niêm yết đại lý trước thuế).
+            Cột <strong>"Giá hiện tại"</strong> được truy vấn tự động từ Bảng giá đang có hiệu lực theo ngày áp dụng.
         </div>
     </div>
 
     @* Filters *@
-    <div class="tf-card tf-mb-4" style="padding: 12px 16px;">
+    <div class="tf-card tf-compare-filter-card">
         <div style="display: flex; gap: 12px; align-items: center;">
             <div style="flex: 2;">
                 <input type="text"
@@ -100,27 +98,27 @@
         <div class="tf-card">
             <div class="tf-card-body" style="padding:0; overflow-x: auto;">
                 <table class="tf-table" style="font-size: 13px;">
-                    <thead>
-                        <tr style="background: #1e293b; color: #fff;">
-                            <th style="width: 45px; text-align: center; color:#fff;">STT</th>
-                            <th style="min-width: 120px; color:#fff;">NHÓM</th>
-                            <th style="width: 50px; text-align: center; color:#fff;">ẢNH</th>
-                            <th style="min-width: 110px; color:#fff;">MÃ MỚI</th>
-                            <th style="min-width: 90px; color:#fff;">MÃ CŨ</th>
-                            <th style="min-width: 200px; color:#fff;">SẢN PHẨM</th>
+                    <thead class="tf-compare-thead">
+                        <tr class="tf-compare-tr">
+                            <th class="tf-th-standard" style="width: 45px; text-align: center;">STT</th>
+                            <th class="tf-th-standard" style="min-width: 120px;">NHÓM</th>
+                            <th class="tf-th-standard" style="width: 50px; text-align: center;">ẢNH</th>
+                            <th class="tf-th-standard" style="min-width: 110px;">MÃ MỚI</th>
+                            <th class="tf-th-standard" style="min-width: 90px;">MÃ CŨ</th>
+                            <th class="tf-th-standard" style="min-width: 200px;">SẢN PHẨM</th>
 
                             @* Dynamic Period Headers from DB *@
                             @foreach (var period in _multiPeriodResult.Periods)
                             {
-                                <th style="min-width: 120px; text-align: right; color: #93c5fd; background: #0f172a;">
-                                    <div>@period.PeriodLabel</div>
-                                    <div style="font-size: 10px; color: #94a3b8; font-weight: normal;">Chưa VAT</div>
+                                <th class="tf-th-period" style="min-width: 130px; text-align: right;">
+                                    <div class="tf-th-period-title">@period.PeriodLabel</div>
+                                    <div class="tf-th-period-sub">Chưa VAT</div>
                                 </th>
                             }
 
-                            <th style="min-width: 130px; text-align: right; color: #86efac; background: #064e3b;">
-                                <div>GIÁ HIỆN TẠI</div>
-                                <div style="font-size: 10px; color: #a7f3d0; font-weight: normal;">Chưa VAT</div>
+                            <th class="tf-th-current-price" style="min-width: 135px; text-align: right;">
+                                <div class="tf-th-current-title">GIÁ HIỆN TẠI</div>
+                                <div class="tf-th-current-sub">Chưa VAT</div>
                             </th>
                         </tr>
                     </thead>
@@ -139,25 +137,25 @@
                             @foreach (var item in FilteredMultiItems)
                             {
                                 <tr>
-                                    <td style="text-align: center; color: #6b7280;">@(stt++)</td>
+                                    <td style="text-align: center; color: var(--tf-text-muted);">@(stt++)</td>
                                     <td><span style="font-weight: 600;">@(item.Group ?? "-")</span></td>
                                     <td style="text-align: center;">
                                         @if (!string.IsNullOrEmpty(item.ImageStorageRef))
                                         {
                                             <img src="@FileStorage.GetPublicUrl(item.ImageStorageRef)"
                                                  alt="@item.NewCode"
-                                                 style="width: 36px; height: 36px; object-fit: contain; border-radius: 4px; border: 1px solid #e5e7eb; background:#fff;" />
+                                                 style="width: 36px; height: 36px; object-fit: contain; border-radius: 4px; border: 1px solid var(--tf-border); background:#fff;" />
                                         }
                                         else
                                         {
-                                            <span style="color: #9ca3af; font-size: 11px;">-</span>
+                                            <span style="color: var(--tf-text-muted); font-size: 11px;">-</span>
                                         }
                                     </td>
                                     <td>
-                                        <strong style="color: #dc2626; font-size: 13px;">@item.NewCode</strong>
+                                        <strong class="tf-code-new">@item.NewCode</strong>
                                     </td>
-                                    <td>@(item.LegacyCode ?? "-")</td>
-                                    <td style="font-weight: 500;">@item.ProductName</td>
+                                    <td><span class="tf-code-legacy">@(item.LegacyCode ?? "-")</span></td>
+                                    <td><span class="tf-product-name">@item.ProductName</span></td>
 
                                     @* Dynamic Period Prices *@
                                     @foreach (var period in _multiPeriodResult.Periods)
@@ -165,26 +163,26 @@
                                         <td style="text-align: right;">
                                             @if (item.PeriodPrices.TryGetValue(period.PriceListId, out var pPrice) && pPrice.HasValue)
                                             {
-                                                <div style="font-weight: 600; color: #1e293b;">@pPrice.Value.ToString("N0") ₫</div>
+                                                <div class="tf-period-price">@pPrice.Value.ToString("N0") ₫</div>
                                             }
                                             else
                                             {
-                                                <span style="color: #9ca3af;">-</span>
+                                                <span style="color: var(--tf-text-muted);">-</span>
                                             }
                                         </td>
                                     }
 
                                     @* Current Price Column *@
-                                    <td style="text-align: right; background: #f0fdf4;">
+                                    <td class="tf-td-current-price" style="text-align: right;">
                                         @if (item.CurrentPrice.HasValue && item.CurrentPrice.Value > 0)
                                         {
-                                            <div style="font-weight: 700; color: #047857; font-size: 14px;">
+                                            <div class="tf-current-price-val">
                                                 @item.CurrentPrice.Value.ToString("N0") ₫
                                             </div>
                                         }
                                         else
                                         {
-                                            <span style="color: #9ca3af;">Chưa có</span>
+                                            <span style="color: var(--tf-text-muted);">Chưa có</span>
                                         }
                                     </td>
                                 </tr>
@@ -251,45 +249,45 @@ else
     else if (_comparisonResult != null)
     {
         @* Summary Cards *@
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin-bottom: 20px;">
-            <div class="tf-card" style="padding: 16px;">
-                <div style="font-size: 11px; color: var(--tf-text-muted); font-weight: 600;">TỔNG MẶT HÀNG</div>
-                <div style="font-size: 22px; font-weight: 700; color: #1e293b;">@_comparisonResult.Items.Count</div>
+        <div class="tf-compare-kpi-grid">
+            <div class="tf-card tf-compare-kpi-card">
+                <div class="tf-kpi-subtitle">TỔNG MẶT HÀNG</div>
+                <div class="tf-kpi-num">@_comparisonResult.Items.Count</div>
             </div>
-            <div class="tf-card" style="padding: 16px; border-left: 4px solid #ea580c;">
-                <div style="font-size: 11px; color: #ea580c; font-weight: 600;">TĂNG GIÁ ▲</div>
-                <div style="font-size: 22px; font-weight: 700; color: #ea580c;">
+            <div class="tf-card tf-compare-kpi-card increased">
+                <div class="tf-kpi-subtitle">TĂNG GIÁ ▲</div>
+                <div class="tf-kpi-num">
                     @_comparisonResult.Items.Count(i => i.ChangeStatus == PriceChangeStatus.Increased)
                 </div>
             </div>
-            <div class="tf-card" style="padding: 16px; border-left: 4px solid #059669;">
-                <div style="font-size: 11px; color: #059669; font-weight: 600;">GIẢM GIÁ ▼</div>
-                <div style="font-size: 22px; font-weight: 700; color: #059669;">
+            <div class="tf-card tf-compare-kpi-card decreased">
+                <div class="tf-kpi-subtitle">GIẢM GIÁ ▼</div>
+                <div class="tf-kpi-num">
                     @_comparisonResult.Items.Count(i => i.ChangeStatus == PriceChangeStatus.Decreased)
                 </div>
             </div>
-            <div class="tf-card" style="padding: 16px; border-left: 4px solid #64748b;">
-                <div style="font-size: 11px; color: #64748b; font-weight: 600;">KHÔNG ĐỔI ▬</div>
-                <div style="font-size: 22px; font-weight: 700; color: #64748b;">
+            <div class="tf-card tf-compare-kpi-card unchanged">
+                <div class="tf-kpi-subtitle">KHÔNG ĐỔI ▬</div>
+                <div class="tf-kpi-num">
                     @_comparisonResult.Items.Count(i => i.ChangeStatus == PriceChangeStatus.Unchanged)
                 </div>
             </div>
-            <div class="tf-card" style="padding: 16px; border-left: 4px solid #2563eb;">
-                <div style="font-size: 11px; color: #2563eb; font-weight: 600;">MẶT HÀNG MỚI ★</div>
-                <div style="font-size: 22px; font-weight: 700; color: #2563eb;">
+            <div class="tf-card tf-compare-kpi-card new-product">
+                <div class="tf-kpi-subtitle">MẶT HÀNG MỚI ★</div>
+                <div class="tf-kpi-num">
                     @_comparisonResult.Items.Count(i => i.ChangeStatus == PriceChangeStatus.NewProduct)
                 </div>
             </div>
-            <div class="tf-card" style="padding: 16px; border-left: 4px solid #9ca3af;">
-                <div style="font-size: 11px; color: #9ca3af; font-weight: 600;">NGỪNG ÁP DỤNG ✕</div>
-                <div style="font-size: 22px; font-weight: 700; color: #9ca3af;">
+            <div class="tf-card tf-compare-kpi-card discontinued">
+                <div class="tf-kpi-subtitle">NGỪNG ÁP DỤNG ✕</div>
+                <div class="tf-kpi-num">
                     @_comparisonResult.Items.Count(i => i.ChangeStatus == PriceChangeStatus.Discontinued)
                 </div>
             </div>
         </div>
 
         @* Table Filters *@
-        <div class="tf-card tf-mb-4" style="padding: 12px 16px;">
+        <div class="tf-card tf-compare-filter-card">
             <div style="display: flex; gap: 12px; align-items: center;">
                 <div style="flex: 2;">
                     <input type="text"
@@ -318,25 +316,25 @@ else
         <div class="tf-card">
             <div class="tf-card-body" style="padding:0; overflow-x: auto;">
                 <table class="tf-table" style="font-size: 13px;">
-                    <thead>
-                        <tr style="background: #1e293b; color: #fff;">
-                            <th style="width: 50px; text-align: center; color:#fff;">STT</th>
-                            <th style="min-width: 130px; color:#fff;">NHÓM</th>
-                            <th style="width: 60px; text-align: center; color:#fff;">ẢNH</th>
-                            <th style="min-width: 130px; color:#fff;">MÃ HÀNG MỚI</th>
-                            <th style="min-width: 100px; color:#fff;">MÃ CŨ</th>
-                            <th style="min-width: 220px; color:#fff;">TÊN SẢN PHẨM</th>
-                            <th style="min-width: 130px; text-align: right; color:#fff;">
+                    <thead class="tf-compare-thead">
+                        <tr class="tf-compare-tr">
+                            <th class="tf-th-standard" style="width: 50px; text-align: center;">STT</th>
+                            <th class="tf-th-standard" style="min-width: 130px;">NHÓM</th>
+                            <th class="tf-th-standard" style="width: 60px; text-align: center;">ẢNH</th>
+                            <th class="tf-th-standard" style="min-width: 130px;">MÃ HÀNG MỚI</th>
+                            <th class="tf-th-standard" style="min-width: 100px;">MÃ CŨ</th>
+                            <th class="tf-th-standard" style="min-width: 220px;">TÊN SẢN PHẨM</th>
+                            <th class="tf-th-standard" style="min-width: 130px; text-align: right;">
                                 <div>GIÁ GỐC</div>
-                                <div style="font-size: 10px; color: #94a3b8; font-weight: normal;">Chưa VAT</div>
+                                <div style="font-size: 10px; color: var(--tf-text-muted); font-weight: normal;">Chưa VAT</div>
                             </th>
-                            <th style="min-width: 130px; text-align: right; color:#fff;">
-                                <div>GIÁ MỚI</div>
-                                <div style="font-size: 10px; color: #94a3b8; font-weight: normal;">Chưa VAT</div>
+                            <th class="tf-th-period" style="min-width: 130px; text-align: right;">
+                                <div class="tf-th-period-title">GIÁ MỚI</div>
+                                <div class="tf-th-period-sub">Chưa VAT</div>
                             </th>
-                            <th style="min-width: 120px; text-align: right; color:#fff;">CHÊNH LỆCH</th>
-                            <th style="min-width: 90px; text-align: right; color:#fff;">% BIẾN ĐỘNG</th>
-                            <th style="min-width: 130px; text-align: center; color:#fff;">TRẠNG THÁI</th>
+                            <th class="tf-th-standard" style="min-width: 120px; text-align: right;">CHÊNH LỆCH</th>
+                            <th class="tf-th-standard" style="min-width: 90px; text-align: right;">% BIẾN ĐỘNG</th>
+                            <th class="tf-th-standard" style="min-width: 130px; text-align: center;">TRẠNG THÁI</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -352,29 +350,29 @@ else
                             @foreach (var item in FilteredItems)
                             {
                                 <tr>
-                                    <td style="text-align: center; color: #6b7280;">@(stt++)</td>
+                                    <td style="text-align: center; color: var(--tf-text-muted);">@(stt++)</td>
                                     <td><span style="font-weight: 600;">@(item.Group ?? "-")</span></td>
                                     <td style="text-align: center;">
                                         @if (!string.IsNullOrEmpty(item.ImageStorageRef))
                                         {
                                             <img src="@FileStorage.GetPublicUrl(item.ImageStorageRef)"
                                                  alt="@item.NewCode"
-                                                 style="width: 40px; height: 40px; object-fit: contain; border-radius: 4px; border: 1px solid #e5e7eb; background:#fff;" />
+                                                 style="width: 40px; height: 40px; object-fit: contain; border-radius: 4px; border: 1px solid var(--tf-border); background:#fff;" />
                                         }
                                         else
                                         {
-                                            <span style="color: #9ca3af; font-size: 11px;">-</span>
+                                            <span style="color: var(--tf-text-muted); font-size: 11px;">-</span>
                                         }
                                     </td>
                                     <td>
-                                        <strong style="color: #dc2626; font-size: 14px;">@item.NewCode</strong>
+                                        <strong class="tf-code-new">@item.NewCode</strong>
                                     </td>
-                                    <td>@(item.LegacyCode ?? "-")</td>
-                                    <td>@(item.ProductName ?? "-")</td>
-                                    <td style="text-align: right; font-weight: 600; color: #4b5563;">
+                                    <td><span class="tf-code-legacy">@(item.LegacyCode ?? "-")</span></td>
+                                    <td><span class="tf-product-name">@(item.ProductName ?? "-")</span></td>
+                                    <td style="text-align: right; font-weight: 600;">
                                         @(item.BasePrice.HasValue ? $"{item.BasePrice.Value:N0} ₫" : "-")
                                     </td>
-                                    <td style="text-align: right; font-weight: 700; color: #1e293b;">
+                                    <td class="tf-td-period" style="text-align: right; font-weight: 700;">
                                         @(item.TargetPrice.HasValue ? $"{item.TargetPrice.Value:N0} ₫" : "-")
                                     </td>
                                     <td style="text-align: right; font-weight: 700;">
@@ -390,12 +388,12 @@ else
                                             }
                                             else
                                             {
-                                                <span style="color: #64748b;">0 ₫</span>
+                                                <span style="color: var(--tf-text-muted);">0 ₫</span>
                                             }
                                         }
                                         else
                                         {
-                                            <span style="color: #9ca3af;">-</span>
+                                            <span style="color: var(--tf-text-muted);">-</span>
                                         }
                                     </td>
                                     <td style="text-align: right; font-weight: 700;">
@@ -411,39 +409,39 @@ else
                                             }
                                             else
                                             {
-                                                <span style="color: #64748b;">0%</span>
+                                                <span style="color: var(--tf-text-muted);">0%</span>
                                             }
                                         }
                                         else
                                         {
-                                            <span style="color: #9ca3af;">-</span>
+                                            <span style="color: var(--tf-text-muted);">-</span>
                                         }
                                     </td>
                                     <td style="text-align: center;">
                                         @switch (item.ChangeStatus)
                                         {
                                             case PriceChangeStatus.Increased:
-                                                <span class="tf-badge" style="background:#fff7ed; color:#c2410c; border: 1px solid #fed7aa; font-weight:600;">
+                                                <span class="tf-diff-badge increased">
                                                     ▲ Tăng giá
                                                 </span>
                                                 break;
                                             case PriceChangeStatus.Decreased:
-                                                <span class="tf-badge" style="background:#ecfdf5; color:#047857; border: 1px solid #a7f3d0; font-weight:600;">
+                                                <span class="tf-diff-badge decreased">
                                                     ▼ Giảm giá
                                                 </span>
                                                 break;
                                             case PriceChangeStatus.Unchanged:
-                                                <span class="tf-badge" style="background:#f8fafc; color:#64748b; border: 1px solid #e2e8f0;">
+                                                <span class="tf-diff-badge unchanged">
                                                     ▬ Không đổi
                                                 </span>
                                                 break;
                                             case PriceChangeStatus.NewProduct:
-                                                <span class="tf-badge" style="background:#eff6ff; color:#1d4ed8; border: 1px solid #bfdbfe; font-weight:600;">
+                                                <span class="tf-diff-badge new-product">
                                                     ★ Sản phẩm mới
                                                 </span>
                                                 break;
                                             case PriceChangeStatus.Discontinued:
-                                                <span class="tf-badge" style="background:#f3f4f6; color:#9ca3af; border: 1px solid #e5e7eb;">
+                                                <span class="tf-diff-badge discontinued">
                                                     ✕ Ngừng áp dụng
                                                 </span>
                                                 break;

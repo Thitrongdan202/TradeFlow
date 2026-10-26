@@ -1,7 +1,7 @@
 <div class="tf-warehouse-nav-container tw-bg-white tw-border tw-border-slate-200 tw-px-2.5 tw-py-1.5 tw-mb-4 tw-rounded-xl tw-shadow-2xs no-print">
     <nav class="tw-flex tw-items-center tw-gap-1 sm:tw-gap-1.5 tw-overflow-x-auto tw-scrollbar-none" aria-label="Warehouse Operations Navigation">
         <a href="/kho/ton-kho"
-           class="tw-group tw-inline-flex tw-items-center tw-gap-2 tw-px-3.5 tw-py-2 tw-rounded-lg tw-font-semibold tw-text-xs sm:tw-text-sm tw-whitespace-nowrap tw-transition-all @(ActiveTab == "stock" ? "tw-bg-blue-50 tw-text-blue-700 tw-border tw-border-blue-200/90 tw-shadow-2xs" : "tw-border tw-border-transparent tw-text-slate-600 hover:tw-text-slate-900 hover:tw-bg-slate-100/70")">
+           class="tw-group tw-inline-flex tw-items-center tw-gap-2 tw-px-3.5 tw-py-2 tw-rounded-lg tw-font-semibold tw-text-xs sm:tw-text-sm tw-whitespace-nowrap tw-transition-all tf-nav-tab @(ActiveTab == "stock" ? "is-active tw-bg-blue-50 tw-text-blue-700 tw-border tw-border-blue-200/90 tw-shadow-2xs" : "tw-border tw-border-transparent tw-text-slate-600 hover:tw-text-slate-900 hover:tw-bg-slate-100/70")">
             <svg class="tw-w-4 tw-h-4 @(ActiveTab == "stock" ? "tw-text-blue-600" : "tw-text-slate-400 group-hover:tw-text-slate-600")" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
@@ -9,7 +9,7 @@
         </a>
 
         <a href="/kho/phieu-kho"
-           class="tw-group tw-inline-flex tw-items-center tw-gap-2 tw-px-3.5 tw-py-2 tw-rounded-lg tw-font-semibold tw-text-xs sm:tw-text-sm tw-whitespace-nowrap tw-transition-all @(ActiveTab == "vouchers" ? "tw-bg-blue-50 tw-text-blue-700 tw-border tw-border-blue-200/90 tw-shadow-2xs" : "tw-border tw-border-transparent tw-text-slate-600 hover:tw-text-slate-900 hover:tw-bg-slate-100/70")">
+           class="tw-group tw-inline-flex tw-items-center tw-gap-2 tw-px-3.5 tw-py-2 tw-rounded-lg tw-font-semibold tw-text-xs sm:tw-text-sm tw-whitespace-nowrap tw-transition-all tf-nav-tab @(ActiveTab == "vouchers" ? "is-active tw-bg-blue-50 tw-text-blue-700 tw-border tw-border-blue-200/90 tw-shadow-2xs" : "tw-border tw-border-transparent tw-text-slate-600 hover:tw-text-slate-900 hover:tw-bg-slate-100/70")">
             <svg class="tw-w-4 tw-h-4 @(ActiveTab == "vouchers" ? "tw-text-blue-600" : "tw-text-slate-400 group-hover:tw-text-slate-600")" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
@@ -17,7 +17,7 @@
         </a>
 
         <a href="/kho/kiem-kho"
-           class="tw-group tw-inline-flex tw-items-center tw-gap-2 tw-px-3.5 tw-py-2 tw-rounded-lg tw-font-semibold tw-text-xs sm:tw-text-sm tw-whitespace-nowrap tw-transition-all @(ActiveTab == "stocktake" ? "tw-bg-blue-50 tw-text-blue-700 tw-border tw-border-blue-200/90 tw-shadow-2xs" : "tw-border tw-border-transparent tw-text-slate-600 hover:tw-text-slate-900 hover:tw-bg-slate-100/70")">
+           class="tw-group tw-inline-flex tw-items-center tw-gap-2 tw-px-3.5 tw-py-2 tw-rounded-lg tw-font-semibold tw-text-xs sm:tw-text-sm tw-whitespace-nowrap tw-transition-all tf-nav-tab @(ActiveTab == "stocktake" ? "is-active tw-bg-blue-50 tw-text-blue-700 tw-border tw-border-blue-200/90 tw-shadow-2xs" : "tw-border tw-border-transparent tw-text-slate-600 hover:tw-text-slate-900 hover:tw-bg-slate-100/70")">
             <svg class="tw-w-4 tw-h-4 @(ActiveTab == "stocktake" ? "tw-text-blue-600" : "tw-text-slate-400 group-hover:tw-text-slate-600")" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
             </svg>
@@ -25,7 +25,7 @@
         </a>
 
         <a href="/kho/hang-tra"
-           class="tw-group tw-inline-flex tw-items-center tw-gap-2 tw-px-3.5 tw-py-2 tw-rounded-lg tw-font-semibold tw-text-xs sm:tw-text-sm tw-whitespace-nowrap tw-transition-all @(ActiveTab == "returns" ? "tw-bg-blue-50 tw-text-blue-700 tw-border tw-border-blue-200/90 tw-shadow-2xs" : "tw-border tw-border-transparent tw-text-slate-600 hover:tw-text-slate-900 hover:tw-bg-slate-100/70")">
+           class="tw-group tw-inline-flex tw-items-center tw-gap-2 tw-px-3.5 tw-py-2 tw-rounded-lg tw-font-semibold tw-text-xs sm:tw-text-sm tw-whitespace-nowrap tw-transition-all tf-nav-tab @(ActiveTab == "returns" ? "is-active tw-bg-blue-50 tw-text-blue-700 tw-border tw-border-blue-200/90 tw-shadow-2xs" : "tw-border tw-border-transparent tw-text-slate-600 hover:tw-text-slate-900 hover:tw-bg-slate-100/70")">
             <svg class="tw-w-4 tw-h-4 @(ActiveTab == "returns" ? "tw-text-blue-600" : "tw-text-slate-400 group-hover:tw-text-slate-600")" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
@@ -33,7 +33,7 @@
         </a>
 
         <a href="/kho/hang-loi"
-           class="tw-group tw-inline-flex tw-items-center tw-gap-2 tw-px-3.5 tw-py-2 tw-rounded-lg tw-font-semibold tw-text-xs sm:tw-text-sm tw-whitespace-nowrap tw-transition-all @(ActiveTab == "quarantine" ? "tw-bg-blue-50 tw-text-blue-700 tw-border tw-border-blue-200/90 tw-shadow-2xs" : "tw-border tw-border-transparent tw-text-slate-600 hover:tw-text-slate-900 hover:tw-bg-slate-100/70")">
+           class="tw-group tw-inline-flex tw-items-center tw-gap-2 tw-px-3.5 tw-py-2 tw-rounded-lg tw-font-semibold tw-text-xs sm:tw-text-sm tw-whitespace-nowrap tw-transition-all tf-nav-tab @(ActiveTab == "quarantine" ? "is-active tw-bg-blue-50 tw-text-blue-700 tw-border tw-border-blue-200/90 tw-shadow-2xs" : "tw-border tw-border-transparent tw-text-slate-600 hover:tw-text-slate-900 hover:tw-bg-slate-100/70")">
             <svg class="tw-w-4 tw-h-4 @(ActiveTab == "quarantine" ? "tw-text-blue-600" : "tw-text-slate-400 group-hover:tw-text-slate-600")" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
@@ -41,7 +41,7 @@
         </a>
 
         <a href="/kho/bien-dong"
-           class="tw-group tw-inline-flex tw-items-center tw-gap-2 tw-px-3.5 tw-py-2 tw-rounded-lg tw-font-semibold tw-text-xs sm:tw-text-sm tw-whitespace-nowrap tw-transition-all @(ActiveTab == "movements" ? "tw-bg-blue-50 tw-text-blue-700 tw-border tw-border-blue-200/90 tw-shadow-2xs" : "tw-border tw-border-transparent tw-text-slate-600 hover:tw-text-slate-900 hover:tw-bg-slate-100/70")">
+           class="tw-group tw-inline-flex tw-items-center tw-gap-2 tw-px-3.5 tw-py-2 tw-rounded-lg tw-font-semibold tw-text-xs sm:tw-text-sm tw-whitespace-nowrap tw-transition-all tf-nav-tab @(ActiveTab == "movements" ? "is-active tw-bg-blue-50 tw-text-blue-700 tw-border tw-border-blue-200/90 tw-shadow-2xs" : "tw-border tw-border-transparent tw-text-slate-600 hover:tw-text-slate-900 hover:tw-bg-slate-100/70")">
             <svg class="tw-w-4 tw-h-4 @(ActiveTab == "movements" ? "tw-text-blue-600" : "tw-text-slate-400 group-hover:tw-text-slate-600")" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
@@ -49,7 +49,7 @@
         </a>
 
         <a href="/kho-hang"
-           class="tw-group tw-inline-flex tw-items-center tw-gap-2 tw-px-3.5 tw-py-2 tw-rounded-lg tw-font-semibold tw-text-xs sm:tw-text-sm tw-whitespace-nowrap tw-transition-all @(ActiveTab == "warehouses" ? "tw-bg-blue-50 tw-text-blue-700 tw-border tw-border-blue-200/90 tw-shadow-2xs" : "tw-border tw-border-transparent tw-text-slate-600 hover:tw-text-slate-900 hover:tw-bg-slate-100/70")">
+           class="tw-group tw-inline-flex tw-items-center tw-gap-2 tw-px-3.5 tw-py-2 tw-rounded-lg tw-font-semibold tw-text-xs sm:tw-text-sm tw-whitespace-nowrap tw-transition-all tf-nav-tab @(ActiveTab == "warehouses" ? "is-active tw-bg-blue-50 tw-text-blue-700 tw-border tw-border-blue-200/90 tw-shadow-2xs" : "tw-border tw-border-transparent tw-text-slate-600 hover:tw-text-slate-900 hover:tw-bg-slate-100/70")">
             <svg class="tw-w-4 tw-h-4 @(ActiveTab == "warehouses" ? "tw-text-blue-600" : "tw-text-slate-400 group-hover:tw-text-slate-600")" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>

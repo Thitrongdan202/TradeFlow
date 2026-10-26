@@ -45,32 +45,58 @@
 {
     <div class="tf-alert @(_globalSuccess ? "tf-alert-success" : "tf-alert-error") tf-mb-4" style="display:flex; justify-content:space-between; align-items:center;">
         <div>@_globalMessage</div>
-        <button class="tf-btn tf-btn-ghost tf-btn-sm" style="padding:2px 8px;" @onclick="() => _globalMessage = null">✕</button>
+        <button class="tf-btn tf-btn-ghost tf-btn-sm" style="padding:2px 8px;" @onclick="() => _globalMessage = null">&times;</button>
     </div>
 }
 
 @* Tab Navigation *@
-<div style="display:flex; gap:8px; border-bottom:1px solid #e5e7eb; margin-bottom:20px; overflow-x:auto;">
-    <button type="button" class="tf-btn @(_activeTab == "overview" ? "tf-btn-primary" : "tf-btn-ghost")" @onclick='() => _activeTab = "overview"'>
-        📊 Tổng quan &amp; Cảnh báo
+<div style="display:flex; gap:8px; border-bottom:1px solid var(--tf-border); margin-bottom:20px; overflow-x:auto;">
+    <button type="button" class="tf-btn @(_activeTab == "overview" ? "tf-btn-primary" : "tf-btn-ghost")" @onclick='() => _activeTab = "overview"' style="display:inline-flex; align-items:center; gap:6px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+            <rect x="3" y="3" width="7" height="9"></rect>
+            <rect x="14" y="3" width="7" height="5"></rect>
+            <rect x="14" y="12" width="7" height="9"></rect>
+            <rect x="3" y="16" width="7" height="5"></rect>
+        </svg>
+        <span>Tổng quan &amp; Cảnh báo</span>
         @if (_alerts.Any(a => a.AlertType == "error"))
         {
-            <span style="margin-left:6px; background:#dc2626; color:#fff; border-radius:10px; padding:1px 6px; font-size:11px; font-weight:bold;">
+            <span style="margin-left:4px; background:#dc2626; color:#fff; border-radius:10px; padding:1px 6px; font-size:11px; font-weight:bold;">
                 @_alerts.Count(a => a.AlertType == "error")
             </span>
         }
     </button>
-    <button type="button" class="tf-btn @(_activeTab == "signers" ? "tf-btn-primary" : "tf-btn-ghost")" @onclick='() => _activeTab = "signers"'>
-        ✍ Người ký &amp; Mã kích hoạt
+    <button type="button" class="tf-btn @(_activeTab == "signers" ? "tf-btn-primary" : "tf-btn-ghost")" @onclick='() => _activeTab = "signers"' style="display:inline-flex; align-items:center; gap:6px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="8.5" cy="7" r="4"></circle>
+            <polyline points="17 11 19 13 23 9"></polyline>
+        </svg>
+        <span>Người ký &amp; Mã kích hoạt</span>
     </button>
-    <button type="button" class="tf-btn @(_activeTab == "verify" ? "tf-btn-primary" : "tf-btn-ghost")" @onclick='() => _activeTab = "verify"'>
-        🔍 Kiểm tra chữ ký tài liệu
+    <button type="button" class="tf-btn @(_activeTab == "verify" ? "tf-btn-primary" : "tf-btn-ghost")" @onclick='() => _activeTab = "verify"' style="display:inline-flex; align-items:center; gap:6px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            <path d="m9 12 2 2 4-4"></path>
+        </svg>
+        <span>Kiểm tra chữ ký tài liệu</span>
     </button>
-    <button type="button" class="tf-btn @(_activeTab == "audit" ? "tf-btn-primary" : "tf-btn-ghost")" @onclick='() => _activeTab = "audit"'>
-        📜 Nhật ký ký số
+    <button type="button" class="tf-btn @(_activeTab == "audit" ? "tf-btn-primary" : "tf-btn-ghost")" @onclick='() => _activeTab = "audit"' style="display:inline-flex; align-items:center; gap:6px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+        <span>Nhật ký ký số</span>
     </button>
-    <button type="button" class="tf-btn @(_activeTab == "settings" ? "tf-btn-primary" : "tf-btn-ghost")" @onclick='() => _activeTab = "settings"'>
-        ⚙ Chính sách an ninh
+    <button type="button" class="tf-btn @(_activeTab == "settings" ? "tf-btn-primary" : "tf-btn-ghost")" @onclick='() => _activeTab = "settings"' style="display:inline-flex; align-items:center; gap:6px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        <span>Chính sách an ninh</span>
     </button>
 </div>
 
@@ -227,7 +253,14 @@ else
                                             @s.ValidTo.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                                             @if (s.IsExpiringSoon)
                                             {
-                                                <span style="color:#d97706; font-size:11px; font-weight:600; display:block;">⚠️ Sắp hết hạn</span>
+                                                <span style="color:#d97706; font-size:11px; font-weight:600; display:inline-flex; align-items:center; gap:4px;">
+                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                                                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                                                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                                    </svg>
+                                                    Sắp hết hạn
+                                                </span>
                                             }
                                         }
                                         else
@@ -398,7 +431,13 @@ else
     {
         <div class="tf-card tf-mb-4">
             <div class="tf-card-header">
-                <h3 style="margin:0; font-size:16px; font-weight:600;">🔍 Công cụ kiểm tra toàn vẹn chữ ký số &amp; Phát hiện can thiệp</h3>
+                <h3 style="margin:0; font-size:16px; font-weight:600; display:flex; align-items:center; gap:8px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tf-primary);">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        <path d="m9 12 2 2 4-4"></path>
+                    </svg>
+                    Công cụ kiểm tra toàn vẹn chữ ký số &amp; Phát hiện can thiệp
+                </h3>
                 <p style="margin:4px 0 0; font-size:13px; color:var(--tf-text-secondary);">
                     Kiểm tra tính hợp lệ về mặt toán học của chữ ký điện tử RSA-2048 và so khớp mã băm gốc (Canonical Digest).
                     Nếu bất kỳ số liệu tiền tệ, số lượng, mã số thuế hay dòng hàng nào bị chỉnh sửa trong cơ sở dữ liệu, hệ thống sẽ phát hiện ngay lập tức.
@@ -425,7 +464,7 @@ else
 
                 @if (_manualVerifyResult != null)
                 {
-                    <div style="border-radius:8px; border:1px solid @(_manualVerifyResult.IsValid ? "#22c55e" : "#ef4444"); background:@(_manualVerifyResult.IsValid ? "#f0fdf4" : "#fef2f2"); padding:20px;">
+                    <div style="border-radius:8px; border:1px solid @(_manualVerifyResult.IsValid ? "#22c55e" : "#ef4444"); background:@(_manualVerifyResult.IsValid ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)"); padding:20px;">
                         <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
                             <span class="@_manualVerifyResult.Status.ToBadgeClass()" style="font-size:14px; padding:6px 14px;">
                                 @_manualVerifyResult.Status.ToVietnamese()
@@ -437,13 +476,20 @@ else
 
                         @if (_manualVerifyResult.IsTampered)
                         {
-                            <div class="tf-alert tf-alert-error tf-mb-4" style="font-size:13px; font-weight:500;">
-                                ⚠️ <strong>CẢNH BÁO NGUY CƠ GIẢ MẠO:</strong> Dữ liệu hiện tại của hóa đơn không khớp với mã băm toán học đã ký điện tử ban đầu!
-                                Bất kỳ thay đổi nào đối với số tiền, thuế suất, số lượng hoặc bên mua/bên bán sau khi ký đều làm mất hiệu lực pháp lý của hóa đơn này.
+                            <div class="tf-alert tf-alert-error tf-mb-4" style="font-size:13px; font-weight:500; display:flex; align-items:flex-start; gap:8px;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:2px;">
+                                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                </svg>
+                                <div>
+                                    <strong>CẢNH BÁO NGUY CƠ GIẢ MẠO:</strong> Dữ liệu hiện tại của hóa đơn không khớp với mã băm toán học đã ký điện tử ban đầu!
+                                    Bất kỳ thay đổi nào đối với số tiền, thuế suất, số lượng hoặc bên mua/bên bán sau khi ký đều làm mất hiệu lực pháp lý của hóa đơn này.
+                                </div>
                             </div>
                         }
 
-                        <div style="background:#fff; border:1px solid #e5e7eb; border-radius:6px; padding:16px; font-size:13px; line-height:1.7;">
+                        <div style="background:var(--tf-surface-card); border:1px solid var(--tf-border); border-radius:6px; padding:16px; font-size:13px; line-height:1.7;">
                             <div style="display:grid; grid-template-columns:180px 1fr; gap:6px 12px;">
                                 <div><strong>Người ký:</strong></div>
                                 <div>@(_manualVerifyResult.SignedBy ?? "N/A")</div>
@@ -484,8 +530,14 @@ else
                     <h3 style="margin:0; font-size:16px; font-weight:600;">Nhật ký ký điện tử &amp; Xác thực tài liệu</h3>
                     <p style="margin:4px 0 0; font-size:13px; color:var(--tf-text-secondary);">Ghi nhận bất biến mọi lần tạo chữ ký, kiểm tra xác thực hoặc cảnh báo sai lệch</p>
                 </div>
-                <button class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="LoadAuditLogsAsync">
-                    🔄 Làm mới
+                <button class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="LoadAuditLogsAsync" style="display:inline-flex; align-items:center; gap:6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                        <path d="M21 3v5h-5"></path>
+                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                        <path d="M3 21v-5h5"></path>
+                    </svg>
+                    Làm mới
                 </button>
             </div>
             <div class="tf-card-body" style="padding:0; overflow-x:auto;">
@@ -633,8 +685,15 @@ else
     <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
         <div style="background:var(--tf-bg-card); color:var(--tf-text-primary); border:1px solid var(--tf-border); padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.4);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                <h3 style="margin:0; font-size:18px; color:var(--tf-primary);">🔑 Cấp mã kích hoạt người ký số</h3>
-                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showIssueCodeModal = false">✕</button>
+                <h3 style="margin:0; font-size:18px; color:var(--tf-primary); display:flex; align-items:center; gap:8px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="7.5" cy="15.5" r="5.5"></circle>
+                        <path d="m21 2-9.6 9.6"></path>
+                        <path d="m15.5 7.5 3 3L22 7l-3-3"></path>
+                    </svg>
+                    Cấp mã kích hoạt người ký số
+                </h3>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showIssueCodeModal = false">&times;</button>
             </div>
 
             <div class="tf-alert tf-alert-info tf-mb-4" style="font-size:13px; line-height:1.5;">
@@ -707,16 +766,21 @@ else
     <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1100; display:flex; align-items:center; justify-content:center;">
         <div style="background:var(--tf-bg-card); color:var(--tf-text-primary); border:1px solid var(--tf-border); padding:28px; border-radius:8px; width:540px; max-width:95%; box-shadow:0 12px 30px rgba(0,0,0,0.4);">
             <div style="text-align:center; margin-bottom:16px;">
-                <div style="font-size:32px; margin-bottom:8px;">🔐</div>
+                <div style="display:inline-flex; align-items:center; justify-content:center; width:52px; height:52px; border-radius:50%; background:rgba(37,99,235,0.1); color:var(--tf-primary); margin-bottom:12px;">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                </div>
                 <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--tf-primary);">Mã kích hoạt đã được tạo thành công</h3>
                 <p style="margin:4px 0 0; font-size:13px; color:var(--tf-text-secondary);">Gửi mã này an toàn cho nhân viên được ủy quyền</p>
             </div>
 
-            <div style="background:#f1f5f9; border:2px dashed #94a3b8; border-radius:8px; padding:16px; text-align:center; margin-bottom:16px;">
-                <div style="font-size:11px; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:1px; margin-bottom:4px;">
+            <div style="background:var(--tf-bg-subtle, rgba(0,0,0,0.03)); border:2px dashed var(--tf-border, #94a3b8); border-radius:8px; padding:16px; text-align:center; margin-bottom:16px;">
+                <div style="font-size:11px; text-transform:uppercase; font-weight:700; color:var(--tf-text-muted, #64748b); letter-spacing:1px; margin-bottom:4px;">
                     Mã kích hoạt 1 lần (Single-use Code)
                 </div>
-                <div style="font-family:monospace; font-size:22px; font-weight:700; color:#0f172a; letter-spacing:2px; word-break:break-all;">
+                <div style="font-family:monospace; font-size:22px; font-weight:700; color:var(--tf-text-primary, #0f172a); letter-spacing:2px; word-break:break-all;">
                     @_newlyIssuedCode.RawCode
                 </div>
                 <div style="font-size:12px; color:#d97706; margin-top:8px;">
@@ -751,8 +815,14 @@ else
     <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
         <div style="background:var(--tf-bg-card); color:var(--tf-text-primary); border:1px solid var(--tf-border); padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.4);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                <h3 style="margin:0; font-size:18px; color:var(--tf-primary);">🛡️ Kích hoạt chứng thư ký số mới</h3>
-                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showEnrollSignerModal = false">✕</button>
+                <h3 style="margin:0; font-size:18px; color:var(--tf-primary); display:flex; align-items:center; gap:8px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        <path d="m9 12 2 2 4-4"></path>
+                    </svg>
+                    Kích hoạt chứng thư ký số mới
+                </h3>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showEnrollSignerModal = false">&times;</button>
             </div>
 
             <div class="tf-form-group tf-mb-4">
@@ -794,8 +864,15 @@ else
     <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
         <div style="background:var(--tf-bg-card); color:var(--tf-text-primary); border:1px solid var(--tf-border); padding:24px; border-radius:8px; width:500px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.4);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                <h3 style="margin:0; font-size:18px; color:#dc2626;">⚠️ Xác nhận thu hồi chứng thư ký số</h3>
-                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showRevokeSignerModal = false">✕</button>
+                <h3 style="margin:0; font-size:18px; color:var(--tf-danger, #dc2626); display:flex; align-items:center; gap:8px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    Xác nhận thu hồi chứng thư ký số
+                </h3>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showRevokeSignerModal = false">&times;</button>
             </div>
 
             <div class="tf-alert tf-alert-warning tf-mb-4" style="font-size:13px;">
@@ -831,7 +908,7 @@ else
         <div style="background:var(--tf-bg-card); color:var(--tf-text-primary); border:1px solid var(--tf-border); padding:24px; border-radius:8px; width:500px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.4);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                 <h3 style="margin:0; font-size:18px; color:#dc2626;">Hủy mã kích hoạt người ký</h3>
-                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showRevokeCodeModal = false">✕</button>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showRevokeCodeModal = false">&times;</button>
             </div>
 
             <div style="font-size:14px; margin-bottom:16px;">
@@ -864,8 +941,15 @@ else
     <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
         <div style="background:var(--tf-bg-card); color:var(--tf-text-primary); border:1px solid var(--tf-border); padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.4);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                <h3 style="margin:0; font-size:18px; color:var(--tf-primary);">🔑 Thiết lập mã PIN &amp; Tạo khóa chứng thư</h3>
-                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showSetupPinModal = false">✕</button>
+                <h3 style="margin:0; font-size:18px; color:var(--tf-primary); display:flex; align-items:center; gap:8px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="7.5" cy="15.5" r="5.5"></circle>
+                        <path d="m21 2-9.6 9.6"></path>
+                        <path d="m15.5 7.5 3 3L22 7l-3-3"></path>
+                    </svg>
+                    Thiết lập mã PIN &amp; Tạo khóa chứng thư
+                </h3>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showSetupPinModal = false">&times;</button>
             </div>
 
             <div class="tf-alert tf-alert-info tf-mb-4" style="font-size:13px;">
@@ -907,8 +991,16 @@ else
     <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
         <div style="background:var(--tf-bg-card); color:var(--tf-text-primary); border:1px solid var(--tf-border); padding:24px; border-radius:8px; width:500px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.4);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                <h3 style="margin:0; font-size:18px; color:var(--tf-primary);">🔄 Đổi mã PIN ký số</h3>
-                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showChangePinModal = false">✕</button>
+                <h3 style="margin:0; font-size:18px; color:var(--tf-primary); display:flex; align-items:center; gap:8px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                        <path d="M21 3v5h-5"></path>
+                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                        <path d="M3 21v-5h5"></path>
+                    </svg>
+                    Đổi mã PIN ký số
+                </h3>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showChangePinModal = false">&times;</button>
             </div>
 
             <div class="tf-alert tf-alert-info tf-mb-4" style="font-size:13px;">
@@ -952,8 +1044,15 @@ else
     <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
         <div style="background:var(--tf-bg-card); color:var(--tf-text-primary); border:1px solid var(--tf-border); padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.4);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                <h3 style="margin:0; font-size:18px; color:#d97706;">⚠️ Đặt lại mã PIN người ký</h3>
-                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showAdminResetPinModal = false">✕</button>
+                <h3 style="margin:0; font-size:18px; color:#d97706; display:flex; align-items:center; gap:8px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    Đặt lại mã PIN người ký
+                </h3>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showAdminResetPinModal = false">&times;</button>
             </div>
 
             <div class="tf-alert tf-alert-warning tf-mb-4" style="font-size:13px; line-height:1.5;">
@@ -988,8 +1087,16 @@ else
     <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
         <div style="background:var(--tf-bg-card); color:var(--tf-text-primary); border:1px solid var(--tf-border); padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.4);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                <h3 style="margin:0; font-size:18px; color:var(--tf-primary);">✍ Quản lý ảnh chữ ký tay</h3>
-                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showEditSignatureModal = false">✕</button>
+                <h3 style="margin:0; font-size:18px; color:var(--tf-primary); display:flex; align-items:center; gap:8px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                        <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+                        <path d="M2 2l7.586 7.586"></path>
+                        <circle cx="11" cy="11" r="2"></circle>
+                    </svg>
+                    Quản lý ảnh chữ ký tay
+                </h3>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showEditSignatureModal = false">&times;</button>
             </div>
 
             <div class="tf-alert tf-alert-info tf-mb-4" style="font-size:13px;">

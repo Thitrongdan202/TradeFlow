@@ -7,25 +7,46 @@
     <meta name="description" content="TradeFlow — Hệ thống quản lý kinh doanh nội bộ" />
     <base href="/" />
     <script>
-        // Early Theme Initialization to eliminate flicker (FOUT) before DOM paint
+        // Early Theme Initialization & Guardian Observer to eliminate flicker (FOUT/Flash) before DOM paint
         (function() {
-            try {
-                var cookieMatch = document.cookie.match(/(?:^|;\s*)tf_theme=([^;]+)/);
-                var cookieTheme = cookieMatch ? cookieMatch[1] : null;
-                var stored = (cookieTheme === 'dark' || cookieTheme === 'light') ? cookieTheme : localStorage.getItem('tf_theme');
-                var theme = stored === 'dark' || (!stored && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
-                document.documentElement.setAttribute('data-bs-theme', theme);
-                document.documentElement.setAttribute('data-theme', theme);
-                if (theme === 'dark') {
-                    document.documentElement.classList.add('dark');
-                    var style = document.createElement('style');
-                    style.id = 'tf-early-dark-loader';
-                    style.textContent = '#tf-startup-loader, #tf-startup-loader .tf-loading-backdrop { background-color: #17191F !important; color: #F0F2F6 !important; }';
-                    document.head.appendChild(style);
-                } else {
-                    document.documentElement.classList.remove('dark');
-                }
-            } catch (e) {}
+            function getPreferredTheme() {
+                try {
+                    var cookieMatch = document.cookie.match(/(?:^|;\s*)tf_theme=([^;]+)/);
+                    var cookieTheme = cookieMatch ? cookieMatch[1] : null;
+                    if (cookieTheme === 'dark' || cookieTheme === 'light') return cookieTheme;
+                    var stored = localStorage.getItem('tf_theme');
+                    if (stored === 'dark' || stored === 'light') return stored;
+                } catch (e) {}
+                return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+
+            var theme = getPreferredTheme();
+            document.documentElement.setAttribute('data-bs-theme', theme);
+            document.documentElement.setAttribute('data-theme', theme);
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+
+            // Continuous guardian observer: prevents any Blazor enhanced nav or script from temporarily flashing Light Mode
+            if (typeof MutationObserver !== 'undefined') {
+                var themeObserver = new MutationObserver(function() {
+                    var curTheme = getPreferredTheme();
+                    var attrTheme = document.documentElement.getAttribute('data-theme');
+                    var attrBsTheme = document.documentElement.getAttribute('data-bs-theme');
+                    var hasDarkClass = document.documentElement.classList.contains('dark');
+                    if (attrTheme !== curTheme || attrBsTheme !== curTheme || (curTheme === 'dark' && !hasDarkClass) || (curTheme === 'light' && hasDarkClass)) {
+                        themeObserver.disconnect();
+                        document.documentElement.setAttribute('data-theme', curTheme);
+                        document.documentElement.setAttribute('data-bs-theme', curTheme);
+                        if (curTheme === 'dark') document.documentElement.classList.add('dark');
+                        else document.documentElement.classList.remove('dark');
+                        themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-bs-theme', 'class'] });
+                    }
+                });
+                themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-bs-theme', 'class'] });
+            }
         })();
     </script>
     @if (!string.IsNullOrEmpty(_branding.LogoPath))
@@ -67,6 +88,29 @@
             backdrop-filter: none !important;
             -webkit-backdrop-filter: none !important;
             pointer-events: none;
+        }
+
+        /* Authoritative Dark Theme Rules for Startup Loader */
+        html[data-bs-theme="dark"] #tf-startup-loader,
+        html[data-theme="dark"] #tf-startup-loader,
+        html.dark #tf-startup-loader,
+        html[data-bs-theme="dark"] #tf-startup-loader .tf-loading-backdrop,
+        html[data-theme="dark"] #tf-startup-loader .tf-loading-backdrop,
+        html.dark #tf-startup-loader .tf-loading-backdrop {
+            background-color: #17191F !important;
+            color: #F0F2F6 !important;
+        }
+
+        html[data-bs-theme="dark"] .tf-loading-company-name,
+        html[data-theme="dark"] .tf-loading-company-name,
+        html.dark .tf-loading-company-name {
+            color: #F0F2F6 !important;
+        }
+
+        html[data-bs-theme="dark"] .tf-loading-status-text,
+        html[data-theme="dark"] .tf-loading-status-text,
+        html.dark .tf-loading-status-text {
+            color: #94A3B8 !important;
         }
 
         .tf-loading-container {
@@ -231,7 +275,7 @@
 </head>
 
 <body>
-    @if (_branding.ShowLoadingScreen)
+    @if (_branding.ShowLoadingScreen && !_isEnhancedNav)
     {
         <div id="tf-startup-loader" class="tf-loading-overlay is-active" role="status" aria-busy="true" aria-live="polite" aria-label="Đang tải...">
             <div class="tf-loading-backdrop"></div>
@@ -336,6 +380,16 @@
             function dismissLoaderElement(loaderEl) {
                 if (!loaderEl || loaderEl._tfDismissed) return;
                 loaderEl._tfDismissed = true;
+                window.__tfAppLoaded = true;
+
+                // If app is already active in DOM, remove instantly without delay
+                if (isAppContentReady()) {
+                    loaderEl.style.display = 'none';
+                    if (loaderEl.parentNode) {
+                        loaderEl.parentNode.removeChild(loaderEl);
+                    }
+                    return;
+                }
 
                 // 1. Immediately disable pointer-events so user interactions are never blocked
                 loaderEl.style.pointerEvents = 'none';
@@ -420,16 +474,14 @@
                 });
             }
 
-            // Blazor enhanced page load hook: always re-apply theme & dismiss startup loaders
+            // Blazor enhanced page load hook: always re-apply theme & dismiss startup loaders instantly
             if (window.Blazor && window.Blazor.addEventListener) {
                 window.Blazor.addEventListener('enhancedload', function () {
                     if (window.tradeflow && window.tradeflow.applyTheme) {
                         window.tradeflow.applyTheme();
                     }
                     armWatchdogs();
-                    requestAnimationFrame(function () {
-                        dismissAllStartupLoaders();
-                    });
+                    dismissAllStartupLoaders();
                 });
             }
 
@@ -754,6 +806,7 @@
     [Inject] private TradeFlow.Application.Common.Interfaces.ICompanyBrandingService BrandingService { get; set; } = null!;
 
     private string _serverTheme = "light";
+    private bool _isEnhancedNav = false;
     private TradeFlow.Application.Common.Models.Settings.CompanyBrandingDto _branding = new()
     {
         CompanyName = "TỔNG KHO THIẾT BỊ VỆ SINH LACASA",
@@ -770,6 +823,11 @@
         try
         {
             var ctx = CascadedHttpContext ?? HttpContextAccessor?.HttpContext;
+            if (ctx?.Request?.Headers != null && ctx.Request.Headers.ContainsKey("blazor-enhanced-nav"))
+            {
+                _isEnhancedNav = true;
+            }
+
             if (ctx?.Request?.Cookies != null && ctx.Request.Cookies.TryGetValue("tf_theme", out var cookieTheme))
             {
                 if (cookieTheme == "dark" || cookieTheme == "light")

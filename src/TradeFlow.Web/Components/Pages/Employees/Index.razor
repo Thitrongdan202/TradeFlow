@@ -280,7 +280,7 @@
                                 @if (isExpanded)
                                 {
                                     <tr class="tf-emp-detail-tr">
-                                        <td colspan="10" style="padding:0; background-color:#f8fafc; border-bottom:2px solid #cbd5e1;">
+                                        <td colspan="10" class="tf-emp-expanded-td" style="padding:0; background-color:var(--tf-bg-subtle, #f8fafc); border-bottom:2px solid var(--tf-border, #cbd5e1);">
                                             <div class="tf-emp-expanded-box">
                                                 @* Expanded Header Bar *@
                                                 <div class="tf-emp-expanded-header">
@@ -290,7 +290,7 @@
                                                         </div>
                                                         <div>
                                                             <div style="display:flex; align-items:center; gap:10px;">
-                                                                <h2 style="margin:0; font-size:18px; font-weight:700; color:#1e293b;">@emp.FullName</h2>
+                                                                <h2 style="margin:0; font-size:18px; font-weight:700; color:var(--tf-text-primary, #1e293b);">@emp.FullName</h2>
                                                                 <span class="tf-emp-badge-code">@emp.Code</span>
                                                                 @if (emp.Status == EmployeeStatus.Active)
                                                                 {

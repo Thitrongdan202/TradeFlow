@@ -50,7 +50,7 @@
                 </button>
             </div>
 
-            <div class="tf-modal-body" style="padding:16px 20px; background-color:#f8fafc;">
+            <div class="tf-modal-body tf-req-body">
                 @if (!string.IsNullOrEmpty(_alertMessage))
                 {
                     <div class="tf-alert @(_alertIsSuccess ? "tf-alert-success" : "tf-alert-error") tf-mb-4">
@@ -66,7 +66,7 @@
                 }
                 else if (!_filteredRequests.Any())
                 {
-                    <div class="tf-empty" style="padding:48px 24px; background:#fff; border-radius:8px; border:1px solid #e2e8f0;">
+                    <div class="tf-empty tf-req-empty">
                         <div class="tf-empty-icon">
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                                 <circle cx="12" cy="12" r="10"/>
@@ -86,21 +86,21 @@
                     <div style="display:flex; flex-direction:column; gap:12px;">
                         @foreach (var req in _filteredRequests)
                         {
-                            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:16px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">
+                            <div class="tf-req-card">
                                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
                                     <div style="display:flex; align-items:center; gap:12px;">
-                                        <div style="width:40px; height:40px; border-radius:50%; background:#e0e7ff; color:#4338ca; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px;">
+                                        <div class="tf-req-avatar">
                                             @GetInitials(req.FullName)
                                         </div>
                                         <div>
-                                            <div style="font-weight:700; font-size:15px; color:#1e293b;">
+                                            <div class="tf-req-name">
                                                 @req.FullName
                                                 @if (!string.IsNullOrEmpty(req.Code))
                                                 {
-                                                    <span style="font-size:13px; font-family:monospace; color:#0f766e; margin-left:6px;">[@req.Code]</span>
+                                                    <span class="tf-req-code">[@req.Code]</span>
                                                 }
                                             </div>
-                                            <div style="font-size:12px; color:#64748b;">
+                                            <div class="tf-req-meta">
                                                 Đề xuất bởi: <strong>@req.RequestedBy</strong> • @req.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                                             </div>
                                         </div>
@@ -133,43 +133,43 @@
                                     </div>
                                 </div>
 
-                                <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; font-size:13px; padding:10px 12px; background:#f8fafc; border-radius:6px; margin-bottom:12px;">
+                                <div class="tf-req-grid">
                                     <div>
-                                        <span style="color:#64748b;">Phòng ban:</span>
+                                        <span class="tf-req-grid-label">Phòng ban:</span>
                                         <strong>@(req.DepartmentName ?? "—")</strong>
                                     </div>
                                     <div>
-                                        <span style="color:#64748b;">Chức danh:</span>
+                                        <span class="tf-req-grid-label">Chức danh:</span>
                                         <strong>@(req.PositionName ?? "—")</strong>
                                     </div>
                                     <div>
-                                        <span style="color:#64748b;">Điện thoại:</span>
+                                        <span class="tf-req-grid-label">Điện thoại:</span>
                                         <strong>@(req.Phone ?? "—")</strong>
                                     </div>
                                     <div>
-                                        <span style="color:#64748b;">Email:</span>
+                                        <span class="tf-req-grid-label">Email:</span>
                                         <strong>@(req.Email ?? "—")</strong>
                                     </div>
                                     <div>
-                                        <span style="color:#64748b;">CMND/CCCD:</span>
+                                        <span class="tf-req-grid-label">CMND/CCCD:</span>
                                         <strong>@(req.NationalId ?? "—")</strong>
                                     </div>
                                     <div>
-                                        <span style="color:#64748b;">Ngày bắt đầu:</span>
+                                        <span class="tf-req-grid-label">Ngày bắt đầu:</span>
                                         <strong>@(req.StartDate?.ToString("dd/MM/yyyy") ?? "—")</strong>
                                     </div>
                                 </div>
 
                                 @if (!string.IsNullOrEmpty(req.Notes))
                                 {
-                                    <div style="font-size:13px; color:#475569; margin-bottom:12px;">
-                                        <span style="color:#64748b;">Lý do / Ghi chú:</span> @req.Notes
+                                    <div class="tf-req-notes">
+                                        <span class="tf-req-grid-label">Lý do / Ghi chú:</span> @req.Notes
                                     </div>
                                 }
 
                                 @if (req.Status == EmployeeRequestStatus.Approved)
                                 {
-                                    <div style="font-size:12px; color:#15803d; background:#f0fdf4; padding:8px 12px; border-radius:6px;">
+                                    <div class="tf-req-status-box tf-req-approved">
                                         Duyệt bởi <strong>@req.ApprovedBy</strong> vào @req.ApprovedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                                         @if (!string.IsNullOrEmpty(req.ReviewNotes))
                                         {
@@ -179,7 +179,7 @@
                                 }
                                 else if (req.Status == EmployeeRequestStatus.Rejected)
                                 {
-                                    <div style="font-size:12px; color:#b91c1c; background:#fef2f2; padding:8px 12px; border-radius:6px;">
+                                    <div class="tf-req-status-box tf-req-rejected">
                                         Từ chối bởi <strong>@req.ApprovedBy</strong> vào @req.ApprovedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                                         @if (!string.IsNullOrEmpty(req.ReviewNotes))
                                         {
@@ -190,7 +190,7 @@
                                 else if (req.Status == EmployeeRequestStatus.Pending)
                                 {
                                     <AuthorizeView Policy="Permission:EmployeeRequests:Approve">
-                                        <div style="display:flex; justify-content:flex-end; gap:8px; border-top:1px solid #f1f5f9; padding-top:12px;">
+                                        <div class="tf-req-actions">
                                             @if (_processingRequestId == req.Id)
                                             {
                                                 <div style="display:flex; align-items:center; gap:8px; width:100%;">
@@ -206,7 +206,7 @@
                                             }
                                             else
                                             {
-                                                <button type="button" class="tf-btn tf-btn-outline-danger tf-btn-sm" @onclick="() => StartReview(req.Id)" style="color:#dc2626; border-color:#fca5a5;">
+                                                <button type="button" class="tf-btn tf-btn-outline-danger tf-btn-sm" @onclick="() => StartReview(req.Id)">
                                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;">
                                                         <line x1="18" y1="6" x2="6" y2="18"/>
                                                         <line x1="6" y1="6" x2="18" y2="18"/>
@@ -257,6 +257,136 @@
         color: var(--tf-primary);
         border-bottom-color: var(--tf-primary);
         font-weight: 600;
+    }
+
+    .tf-req-body {
+        padding: 16px 20px;
+        background-color: var(--tf-bg-page, #f8fafc);
+    }
+    [data-bs-theme="dark"] .tf-req-body {
+        background-color: var(--tf-bg-body, #0f1117) !important;
+    }
+
+    .tf-req-empty {
+        padding: 48px 24px;
+        background: var(--tf-bg-card, #ffffff);
+        border-radius: 8px;
+        border: 1px solid var(--tf-border, #e2e8f0);
+    }
+
+    .tf-req-card {
+        background: var(--tf-bg-card, #ffffff);
+        border: 1px solid var(--tf-border, #e2e8f0);
+        border-radius: 8px;
+        padding: 16px;
+        box-shadow: var(--tf-card-shadow, 0 1px 2px rgba(0,0,0,0.03));
+        transition: border-color 0.15s ease;
+    }
+    [data-bs-theme="dark"] .tf-req-card {
+        background: #1e2028 !important;
+        border-color: #2e3542 !important;
+    }
+
+    [data-bs-theme="dark"] .tf-req-empty {
+        background: #1e2028 !important;
+        border-color: #2e3542 !important;
+    }
+
+    .tf-req-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #e0e7ff;
+        color: #4338ca;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 14px;
+    }
+    [data-bs-theme="dark"] .tf-req-avatar {
+        background: rgba(99, 102, 241, 0.2);
+        color: #a5b4fc;
+        border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+
+    .tf-req-name {
+        font-weight: 700;
+        font-size: 15px;
+        color: var(--tf-text-primary, #1e293b);
+    }
+
+    .tf-req-code {
+        font-size: 13px;
+        font-family: monospace;
+        color: #0f766e;
+        margin-left: 6px;
+    }
+    [data-bs-theme="dark"] .tf-req-code {
+        color: #2dd4bf;
+    }
+
+    .tf-req-meta {
+        font-size: 12px;
+        color: var(--tf-text-secondary, #64748b);
+    }
+
+    .tf-req-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        font-size: 13px;
+        padding: 10px 12px;
+        background: var(--tf-bg-subtle, #f8fafc);
+        border: 1px solid var(--tf-border, #e2e8f0);
+        border-radius: 6px;
+        margin-bottom: 12px;
+        color: var(--tf-text-primary);
+    }
+
+    .tf-req-grid-label {
+        color: var(--tf-text-muted, #64748b);
+        margin-right: 4px;
+    }
+
+    .tf-req-notes {
+        font-size: 13px;
+        color: var(--tf-text-secondary, #475569);
+        margin-bottom: 12px;
+    }
+
+    .tf-req-status-box {
+        font-size: 12px;
+        padding: 8px 12px;
+        border-radius: 6px;
+    }
+
+    .tf-req-approved {
+        color: #15803d;
+        background: #f0fdf4;
+    }
+    [data-bs-theme="dark"] .tf-req-approved {
+        color: #4ade80;
+        background: rgba(34, 197, 94, 0.12);
+        border: 1px solid rgba(34, 197, 94, 0.25);
+    }
+
+    .tf-req-rejected {
+        color: #b91c1c;
+        background: #fef2f2;
+    }
+    [data-bs-theme="dark"] .tf-req-rejected {
+        color: #f87171;
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(239, 68, 68, 0.25);
+    }
+
+    .tf-req-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        border-top: 1px solid var(--tf-border, #f1f5f9);
+        padding-top: 12px;
     }
 </style>
 

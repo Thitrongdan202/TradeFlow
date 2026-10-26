@@ -1,0 +1,128 @@
+/* Company Settings Styles */
+
+.tf-branding-banner {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.tf-branding-banner-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tf-branding-banner-text {
+    font-size: 13px;
+    color: #15803d;
+    font-weight: 500;
+}
+
+.tf-branding-banner-btn {
+    border-color: #86efac;
+    color: #166534;
+    background: #ffffff;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.tf-branding-banner-btn:hover {
+    background: #dcfce7;
+    color: #14532d;
+}
+
+/* QR Upload Container */
+.tf-qr-upload-container {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    background: var(--tf-bg-subtle, #f8fafc);
+    padding: 16px;
+    border: 1px solid var(--tf-border, #e2e8f0);
+    border-radius: 8px;
+}
+
+.tf-qr-preview-box {
+    width: 120px;
+    height: 120px;
+    border: 1px solid var(--tf-border, #cbd5e1);
+    border-radius: 6px;
+    background: #ffffff !important; /* Preserves QR code original paper background */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.tf-qr-preview-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.tf-qr-empty-text {
+    color: #94a3b8;
+    font-size: 12px;
+    text-align: center;
+    padding: 4px;
+}
+
+.tf-qr-upload-body {
+    flex: 1;
+}
+
+.tf-qr-upload-hint {
+    font-size: 13px;
+    color: var(--tf-text-secondary, #475569);
+    margin: 0 0 8px;
+}
+
+.tf-settings-divider {
+    margin: 24px 0;
+    border: 0;
+    border-top: 1px solid var(--tf-border, #e2e8f0);
+}
+
+.tf-settings-subtitle {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--tf-text-primary, #1e293b);
+    margin-bottom: 16px;
+}
+
+.tf-settings-field-hint {
+    color: var(--tf-text-muted, #64748b);
+    font-size: 12px;
+}
+
+/* Dark Mode Overrides */
+[data-bs-theme="dark"] .tf-branding-banner,
+[data-theme="dark"] .tf-branding-banner {
+    background: rgba(22, 163, 74, 0.12);
+    border-color: rgba(34, 197, 94, 0.25);
+}
+
+[data-bs-theme="dark"] .tf-branding-banner-text,
+[data-theme="dark"] .tf-branding-banner-text {
+    color: #86efac;
+}
+
+[data-bs-theme="dark"] .tf-branding-banner-btn,
+[data-theme="dark"] .tf-branding-banner-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(134, 239, 172, 0.3);
+    color: #86efac;
+}
+
+[data-bs-theme="dark"] .tf-branding-banner-btn:hover,
+[data-theme="dark"] .tf-branding-banner-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #bbf7d0;
+}

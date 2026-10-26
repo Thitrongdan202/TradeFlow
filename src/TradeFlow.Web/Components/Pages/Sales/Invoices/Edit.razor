@@ -37,7 +37,7 @@ else if (_invoice == null)
 }
 else
 {
-    <div class="tf-card tf-mb-4">
+    <div class="tf-card tf-mb-4" style="padding: 24px;">
         <div class="tf-form-group tf-mb-4">
             <label class="tf-form-label">Loại hóa đơn</label>
             <select class="tf-form-control" @bind="_invoice.Type" @bind:after="CalculateTotals" style="max-width:300px;">
@@ -79,7 +79,7 @@ else
         </div>
     </div>
 
-    <div class="tf-card tf-mb-4">
+    <div class="tf-card tf-mb-4" style="padding: 24px;">
         <h3 class="tf-font-semibold tf-text-lg tf-mb-4">Hàng hóa, dịch vụ</h3>
         <table class="tf-table">
             <thead>
@@ -118,7 +118,14 @@ else
                             </td>
                         }
                         <td class="tf-text-right"><strong>@item.LineTotal.ToString("N0")</strong></td>
-                        <td><button type="button" class="tf-btn tf-btn-sm tf-btn-danger" @onclick="() => RemoveItem(item)">X</button></td>
+                        <td>
+                            <button type="button" class="tf-btn-icon" style="color:var(--tf-danger); background:none; border:none; cursor:pointer;" @onclick="() => RemoveItem(item)" title="Xóa dòng">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                </svg>
+                            </button>
+                        </td>
                     </tr>
                 }
             </tbody>
@@ -126,27 +133,27 @@ else
         <button type="button" class="tf-btn tf-btn-outline-primary tf-btn-sm tf-mt-2" @onclick="AddManualItem">+ Thêm dòng thủ công</button>
     </div>
 
-    <div class="tf-card" style="margin-bottom:20px;">
+    <div class="tf-card" style="margin-bottom:20px; padding: 20px;">
         <div style="display:flex; justify-content:flex-end;">
-            <div style="width:300px; padding:10px;">
+            <div style="width:320px; padding:10px; color:var(--tf-text-primary);">
                 <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                    <span style="color:var(--tf-text-muted);">Cộng tiền hàng:</span>
+                    <span style="color:var(--tf-text-secondary);">Cộng tiền hàng:</span>
                     <strong>@_invoice.SubTotal.ToString("N0")</strong>
                 </div>
                 <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                    <span style="color:var(--tf-text-muted);">Chiết khấu:</span>
+                    <span style="color:var(--tf-text-secondary);">Chiết khấu:</span>
                     <strong>@_invoice.TotalDiscount.ToString("N0")</strong>
                 </div>
                 @if (_invoice.Type == InvoiceType.VatInvoice)
                 {
                     <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                        <span style="color:var(--tf-text-muted);">Tiền thuế GTGT:</span>
+                        <span style="color:var(--tf-text-secondary);">Tiền thuế GTGT:</span>
                         <strong>@_invoice.TotalTax.ToString("N0")</strong>
                     </div>
                 }
-                <div style="display:flex; justify-content:space-between; margin-top:16px; padding-top:16px; border-top:1px dashed #cbd5e1; font-size:18px;">
-                    <span>Tổng cộng:</span>
-                    <strong style="color:var(--tf-color-danger);">@_invoice.GrandTotal.ToString("N0")</strong>
+                <div style="display:flex; justify-content:space-between; margin-top:16px; padding-top:16px; border-top:1px dashed var(--tf-border); font-size:18px;">
+                    <span style="font-weight:600;">Tổng cộng:</span>
+                    <strong style="color:var(--tf-primary);">@_invoice.GrandTotal.ToString("N0")</strong>
                 </div>
             </div>
         </div>

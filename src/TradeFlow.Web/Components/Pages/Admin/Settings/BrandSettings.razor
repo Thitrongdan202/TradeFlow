@@ -57,7 +57,7 @@
         @* Card 1: Logo & Tên công ty *@
         <div class="tf-card">
             <div class="tf-card-header" style="border-bottom: 1px solid var(--tf-border); padding: 14px 18px;">
-                <h3 style="margin:0; font-size:15px; font-weight:600; color:#1e293b; display:flex; align-items:center; gap:8px;">
+                <h3 style="margin:0; font-size:15px; font-weight:600; color:var(--tf-text-primary); display:flex; align-items:center; gap:8px;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tf-primary);">
                         <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
                     </svg>
@@ -68,20 +68,20 @@
                 @* Logo display & action buttons *@
                 <div class="tf-field tf-mb-4">
                     <label class="tf-label">Logo công ty</label>
-                    <div style="display: flex; gap: 16px; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
-                        <div style="width: 140px; height: 80px; border: 1px dashed #cbd5e1; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: transparent; overflow: hidden; padding: 6px;">
+                    <div style="display: flex; gap: 16px; align-items: center; background: var(--tf-bg-subtle); border: 1px solid var(--tf-border); border-radius: 8px; padding: 14px;">
+                        <div style="width: 140px; height: 80px; border: 1px dashed var(--tf-border); border-radius: 6px; display: flex; align-items: center; justify-content: center; background: transparent; overflow: hidden; padding: 6px;">
                             @if (!string.IsNullOrEmpty(_model.LogoPath))
                             {
                                 <img src="@_model.LogoPath" alt="Company Logo" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
                             }
                             else
                             {
-                                <span style="font-size: 12px; color: #94a3b8; text-align: center;">Chưa có logo</span>
+                                <span style="font-size: 12px; color: var(--tf-text-muted); text-align: center;">Chưa có logo</span>
                             }
                         </div>
 
                         <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
-                            <div style="font-size: 12px; color: #64748b; line-height: 1.4;">
+                            <div style="font-size: 12px; color: var(--tf-text-muted); line-height: 1.4;">
                                 Hỗ trợ định dạng <strong>PNG, SVG, WebP, JPG</strong> (khuyến khích PNG trong suốt), tối đa 5MB.
                             </div>
                             <div style="display: flex; gap: 8px; align-items: center;">
@@ -119,18 +119,18 @@
 
                 @* Toggles *@
                 <div style="display: flex; flex-direction: column; gap: 12px; padding-top: 6px;">
-                    <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 8px 12px; background: #f8fafc; border-radius: 6px;">
+                    <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 8px 12px; background: var(--tf-bg-subtle); border: 1px solid var(--tf-border); border-radius: 6px;">
                         <div>
-                            <div style="font-weight: 500; font-size: 13px; color: #1e293b;">Hiển thị tên công ty trên màn hình tải</div>
-                            <div style="font-size: 12px; color: #64748b;">Hiển thị tên công ty bên dưới vòng xoay logo</div>
+                            <div style="font-weight: 500; font-size: 13px; color: var(--tf-text-primary);">Hiển thị tên công ty trên màn hình tải</div>
+                            <div style="font-size: 12px; color: var(--tf-text-muted);">Hiển thị tên công ty bên dưới vòng xoay logo</div>
                         </div>
                         <input type="checkbox" style="width: 18px; height: 18px; accent-color: var(--tf-primary); cursor: pointer;" @bind="_model.ShowCompanyNameOnLoading" />
                     </label>
 
-                    <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 8px 12px; background: #f8fafc; border-radius: 6px;">
+                    <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 8px 12px; background: var(--tf-bg-subtle); border: 1px solid var(--tf-border); border-radius: 6px;">
                         <div>
-                            <div style="font-weight: 500; font-size: 13px; color: #1e293b;">Bật màn hình tải toàn cục</div>
-                            <div style="font-size: 12px; color: #64748b;">Kích hoạt màn hình tải có thương hiệu khi khởi chạy và tải dữ liệu</div>
+                            <div style="font-weight: 500; font-size: 13px; color: var(--tf-text-primary);">Bật màn hình tải toàn cục</div>
+                            <div style="font-size: 12px; color: var(--tf-text-muted);">Kích hoạt màn hình tải có thương hiệu khi khởi chạy và tải dữ liệu</div>
                         </div>
                         <input type="checkbox" style="width: 18px; height: 18px; accent-color: var(--tf-primary); cursor: pointer;" @bind="_model.ShowLoadingScreen" />
                     </label>
@@ -141,7 +141,7 @@
         @* Card 2: Spinner Settings *@
         <div class="tf-card">
             <div class="tf-card-header" style="border-bottom: 1px solid var(--tf-border); padding: 14px 18px;">
-                <h3 style="margin:0; font-size:15px; font-weight:600; color:#1e293b; display:flex; align-items:center; gap:8px;">
+                <h3 style="margin:0; font-size:15px; font-weight:600; color:var(--tf-text-primary); display:flex; align-items:center; gap:8px;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tf-primary);">
                         <circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6z"/>
                     </svg>
@@ -156,7 +156,7 @@
                         <input type="color"
                                value="@_model.SpinnerColor"
                                @onchange="e => _model.SpinnerColor = e.Value?.ToString() ?? _model.SpinnerColor"
-                               style="width: 44px; height: 38px; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; padding: 2px;" />
+                               style="width: 44px; height: 38px; border: 1px solid var(--tf-border); border-radius: 6px; cursor: pointer; padding: 2px; background: var(--tf-bg-card);" />
                         <input type="text"
                                class="tf-input"
                                style="font-family: monospace; font-weight: 600; width: 120px;"
@@ -168,7 +168,7 @@
                             @foreach (var c in _colorPresets)
                             {
                                 <button type="button"
-                                        style="width: 24px; height: 24px; border-radius: 50%; background-color: @c; border: 2px solid @(_model.SpinnerColor == c ? "#0f172a" : "#fff"); box-shadow: 0 1px 2px rgba(0,0,0,0.15); cursor: pointer;"
+                                        style="width: 24px; height: 24px; border-radius: 50%; background-color: @c; border: 2px solid @(_model.SpinnerColor == c ? "var(--tf-primary)" : "var(--tf-border)"); box-shadow: 0 1px 2px rgba(0,0,0,0.15); cursor: pointer;"
                                         title="@c"
                                         @onclick="() => _model.SpinnerColor = c">
                                 </button>
@@ -192,7 +192,7 @@
                            value="@_model.SpinnerOpacity"
                            @oninput="HandleOpacityChanged"
                            style="width: 100%; accent-color: var(--tf-primary); cursor: pointer;" />
-                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; margin-top: 2px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--tf-text-muted); margin-top: 2px;">
                         <span>10% (Rất mờ)</span>
                         <span>80% (Khuyến nghị)</span>
                         <span>100% (Đậm)</span>
@@ -231,7 +231,7 @@
     <div style="position: sticky; top: 20px;">
         <div class="tf-card" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
             <div class="tf-card-header" style="border-bottom: 1px solid var(--tf-border); padding: 14px 18px; display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin:0; font-size:15px; font-weight:600; color:#1e293b; display:flex; align-items:center; gap:8px;">
+                <h3 style="margin:0; font-size:15px; font-weight:600; color:var(--tf-text-primary); display:flex; align-items:center; gap:8px;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#0284c7;">
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
                     </svg>
@@ -241,23 +241,23 @@
             </div>
             
             <div class="tf-card-body" style="padding: 16px;">
-                <div style="position: relative; width: 100%; height: 380px; border-radius: 8px; border: 1px solid #cbd5e1; overflow: hidden; background: #f8fafc;">
+                <div style="position: relative; width: 100%; height: 380px; border-radius: 8px; border: 1px solid var(--tf-border); overflow: hidden; background: var(--tf-bg-body);">
                     @* Simulated ERP Background Page *@
                     <div style="padding: 16px; opacity: 0.35; filter: blur(0.5px); pointer-events: none;">
-                        <div style="height: 20px; width: 40%; background: #94a3b8; border-radius: 4px; margin-bottom: 16px;"></div>
+                        <div style="height: 20px; width: 40%; background: var(--tf-border); border-radius: 4px; margin-bottom: 16px;"></div>
                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
-                            <div style="height: 60px; background: #cbd5e1; border-radius: 6px;"></div>
-                            <div style="height: 60px; background: #cbd5e1; border-radius: 6px;"></div>
-                            <div style="height: 60px; background: #cbd5e1; border-radius: 6px;"></div>
+                            <div style="height: 60px; background: var(--tf-border); border-radius: 6px;"></div>
+                            <div style="height: 60px; background: var(--tf-border); border-radius: 6px;"></div>
+                            <div style="height: 60px; background: var(--tf-border); border-radius: 6px;"></div>
                         </div>
-                        <div style="height: 120px; background: #cbd5e1; border-radius: 6px;"></div>
+                        <div style="height: 120px; background: var(--tf-border); border-radius: 6px;"></div>
                     </div>
 
                     @* Live Loading Screen Overlay Component *@
                     <GlobalLoadingScreen IsPreview="true" PreviewBranding="_model" />
                 </div>
 
-                <div style="margin-top: 12px; font-size: 12px; color: #64748b; line-height: 1.5; text-align: center;">
+                <div style="margin-top: 12px; font-size: 12px; color: var(--tf-text-muted); line-height: 1.5; text-align: center;">
                     💡 Bản xem trước phản ánh chính xác 100% tỷ lệ logo, độ trong suốt và tốc độ xoay khi người dùng thao tác trong hệ thống TradeFlow.
                 </div>
             </div>

@@ -21,64 +21,68 @@
             <p class="tf-page-subtitle">Theo dõi và đối soát tập trung các khoản nợ phải thu từ khách hàng và nợ phải trả cho nhà cung cấp</p>
         </div>
         <div class="tf-page-header-actions">
-            <div class="tf-header-search-wrap">
-                <DebouncedSearchInput Placeholder="Tìm theo mã đối tác, tên, SĐT, số chứng từ..."
-                                      Value="@_filter.SearchTerm"
-                                      ValueChanged="OnSearchChanged" />
+            <div class="tf-header-filter-cluster">
+                <div class="tf-header-search-wrap">
+                    <DebouncedSearchInput Placeholder="Tìm theo mã đối tác, tên, SĐT, số chứng từ..."
+                                          Value="@_filter.SearchTerm"
+                                          ValueChanged="OnSearchChanged" />
+                </div>
+
+                <button type="button" class="tf-btn tf-btn-secondary @(_showSidebar ? "active" : "")" @onclick="ToggleSidebar" title="Bật/Tắt bộ lọc nâng cao">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="22 3 2 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    <span>Bộ lọc</span>
+                    @if (ActiveFilterCount > 0)
+                    {
+                        <span class="tf-filter-active-count">@ActiveFilterCount</span>
+                    }
+                </button>
             </div>
 
-            <button type="button" class="tf-btn tf-btn-secondary @(_showSidebar ? "active" : "")" @onclick="ToggleSidebar" title="Bật/Tắt bộ lọc nâng cao">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polygon points="22 3 2 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                </svg>
-                <span>Bộ lọc</span>
-                @if (ActiveFilterCount > 0)
-                {
-                    <span class="tf-filter-active-count">@ActiveFilterCount</span>
-                }
-            </button>
+            <div class="tf-header-action-cluster">
+                <AuthorizeView Policy="Permission:Customers:Edit">
+                    @if (!_filter.PartnerType.HasValue || _filter.PartnerType == PartnerType.Customer)
+                    {
+                        <button type="button" class="tf-btn tf-btn-primary" @onclick="() => OpenStandaloneVoucherModal(PartnerType.Customer)" title="Lập phiếu thu tiền khách hàng">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                            </svg>
+                            <span>Lập phiếu thu</span>
+                        </button>
+                    }
+                </AuthorizeView>
 
-            <AuthorizeView Policy="Permission:Customers:Edit">
-                @if (!_filter.PartnerType.HasValue || _filter.PartnerType == PartnerType.Customer)
-                {
-                    <button type="button" class="tf-btn tf-btn-primary" @onclick="() => OpenStandaloneVoucherModal(PartnerType.Customer)" title="Lập phiếu thu tiền khách hàng">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                        </svg>
-                        <span>Lập phiếu thu</span>
-                    </button>
-                }
-            </AuthorizeView>
+                <AuthorizeView Policy="Permission:Suppliers:Edit">
+                    @if (!_filter.PartnerType.HasValue || _filter.PartnerType == PartnerType.Supplier)
+                    {
+                        <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => OpenStandaloneVoucherModal(PartnerType.Supplier)" title="Lập phiếu chi tiền nhà cung cấp">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="5" width="20" height="14" rx="2"/>
+                                <line x1="2" y1="10" x2="22" y2="10"/>
+                            </svg>
+                            <span>Lập phiếu chi</span>
+                        </button>
+                    }
+                </AuthorizeView>
 
-            <AuthorizeView Policy="Permission:Suppliers:Edit">
-                @if (!_filter.PartnerType.HasValue || _filter.PartnerType == PartnerType.Supplier)
-                {
-                    <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => OpenStandaloneVoucherModal(PartnerType.Supplier)" title="Lập phiếu chi tiền nhà cung cấp">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="5" width="20" height="14" rx="2"/>
-                            <line x1="2" y1="10" x2="22" y2="10"/>
-                        </svg>
-                        <span>Lập phiếu chi</span>
-                    </button>
-                }
-            </AuthorizeView>
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => OpenExportModal(false)" title="Xuất bảng đối soát chi tiết công nợ đối tác">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <span>Xuất file công nợ</span>
+                </button>
 
-            <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => OpenExportModal(false)" title="Xuất bảng đối soát chi tiết công nợ đối tác">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="7 10 12 15 17 10"></polyline>
-                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                </svg>
-                <span>Xuất file công nợ</span>
-            </button>
-
-            <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => OpenExportModal(true)" title="Xuất báo cáo tổng quan quản lý công nợ toàn hệ thống ra Excel">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                </svg>
-                <span>Xuất file quản lý Excel</span>
-            </button>
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => OpenExportModal(true)" title="Xuất báo cáo tổng quan quản lý công nợ toàn hệ thống ra Excel">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                    <span>Xuất file quản lý Excel</span>
+                </button>
+            </div>
         </div>
     </div>
 

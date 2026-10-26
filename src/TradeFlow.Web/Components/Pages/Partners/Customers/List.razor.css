@@ -557,3 +557,213 @@
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+/* Dark Mode Support for Customers List */
+[data-bs-theme="dark"] .tf-page-title,
+[data-theme="dark"] .tf-page-title {
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-page-subtitle,
+[data-theme="dark"] .tf-page-subtitle {
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .tf-partner-metric-card,
+[data-theme="dark"] .tf-partner-metric-card {
+    background: #222630;
+    border-color: #2e3542;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+[data-bs-theme="dark"] .tf-partner-metric-card:hover,
+[data-theme="dark"] .tf-partner-metric-card:hover {
+    border-color: #383e4b;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+[data-bs-theme="dark"] .tf-metric-label,
+[data-theme="dark"] .tf-metric-label {
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .tf-metric-value,
+[data-theme="dark"] .tf-metric-value {
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-metric-icon-wrap.user,
+[data-theme="dark"] .tf-metric-icon-wrap.user {
+    background: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
+}
+
+[data-bs-theme="dark"] .tf-metric-icon-wrap.debt,
+[data-theme="dark"] .tf-metric-icon-wrap.debt {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
+
+[data-bs-theme="dark"] .tf-metric-icon-wrap.sales,
+[data-theme="dark"] .tf-metric-icon-wrap.sales {
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+}
+
+[data-bs-theme="dark"] .tf-filter-sidebar,
+[data-theme="dark"] .tf-filter-sidebar {
+    background: #222630;
+    border-color: #2e3542;
+}
+
+[data-bs-theme="dark"] .tf-sidebar-header,
+[data-theme="dark"] .tf-sidebar-header {
+    background: #1d2028;
+    border-color: #2e3542;
+}
+
+[data-bs-theme="dark"] .tf-sidebar-title,
+[data-theme="dark"] .tf-sidebar-title {
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-filter-label,
+[data-theme="dark"] .tf-filter-label {
+    color: #cbd5e1;
+}
+
+[data-bs-theme="dark"] .tf-sub-label,
+[data-theme="dark"] .tf-sub-label {
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .tf-filter-pill,
+[data-theme="dark"] .tf-filter-pill {
+    background: #1d2028;
+    border-color: #2e3542;
+    color: #cbd5e1;
+}
+
+[data-bs-theme="dark"] .tf-filter-pill:hover,
+[data-theme="dark"] .tf-filter-pill:hover {
+    background: #282d37;
+    border-color: #383e4b;
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-filter-pill.active,
+[data-theme="dark"] .tf-filter-pill.active {
+    background: #6366f1;
+    border-color: #818cf8;
+    color: #ffffff;
+}
+
+[data-bs-theme="dark"] .tf-input-sm,
+[data-bs-theme="dark"] .tf-select-sm,
+[data-theme="dark"] .tf-input-sm,
+[data-theme="dark"] .tf-select-sm {
+    background: #17191f;
+    border-color: #2e3542;
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-input-sm:focus,
+[data-bs-theme="dark"] .tf-select-sm:focus,
+[data-theme="dark"] .tf-input-sm:focus,
+[data-theme="dark"] .tf-select-sm:focus {
+    border-color: #818cf8;
+}
+
+[data-bs-theme="dark"] .tf-bulk-actions-bar,
+[data-theme="dark"] .tf-bulk-actions-bar {
+    background: #1e293b;
+    border-color: #334155;
+    color: #93c5fd;
+}
+
+[data-bs-theme="dark"] .tf-table th,
+[data-theme="dark"] .tf-table th {
+    background: #1d2028;
+    color: #94a3b8;
+    border-color: #2e3542;
+}
+
+[data-bs-theme="dark"] .tf-table td,
+[data-theme="dark"] .tf-table td {
+    color: #e2e8f0;
+    border-color: #252a34;
+}
+
+[data-bs-theme="dark"] .tf-table tr:hover,
+[data-theme="dark"] .tf-table tr:hover {
+    background: #252a34;
+}
+
+[data-bs-theme="dark"] .tf-table tr.row-selected,
+[data-theme="dark"] .tf-table tr.row-selected {
+    background: rgba(99, 102, 241, 0.15);
+}
+
+[data-bs-theme="dark"] .tf-cust-name-text,
+[data-theme="dark"] .tf-cust-name-text {
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .tf-table-subtext,
+[data-theme="dark"] .tf-table-subtext {
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .tf-phone-text,
+[data-theme="dark"] .tf-phone-text {
+    color: #cbd5e1;
+}
+
+[data-bs-theme="dark"] .tf-sales-amount,
+[data-theme="dark"] .tf-sales-amount {
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-table-code-btn,
+[data-theme="dark"] .tf-table-code-btn {
+    background: rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
+}
+
+[data-bs-theme="dark"] .tf-btn-action,
+[data-theme="dark"] .tf-btn-action {
+    background: #1d2028;
+    border-color: #2e3542;
+    color: #cbd5e1;
+}
+
+[data-bs-theme="dark"] .tf-btn-action:hover,
+[data-theme="dark"] .tf-btn-action:hover {
+    background: #282d37;
+    border-color: #383e4b;
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .tf-type-pill.company,
+[data-theme="dark"] .tf-type-pill.company {
+    background: rgba(109, 40, 217, 0.2);
+    color: #c4b5fd;
+    border-color: #5b21b6;
+}
+
+[data-bs-theme="dark"] .tf-type-pill.retail,
+[data-theme="dark"] .tf-type-pill.retail {
+    background: #1d2028;
+    color: #cbd5e1;
+    border-color: #2e3542;
+}
+
+[data-bs-theme="dark"] .tf-pagination-container,
+[data-theme="dark"] .tf-pagination-container {
+    border-color: #2e3542;
+}
+
+[data-bs-theme="dark"] .tf-empty-state h3,
+[data-theme="dark"] .tf-empty-state h3 {
+    color: #f1f5f9;
+}

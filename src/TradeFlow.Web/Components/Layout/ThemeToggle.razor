@@ -1,0 +1,133 @@
+@rendermode InteractiveServer
+@inject IJSRuntime JS
+@inject TradeFlow.Web.Services.IThemeService ThemeService
+@inject IHttpContextAccessor HttpContextAccessor
+
+<button type="button"
+        class="tf-theme-toggle @(_isDark ? "is-dark" : "is-light")"
+        role="switch"
+        aria-checked="@(_isDark ? "true" : "false")"
+        aria-label="@(_isDark ? "Chuyển sang giao diện sáng" : "Chuyển sang giao diện tối")"
+        title="@(_isDark ? "Chuyển sang giao diện sáng" : "Chuyển sang giao diện tối")"
+        @onclick="HandleToggle"
+        @onkeydown="HandleKeyDown">
+    <div class="tf-theme-toggle-track">
+        @* Background static hints for high-end tactile look *@
+        <span class="tf-theme-track-icon tf-theme-track-sun" aria-hidden="true">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+        </span>
+        <span class="tf-theme-track-icon tf-theme-track-moon" aria-hidden="true">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+        </span>
+
+        @* Smooth Moving Thumb *@
+        <div class="tf-theme-toggle-thumb">
+            @if (_isDark)
+            {
+                @* Crescent Moon Icon *@
+                <svg class="tf-theme-icon-active" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            }
+            else
+            {
+                @* Daylight Sun Icon *@
+                <svg class="tf-theme-icon-active" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+            }
+        </div>
+    </div>
+</button>
+
+@code {
+    [CascadingParameter] private HttpContext? CascadedHttpContext { get; set; }
+    private bool _isDark = false;
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            var ctx = CascadedHttpContext ?? HttpContextAccessor?.HttpContext;
+            if (ctx?.Request?.Cookies != null && ctx.Request.Cookies.TryGetValue("tf_theme", out var cookieTheme))
+            {
+                _isDark = cookieTheme == "dark";
+                ThemeService.SetTheme(cookieTheme);
+            }
+            else
+            {
+                _isDark = ThemeService.IsDark;
+            }
+        }
+        catch
+        {
+            _isDark = ThemeService.IsDark;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var theme = await JS.InvokeAsync<string>("tradeflow.getTheme");
+                var isDark = theme == "dark";
+                if (isDark != _isDark)
+                {
+                    _isDark = isDark;
+                    ThemeService.SetTheme(theme);
+                    StateHasChanged();
+                }
+                await JS.InvokeVoidAsync("tradeflow.applyTheme");
+            }
+            catch
+            {
+                // Fallback graceful
+            }
+        }
+    }
+
+    private async Task HandleToggle()
+    {
+        try
+        {
+            var newTheme = await JS.InvokeAsync<string>("tradeflow.toggleTheme");
+            _isDark = newTheme == "dark";
+            ThemeService.SetTheme(newTheme);
+        }
+        catch
+        {
+            _isDark = !_isDark;
+            ThemeService.SetTheme(_isDark ? "dark" : "light");
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is " " or "Enter")
+        {
+            await HandleToggle();
+        }
+    }
+}

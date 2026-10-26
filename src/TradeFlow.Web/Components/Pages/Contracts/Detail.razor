@@ -28,7 +28,7 @@
     else
     {
         <!-- Action Toolbar -->
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4 bg-white p-3 rounded shadow-sm border">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4 tf-card p-3 rounded shadow-sm border">
             <div class="d-flex align-items-center gap-2">
                 <a href="/hop-dong" class="btn btn-sm btn-outline-secondary">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -37,7 +37,7 @@
                 </a>
                 <div>
                     <div class="d-flex align-items-center gap-2">
-                        <span class="fs-5 fw-bold text-dark font-monospace">@contract.ContractNumber</span>
+                        <span class="fs-5 fw-bold font-monospace" style="color:var(--tf-text-primary, #0f172a);">@contract.ContractNumber</span>
                         <span class="badge @GetStatusBadgeClass(contract.Status)">@GetStatusVietnamese(contract.Status)</span>
                         @if (contract.ExecutionMethod == ContractExecutionMethod.Electronic)
                         {
@@ -100,7 +100,7 @@
         <div class="row g-4">
             <!-- Left: Document Preview (Times New Roman A4) -->
             <div class="col-lg-8">
-                <div class="card border-0 shadow-sm p-4 p-md-5 bg-white"
+                <div class="rounded-3 border-0 shadow-sm p-4 p-md-5 bg-white tf-document-paper a4-contract-page"
                      style="font-family: 'Times New Roman', Times, serif; font-size: 14.5px; line-height: 1.5; color: #000;">
                     
                     <!-- National Header -->
@@ -128,7 +128,7 @@
                     </div>
 
                     <!-- Party A -->
-                    <div class="mb-3 p-3 border rounded bg-light bg-opacity-25">
+                    <div class="mb-3 p-3 border rounded tf-doc-party-box" style="background-color: #f8fafc !important; color: #111827 !important; border-color: #e2e8f0 !important;">
                         <div class="fw-bold text-uppercase mb-1">BÊN A (BÊN BÁN): @contract.PartyAName</div>
                         <div>Địa chỉ: @contract.PartyAAddress</div>
                         <div>Mã số thuế: @contract.PartyATaxCode | Điện thoại: @contract.PartyAPhone</div>
@@ -137,7 +137,7 @@
                     </div>
 
                     <!-- Party B -->
-                    <div class="mb-3 p-3 border rounded bg-light bg-opacity-25">
+                    <div class="mb-3 p-3 border rounded tf-doc-party-box" style="background-color: #f8fafc !important; color: #111827 !important; border-color: #e2e8f0 !important;">
                         <div class="fw-bold text-uppercase mb-1">BÊN B (BÊN MUA): @contract.PartyBName</div>
                         <div>Địa chỉ: @contract.PartyBAddress</div>
                         @if (contract.PartyBType == ContractPartyBType.Company)
@@ -193,7 +193,7 @@
                     }
 
                     <!-- Financial Summary -->
-                    <div class="p-3 bg-light border rounded mb-4">
+                    <div class="p-3 border rounded mb-4 tf-doc-summary-box" style="background-color: #f8fafc !important; color: #111827 !important; border-color: #e2e8f0 !important;">
                         <div class="fw-bold fs-6">Tổng giá trị hợp đồng: @contract.TotalAmount.ToString("N0") @contract.CurrencyCode</div>
                         @if (contract.DepositAmount > 0)
                         {
@@ -267,8 +267,8 @@
             <!-- Right: Meta, Legal & Audit Trail -->
             <div class="col-lg-4">
                 <!-- Integrity & Security Card -->
-                <div class="card border-0 shadow-sm p-3 mb-3 bg-white">
-                    <h6 class="fw-bold text-dark border-bottom pb-2 mb-3 d-flex align-items-center gap-1">
+                <div class="card border-0 shadow-sm p-3 mb-3 tf-card" style="background-color:var(--tf-bg-card, #ffffff); border:1px solid var(--tf-border, #e2e8f0) !important;">
+                    <h6 class="fw-bold border-bottom pb-2 mb-3 d-flex align-items-center gap-1" style="color:var(--tf-text-primary, #0f172a);">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                             <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -277,7 +277,7 @@
                     </h6>
                     <div class="small mb-2">
                         <span class="text-secondary fw-semibold">Mã băm SHA-256 toàn vẹn:</span>
-                        <div class="font-monospace text-break bg-light p-2 rounded border mt-1" style="font-size: 0.75rem;">
+                        <div class="font-monospace text-break p-2 rounded border mt-1" style="font-size: 0.75rem; background-color:var(--tf-bg-subtle, #f8fafc); color:var(--tf-text-primary, #0f172a);">
                             @contract.DocumentHash
                         </div>
                     </div>
@@ -311,8 +311,8 @@
                 </div>
 
                 <!-- Audit Log Card -->
-                <div class="card border-0 shadow-sm p-3 bg-white">
-                    <h6 class="fw-bold text-dark border-bottom pb-2 mb-3 d-flex align-items-center gap-1">
+                <div class="card border-0 shadow-sm p-3 tf-card" style="background-color:var(--tf-bg-card, #ffffff); border:1px solid var(--tf-border, #e2e8f0) !important;">
+                    <h6 class="fw-bold border-bottom pb-2 mb-3 d-flex align-items-center gap-1" style="color:var(--tf-text-primary, #0f172a);">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="12 6 12 12 16 14"/>
                             <circle cx="12" cy="12" r="10"/>
@@ -322,13 +322,13 @@
                     <ul class="list-unstyled small mb-0">
                         <li class="mb-2 pb-2 border-bottom">
                             <div class="text-secondary fw-semibold">Khởi tạo hợp đồng:</div>
-                            <div class="text-dark">Bởi @contract.CreatedByUserName lúc @contract.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
+                            <div style="color:var(--tf-text-primary, #0f172a);">Bởi @contract.CreatedByUserName lúc @contract.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
                         </li>
                         @if (contract.FinalizedAt.HasValue)
                         {
                             <li class="mb-2 pb-2 border-bottom">
                                 <div class="text-secondary fw-semibold">Chốt nội dung:</div>
-                                <div class="text-dark">Bởi @contract.FinalizedBy lúc @contract.FinalizedAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
+                                <div style="color:var(--tf-text-primary, #0f172a);">Bởi @contract.FinalizedBy lúc @contract.FinalizedAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
                             </li>
                         }
                         @if (contract.PartyASignedAt.HasValue)

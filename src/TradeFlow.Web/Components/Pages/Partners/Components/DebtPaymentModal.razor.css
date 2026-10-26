@@ -729,3 +729,190 @@
 .tf-btn-danger:hover {
     background: #dc2626;
 }
+
+/* ============================================================
+   Category A — Debt Payment / Receipt Modal Dark Theme Styling
+   ============================================================ */
+[data-bs-theme="dark"] .tf-modal-backdrop,
+[data-theme="dark"] .tf-modal-backdrop {
+    background: rgba(10, 12, 16, 0.75);
+}
+
+[data-bs-theme="dark"] .tf-modal-dialog.voucher-dialog,
+[data-theme="dark"] .tf-modal-dialog.voucher-dialog {
+    background: #1e2028;
+    border-color: #2e3542;
+    color: #f1f5f9;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+}
+
+[data-bs-theme="dark"] .tf-modal-header,
+[data-theme="dark"] .tf-modal-header {
+    background: #1e2028;
+    border-bottom-color: #2e3542;
+}
+
+[data-bs-theme="dark"] .tf-modal-title,
+[data-theme="dark"] .tf-modal-title {
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .receipt-icon,
+[data-theme="dark"] .receipt-icon {
+    background: rgba(37, 99, 235, 0.2);
+    color: #60a5fa;
+    border-color: rgba(37, 99, 235, 0.4);
+}
+
+[data-bs-theme="dark"] .payment-icon,
+[data-theme="dark"] .payment-icon {
+    background: #252836;
+    color: #94a3b8;
+    border-color: #383e4b;
+}
+
+[data-bs-theme="dark"] .tf-modal-body,
+[data-theme="dark"] .tf-modal-body {
+    background: #1e2028;
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-form-label,
+[data-theme="dark"] .tf-form-label {
+    color: #cbd5e1;
+}
+
+[data-bs-theme="dark"] .tf-form-control,
+[data-bs-theme="dark"] .tf-input,
+[data-theme="dark"] .tf-form-control,
+[data-theme="dark"] .tf-input {
+    background-color: #17191f;
+    border-color: #2e3542;
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-form-control:focus,
+[data-theme="dark"] .tf-form-control:focus {
+    border-color: #3b82f6;
+    background-color: #17191f;
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-type-selector,
+[data-theme="dark"] .tf-type-selector {
+    background: #17191f;
+    border-color: #2e3542;
+}
+
+[data-bs-theme="dark"] .tf-type-btn,
+[data-theme="dark"] .tf-type-btn {
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .tf-type-btn.active,
+[data-theme="dark"] .tf-type-btn.active {
+    background: #1e2028;
+    color: #f1f5f9;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+[data-bs-theme="dark"] .tf-partner-search-results,
+[data-theme="dark"] .tf-partner-search-results {
+    background: #1e2028;
+    border-color: #2e3542;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+[data-bs-theme="dark"] .tf-partner-item,
+[data-theme="dark"] .tf-partner-item {
+    border-bottom-color: #252836;
+}
+
+[data-bs-theme="dark"] .tf-partner-item:hover,
+[data-theme="dark"] .tf-partner-item:hover {
+    background: #252836;
+}
+
+[data-bs-theme="dark"] .tf-partner-name,
+[data-theme="dark"] .tf-partner-name {
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-partner-selected-box,
+[data-theme="dark"] .tf-partner-selected-box {
+    background: #172138;
+    border-color: #2b3954;
+}
+
+[data-bs-theme="dark"] .tf-partner-selected-name,
+[data-theme="dark"] .tf-partner-selected-name {
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-debt-badge-warning,
+[data-theme="dark"] .tf-debt-badge-warning {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+}
+
+[data-bs-theme="dark"] .tf-debt-badge-success,
+[data-theme="dark"] .tf-debt-badge-success {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+}
+
+[data-bs-theme="dark"] .tf-method-pill,
+[data-theme="dark"] .tf-method-pill {
+    background: #17191f;
+    border-color: #2e3542;
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .tf-method-pill:hover,
+[data-theme="dark"] .tf-method-pill:hover {
+    border-color: #3b82f6;
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-method-pill.active,
+[data-theme="dark"] .tf-method-pill.active {
+    background: rgba(37, 99, 235, 0.2);
+    border-color: #3b82f6;
+    color: #60a5fa;
+}
+
+[data-bs-theme="dark"] .tf-modal-footer,
+[data-theme="dark"] .tf-modal-footer {
+    background: #17191f;
+    border-top-color: #2e3542;
+}
+
+[data-bs-theme="dark"] .tf-btn-secondary,
+[data-theme="dark"] .tf-btn-secondary {
+    background: #252836;
+    border-color: #383e4b;
+    color: #cbd5e1;
+}
+
+[data-bs-theme="dark"] .tf-btn-secondary:hover,
+[data-theme="dark"] .tf-btn-secondary:hover {
+    background: #2f3545;
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-confirm-dialog,
+[data-theme="dark"] .tf-confirm-dialog {
+    background: #1e2028;
+    border-color: #2e3542;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+[data-bs-theme="dark"] .tf-confirm-title,
+[data-theme="dark"] .tf-confirm-title {
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-confirm-desc,
+[data-theme="dark"] .tf-confirm-desc {
+    color: #94a3b8;
+}

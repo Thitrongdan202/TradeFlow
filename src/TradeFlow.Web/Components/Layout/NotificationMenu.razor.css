@@ -31,7 +31,7 @@
     width: 340px;
     max-width: 90vw;
     top: calc(100% + 8px);
-    background: #ffffff;
+    background: var(--tf-surface-raised, #ffffff);
     border: 1px solid var(--tf-border, #e2e8f0);
     border-radius: 10px;
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
@@ -58,7 +58,7 @@
     justify-content: space-between;
     padding: 12px 16px;
     border-bottom: 1px solid var(--tf-border, #e2e8f0);
-    background-color: #f8fafc;
+    background-color: var(--tf-surface-subtle, #f8fafc);
 }
 
 .tf-notif-title-group {
@@ -119,7 +119,7 @@
 .tf-notification-body {
     max-height: 360px;
     overflow-y: auto;
-    background-color: #ffffff;
+    background-color: var(--tf-surface-raised, #ffffff);
 }
 
 .tf-notif-state-box {
@@ -205,11 +205,11 @@
 }
 
 .tf-notif-item:hover {
-    background-color: #f8fafc;
+    background-color: var(--tf-surface-hover, #f8fafc);
 }
 
 .tf-notif-item.unread {
-    background-color: #eff6ff;
+    background-color: var(--tf-primary-light, #eff6ff);
 }
 
 .tf-notif-item-icon {
@@ -406,4 +406,191 @@
 
 .tf-notif-detail-link:hover {
     text-decoration: underline;
+}
+
+/* ==========================================================================
+   DARK THEME SYSTEM — NOTIFICATION MENU
+   ========================================================================== */
+[data-bs-theme="dark"] .tf-notification-panel,
+[data-theme="dark"] .tf-notification-panel {
+    background: #222630;
+    border-color: #383E4B;
+    box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.65);
+}
+
+[data-bs-theme="dark"] .tf-notification-header,
+[data-theme="dark"] .tf-notification-header {
+    background-color: #1D2028;
+    border-bottom-color: #383E4B;
+}
+
+[data-bs-theme="dark"] .tf-notif-title,
+[data-theme="dark"] .tf-notif-title {
+    color: #F0F2F6;
+}
+
+[data-bs-theme="dark"] .tf-notif-count-pill,
+[data-theme="dark"] .tf-notif-count-pill {
+    background-color: rgba(59, 130, 246, 0.2);
+    color: #60A5FA;
+}
+
+[data-bs-theme="dark"] .tf-notif-action-btn,
+[data-theme="dark"] .tf-notif-action-btn {
+    color: #60A5FA;
+}
+
+[data-bs-theme="dark"] .tf-notif-close-icon,
+[data-theme="dark"] .tf-notif-close-icon {
+    color: #929BAC;
+}
+
+[data-bs-theme="dark"] .tf-notif-close-icon:hover,
+[data-theme="dark"] .tf-notif-close-icon:hover {
+    color: #FFFFFF;
+}
+
+[data-bs-theme="dark"] .tf-notification-body,
+[data-theme="dark"] .tf-notification-body {
+    background-color: #222630;
+}
+
+[data-bs-theme="dark"] .tf-notification-footer,
+[data-theme="dark"] .tf-notification-footer {
+    background-color: #1D2028;
+    border-top-color: #383E4B;
+}
+
+[data-bs-theme="dark"] .tf-notif-footer-text,
+[data-theme="dark"] .tf-notif-footer-text {
+    color: #929BAC;
+}
+
+[data-bs-theme="dark"] .tf-notif-refresh-btn,
+[data-theme="dark"] .tf-notif-refresh-btn {
+    color: #60A5FA;
+}
+
+[data-bs-theme="dark"] .tf-notif-item,
+[data-theme="dark"] .tf-notif-item {
+    border-bottom-color: #2D323F;
+    background-color: transparent;
+}
+
+[data-bs-theme="dark"] .tf-notif-item:hover,
+[data-theme="dark"] .tf-notif-item:hover {
+    background-color: #292E39;
+}
+
+[data-bs-theme="dark"] .tf-notif-item.unread,
+[data-theme="dark"] .tf-notif-item.unread {
+    background-color: rgba(59, 130, 246, 0.1);
+}
+
+[data-bs-theme="dark"] .tf-notif-item.is-approval,
+[data-theme="dark"] .tf-notif-item.is-approval {
+    border-left: 3px solid #6366F1;
+    background-color: rgba(99, 102, 241, 0.12);
+}
+
+[data-bs-theme="dark"] .tf-notif-item.is-approval.read,
+[data-theme="dark"] .tf-notif-item.is-approval.read {
+    background-color: transparent;
+    border-left-color: #475569;
+}
+
+[data-bs-theme="dark"] .tf-notif-item-icon,
+[data-theme="dark"] .tf-notif-item-icon {
+    background-color: #292E39;
+    color: #B4BBC8;
+}
+
+[data-bs-theme="dark"] .tf-notif-item-icon.order,
+[data-theme="dark"] .tf-notif-item-icon.order {
+    background-color: rgba(59, 130, 246, 0.2);
+    color: #60A5FA;
+}
+
+[data-bs-theme="dark"] .tf-notif-item-icon.approval,
+[data-theme="dark"] .tf-notif-item-icon.approval {
+    background-color: rgba(99, 102, 241, 0.2);
+    color: #A5B4FC;
+}
+
+[data-bs-theme="dark"] .tf-notif-item-title,
+[data-theme="dark"] .tf-notif-item-title {
+    color: #F0F2F6;
+}
+
+[data-bs-theme="dark"] .tf-notif-item-body,
+[data-theme="dark"] .tf-notif-item-body {
+    color: #B4BBC8;
+}
+
+[data-bs-theme="dark"] .tf-notif-item-time,
+[data-theme="dark"] .tf-notif-item-time {
+    color: #929BAC;
+}
+
+[data-bs-theme="dark"] .tf-notif-badge-pill,
+[data-theme="dark"] .tf-notif-badge-pill {
+    background-color: rgba(99, 102, 241, 0.2);
+    color: #A5B4FC;
+}
+
+[data-bs-theme="dark"] .tf-notif-approval-meta,
+[data-theme="dark"] .tf-notif-approval-meta {
+    color: #929BAC;
+}
+
+[data-bs-theme="dark"] .tf-status-draft-pill,
+[data-theme="dark"] .tf-status-draft-pill {
+    background-color: rgba(245, 158, 11, 0.2);
+    color: #FCD34D;
+}
+
+[data-bs-theme="dark"] .tf-btn-appr-no,
+[data-theme="dark"] .tf-btn-appr-no {
+    background-color: #292E39;
+    color: #F87171;
+    border-color: #383E4B;
+}
+
+[data-bs-theme="dark"] .tf-btn-appr-no:hover:not(:disabled),
+[data-theme="dark"] .tf-btn-appr-no:hover:not(:disabled) {
+    background-color: rgba(239, 68, 68, 0.2);
+    border-color: #EF4444;
+}
+
+[data-bs-theme="dark"] .tf-notif-detail-link,
+[data-theme="dark"] .tf-notif-detail-link {
+    color: #60A5FA;
+}
+
+[data-bs-theme="dark"] .tf-notif-state-title,
+[data-theme="dark"] .tf-notif-state-title {
+    color: #F0F2F6;
+}
+
+[data-bs-theme="dark"] .tf-notif-state-desc,
+[data-theme="dark"] .tf-notif-state-desc {
+    color: #929BAC;
+}
+
+[data-bs-theme="dark"] .tf-notif-empty-icon,
+[data-theme="dark"] .tf-notif-empty-icon {
+    background-color: #292E39;
+}
+
+[data-bs-theme="dark"] .tf-notif-retry-btn,
+[data-theme="dark"] .tf-notif-retry-btn {
+    background-color: #292E39;
+    border-color: #383E4B;
+    color: #F0F2F6;
+}
+
+[data-bs-theme="dark"] .tf-notif-retry-btn:hover,
+[data-theme="dark"] .tf-notif-retry-btn:hover {
+    background-color: #303644;
+    border-color: #3B82F6;
 }

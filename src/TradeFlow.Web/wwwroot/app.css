@@ -48,9 +48,12 @@
 
   /* --- Surface Colors --- */
   --tf-surface:         var(--tf-surface-card);
+  --tf-surface-variant: #F7F8FA;
   --tf-surface-raised:  var(--tf-white);
   --tf-surface-overlay: rgba(32, 41, 56, 0.45);
   --tf-bg:              var(--tf-bg-app);
+  --tf-bg-card:         var(--tf-surface-card);
+  --tf-bg-subtle:       var(--tf-surface-subtle);
   --tf-bg-sidebar:      #ffffff;
 
   /* --- Border Colors --- */
@@ -147,6 +150,114 @@
   --tf-z-overlay:   300;
   --tf-z-modal:     400;
   --tf-z-toast:     500;
+}
+
+/* ============================================================
+   DARK THEME TOKENS — Premium Neutral Charcoal/Graphite System
+   ============================================================ */
+:root[data-bs-theme="dark"],
+:root[data-theme="dark"],
+html[data-bs-theme="dark"],
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* --- Bootstrap 5.3 Core Integration --- */
+  --bs-body-bg:             #17191F;
+  --bs-body-color:          #F0F2F6;
+  --bs-secondary-color:     #B4BBC8;
+  --bs-tertiary-color:      #929BAC;
+  --bs-border-color:        #383E4B;
+  --bs-border-color-translucent: rgba(255, 255, 255, 0.12);
+  --bs-card-bg:             #222630;
+  --bs-card-border-color:   #383E4B;
+  --bs-modal-bg:            #292E39;
+  --bs-modal-border-color:  #383E4B;
+  --bs-tertiary-bg:         #1D2028;
+  --bs-secondary-bg:        #292E39;
+  --bs-dark-rgb:            23, 25, 31;
+  --bs-light-rgb:           41, 46, 57;
+
+  /* --- TradeFlow Neutral Charcoal Architecture --- */
+  --tf-white:               #222630; /* Primary card surface mapped to white token */
+  --tf-bg-app:              #17191F; /* Main application canvas */
+  --tf-bg:                  #17191F;
+  --tf-bg-card:             #222630;
+  --tf-bg-subtle:           #1D2028;
+  --tf-surface-variant:     #1D2028;
+  --tf-surface-card:        #222630; /* Primary card / panel surface */
+  --tf-surface-subtle:      #1D2028; /* Header / secondary recessed surface */
+  --tf-surface-raised:      #292E39; /* Elevated cards, nested boxes, dropdowns */
+  --tf-surface-hover:       #303644; /* Subtle interactive hover state */
+  --tf-surface-active:      #363D4D; /* Active / pressed surface */
+  --tf-gray-50:             #1D2028;
+  --tf-gray-100:            #222630;
+  --tf-gray-200:            #292E39;
+  --tf-gray-300:            #383E4B; /* Borders */
+  --tf-gray-400:            #768092;
+  --tf-gray-500:            #929BAC;
+  --tf-gray-600:            #B4BBC8;
+  --tf-gray-700:            #D0D5DD;
+  --tf-gray-800:            #E4E7EC;
+  --tf-gray-900:            #F0F2F6;
+
+  /* --- Text Colors --- */
+  --tf-text-primary:        #F0F2F6; /* High contrast heading and primary text */
+  --tf-text-secondary:      #B4BBC8; /* Clean readable labels & metadata */
+  --tf-text-muted:          #929BAC; /* Supporting info */
+  --tf-text-inverse:        #17191F;
+  --tf-text-link:           #60A5FA;
+
+  /* --- Surface Colors --- */
+  --tf-surface:             var(--tf-surface-card);
+  --tf-surface-overlay:     rgba(15, 17, 23, 0.78);
+  --tf-bg:                  var(--tf-bg-app);
+  --tf-bg-sidebar:          #1D2028;
+
+  /* --- Border Colors --- */
+  --tf-border:              #383E4B;
+  --tf-border-subtle:       #2A2F3A;
+  --tf-border-strong:       #4A5162;
+  --tf-border-focus:        #3B82F6;
+
+  /* --- Brand Colors (Enterprise Accessible Blue) --- */
+  --tf-primary:             #3B82F6;
+  --tf-primary-hover:       #2563EB;
+  --tf-primary-light:       rgba(59, 130, 246, 0.16);
+  --tf-primary-dark:        #60A5FA;
+
+  /* --- Semantic Colors Adjusted for Dark --- */
+  --tf-success:             #10B981;
+  --tf-success-light:       rgba(16, 185, 129, 0.16);
+  --tf-warning:             #F59E0B;
+  --tf-warning-light:       rgba(245, 158, 11, 0.16);
+  --tf-error:               #EF4444;
+  --tf-error-light:         rgba(239, 68, 68, 0.16);
+  --tf-info:                #60A5FA;
+  --tf-info-light:          rgba(59, 130, 246, 0.16);
+
+  /* --- Sidebar Specific --- */
+  --tf-sidebar-bg:            #1D2028;
+  --tf-sidebar-border:        #383E4B;
+  --tf-sidebar-text:          #B4BBC8;
+  --tf-sidebar-text-muted:    #929BAC;
+  --tf-sidebar-text-hover:    #FFFFFF;
+  --tf-sidebar-text-active:   #60A5FA;
+  --tf-sidebar-item-active:   rgba(59, 130, 246, 0.18);
+  --tf-sidebar-item-hover:    #292E39;
+  --tf-sidebar-brand-text:    #F0F2F6;
+  --tf-sidebar-section-text:  #768092;
+
+  /* --- Topbar Specific --- */
+  --tf-topbar-bg:             #1D2028;
+  --tf-topbar-border:         #383E4B;
+
+  /* --- Shadows for Dark Mode --- */
+  --tf-shadow-sm:   0 1px 2px 0 rgba(0, 0, 0, 0.45);
+  --tf-shadow:      0 1px 3px 0 rgba(0, 0, 0, 0.5), 0 1px 2px -1px rgba(0, 0, 0, 0.45);
+  --tf-shadow-md:   0 4px 6px -1px rgba(0, 0, 0, 0.55), 0 2px 4px -2px rgba(0, 0, 0, 0.45);
+  --tf-shadow-lg:   0 10px 15px -3px rgba(0, 0, 0, 0.65), 0 4px 6px -4px rgba(0, 0, 0, 0.55);
+  --tf-shadow-xl:   0 20px 25px -5px rgba(0, 0, 0, 0.75), 0 8px 10px -6px rgba(0, 0, 0, 0.6);
+  --tf-shadow-card: 0 0 0 1px var(--tf-border), 0 2px 4px rgba(0,0,0,0.3);
 }
 
 /* ============================================================
@@ -1464,7 +1575,7 @@ textarea.tf-form-control {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background-color: #ffffff;
+  background-color: var(--tf-surface-card, #ffffff);
   border-top: 1px solid var(--tf-border);
   gap: 12px;
   flex-wrap: wrap;
@@ -1528,6 +1639,7 @@ textarea.tf-form-control {
 .tf-badge-warning { background: var(--tf-warning-light); color: var(--tf-warning); }
 .tf-badge-error   { background: var(--tf-error-light); color: var(--tf-error); }
 .tf-badge-gray    { background: var(--tf-gray-100); color: var(--tf-gray-600); }
+.tf-badge-info    { background: rgba(59, 130, 246, 0.16); color: var(--tf-primary); }
 
 /* ============================================================
    ALERTS
@@ -2369,7 +2481,7 @@ textarea.tf-form-control {
 }
 
 .tf-filter-card {
-  background: #ffffff;
+  background: var(--tf-surface-card, #ffffff);
   border: 1px solid var(--tf-border);
   border-radius: var(--tf-radius-md);
   overflow: hidden;
@@ -2378,14 +2490,14 @@ textarea.tf-form-control {
 
 .tf-filter-header {
   padding: 10px 14px;
-  background-color: #f8fafc;
+  background-color: var(--tf-surface-subtle, #f8fafc);
   border-bottom: 1px solid var(--tf-border);
 }
 
 .tf-filter-title {
   font-weight: 600;
   font-size: 13px;
-  color: #334155;
+  color: var(--tf-text-secondary, #334155);
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
@@ -3055,6 +3167,21 @@ textarea.tf-form-control {
   letter-spacing: 0.3px;
   min-height: 20px;
   line-height: 1.4;
+}
+
+[data-bs-theme="dark"] .tf-loading-backdrop,
+[data-theme="dark"] .tf-loading-backdrop {
+  background-color: rgba(15, 17, 23, 0.78);
+}
+
+[data-bs-theme="dark"] .tf-loading-company-name,
+[data-theme="dark"] .tf-loading-company-name {
+  color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-loading-status-text,
+[data-theme="dark"] .tf-loading-status-text {
+  color: #94a3b8;
 }
 
 @keyframes tf-spin-ring {
@@ -4059,5 +4186,2194 @@ button.tf-search-spinner {
   background-color: #e2e8f0;
   color: #1e293b;
 }
+
+/* ============================================================
+   PREMIUM THEME TOGGLE SWITCH
+   ============================================================ */
+.tf-theme-toggle {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  outline: none;
+  transition: transform 0.15s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+.tf-theme-toggle:hover {
+  transform: scale(1.04);
+}
+
+.tf-theme-toggle:active {
+  transform: scale(0.96);
+}
+
+.tf-theme-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--tf-bg), 0 0 0 4px var(--tf-primary);
+}
+
+.tf-theme-toggle-track {
+  width: 52px;
+  height: 28px;
+  border-radius: 9999px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6px;
+  background-color: #E2E8F0;
+  border: 1px solid #CBD5E1;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: background-color 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-bs-theme="dark"] .tf-theme-toggle-track,
+[data-theme="dark"] .tf-theme-toggle-track {
+  background-color: #19212D;
+  border-color: #344154;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.tf-theme-track-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  z-index: 1;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.tf-theme-track-sun {
+  color: #F59E0B;
+  opacity: 0.85;
+}
+
+.tf-theme-track-moon {
+  color: #94A3B8;
+  opacity: 0.6;
+}
+
+[data-bs-theme="dark"] .tf-theme-track-sun,
+[data-theme="dark"] .tf-theme-track-sun {
+  opacity: 0.35;
+  color: #64748B;
+}
+
+[data-bs-theme="dark"] .tf-theme-track-moon,
+[data-theme="dark"] .tf-theme-track-moon {
+  opacity: 0.95;
+  color: #93C5FD;
+}
+
+.tf-theme-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.22s ease;
+  z-index: 2;
+}
+
+.tf-theme-toggle.is-dark .tf-theme-toggle-thumb {
+  transform: translateX(23px);
+  background-color: #222C3B;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), 0 0 8px rgba(59, 130, 246, 0.35);
+}
+
+.tf-theme-icon-active {
+  transition: transform 0.22s ease;
+}
+
+.tf-theme-toggle:hover .tf-theme-icon-active {
+  transform: rotate(15deg);
+}
+
+/* ============================================================
+   GLOBAL DARK MODE COMPONENT STYLES & CONTRAST CALIBRATION
+   ============================================================ */
+/* Root & Body smooth theme transitions */
+body,
+.tf-topbar,
+.tf-sidebar,
+.tf-main-wrapper,
+.tf-card,
+.tf-content,
+.tf-quotation-section,
+.tf-table,
+.tf-table th,
+.tf-table td,
+.tf-action-footer,
+.tf-modal-container {
+  transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Global Dark Theme Element Overrides — Premium Neutral Enterprise Hierarchy */
+[data-bs-theme="dark"],
+[data-theme="dark"] {
+  /* Canvas & Global Typography */
+  background-color: #17191F !important;
+  color: #F0F2F6;
+
+  h1, h2, h3, h4, h5, h6 {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-page-title {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-page-subtitle {
+    color: #929BAC !important;
+  }
+
+  /* Topbar Elements */
+  .tf-topbar {
+    background-color: #1D2028 !important;
+    border-color: #383E4B !important;
+  }
+
+  .tf-topbar-warehouse-pill {
+    background-color: #292E39 !important;
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-topbar-warehouse-pill:hover {
+    background-color: #303644 !important;
+    border-color: #4A5162 !important;
+    color: #FFFFFF !important;
+  }
+
+  .tf-topbar-btn {
+    color: #B4BBC8 !important;
+  }
+
+  .tf-topbar-btn:hover {
+    background-color: #292E39 !important;
+    color: #FFFFFF !important;
+  }
+
+  .tf-topbar-divider {
+    background-color: #383E4B !important;
+  }
+
+  .tf-topbar-search .tf-search-input {
+    background-color: #222630 !important;
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-topbar-search .tf-search-input:focus {
+    background-color: #292E39 !important;
+    border-color: #3B82F6 !important;
+  }
+
+  .tf-topbar-search .tf-search-icon {
+    color: #768092 !important;
+  }
+
+  /* User Menu & Dropdown */
+  .tf-user-btn {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-user-btn:hover {
+    background-color: #292E39 !important;
+  }
+
+  .tf-user-name {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-user-role {
+    color: #929BAC !important;
+  }
+
+  .tf-user-menu,
+  .tf-dropdown-menu,
+  .dropdown-menu {
+    background-color: #292E39 !important;
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+    box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.65) !important;
+  }
+
+  .tf-user-menu-header {
+    border-bottom: 1px solid #383E4B !important;
+  }
+
+  .tf-dropdown-divider,
+  .dropdown-divider {
+    background-color: #383E4B !important;
+    border-color: #383E4B !important;
+  }
+
+  .tf-dropdown-item,
+  .dropdown-item {
+    color: #B4BBC8 !important;
+  }
+
+  .tf-dropdown-item:hover,
+  .dropdown-item:hover,
+  .tf-dropdown-item:focus,
+  .dropdown-item:focus {
+    background-color: #303644 !important;
+    color: #FFFFFF !important;
+  }
+
+  /* Notification Menu & Panel */
+  .tf-notification-btn {
+    color: #B4BBC8 !important;
+  }
+
+  .tf-notification-btn:hover,
+  .tf-notification-btn.active {
+    background-color: #292E39 !important;
+    color: #FFFFFF !important;
+  }
+
+  .tf-notification-panel {
+    background-color: #292E39 !important;
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+    box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.65) !important;
+  }
+
+  .tf-notification-header,
+  .tf-notification-footer {
+    background-color: #1D2028 !important;
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  /* Sidebar Navigation */
+  .tf-sidebar {
+    background-color: #1D2028 !important;
+    border-color: #383E4B !important;
+  }
+
+  .tf-brand-name {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-brand-tagline {
+    color: #929BAC !important;
+  }
+
+  .tf-nav-section-label {
+    color: #768092 !important;
+  }
+
+  .tf-nav-link {
+    color: #B4BBC8 !important;
+  }
+
+  .tf-nav-link:hover {
+    color: #FFFFFF !important;
+    background-color: #292E39 !important;
+  }
+
+  .tf-nav-link.active,
+  .tf-nav-item.active > .tf-nav-link {
+    background-color: rgba(59, 130, 246, 0.16) !important;
+    color: #60A5FA !important;
+  }
+
+  .tf-nav-sub-link {
+    color: #929BAC !important;
+  }
+
+  .tf-nav-sub-link:hover {
+    color: #FFFFFF !important;
+    background-color: #292E39 !important;
+  }
+
+  .tf-nav-sub-link.active {
+    background-color: rgba(59, 130, 246, 0.16) !important;
+    color: #60A5FA !important;
+  }
+
+  .tf-nav-sub-dot {
+    background-color: #768092 !important;
+  }
+
+  .tf-nav-sub-link:hover .tf-nav-sub-dot {
+    background-color: #FFFFFF !important;
+  }
+
+  .tf-nav-sub-link.active .tf-nav-sub-dot {
+    background-color: #60A5FA !important;
+  }
+
+  /* Desktop Fly-out Submenu Navigation (All Modules) */
+  .tf-nav-flyout {
+    background: #222630 !important;
+    border: 1px solid #383E4B !important;
+    box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.75), 0 8px 16px -4px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .tf-nav-flyout-header {
+    color: #929BAC !important;
+    border-bottom: 1px solid #383E4B !important;
+  }
+
+  .tf-flyout-link {
+    color: #B4BBC8 !important;
+  }
+
+  .tf-flyout-link:hover {
+    background-color: #292E39 !important;
+    color: #FFFFFF !important;
+  }
+
+  .tf-flyout-link.active {
+    background-color: rgba(59, 130, 246, 0.16) !important;
+    color: #60A5FA !important;
+    font-weight: 600 !important;
+  }
+
+  .tf-flyout-dot {
+    background-color: #768092 !important;
+  }
+
+  .tf-flyout-link:hover .tf-flyout-dot {
+    background-color: #FFFFFF !important;
+  }
+
+  .tf-flyout-link.active .tf-flyout-dot {
+    background-color: #60A5FA !important;
+    transform: scale(1.2) !important;
+  }
+
+  .tf-nav-bottom {
+    background-color: #1D2028 !important;
+    border-color: #383E4B !important;
+  }
+
+  .tf-nav-bottom-item {
+    color: #B4BBC8 !important;
+  }
+
+  .tf-nav-bottom-item:hover {
+    color: #FFFFFF !important;
+    background-color: #292E39 !important;
+  }
+
+  /* Cards & Surface Containers */
+  .tf-card,
+  .card:not(.tf-document-paper):not(.a4-contract-page),
+  .tf-dashboard-main,
+  .tf-dashboard-side,
+  .tf-page-container,
+  .tf-contracts-tab-bar,
+  .tf-contracts-table-card,
+  .tf-contract-card,
+  .tf-kpi-card,
+  .tf-header-btn,
+  .tf-backup-card {
+    background-color: #222630 !important;
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-status-tab.active {
+    background-color: #292E39 !important;
+    color: #60A5FA !important;
+  }
+
+  .tf-header-btn:hover {
+    background-color: #303644 !important;
+    border-color: #4A5162 !important;
+    color: #FFFFFF !important;
+  }
+
+  .tf-backup-card,
+  .tf-backup-status-card,
+  .tf-upload-box,
+  .tf-history-table {
+    background-color: #222630 !important;
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-backup-tab {
+    background-color: #1D2028 !important;
+    border-color: #383E4B !important;
+    color: #B4BBC8 !important;
+  }
+
+  .tf-backup-tab.active {
+    background-color: #292E39 !important;
+    color: #60A5FA !important;
+  }
+
+  .card-header,
+  .card-footer {
+    background-color: #1D2028 !important;
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  /* ============================================================
+     DASHBOARD VISUAL REHABILITATION
+     Quick Actions, Recent Activities & System Notifications
+     ============================================================ */
+  .tf-quick-action {
+    background-color: #292E39 !important;
+    border: 1px solid #383E4B !important;
+    color: #F0F2F6 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+  }
+
+  .tf-quick-action:hover {
+    background-color: #303644 !important;
+    border-color: #3B82F6 !important;
+    color: #60A5FA !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35) !important;
+  }
+
+  .tf-quick-action-icon {
+    background-color: #303644 !important;
+    color: #B4BBC8 !important;
+    border: 1px solid #383E4B !important;
+  }
+
+  .tf-quick-action:hover .tf-quick-action-icon {
+    background-color: rgba(59, 130, 246, 0.2) !important;
+    color: #60A5FA !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
+  }
+
+  .tf-notification-item {
+    background-color: #292E39 !important;
+    border: 1px solid #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-notification-item:hover {
+    background-color: #303644 !important;
+    border-color: #3B82F6 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .tf-notification-item.is-approval-card {
+    border-left: 3px solid #F59E0B !important;
+  }
+
+  .tf-notification-title {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-notification-message {
+    color: #B4BBC8 !important;
+  }
+
+  .tf-notification-time {
+    color: #929BAC !important;
+  }
+
+  .tf-activity-item {
+    background-color: #292E39 !important;
+    border: 1px solid #383E4B !important;
+  }
+
+  .tf-activity-item:hover {
+    background-color: #303644 !important;
+    border-color: #4A5162 !important;
+  }
+
+  .tf-activity-title {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-activity-desc {
+    color: #B4BBC8 !important;
+  }
+
+  .tf-activity-time,
+  .tf-activity-user {
+    color: #929BAC !important;
+  }
+
+  /* ============================================================
+     CONTRACTS MODULE DARK MODE (GLOBAL SPECIFICITY GUARANTEE)
+     ============================================================ */
+  .tf-contracts-page .tf-status-container,
+  .tf-status-container {
+    background-color: #1D2028 !important;
+    border-color: #383E4B !important;
+  }
+
+  .tf-status-tab {
+    color: #929BAC !important;
+  }
+
+  .tf-status-tab:hover {
+    color: #F0F2F6 !important;
+    background-color: #292E39 !important;
+  }
+
+  .tf-status-tab.active {
+    background-color: #292E39 !important;
+    color: #60A5FA !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  .tf-status-tab .tf-tab-count {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: #B4BBC8 !important;
+  }
+
+  .tf-status-tab.active .tf-tab-count {
+    background-color: rgba(59, 130, 246, 0.25) !important;
+    color: #93C5FD !important;
+  }
+
+  .tf-contracts-page .tf-filter-card,
+  .tf-filter-card {
+    background-color: #222630 !important;
+    border-color: #383E4B !important;
+  }
+
+  .tf-contract-search-input {
+    background-color: #1D2028 !important;
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-filter-select {
+    background-color: #1D2028 !important;
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-contracts-page .tf-table-card,
+  .tf-table-card {
+    background-color: #222630 !important;
+    border-color: #383E4B !important;
+  }
+
+  .tf-table thead th {
+    background-color: #1D2028 !important;
+    border-bottom-color: #383E4B !important;
+    color: #929BAC !important;
+  }
+
+  .tf-table tbody td {
+    background-color: transparent !important;
+    border-bottom-color: #2D323F !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-table-row:hover td {
+    background-color: #292E39 !important;
+  }
+
+  .tf-contract-title-link,
+  .tf-party-name,
+  .tf-amount-main {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-contract-number {
+    color: #60A5FA !important;
+  }
+
+  .tf-contract-date,
+  .tf-party-sub,
+  .tf-amount-deposit {
+    color: #929BAC !important;
+  }
+
+  /* Notifications items global specificity */
+  .tf-notif-item {
+    background-color: transparent !important;
+    border-color: #2D323F !important;
+  }
+
+  .tf-notif-item:hover {
+    background-color: #292E39 !important;
+  }
+
+  .tf-notif-item.unread {
+    background-color: rgba(59, 130, 246, 0.1) !important;
+  }
+
+  .tf-notif-item.is-approval {
+    border-left: 3px solid #6366F1 !important;
+    background-color: rgba(99, 102, 241, 0.12) !important;
+  }
+
+  .tf-notif-item.is-approval.read {
+    background-color: transparent !important;
+    border-left-color: #475569 !important;
+  }
+
+  .tf-notif-item-title {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-notif-item-body {
+    color: #B4BBC8 !important;
+  }
+
+  .tf-notif-item-time {
+    color: #929BAC !important;
+  }
+
+  /* ============================================================
+     PARTNERS MODULE DARK MODE (Suppliers, Customers, Debt, Drawers)
+     ============================================================ */
+  .tf-partner-metrics-grid {
+    background: transparent !important;
+  }
+
+  .tf-partner-metric-card {
+    background: #222630 !important;
+    border: 1px solid #383E4B !important;
+    color: #F0F2F6 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+  }
+
+  .tf-partner-metric-card:hover {
+    border-color: #4A5162 !important;
+    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .tf-partner-metric-card.highlight-warning {
+    border-left: 4px solid #F59E0B !important;
+  }
+
+  .tf-metric-icon-wrap.supplier {
+    background: rgba(59, 130, 246, 0.18) !important;
+    color: #60A5FA !important;
+  }
+
+  .tf-metric-icon-wrap.payable {
+    background: rgba(245, 158, 11, 0.18) !important;
+    color: #F59E0B !important;
+  }
+
+  .tf-metric-icon-wrap.purchases {
+    background: rgba(148, 163, 184, 0.18) !important;
+    color: #CBD5E1 !important;
+  }
+
+  .tf-metric-icon-wrap.customer {
+    background: rgba(16, 185, 129, 0.18) !important;
+    color: #10B981 !important;
+  }
+
+  .tf-metric-icon-wrap.debt {
+    background: rgba(239, 68, 68, 0.18) !important;
+    color: #F87171 !important;
+  }
+
+  .tf-metric-label {
+    color: #929BAC !important;
+  }
+
+  .tf-metric-value {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-metric-hint {
+    color: #768092 !important;
+  }
+
+  .tf-filter-sidebar {
+    background: #222630 !important;
+    border: 1px solid #383E4B !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+  }
+
+  .tf-sidebar-header {
+    background: #1D2028 !important;
+    border-bottom: 1px solid #383E4B !important;
+  }
+
+  .tf-sidebar-title {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-filter-label {
+    color: #B4BBC8 !important;
+  }
+
+  .tf-filter-pill {
+    background: #1D2028 !important;
+    border: 1px solid #383E4B !important;
+    color: #B4BBC8 !important;
+  }
+
+  .tf-filter-pill:hover {
+    background: #292E39 !important;
+    color: #F0F2F6 !important;
+    border-color: #4A5162 !important;
+  }
+
+  .tf-filter-pill.active {
+    background: rgba(59, 130, 246, 0.25) !important;
+    color: #60A5FA !important;
+    border-color: rgba(59, 130, 246, 0.45) !important;
+  }
+
+  .tf-input-sm,
+  .tf-select-sm {
+    background-color: #1D2028 !important;
+    border: 1px solid #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-input-sm:focus,
+  .tf-select-sm:focus {
+    border-color: #3B82F6 !important;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25) !important;
+  }
+
+  .tf-sub-label {
+    color: #929BAC !important;
+  }
+
+  .tf-range-sep {
+    color: #768092 !important;
+  }
+
+  .tf-btn-clear-filters {
+    color: #F87171 !important;
+  }
+
+  .tf-btn-clear-filters:hover {
+    background: rgba(239, 68, 68, 0.2) !important;
+  }
+
+  .tf-bulk-actions-bar {
+    background: rgba(37, 99, 235, 0.16) !important;
+    border: 1px solid rgba(59, 130, 246, 0.35) !important;
+    color: #93C5FD !important;
+  }
+
+  .tf-table-code-btn {
+    background: rgba(59, 130, 246, 0.18) !important;
+    color: #60A5FA !important;
+  }
+
+  .tf-table-code-btn:hover {
+    background: rgba(59, 130, 246, 0.3) !important;
+    color: #93C5FD !important;
+  }
+
+  .tf-sup-name-text {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-overlap-badge {
+    background: rgba(245, 158, 11, 0.2) !important;
+    color: #FCD34D !important;
+    border: 1px solid rgba(245, 158, 11, 0.35) !important;
+  }
+
+  .tf-table-subtext {
+    color: #929BAC !important;
+  }
+
+  .tf-phone-text {
+    color: #B4BBC8 !important;
+  }
+
+  .tf-sales-amount {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-debt-amount.warning {
+    color: #F59E0B !important;
+  }
+
+  .tf-debt-amount.neutral {
+    color: #929BAC !important;
+  }
+
+  .tf-btn-action {
+    background: #292E39 !important;
+    border: 1px solid #383E4B !important;
+    color: #B4BBC8 !important;
+  }
+
+  .tf-btn-action:hover {
+    background: #343B4A !important;
+    border-color: #4A5162 !important;
+    color: #FFFFFF !important;
+  }
+
+  .tf-btn-action.edit:hover {
+    color: #60A5FA !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
+    background: rgba(59, 130, 246, 0.16) !important;
+  }
+
+  .tf-btn-action.delete {
+    color: #F87171 !important;
+  }
+
+  .tf-btn-action.delete:hover {
+    background: rgba(239, 68, 68, 0.2) !important;
+    border-color: #EF4444 !important;
+    color: #FCA5A5 !important;
+  }
+
+  .tf-empty-state h3 {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-empty-state p {
+    color: #929BAC !important;
+  }
+
+  .tf-delete-dialog-content {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-delete-msg {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-delete-policy-notice {
+    background: #1D2028 !important;
+    color: #929BAC !important;
+    border-left: 3px solid #3B82F6 !important;
+  }
+
+  .tf-delete-warning-icon {
+    background: rgba(239, 68, 68, 0.2) !important;
+    color: #F87171 !important;
+  }
+
+  /* Partner Detail Drawer */
+  .tf-drawer-content,
+  .tf-drawer-panel,
+  .tf-partner-drawer {
+    background: #222630 !important;
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-drawer-header,
+  .tf-drawer-footer {
+    background: #1D2028 !important;
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-drawer-tabs {
+    background: #1D2028 !important;
+    border-bottom: 1px solid #383E4B !important;
+  }
+
+  .tf-drawer-tab {
+    color: #929BAC !important;
+    background: transparent !important;
+  }
+
+  .tf-drawer-tab:hover {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-drawer-tab.active {
+    color: #60A5FA !important;
+    border-bottom-color: #60A5FA !important;
+    background: transparent !important;
+  }
+
+  .tf-drawer-card,
+  .tf-drawer-section,
+  .tf-partner-header-card {
+    background: #292E39 !important;
+    border: 1px solid #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-drawer-timeline-item {
+    border-left-color: #383E4B !important;
+  }
+
+  /* ============================================================
+     SETTINGS & BACKUP MODULE DARK MODE
+     ============================================================ */
+  .tf-backup-card,
+  .tf-backup-stat-card {
+    background: #222630 !important;
+    border: 1px solid #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-backup-item {
+    background: #292E39 !important;
+    border: 1px solid #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-backup-item:hover {
+    background: #303644 !important;
+    border-color: #4A5162 !important;
+  }
+
+  /* ============================================================
+     CONTRACT TEMPLATE GALLERY DARK MODE
+     ============================================================ */
+  .tf-gallery-container {
+    background: transparent !important;
+  }
+
+  .tf-template-card {
+    background: #222630 !important;
+    border: 1px solid #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-template-card:hover {
+    border-color: #4A5162 !important;
+    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .tf-template-card-header {
+    background: #1D2028 !important;
+    border-bottom: 1px solid #383E4B !important;
+  }
+
+  .tf-template-title {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-template-desc {
+    color: #929BAC !important;
+  }
+
+  .tf-gallery-sidebar {
+    background: #222630 !important;
+    border: 1px solid #383E4B !important;
+  }
+
+  /* ============================================================
+     SALES & POS MODULE DARK MODE
+     ============================================================ */
+  .pos-container,
+  .pos-layout {
+    background: #17191F !important;
+    color: #F0F2F6 !important;
+  }
+
+  .pos-header,
+  .pos-topbar {
+    background: #1D2028 !important;
+    border-bottom: 1px solid #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .pos-card,
+  .pos-product-card,
+  .pos-cart-panel,
+  .pos-left-panel,
+  .pos-right-panel {
+    background: #222630 !important;
+    border: 1px solid #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .pos-summary-panel,
+  .pos-customer-box,
+  .pos-cart-item {
+    background: #292E39 !important;
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  /* ============================================================
+     PRODUCT CATALOG DARK MODE
+     ============================================================ */
+  .tf-product-name {
+    color: #F8FAFC !important;
+  }
+  .tf-product-specs {
+    color: #94A3B8 !important;
+  }
+  .tf-product-category {
+    color: #CBD5E1 !important;
+  }
+  .tf-product-unit {
+    color: #94A3B8 !important;
+  }
+  .tf-product-legacy-code {
+    color: #CBD5E1 !important;
+  }
+
+  /* ============================================================
+     WAREHOUSE MODULE VISUAL REHABILITATION
+     WarehouseNavTabs, Filters Sidebar, Table, Pagination
+     ============================================================ */
+  /* Sub-Navigation Bar */
+  .tf-warehouse-nav-container,
+  [aria-label="Warehouse Operations Navigation"],
+  .tw-bg-white:has([aria-label="Warehouse Operations Navigation"]) {
+    background-color: #1D2028 !important;
+    border-color: #383E4B !important;
+  }
+
+  [aria-label="Warehouse Operations Navigation"] a,
+  .tf-warehouse-nav-container a {
+    color: #B4BBC8 !important;
+    border-color: transparent !important;
+  }
+
+  [aria-label="Warehouse Operations Navigation"] a:hover,
+  .tf-warehouse-nav-container a:hover {
+    background-color: #303644 !important;
+    color: #F0F2F6 !important;
+  }
+
+  [aria-label="Warehouse Operations Navigation"] a.tw-bg-blue-50,
+  .tf-warehouse-nav-container a.tw-bg-blue-50 {
+    background-color: rgba(59, 130, 246, 0.16) !important;
+    color: #60A5FA !important;
+    border: 1px solid rgba(59, 130, 246, 0.35) !important;
+  }
+
+  [aria-label="Warehouse Operations Navigation"] a.tw-bg-blue-50 svg,
+  .tf-warehouse-nav-container a.tw-bg-blue-50 svg {
+    color: #60A5FA !important;
+  }
+
+  [aria-label="Warehouse Operations Navigation"] a:not(.tw-bg-blue-50) svg,
+  .tf-warehouse-nav-container a:not(.tw-bg-blue-50) svg {
+    color: #929BAC !important;
+  }
+
+  /* Filter Sidebar */
+  .tf-filter-sidebar-wrapper,
+  .tf-filter-card {
+    background: #222630 !important;
+    border-color: #383E4B !important;
+  }
+
+  .tf-filter-header {
+    background-color: #1D2028 !important;
+    border-bottom: 1px solid #383E4B !important;
+  }
+
+  .tf-filter-title {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-filter-option {
+    color: #B4BBC8 !important;
+  }
+
+  .tf-filter-option:hover {
+    background-color: #303644 !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-filter-option.selected {
+    background-color: #292E39 !important;
+    color: #60A5FA !important;
+    border-left: 3px solid #3B82F6 !important;
+  }
+
+  .tf-filter-count {
+    background: #303644 !important;
+    color: #B4BBC8 !important;
+  }
+
+  .tf-filter-option.selected .tf-filter-count {
+    background: rgba(59, 130, 246, 0.25) !important;
+    color: #60A5FA !important;
+  }
+
+  /* Pagination Bar */
+  .tf-pagination-container {
+    background-color: #222630 !important;
+    border-top: 1px solid #383E4B !important;
+    color: #B4BBC8 !important;
+  }
+
+  .tf-pagination-info,
+  .tf-pagination-text {
+    color: #B4BBC8 !important;
+  }
+
+  .tf-pagination-text strong {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-pagination-select {
+    background-color: #1D2028 !important;
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-pagination-btn {
+    background-color: #292E39 !important;
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-pagination-btn:hover:not(:disabled) {
+    background-color: #303644 !important;
+    color: #FFFFFF !important;
+    border-color: #4A5162 !important;
+  }
+
+  .tf-pagination-btn:disabled {
+    background-color: #1D2028 !important;
+    border-color: #2A2F3A !important;
+    color: #768092 !important;
+    opacity: 0.55 !important;
+  }
+
+  .tf-pagination-btn.tf-btn-primary {
+    background-color: #2563EB !important;
+    border-color: #2563EB !important;
+    color: #FFFFFF !important;
+  }
+
+  /* Table Bulk Action Bar */
+  .tw-bg-blue-50\/80,
+  .tw-bg-blue-50 {
+    background-color: rgba(37, 99, 235, 0.16) !important;
+    border-color: rgba(59, 130, 246, 0.35) !important;
+  }
+
+  .tw-text-blue-900,
+  .tw-text-blue-800,
+  .tw-text-blue-700 {
+    color: #93C5FD !important;
+  }
+
+  /* Universal Tailwind Utility Overrides in Dark Mode */
+  .tw-bg-white:not(.quotation-print-sheet):not(#print-quotation-area):not(.a4-contract-page):not(.a4-contract-sheet):not(.invoice-print-sheet):not(#print-employment-contract):not(.a4-preview):not(.document-preview-paper),
+  .bg-white:not(.quotation-print-sheet):not(#print-quotation-area):not(.a4-contract-page):not(.a4-contract-sheet):not(.invoice-print-sheet):not(#print-employment-contract):not(.a4-preview):not(.document-preview-paper) {
+    background-color: #222630 !important;
+  }
+
+  .tw-bg-slate-50,
+  .tw-bg-slate-100 {
+    background-color: #1D2028 !important;
+  }
+
+  .tw-border-slate-200,
+  .tw-border-slate-100,
+  .tw-border-slate-300,
+  .border-slate-200 {
+    border-color: #383E4B !important;
+  }
+
+  .tw-text-slate-900,
+  .tw-text-slate-800,
+  .text-dark {
+    color: #F0F2F6 !important;
+  }
+
+  .tw-text-slate-700,
+  .tw-text-slate-600 {
+    color: #B4BBC8 !important;
+  }
+
+  .tw-text-slate-500,
+  .tw-text-slate-400,
+  .text-muted {
+    color: #929BAC !important;
+  }
+
+  /* KPI Cards Accent Treatments */
+  .tw-bg-emerald-50 {
+    background-color: rgba(16, 185, 129, 0.16) !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
+  }
+  .tw-text-emerald-700, .tw-text-emerald-600 {
+    color: #34D399 !important;
+  }
+
+  .tw-bg-amber-50 {
+    background-color: rgba(245, 158, 11, 0.16) !important;
+    border-color: rgba(245, 158, 11, 0.3) !important;
+  }
+  .tw-text-amber-700, .tw-text-amber-600 {
+    color: #FBBF24 !important;
+  }
+
+  .tw-bg-purple-50 {
+    background-color: rgba(168, 85, 247, 0.16) !important;
+    border-color: rgba(168, 85, 247, 0.3) !important;
+  }
+  .tw-text-purple-700, .tw-text-purple-600 {
+    color: #C084FC !important;
+  }
+
+  /* Form Controls */
+  .tf-form-control,
+  .form-control,
+  input.tf-form-control,
+  select.tf-form-control,
+  textarea.tf-form-control,
+  .tf-input,
+  .tf-search-control,
+  .tf-notes-textarea,
+  .tf-terms-editor {
+    background-color: #1D2028 !important;
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-form-control:focus,
+  .form-control:focus,
+  .tf-input:focus,
+  .tf-search-control:focus,
+  .tf-notes-textarea:focus,
+  .tf-terms-editor:focus {
+    background-color: #222630 !important;
+    border-color: #3B82F6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+    color: #FFFFFF !important;
+  }
+
+  .tf-form-control::placeholder,
+  .form-control::placeholder,
+  .tf-input::placeholder,
+  .tf-terms-editor::placeholder {
+    color: #768092 !important;
+  }
+
+  .tf-form-label,
+  .form-label {
+    color: #B4BBC8 !important;
+  }
+
+  select.tf-form-control option,
+  select.tf-input option {
+    background-color: #1D2028;
+    color: #F0F2F6;
+  }
+
+  .tf-search-input-group .tf-search-icon-prefix {
+    color: #768092 !important;
+  }
+
+  .tf-search-input-group + div ul {
+    background-color: #292E39 !important;
+    border-color: #383E4B !important;
+    box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.65) !important;
+  }
+
+  .tf-search-input-group + div ul li {
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-search-input-group + div ul li:hover {
+    background-color: #303644 !important;
+  }
+
+  /* Tables */
+  .tf-table,
+  .table {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-table th,
+  .table th {
+    background-color: #1D2028 !important;
+    color: #B4BBC8 !important;
+    border-color: #383E4B !important;
+  }
+
+  .tf-table td,
+  .table td {
+    background-color: transparent;
+    border-color: #2A2F3A !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-table tr:hover td,
+  .table tr:hover td {
+    background-color: #292E39 !important;
+  }
+
+  .tf-table-responsive {
+    border-color: #383E4B !important;
+  }
+
+  /* Segmented Tabs */
+  .tf-segmented-tabs {
+    background-color: #1D2028 !important;
+    border-color: #383E4B !important;
+  }
+
+  .tf-segmented-tab {
+    color: #929BAC !important;
+  }
+
+  .tf-segmented-tab:hover {
+    color: #FFFFFF !important;
+    background-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .tf-segmented-tab.is-active,
+  .tf-segmented-tab.active {
+    background-color: #292E39 !important;
+    color: #60A5FA !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  /* Buttons in Dark Mode */
+  .tf-btn-primary,
+  .btn-primary {
+    background-color: #2563EB !important;
+    border-color: #2563EB !important;
+    color: #FFFFFF !important;
+  }
+
+  .tf-btn-primary:hover,
+  .btn-primary:hover {
+    background-color: #1D4ED8 !important;
+    border-color: #1D4ED8 !important;
+  }
+
+  .tf-btn-secondary,
+  .btn-secondary {
+    background-color: #292E39 !important;
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-btn-secondary:hover,
+  .btn-secondary:hover {
+    background-color: #303644 !important;
+    border-color: #4A5162 !important;
+    color: #FFFFFF !important;
+  }
+
+  .tf-btn-outline-primary,
+  .btn-outline-primary {
+    border-color: #3B82F6 !important;
+    color: #60A5FA !important;
+    background-color: transparent !important;
+  }
+
+  .tf-btn-outline-primary:hover,
+  .btn-outline-primary:hover {
+    background-color: rgba(59, 130, 246, 0.16) !important;
+    border-color: #60A5FA !important;
+    color: #93C5FD !important;
+  }
+
+  .tf-btn-outline-secondary,
+  .btn-outline-secondary {
+    border-color: #383E4B !important;
+    color: #B4BBC8 !important;
+    background-color: transparent !important;
+  }
+
+  .tf-btn-outline-secondary:hover,
+  .btn-outline-secondary:hover {
+    background-color: #292E39 !important;
+    border-color: #4A5162 !important;
+    color: #FFFFFF !important;
+  }
+
+  .tf-btn-ghost,
+  .btn-ghost {
+    color: #B4BBC8 !important;
+  }
+
+  .tf-btn-ghost:hover,
+  .btn-ghost:hover {
+    background-color: #292E39 !important;
+    color: #FFFFFF !important;
+  }
+
+  .tf-btn-light,
+  .btn-light {
+    background-color: #292E39 !important;
+    border-color: #383E4B !important;
+    color: #B4BBC8 !important;
+  }
+
+  .tf-btn-light:hover,
+  .btn-light:hover {
+    background-color: #303644 !important;
+    color: #FFFFFF !important;
+  }
+
+  .tf-btn-success,
+  .btn-success {
+    background-color: #10B981 !important;
+    border-color: #10B981 !important;
+    color: #FFFFFF !important;
+  }
+
+  .tf-btn-success:hover,
+  .btn-success:hover {
+    background-color: #059669 !important;
+    border-color: #059669 !important;
+  }
+
+  .tf-btn-danger,
+  .btn-danger {
+    background-color: #DC2626 !important;
+    border-color: #DC2626 !important;
+    color: #FFFFFF !important;
+  }
+
+  .tf-btn-danger:hover,
+  .btn-danger:hover {
+    background-color: #B91C1C !important;
+    border-color: #B91C1C !important;
+  }
+
+  .tf-btn-outline-danger,
+  .btn-outline-danger {
+    border-color: #EF4444 !important;
+    color: #F87171 !important;
+    background-color: transparent !important;
+  }
+
+  .tf-btn-outline-danger:hover,
+  .btn-outline-danger:hover {
+    background-color: rgba(239, 68, 68, 0.16) !important;
+    color: #FCA5A5 !important;
+  }
+
+  button:disabled,
+  .tf-btn:disabled,
+  .btn:disabled {
+    opacity: 0.55 !important;
+    cursor: not-allowed !important;
+  }
+
+  /* Modals & Dialogs */
+  .tf-modal-container,
+  .modal-content,
+  #components-reconnect-modal {
+    background-color: #222630 !important;
+    border: 1px solid #383E4B !important;
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+    box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.75) !important;
+  }
+
+  .tf-modal-header,
+  .tf-modal-footer,
+  .modal-header,
+  .modal-footer {
+    background-color: #1D2028 !important;
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-modal-title,
+  .modal-title {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-modal-close-btn {
+    color: #929BAC !important;
+  }
+
+  .tf-modal-close-btn:hover {
+    background-color: #303644 !important;
+    color: #FFFFFF !important;
+  }
+
+  .tf-modal-confirm-box {
+    background-color: #292E39 !important;
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  .tf-modal-confirm-overlay,
+  .tf-modal-backdrop,
+  .modal-backdrop {
+    background-color: rgba(15, 17, 23, 0.8) !important;
+  }
+
+  /* Inline White Background Neutralizer for Modals & Overlays (Strictly insulated from documents) */
+  div[style*="position:fixed"] > div[style*="background:white"],
+  div[style*="position:fixed"] > div[style*="background: white"],
+  div[style*="position: fixed"] > div[style*="background:white"],
+  div[style*="position: fixed"] > div[style*="background: white"],
+  ul[style*="position:absolute"][style*="background:white"],
+  ul[style*="position:absolute"][style*="background: white"],
+  div[style*="position:absolute"][style*="background:white"],
+  div[style*="position:absolute"][style*="background: white"] {
+    background-color: #222630 !important;
+    border-color: #383E4B !important;
+    color: #F0F2F6 !important;
+  }
+
+  /* Specific Quotation Components */
+  .tf-quotation-section {
+    background: #222630 !important;
+    border-color: #383E4B !important;
+  }
+
+  .tf-quotation-section-header {
+    background: #1D2028 !important;
+    border-color: #2A2F3A !important;
+  }
+
+  .tf-quotation-section-title {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-quotation-section-desc {
+    color: #929BAC !important;
+  }
+
+  .tf-customer-card {
+    background: #1D2028 !important;
+    border-color: #383E4B !important;
+  }
+
+  .tf-customer-card-header {
+    border-color: #383E4B !important;
+  }
+
+  .tf-customer-card-name {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-customer-card-avatar {
+    background: rgba(59, 130, 246, 0.18) !important;
+    color: #60A5FA !important;
+  }
+
+  .tf-meta-label {
+    color: #929BAC !important;
+  }
+
+  .tf-meta-value {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-terms-char-count {
+    background: #292E39 !important;
+    color: #929BAC !important;
+  }
+
+  .tf-quotation-empty-items {
+    background: #1D2028 !important;
+    border-color: #383E4B !important;
+    color: #929BAC !important;
+  }
+
+  .tf-empty-icon-wrap {
+    background: #292E39 !important;
+  }
+
+  .tf-empty-title {
+    color: #F0F2F6 !important;
+  }
+
+  .tf-empty-desc {
+    color: #929BAC !important;
+  }
+
+  .tf-action-footer {
+    background: #222630 !important;
+    border-color: #383E4B !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .tf-terms-footer-hint {
+    color: #929BAC !important;
+  }
+
+  .tf-terms-footer-hint code {
+    background: #292E39 !important;
+    color: #B4BBC8 !important;
+  }
+}
+
+/* ============================================================
+   DOCUMENT OUTPUT & A4 PREVIEW PROTECTION (CRITICAL ARCHITECTURE)
+   Printed documents & A4 paper previews MUST remain clean white
+   paper (#FFFFFF) with dark typography across all themes,
+   print modes, and PDF outputs. No dark theme styling is
+   permitted to penetrate document paper boundaries.
+   ============================================================ */
+:root [data-bs-theme="dark"] .quotation-print-sheet,
+:root [data-bs-theme="dark"] #print-quotation-area,
+:root [data-bs-theme="dark"] .a4-contract-page,
+:root [data-bs-theme="dark"] .a4-contract-sheet,
+:root [data-bs-theme="dark"] .invoice-print-sheet,
+:root [data-bs-theme="dark"] .voucher-print-sheet,
+:root [data-bs-theme="dark"] .voucher-a4-sheet,
+:root [data-bs-theme="dark"] .don-dat-hang-sheet,
+:root [data-bs-theme="dark"] #print-employment-contract,
+:root [data-bs-theme="dark"] #print-document-area,
+:root [data-bs-theme="dark"] #print-area,
+:root [data-bs-theme="dark"] #print-warehouse-voucher,
+:root [data-bs-theme="dark"] .contract-preview-a4,
+:root [data-bs-theme="dark"] .tf-a4-preview,
+:root [data-bs-theme="dark"] .tf-document-paper,
+:root [data-theme="dark"] .quotation-print-sheet,
+:root [data-theme="dark"] #print-quotation-area,
+:root [data-theme="dark"] .a4-contract-page,
+:root [data-theme="dark"] .a4-contract-sheet,
+:root [data-theme="dark"] .invoice-print-sheet,
+:root [data-theme="dark"] .voucher-print-sheet,
+:root [data-theme="dark"] .voucher-a4-sheet,
+:root [data-theme="dark"] .don-dat-hang-sheet,
+:root [data-theme="dark"] #print-employment-contract,
+:root [data-theme="dark"] #print-document-area,
+:root [data-theme="dark"] #print-area,
+:root [data-theme="dark"] #print-warehouse-voucher,
+:root [data-theme="dark"] .contract-preview-a4,
+:root [data-theme="dark"] .tf-a4-preview,
+:root [data-theme="dark"] .tf-document-paper,
+.quotation-print-sheet,
+#print-quotation-area,
+.a4-contract-page,
+.a4-contract-sheet,
+.invoice-print-sheet,
+.voucher-print-sheet,
+.voucher-a4-sheet,
+.don-dat-hang-sheet,
+#print-employment-contract,
+#print-document-area,
+#print-area,
+#print-warehouse-voucher,
+.tf-document-paper {
+  background-color: #FFFFFF !important;
+  color: #111827 !important;
+  border-color: #CBD5E1 !important;
+}
+
+/* ALL nested elements inside document paper sheets */
+:root [data-bs-theme="dark"] .quotation-print-sheet *,
+:root [data-bs-theme="dark"] #print-quotation-area *,
+:root [data-bs-theme="dark"] .a4-contract-page *,
+:root [data-bs-theme="dark"] .a4-contract-sheet *,
+:root [data-bs-theme="dark"] .invoice-print-sheet *,
+:root [data-bs-theme="dark"] .voucher-print-sheet *,
+:root [data-bs-theme="dark"] .voucher-a4-sheet *,
+:root [data-bs-theme="dark"] .don-dat-hang-sheet *,
+:root [data-bs-theme="dark"] #print-employment-contract *,
+:root [data-bs-theme="dark"] #print-document-area *,
+:root [data-bs-theme="dark"] #print-area *,
+:root [data-bs-theme="dark"] #print-warehouse-voucher *,
+:root [data-bs-theme="dark"] .contract-preview-a4 *,
+:root [data-bs-theme="dark"] .tf-a4-preview *,
+:root [data-bs-theme="dark"] .tf-document-paper *,
+:root [data-theme="dark"] .quotation-print-sheet *,
+:root [data-theme="dark"] #print-quotation-area *,
+:root [data-theme="dark"] .a4-contract-page *,
+:root [data-theme="dark"] .a4-contract-sheet *,
+:root [data-theme="dark"] .invoice-print-sheet *,
+:root [data-theme="dark"] .voucher-print-sheet *,
+:root [data-theme="dark"] .voucher-a4-sheet *,
+:root [data-theme="dark"] .don-dat-hang-sheet *,
+:root [data-theme="dark"] #print-employment-contract *,
+:root [data-theme="dark"] #print-document-area *,
+:root [data-theme="dark"] #print-area *,
+:root [data-theme="dark"] #print-warehouse-voucher *,
+:root [data-theme="dark"] .contract-preview-a4 *,
+:root [data-theme="dark"] .tf-a4-preview *,
+:root [data-theme="dark"] .tf-document-paper * {
+  color: inherit;
+}
+
+/* Specific text color safety for headings, paragraphs, spans */
+:root [data-bs-theme="dark"] .quotation-print-sheet p,
+:root [data-bs-theme="dark"] #print-quotation-area p,
+:root [data-bs-theme="dark"] .quotation-print-sheet span,
+:root [data-bs-theme="dark"] #print-quotation-area span,
+:root [data-bs-theme="dark"] .quotation-print-sheet strong,
+:root [data-bs-theme="dark"] #print-quotation-area strong,
+:root [data-bs-theme="dark"] .a4-contract-page p,
+:root [data-bs-theme="dark"] .a4-contract-page span,
+:root [data-bs-theme="dark"] .a4-contract-sheet p,
+:root [data-bs-theme="dark"] .a4-contract-sheet span,
+:root [data-bs-theme="dark"] .tf-document-paper p,
+:root [data-bs-theme="dark"] .tf-document-paper span,
+:root [data-theme="dark"] .quotation-print-sheet p,
+:root [data-theme="dark"] #print-quotation-area p,
+:root [data-theme="dark"] .quotation-print-sheet span,
+:root [data-theme="dark"] #print-quotation-area span,
+:root [data-theme="dark"] .quotation-print-sheet strong,
+:root [data-theme="dark"] #print-quotation-area strong,
+:root [data-theme="dark"] .a4-contract-page p,
+:root [data-theme="dark"] .a4-contract-page span,
+:root [data-theme="dark"] .a4-contract-sheet p,
+:root [data-theme="dark"] .a4-contract-sheet span,
+:root [data-theme="dark"] .tf-document-paper p,
+:root [data-theme="dark"] .tf-document-paper span {
+  color: #111827 !important;
+}
+
+/* Inner containers, boxes, tables, rows, cells inside document paper must never have dark bg */
+:root [data-bs-theme="dark"] .quotation-print-sheet div,
+:root [data-bs-theme="dark"] #print-quotation-area div,
+:root [data-bs-theme="dark"] .a4-contract-page div,
+:root [data-bs-theme="dark"] .a4-contract-sheet div,
+:root [data-bs-theme="dark"] .invoice-print-sheet div,
+:root [data-bs-theme="dark"] .voucher-print-sheet div,
+:root [data-bs-theme="dark"] .voucher-a4-sheet div,
+:root [data-bs-theme="dark"] .don-dat-hang-sheet div,
+:root [data-bs-theme="dark"] #print-employment-contract div,
+:root [data-bs-theme="dark"] #print-document-area div,
+:root [data-bs-theme="dark"] #print-area div,
+:root [data-bs-theme="dark"] #print-warehouse-voucher div,
+:root [data-bs-theme="dark"] .tf-document-paper div,
+:root [data-theme="dark"] .quotation-print-sheet div,
+:root [data-theme="dark"] #print-quotation-area div,
+:root [data-theme="dark"] .a4-contract-page div,
+:root [data-theme="dark"] .a4-contract-sheet div,
+:root [data-theme="dark"] .invoice-print-sheet div,
+:root [data-theme="dark"] .voucher-print-sheet div,
+:root [data-theme="dark"] .voucher-a4-sheet div,
+:root [data-theme="dark"] .don-dat-hang-sheet div,
+:root [data-theme="dark"] #print-employment-contract div,
+:root [data-theme="dark"] #print-document-area div,
+:root [data-theme="dark"] #print-area div,
+:root [data-theme="dark"] #print-warehouse-voucher div,
+:root [data-theme="dark"] .tf-document-paper div {
+  background-color: transparent !important;
+  color: #111827 !important;
+}
+
+:root [data-bs-theme="dark"] .quotation-print-sheet .quotation-terms-box,
+:root [data-bs-theme="dark"] #print-quotation-area .quotation-terms-box,
+:root [data-theme="dark"] .quotation-print-sheet .quotation-terms-box,
+:root [data-theme="dark"] #print-quotation-area .quotation-terms-box,
+.quotation-print-sheet .quotation-terms-box,
+#print-quotation-area .quotation-terms-box {
+  background-color: #FFFFFF !important;
+  color: #111827 !important;
+  border-color: #000000 !important;
+}
+
+:root [data-bs-theme="dark"] .quotation-print-sheet table,
+:root [data-bs-theme="dark"] #print-quotation-area table,
+:root [data-bs-theme="dark"] .tf-document-paper table,
+:root [data-bs-theme="dark"] .voucher-a4-sheet table,
+:root [data-bs-theme="dark"] .don-dat-hang-sheet table,
+:root [data-bs-theme="dark"] #print-employment-contract table,
+:root [data-bs-theme="dark"] #print-document-area table,
+:root [data-bs-theme="dark"] #print-area table,
+:root [data-bs-theme="dark"] #print-warehouse-voucher table,
+:root [data-bs-theme="dark"] .quotation-print-sheet tr,
+:root [data-bs-theme="dark"] #print-quotation-area tr,
+:root [data-bs-theme="dark"] .tf-document-paper tr,
+:root [data-bs-theme="dark"] .voucher-a4-sheet tr,
+:root [data-bs-theme="dark"] .don-dat-hang-sheet tr,
+:root [data-bs-theme="dark"] #print-employment-contract tr,
+:root [data-bs-theme="dark"] #print-document-area tr,
+:root [data-bs-theme="dark"] #print-area tr,
+:root [data-bs-theme="dark"] #print-warehouse-voucher tr,
+:root [data-bs-theme="dark"] .quotation-print-sheet th,
+:root [data-bs-theme="dark"] #print-quotation-area th,
+:root [data-bs-theme="dark"] .tf-document-paper th,
+:root [data-bs-theme="dark"] .voucher-a4-sheet th,
+:root [data-bs-theme="dark"] .don-dat-hang-sheet th,
+:root [data-bs-theme="dark"] #print-employment-contract th,
+:root [data-bs-theme="dark"] #print-document-area th,
+:root [data-bs-theme="dark"] #print-area th,
+:root [data-bs-theme="dark"] #print-warehouse-voucher th,
+:root [data-bs-theme="dark"] .quotation-print-sheet td,
+:root [data-bs-theme="dark"] #print-quotation-area td,
+:root [data-bs-theme="dark"] .tf-document-paper td,
+:root [data-bs-theme="dark"] .voucher-a4-sheet td,
+:root [data-bs-theme="dark"] .don-dat-hang-sheet td,
+:root [data-bs-theme="dark"] #print-employment-contract td,
+:root [data-bs-theme="dark"] #print-document-area td,
+:root [data-bs-theme="dark"] #print-area td,
+:root [data-bs-theme="dark"] #print-warehouse-voucher td,
+:root [data-theme="dark"] .quotation-print-sheet table,
+:root [data-theme="dark"] #print-quotation-area table,
+:root [data-theme="dark"] .tf-document-paper table,
+:root [data-theme="dark"] .voucher-a4-sheet table,
+:root [data-theme="dark"] .don-dat-hang-sheet table,
+:root [data-theme="dark"] #print-employment-contract table,
+:root [data-theme="dark"] #print-document-area table,
+:root [data-theme="dark"] #print-area table,
+:root [data-theme="dark"] #print-warehouse-voucher table,
+:root [data-theme="dark"] .quotation-print-sheet tr,
+:root [data-theme="dark"] #print-quotation-area tr,
+:root [data-theme="dark"] .tf-document-paper tr,
+:root [data-theme="dark"] .voucher-a4-sheet tr,
+:root [data-theme="dark"] .don-dat-hang-sheet tr,
+:root [data-theme="dark"] #print-employment-contract tr,
+:root [data-theme="dark"] #print-document-area tr,
+:root [data-theme="dark"] #print-area tr,
+:root [data-theme="dark"] #print-warehouse-voucher tr,
+:root [data-theme="dark"] .quotation-print-sheet th,
+:root [data-theme="dark"] #print-quotation-area th,
+:root [data-theme="dark"] .tf-document-paper th,
+:root [data-theme="dark"] .voucher-a4-sheet th,
+:root [data-theme="dark"] .don-dat-hang-sheet th,
+:root [data-theme="dark"] #print-employment-contract th,
+:root [data-theme="dark"] #print-document-area th,
+:root [data-theme="dark"] #print-area th,
+:root [data-theme="dark"] #print-warehouse-voucher th,
+:root [data-theme="dark"] .quotation-print-sheet td,
+:root [data-theme="dark"] #print-quotation-area td,
+:root [data-theme="dark"] .tf-document-paper td,
+:root [data-theme="dark"] .voucher-a4-sheet td,
+:root [data-theme="dark"] .don-dat-hang-sheet td,
+:root [data-theme="dark"] #print-employment-contract td,
+:root [data-theme="dark"] #print-document-area td,
+:root [data-theme="dark"] #print-area td,
+:root [data-theme="dark"] #print-warehouse-voucher td {
+  background-color: transparent !important;
+  color: #111827 !important;
+}
+
+@media print {
+  :root, html, body, [data-bs-theme="dark"], [data-theme="dark"] {
+    color-scheme: light !important;
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+  }
+}
+
+/* ============================================================
+   DEEP REPAIR: CATEGORY B — MANDATORY DOCUMENT RENDERING ISOLATION
+   Preserves 100% authentic white paper and original template typography
+   for Contracts, Quotations, Invoices, Vouchers & Records in any theme
+   ============================================================ */
+.tf-document-paper,
+.a4-contract-page,
+.tf-a4-sheet,
+.tf-a4-preview-canvas,
+.voucher-a4-sheet,
+.quotation-paper,
+.quotation-print-sheet,
+.don-dat-hang-sheet {
+  color-scheme: light !important;
+  --bs-light-rgb: 248, 250, 252 !important;
+  --bs-light: #f8fafc !important;
+  --bs-dark-rgb: 15, 23, 42 !important;
+  --bs-dark: #0f172a !important;
+  --bs-body-bg: #ffffff !important;
+  --bs-body-color: #111827 !important;
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+
+.tf-document-paper .bg-light,
+.a4-contract-page .bg-light,
+.tf-a4-sheet .bg-light,
+.tf-a4-preview-canvas .bg-light,
+.voucher-a4-sheet .bg-light,
+.quotation-paper .bg-light,
+.quotation-print-sheet .bg-light,
+.don-dat-hang-sheet .bg-light {
+  background-color: #f8fafc !important;
+  background: #f8fafc !important;
+  color: #111827 !important;
+}
+
+.tf-document-paper .table-light,
+.a4-contract-page .table-light,
+.tf-a4-sheet .table-light,
+.voucher-a4-sheet .table-light,
+.tf-document-paper .table-light th,
+.a4-contract-page .table-light th,
+.tf-a4-sheet .table-light th,
+.voucher-a4-sheet .table-light th {
+  background-color: #f8fafc !important;
+  background: #f8fafc !important;
+  color: #111827 !important;
+}
+
+.tf-document-paper .text-dark,
+.a4-contract-page .text-dark,
+.tf-a4-sheet .text-dark,
+.voucher-a4-sheet .text-dark {
+  color: #111827 !important;
+}
+
+/* ============================================================
+   DEEP REPAIR: CATEGORY A & C — APPLICATION & MANAGEMENT SURFACES
+   Coherent enterprise dark mode for Warehouse, Debt, Settings & Modals
+   ============================================================ */
+
+/* Universal Tailwind Card & Surface Mapping in Dark Mode (Non-Document Only) */
+[data-bs-theme="dark"] .tw-bg-white:not(.tf-document-paper):not(.a4-contract-page):not(.tf-a4-sheet):not(.voucher-a4-sheet):not(.quotation-paper):not(.tf-print-paper):not(.tf-loading-backdrop),
+[data-theme="dark"] .tw-bg-white:not(.tf-document-paper):not(.a4-contract-page):not(.tf-a4-sheet):not(.voucher-a4-sheet):not(.quotation-paper):not(.tf-print-paper):not(.tf-loading-backdrop) {
+  background-color: #1e2028 !important;
+  color: #f1f5f9 !important;
+}
+
+[data-bs-theme="dark"] .tw-bg-slate-50:not(.tf-document-paper *):not(.a4-contract-page *):not(.tf-a4-sheet *):not(.voucher-a4-sheet *),
+[data-theme="dark"] .tw-bg-slate-50:not(.tf-document-paper *):not(.a4-contract-page *):not(.tf-a4-sheet *):not(.voucher-a4-sheet *) {
+  background-color: #17191f !important;
+}
+
+[data-bs-theme="dark"] .tw-bg-slate-100:not(.tf-document-paper *):not(.a4-contract-page *):not(.tf-a4-sheet *):not(.voucher-a4-sheet *),
+[data-theme="dark"] .tw-bg-slate-100:not(.tf-document-paper *):not(.a4-contract-page *):not(.tf-a4-sheet *):not(.voucher-a4-sheet *) {
+  background-color: #252836 !important;
+  color: #cbd5e1 !important;
+}
+
+[data-bs-theme="dark"] .tw-border-slate-200:not(.tf-document-paper *):not(.a4-contract-page *):not(.tf-a4-sheet *):not(.voucher-a4-sheet *),
+[data-bs-theme="dark"] .tw-border-slate-100:not(.tf-document-paper *):not(.a4-contract-page *):not(.tf-a4-sheet *):not(.voucher-a4-sheet *),
+[data-theme="dark"] .tw-border-slate-200:not(.tf-document-paper *):not(.a4-contract-page *):not(.tf-a4-sheet *):not(.voucher-a4-sheet *),
+[data-theme="dark"] .tw-border-slate-100:not(.tf-document-paper *):not(.a4-contract-page *):not(.tf-a4-sheet *):not(.voucher-a4-sheet *) {
+  border-color: #2e3542 !important;
+}
+
+[data-bs-theme="dark"] .tw-text-slate-900:not(.tf-document-paper *):not(.a4-contract-page *):not(.tf-a4-sheet *):not(.voucher-a4-sheet *),
+[data-bs-theme="dark"] .tw-text-slate-800:not(.tf-document-paper *):not(.a4-contract-page *):not(.tf-a4-sheet *):not(.voucher-a4-sheet *),
+[data-theme="dark"] .tw-text-slate-900:not(.tf-document-paper *):not(.a4-contract-page *):not(.tf-a4-sheet *):not(.voucher-a4-sheet *),
+[data-theme="dark"] .tw-text-slate-800:not(.tf-document-paper *):not(.a4-contract-page *):not(.tf-a4-sheet *):not(.voucher-a4-sheet *) {
+  color: #f1f5f9 !important;
+}
+
+[data-bs-theme="dark"] .tw-text-slate-700:not(.tf-document-paper *):not(.a4-contract-page *):not(.tf-a4-sheet *):not(.voucher-a4-sheet *),
+[data-bs-theme="dark"] .tw-text-slate-600:not(.tf-document-paper *):not(.a4-contract-page *):not(.tf-a4-sheet *):not(.voucher-a4-sheet *),
+[data-theme="dark"] .tw-text-slate-700:not(.tf-document-paper *):not(.a4-contract-page *):not(.tf-a4-sheet *):not(.voucher-a4-sheet *),
+[data-theme="dark"] .tw-text-slate-600:not(.tf-document-paper *):not(.a4-contract-page *):not(.tf-a4-sheet *):not(.voucher-a4-sheet *) {
+  color: #cbd5e1 !important;
+}
+
+[data-bs-theme="dark"] .tw-text-slate-500:not(.tf-document-paper *):not(.a4-contract-page *):not(.tf-a4-sheet *):not(.voucher-a4-sheet *),
+[data-bs-theme="dark"] .tw-text-slate-400:not(.tf-document-paper *):not(.a4-contract-page *):not(.tf-a4-sheet *):not(.voucher-a4-sheet *),
+[data-theme="dark"] .tw-text-slate-500:not(.tf-document-paper *):not(.a4-contract-page *):not(.tf-a4-sheet *):not(.voucher-a4-sheet *),
+[data-theme="dark"] .tw-text-slate-400:not(.tf-document-paper *):not(.a4-contract-page *):not(.tf-a4-sheet *):not(.voucher-a4-sheet *) {
+  color: #94a3b8 !important;
+}
+
+/* Warehouse Subnavigation & Multi-Warehouse Cards */
+[data-bs-theme="dark"] .tf-warehouse-nav-container,
+[data-theme="dark"] .tf-warehouse-nav-container {
+  background-color: #1e2028 !important;
+  border-color: #2e3542 !important;
+}
+
+[data-bs-theme="dark"] .tf-warehouse-nav-container a,
+[data-theme="dark"] .tf-warehouse-nav-container a {
+  color: #94a3b8 !important;
+}
+
+[data-bs-theme="dark"] .tf-warehouse-nav-container a:hover,
+[data-theme="dark"] .tf-warehouse-nav-container a:hover {
+  color: #f1f5f9 !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-bs-theme="dark"] .tf-warehouse-nav-container a.tw-bg-blue-50,
+[data-theme="dark"] .tf-warehouse-nav-container a.tw-bg-blue-50 {
+  background-color: rgba(37, 99, 235, 0.22) !important;
+  color: #60a5fa !important;
+  border-color: rgba(37, 99, 235, 0.45) !important;
+}
+
+[data-bs-theme="dark"] .tf-wh-card,
+[data-theme="dark"] .tf-wh-card {
+  background-color: #1e2028 !important;
+  border-color: #2e3542 !important;
+  color: #f1f5f9 !important;
+}
+
+[data-bs-theme="dark"] .tf-wh-card:hover,
+[data-theme="dark"] .tf-wh-card:hover {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-bs-theme="dark"] .tf-wh-card.is-selected,
+[data-theme="dark"] .tf-wh-card.is-selected {
+  border-color: #3b82f6 !important;
+  background-color: #172138 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25), 0 6px 16px -2px rgba(59, 130, 246, 0.15) !important;
+}
+
+[data-bs-theme="dark"] .tf-wh-card .tw-bg-slate-50\/70,
+[data-theme="dark"] .tf-wh-card .tw-bg-slate-50\/70 {
+  background-color: #17191f !important;
+}
+
+[data-bs-theme="dark"] .tf-wh-card .tw-border-slate-100,
+[data-theme="dark"] .tf-wh-card .tw-border-slate-100 {
+  border-color: #2e3542 !important;
+}
+
+/* Custom Styled Select Controls & Option Elements */
+select:not(.tf-document-paper *),
+.tf-custom-select,
+.form-select.tf-custom-select,
+.tf-select-control,
+.tf-select-control-sm,
+.tf-select,
+.tf-select-sm,
+.tf-pos-pricelist-select,
+.tf-pos-page-size-select,
+.tf-vat-rate-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px 10px;
+  padding-right: 32px;
+}
+
+[data-bs-theme="dark"] .tf-custom-select,
+[data-bs-theme="dark"] .form-select.tf-custom-select,
+[data-bs-theme="dark"] .tf-select-control,
+[data-bs-theme="dark"] .tf-select-control-sm,
+[data-bs-theme="dark"] .tf-select,
+[data-bs-theme="dark"] .tf-select-sm,
+[data-bs-theme="dark"] .tf-pos-pricelist-select,
+[data-bs-theme="dark"] .tf-pos-page-size-select,
+[data-bs-theme="dark"] .tf-vat-rate-select,
+[data-bs-theme="dark"] select:not(.tf-document-paper *),
+[data-theme="dark"] .tf-custom-select,
+[data-theme="dark"] .form-select.tf-custom-select,
+[data-theme="dark"] .tf-select-control,
+[data-theme="dark"] .tf-select-control-sm,
+[data-theme="dark"] .tf-select,
+[data-theme="dark"] .tf-select-sm,
+[data-theme="dark"] .tf-pos-pricelist-select,
+[data-theme="dark"] .tf-pos-page-size-select,
+[data-theme="dark"] .tf-vat-rate-select,
+[data-theme="dark"] select:not(.tf-document-paper *) {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  color: #f1f5f9 !important;
+  background-color: #1e2028 !important;
+  border-color: #383e4b !important;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
+  background-size: 14px 10px !important;
+  padding-right: 32px !important;
+}
+
+[data-bs-theme="dark"] select:not(.tf-document-paper *):focus,
+[data-theme="dark"] select:not(.tf-document-paper *):focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+}
+
+/* Product Expanded Details (Dark Mode) */
+[data-bs-theme="dark"] .tf-product-expanded-box,
+[data-theme="dark"] .tf-product-expanded-box {
+  background-color: #17191f !important;
+  border-top-color: #2e3542 !important;
+  border-bottom-color: #3b82f6 !important;
+}
+
+[data-bs-theme="dark"] .tf-product-expanded-header,
+[data-theme="dark"] .tf-product-expanded-header {
+  border-bottom-color: #2e3542 !important;
+}
+
+[data-bs-theme="dark"] .tf-product-img-box,
+[data-theme="dark"] .tf-product-img-box {
+  background: #1e2028 !important;
+  border-color: #2e3542 !important;
+}
+
+[data-bs-theme="dark"] .tf-product-detail-tr td,
+[data-theme="dark"] .tf-product-detail-tr td,
+[data-bs-theme="dark"] .tf-product-expanded-td,
+[data-theme="dark"] .tf-product-expanded-td {
+  background-color: #17191f !important;
+  border-bottom-color: #3b82f6 !important;
+}
+
+/* Employee Expanded Details (Dark Mode) */
+[data-bs-theme="dark"] .tf-emp-expanded-box,
+[data-theme="dark"] .tf-emp-expanded-box {
+  background-color: #17191f !important;
+  border-top-color: #2e3542 !important;
+}
+
+[data-bs-theme="dark"] .tf-emp-expanded-header,
+[data-theme="dark"] .tf-emp-expanded-header {
+  border-bottom-color: #2e3542 !important;
+}
+
+[data-bs-theme="dark"] .tf-emp-detail-col,
+[data-theme="dark"] .tf-emp-detail-col {
+  background: #1e2028 !important;
+  border-color: #2e3542 !important;
+}
+
+[data-bs-theme="dark"] .tf-emp-section-heading,
+[data-theme="dark"] .tf-emp-section-heading {
+  color: #94a3b8 !important;
+  border-bottom-color: #2e3542 !important;
+}
+
+[data-bs-theme="dark"] .tf-emp-field-label,
+[data-theme="dark"] .tf-emp-field-label {
+  color: #8b95a5 !important;
+}
+
+[data-bs-theme="dark"] .tf-emp-field-value,
+[data-theme="dark"] .tf-emp-field-value {
+  color: #f1f5f9 !important;
+}
+
+[data-bs-theme="dark"] .tf-emp-badge-code,
+[data-theme="dark"] .tf-emp-badge-code {
+  background: #1e293b !important;
+  color: #2dd4bf !important;
+  border-color: #334155 !important;
+}
+
+[data-bs-theme="dark"] .tf-emp-avatar-lg,
+[data-theme="dark"] .tf-emp-avatar-lg {
+  background: #1e293b !important;
+  color: #60a5fa !important;
+}
+
+[data-bs-theme="dark"] .tf-emp-detail-tr td,
+[data-theme="dark"] .tf-emp-detail-tr td {
+  background-color: #17191f !important;
+  border-bottom-color: #3b82f6 !important;
+}
+
+[data-bs-theme="dark"] select option,
+[data-theme="dark"] select option {
+  background-color: #1e2028 !important;
+  color: #f1f5f9 !important;
+}
+
+[data-bs-theme="dark"] .tf-custom-input,
+[data-bs-theme="dark"] .form-control.tf-custom-input,
+[data-theme="dark"] .tf-custom-input,
+[data-theme="dark"] .form-control.tf-custom-input {
+  background-color: #17191f !important;
+  color: #f1f5f9 !important;
+  border-color: #383e4b !important;
+}
+
 
 

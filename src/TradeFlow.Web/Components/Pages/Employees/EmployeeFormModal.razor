@@ -39,8 +39,8 @@
             <AuthorizeView Policy="Permission:Employees:Create">
                 <Authorized>
                     @* Mode selector if user has permission to direct create *@
-                    <div style="padding: 10px 20px; background-color: #f8fafc; border-bottom: 1px solid var(--tf-border); display: flex; align-items: center; gap: 20px;">
-                        <span style="font-size: 13px; font-weight: 600; color: #475569;">Phương thức:</span>
+                    <div style="padding: 10px 20px; background-color: var(--tf-bg-subtle, #f8fafc); border-bottom: 1px solid var(--tf-border); display: flex; align-items: center; gap: 20px;">
+                        <span style="font-size: 13px; font-weight: 600; color: var(--tf-text-secondary, #475569);">Phương thức:</span>
                         <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px;">
                             <input type="radio" name="empCreateMode" checked="@_isDirectCreate" @onchange="() => _isDirectCreate = true" />
                             <span>Tạo hồ sơ trực tiếp</span>
@@ -65,8 +65,8 @@
                     }
 
                     @* Group 1: Thông tin cơ bản *@
-                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
-                        <div style="font-weight: 600; font-size: 14px; color: #1e293b; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+                    <div style="background: var(--tf-bg-card, #ffffff); border: 1px solid var(--tf-border, #e2e8f0); border-radius: 8px; padding: 16px;">
+                        <div style="font-weight: 600; font-size: 14px; color: var(--tf-text-primary, #1e293b); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
                             <span style="width: 4px; height: 16px; background-color: var(--tf-primary); border-radius: 2px;"></span>
                             Thông tin cơ bản
                         </div>
@@ -113,8 +113,8 @@
                     </div>
 
                     @* Group 2: Vị trí & Công việc *@
-                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
-                        <div style="font-weight: 600; font-size: 14px; color: #1e293b; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+                    <div style="background: var(--tf-bg-card, #ffffff); border: 1px solid var(--tf-border, #e2e8f0); border-radius: 8px; padding: 16px;">
+                        <div style="font-weight: 600; font-size: 14px; color: var(--tf-text-primary, #1e293b); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
                             <span style="width: 4px; height: 16px; background-color: var(--tf-primary); border-radius: 2px;"></span>
                             Vị trí &amp; Bộ phận làm việc
                         </div>
@@ -172,8 +172,8 @@
                     </div>
 
                     @* Group 3: Liên hệ & Tài khoản hệ thống *@
-                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
-                        <div style="font-weight: 600; font-size: 14px; color: #1e293b; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+                    <div style="background: var(--tf-bg-card, #ffffff); border: 1px solid var(--tf-border, #e2e8f0); border-radius: 8px; padding: 16px;">
+                        <div style="font-weight: 600; font-size: 14px; color: var(--tf-text-primary, #1e293b); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
                             <span style="width: 4px; height: 16px; background-color: var(--tf-primary); border-radius: 2px;"></span>
                             Liên hệ &amp; Tài khoản TradeFlow
                         </div>
@@ -215,8 +215,8 @@
                     </div>
 
                     @* Group 4: Tài khoản ngân hàng & Ghi chú *@
-                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
-                        <div style="font-weight: 600; font-size: 14px; color: #1e293b; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+                    <div style="background: var(--tf-bg-card, #ffffff); border: 1px solid var(--tf-border, #e2e8f0); border-radius: 8px; padding: 16px;">
+                        <div style="font-weight: 600; font-size: 14px; color: var(--tf-text-primary, #1e293b); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
                             <span style="width: 4px; height: 16px; background-color: var(--tf-primary); border-radius: 2px;"></span>
                             Ngân hàng &amp; Ghi chú
                         </div>

@@ -1,0 +1,30 @@
+/* Warehouse Navigation Tabs Dark Mode Support */
+
+[data-bs-theme="dark"] .tf-warehouse-nav-container,
+[data-theme="dark"] .tf-warehouse-nav-container {
+    background-color: #1e2028 !important;
+    border-color: #2e3542 !important;
+}
+
+[data-bs-theme="dark"] .tf-warehouse-nav-container a,
+[data-theme="dark"] .tf-warehouse-nav-container a {
+    color: #94a3b8 !important;
+}
+
+[data-bs-theme="dark"] .tf-warehouse-nav-container a:hover,
+[data-theme="dark"] .tf-warehouse-nav-container a:hover {
+    color: #f1f5f9 !important;
+    background-color: #282d37 !important;
+}
+
+[data-bs-theme="dark"] .tf-warehouse-nav-container a.tw-bg-blue-50,
+[data-theme="dark"] .tf-warehouse-nav-container a.tw-bg-blue-50 {
+    background-color: rgba(59, 130, 246, 0.2) !important;
+    border-color: #3b82f6 !important;
+    color: #93c5fd !important;
+}
+
+[data-bs-theme="dark"] .tf-warehouse-nav-container a.tw-bg-blue-50 svg,
+[data-theme="dark"] .tf-warehouse-nav-container a.tw-bg-blue-50 svg {
+    color: #60a5fa !important;
+}

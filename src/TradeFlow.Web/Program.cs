@@ -58,6 +58,9 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddTradeFlowAuthorization();
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<TradeFlow.Web.Services.IThemeService, TradeFlow.Web.Services.ThemeService>();
+
 // No email sender needed for internal system (no email confirmation)
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 

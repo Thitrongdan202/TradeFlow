@@ -1,11 +1,33 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" data-bs-theme="@_serverTheme" data-theme="@_serverTheme" class="@(_serverTheme == "dark" ? "dark" : "")">
 
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="TradeFlow — Hệ thống quản lý kinh doanh nội bộ" />
     <base href="/" />
+    <script>
+        // Early Theme Initialization to eliminate flicker (FOUT) before DOM paint
+        (function() {
+            try {
+                var cookieMatch = document.cookie.match(/(?:^|;\s*)tf_theme=([^;]+)/);
+                var cookieTheme = cookieMatch ? cookieMatch[1] : null;
+                var stored = (cookieTheme === 'dark' || cookieTheme === 'light') ? cookieTheme : localStorage.getItem('tf_theme');
+                var theme = stored === 'dark' || (!stored && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+                document.documentElement.setAttribute('data-bs-theme', theme);
+                document.documentElement.setAttribute('data-theme', theme);
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    var style = document.createElement('style');
+                    style.id = 'tf-early-dark-loader';
+                    style.textContent = '#tf-startup-loader, #tf-startup-loader .tf-loading-backdrop { background-color: #17191F !important; color: #F0F2F6 !important; }';
+                    document.head.appendChild(style);
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            } catch (e) {}
+        })();
+    </script>
     @if (!string.IsNullOrEmpty(_branding.LogoPath))
     {
         <link rel="preload" as="image" href="@_branding.LogoPath" />
@@ -398,9 +420,12 @@
                 });
             }
 
-            // Blazor enhanced page load hook: always dismiss on enhanced load
+            // Blazor enhanced page load hook: always re-apply theme & dismiss startup loaders
             if (window.Blazor && window.Blazor.addEventListener) {
                 window.Blazor.addEventListener('enhancedload', function () {
+                    if (window.tradeflow && window.tradeflow.applyTheme) {
+                        window.tradeflow.applyTheme();
+                    }
                     armWatchdogs();
                     requestAnimationFrame(function () {
                         dismissAllStartupLoaders();
@@ -606,6 +631,61 @@
                 var targetH = Math.min(Math.max(scrollH, minH), maxH);
                 el.style.height = targetH + 'px';
                 el.style.overflowY = scrollH > maxH ? 'auto' : 'hidden';
+            },
+            applyTheme: function () {
+                var theme = 'light';
+                try {
+                    var cookieMatch = document.cookie.match(/(?:^|;\s*)tf_theme=([^;]+)/);
+                    if (cookieMatch && (cookieMatch[1] === 'dark' || cookieMatch[1] === 'light')) {
+                        theme = cookieMatch[1];
+                    } else {
+                        var stored = localStorage.getItem('tf_theme');
+                        if (stored === 'dark' || stored === 'light') {
+                            theme = stored;
+                        }
+                    }
+                } catch (e) {}
+
+                document.documentElement.setAttribute('data-bs-theme', theme);
+                document.documentElement.setAttribute('data-theme', theme);
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+                return theme;
+            },
+            getTheme: function () {
+                try {
+                    var cookieMatch = document.cookie.match(/(?:^|;\s*)tf_theme=([^;]+)/);
+                    if (cookieMatch && (cookieMatch[1] === 'dark' || cookieMatch[1] === 'light')) {
+                        return cookieMatch[1];
+                    }
+                    var stored = localStorage.getItem('tf_theme');
+                    if (stored === 'dark' || stored === 'light') return stored;
+                } catch (e) {}
+                return document.documentElement.getAttribute('data-bs-theme') || 'light';
+            },
+            setTheme: function (theme) {
+                if (theme !== 'dark' && theme !== 'light') theme = 'light';
+                document.documentElement.setAttribute('data-bs-theme', theme);
+                document.documentElement.setAttribute('data-theme', theme);
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+                try {
+                    localStorage.setItem('tf_theme', theme);
+                    document.cookie = 'tf_theme=' + theme + ';path=/;max-age=31536000;SameSite=Lax';
+                } catch (e) {}
+                window.dispatchEvent(new CustomEvent('tf-theme-changed', { detail: { theme: theme } }));
+                return theme;
+            },
+            toggleTheme: function () {
+                var current = window.tradeflow.getTheme();
+                var next = current === 'dark' ? 'light' : 'dark';
+                return window.tradeflow.setTheme(next);
             }
         };
 
@@ -669,8 +749,11 @@
 </html>
 
 @code {
+    [CascadingParameter] private HttpContext? CascadedHttpContext { get; set; }
+    [Inject] private IHttpContextAccessor HttpContextAccessor { get; set; } = null!;
     [Inject] private TradeFlow.Application.Common.Interfaces.ICompanyBrandingService BrandingService { get; set; } = null!;
 
+    private string _serverTheme = "light";
     private TradeFlow.Application.Common.Models.Settings.CompanyBrandingDto _branding = new()
     {
         CompanyName = "TỔNG KHO THIẾT BỊ VỆ SINH LACASA",
@@ -684,6 +767,22 @@
 
     protected override void OnInitialized()
     {
+        try
+        {
+            var ctx = CascadedHttpContext ?? HttpContextAccessor?.HttpContext;
+            if (ctx?.Request?.Cookies != null && ctx.Request.Cookies.TryGetValue("tf_theme", out var cookieTheme))
+            {
+                if (cookieTheme == "dark" || cookieTheme == "light")
+                {
+                    _serverTheme = cookieTheme;
+                }
+            }
+        }
+        catch
+        {
+            // Fail-safe default
+        }
+
         try
         {
             _branding = BrandingService.GetCachedBranding();

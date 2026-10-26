@@ -34,35 +34,35 @@
 </div>
 
 <!-- KPI Summary Cards -->
-<div class="tw-grid tw-grid-cols-1 sm:tw-grid-cols-2 lg:tw-grid-cols-4 tw-gap-4 tw-mb-4">
-    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
-        <span class="tw-text-xs tw-font-semibold tw-text-slate-500 tw-uppercase">Tổng số giao dịch</span>
-        <div class="tw-text-2xl tw-font-bold tw-text-slate-900 tw-mt-1">@FilteredMovements.Count().ToString("N0")</div>
-        <div class="tw-text-xs tw-text-slate-400 tw-mt-1">Số lượt phát sinh biến động</div>
+<div class="tw-grid tw-grid-cols-1 sm:tw-grid-cols-2 lg:tw-grid-cols-4 tw-gap-4 tw-mb-4 tf-movement-kpi-grid">
+    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs tf-movement-kpi-card">
+        <span class="tw-text-xs tw-font-semibold tw-text-slate-500 tw-uppercase tf-kpi-label">Tổng số giao dịch</span>
+        <div class="tw-text-2xl tw-font-bold tw-text-slate-900 tw-mt-1 tf-kpi-val">@FilteredMovements.Count().ToString("N0")</div>
+        <div class="tw-text-xs tw-text-slate-400 tw-mt-1 tf-kpi-sub">Số lượt phát sinh biến động</div>
     </div>
-    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
+    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs tf-movement-kpi-card">
         <span class="tw-text-xs tw-font-semibold tw-text-emerald-600 tw-uppercase">Tổng số lượng Nhập (IN)</span>
-        <div class="tw-text-2xl tw-font-bold tw-text-emerald-700 tw-mt-1">+@FilteredMovements.Where(m => m.Direction == "IN").Sum(m => m.Quantity).ToString("N0")</div>
-        <div class="tw-text-xs tw-text-slate-400 tw-mt-1">Mua hàng, kiểm kê thừa, trả hàng</div>
+        <div class="tw-text-2xl tw-font-bold tw-text-emerald-700 tw-mt-1 tf-kpi-val in">+@FilteredMovements.Where(m => m.Direction == "IN").Sum(m => m.Quantity).ToString("N0")</div>
+        <div class="tw-text-xs tw-text-slate-400 tw-mt-1 tf-kpi-sub">Mua hàng, kiểm kê thừa, trả hàng</div>
     </div>
-    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
+    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs tf-movement-kpi-card">
         <span class="tw-text-xs tw-font-semibold tw-text-red-600 tw-uppercase">Tổng số lượng Xuất (OUT)</span>
-        <div class="tw-text-2xl tw-font-bold tw-text-red-700 tw-mt-1">-@FilteredMovements.Where(m => m.Direction == "OUT").Sum(m => m.Quantity).ToString("N0")</div>
-        <div class="tw-text-xs tw-text-slate-400 tw-mt-1">Xuất bán, kiểm kê thiếu, xuất hủy</div>
+        <div class="tw-text-2xl tw-font-bold tw-text-red-700 tw-mt-1 tf-kpi-val out">-@FilteredMovements.Where(m => m.Direction == "OUT").Sum(m => m.Quantity).ToString("N0")</div>
+        <div class="tw-text-xs tw-text-slate-400 tw-mt-1 tf-kpi-sub">Xuất bán, kiểm kê thiếu, xuất hủy</div>
     </div>
-    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs">
+    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-shadow-xs tf-movement-kpi-card">
         <span class="tw-text-xs tw-font-semibold tw-text-blue-600 tw-uppercase">Tổng giá trị luân chuyển</span>
-        <div class="tw-text-2xl tw-font-bold tw-text-blue-700 tw-mt-1">@FilteredMovements.Sum(m => m.Quantity * m.UnitCost).ToString("N0") đ</div>
-        <div class="tw-text-xs tw-text-slate-400 tw-mt-1">Tổng tiền hạch toán</div>
+        <div class="tw-text-2xl tw-font-bold tw-text-blue-700 tw-mt-1 tf-kpi-val blue">@FilteredMovements.Sum(m => m.Quantity * m.UnitCost).ToString("N0") đ</div>
+        <div class="tw-text-xs tw-text-slate-400 tw-mt-1 tf-kpi-sub">Tổng tiền hạch toán</div>
     </div>
 </div>
 
 <!-- Filters Bar -->
-<div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-mb-4 tw-shadow-xs">
+<div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-p-4 tw-mb-4 tw-shadow-xs tf-movement-filter-bar">
     <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-4 tw-gap-3">
         <div>
-            <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-600 tw-mb-1">Kho hàng</label>
-            <select class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300" @bind="WarehouseId">
+            <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-600 tw-mb-1 tf-filter-lbl">Kho hàng</label>
+            <select class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300 tf-filter-select" @bind="WarehouseId">
                 <option value="">-- Tất cả các kho --</option>
                 @foreach (var wh in _warehouses)
                 {
@@ -72,8 +72,8 @@
         </div>
 
         <div>
-            <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-600 tw-mb-1">Sản phẩm</label>
-            <select class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300" @bind="ProductId">
+            <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-600 tw-mb-1 tf-filter-lbl">Sản phẩm</label>
+            <select class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300 tf-filter-select" @bind="ProductId">
                 <option value="">-- Tất cả sản phẩm --</option>
                 @foreach (var p in _products)
                 {
@@ -83,8 +83,8 @@
         </div>
 
         <div>
-            <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-600 tw-mb-1">Chiều luân chuyển</label>
-            <select class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300" @bind="_directionFilter">
+            <label class="tw-block tw-text-xs tw-font-medium tw-text-slate-600 tw-mb-1 tf-filter-lbl">Chiều luân chuyển</label>
+            <select class="tf-form-control tw-w-full tw-h-9 tw-px-2 tw-text-sm tw-rounded tw-border tw-border-slate-300 tf-filter-select" @bind="_directionFilter">
                 <option value="">Tất cả (Nhập & Xuất)</option>
                 <option value="IN">Chỉ xem Nhập kho (IN)</option>
                 <option value="OUT">Chỉ xem Xuất kho (OUT)</option>
@@ -100,11 +100,11 @@
 </div>
 
 <!-- Ledger Table -->
-<div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-shadow-xs tw-overflow-hidden">
-    <div class="tw-overflow-x-auto">
-        <table class="tf-table tw-w-full">
+<div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-lg tw-shadow-xs tw-overflow-hidden tf-ledger-card">
+    <div class="tw-overflow-x-auto tf-ledger-scroll-wrap">
+        <table class="tf-table tw-w-full tf-ledger-table" style="min-width: 1720px;">
             <thead>
-                <tr class="tw-bg-slate-50 tw-border-b tw-border-slate-200 tw-text-left tw-text-xs tw-font-semibold tw-text-slate-600 tw-uppercase">
+                <tr class="tw-bg-slate-50 tw-border-b tw-border-slate-200 tw-text-left tw-text-xs tw-font-semibold tw-text-slate-600 tw-uppercase tf-ledger-header-row">
                     <th class="tw-p-3" style="min-width: 130px;">Thời gian</th>
                     <th class="tw-p-3" style="min-width: 140px;">Kho hàng</th>
                     <th class="tw-p-3" style="min-width: 200px;">Sản phẩm</th>
@@ -115,7 +115,7 @@
                     <th class="tw-p-3" style="text-align: right; min-width: 140px;">Tồn Trước &rarr; Sau</th>
                     <th class="tw-p-3" style="text-align: right; min-width: 110px;">Đơn giá vốn</th>
                     <th class="tw-p-3" style="min-width: 150px;">Số phiếu / Ref</th>
-                    <th class="tw-p-3" style="min-width: 180px;">Ghi chú nghiệp vụ</th>
+                    <th class="tw-p-3 tf-th-notes" style="min-width: 340px;">Ghi chú nghiệp vụ</th>
                 </tr>
             </thead>
             <tbody class="tw-divide-y tw-divide-slate-100 tw-text-sm">
@@ -213,11 +213,11 @@
                                     <div class="tw-text-xs tw-text-slate-400">Ref: @m.SourceReference</div>
                                 }
                             </td>
-                            <td class="tw-p-3 tw-text-slate-600 tw-text-xs">
-                                <div>@(m.Notes ?? "-")</div>
+                            <td class="tw-p-3 tf-ledger-notes-cell">
+                                <div class="tf-ledger-note-text">@(m.Notes ?? "-")</div>
                                 @if (!string.IsNullOrEmpty(m.CreatedByName))
                                 {
-                                    <div class="tw-text-slate-400">Bởi: @m.CreatedByName</div>
+                                    <div class="tw-text-slate-400 tf-ledger-note-author">Bởi: @m.CreatedByName</div>
                                 }
                             </td>
                         </tr>

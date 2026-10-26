@@ -169,20 +169,20 @@
                                     <div class="tf-notification-item @(n.IsApprovalRequest ? "is-approval-card" : "")">
                                         <div class="tf-notification-dot @(n.IsRead ? "read" : "")"></div>
                                         <div class="tf-notification-content">
-                                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                                            <div class="tf-notif-header">
                                                 <div class="tf-notification-title">@n.Title</div>
                                                 @if (n.IsApprovalRequest)
                                                 {
-                                                    <span class="tf-badge tf-badge-info" style="font-size: 10px; padding: 1px 6px;">@n.RequestTypeName</span>
+                                                    <span class="tf-badge tf-badge-info tf-notif-badge">@n.RequestTypeName</span>
                                                 }
                                             </div>
                                             <div class="tf-notification-message">@n.Message</div>
                                             @if (n.IsApprovalRequest)
                                             {
-                                                <div style="font-size: 11px; color: #64748b; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px;">
+                                                <div style="font-size: 11px; color: var(--tf-text-muted, #64748b); margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px;">
                                                     <span>Mã: <strong>@n.RequestCode</strong></span>
                                                     <span>• Người gửi: <strong>@n.Requester</strong></span>
-                                                    <span style="background: #fef3c7; color: #b45309; padding: 1px 4px; border-radius: 3px; font-weight: 600;">@n.Status</span>
+                                                    <span class="tf-status-draft-pill" style="padding: 1px 6px; border-radius: 4px; font-weight: 600;">@n.Status</span>
                                                 </div>
                                                 <div style="display: flex; align-items: center; gap: 6px; margin-top: 6px;">
                                                     @if (n.CanApprove)

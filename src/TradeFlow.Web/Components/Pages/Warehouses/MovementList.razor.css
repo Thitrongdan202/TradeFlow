@@ -1,0 +1,133 @@
+/* Sổ thẻ kho & Biến động Layout & Styling */
+
+.tf-ledger-scroll-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+}
+
+.tf-ledger-table {
+    min-width: 1720px;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tf-th-notes {
+    min-width: 340px !important;
+}
+
+.tf-ledger-notes-cell {
+    min-width: 340px;
+    max-width: 520px;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.45;
+}
+
+.tf-ledger-note-text {
+    color: var(--tf-text-primary, #1e293b);
+    font-size: 12.5px;
+    word-break: break-word;
+    white-space: normal;
+}
+
+.tf-ledger-note-author {
+    font-size: 11px;
+    color: var(--tf-text-muted, #94a3b8);
+    margin-top: 2px;
+}
+
+/* ==========================================================================
+   Dark Mode Support for Warehouse Movement Ledger
+   ========================================================================== */
+[data-bs-theme="dark"] .tf-movement-kpi-card,
+[data-theme="dark"] .tf-movement-kpi-card {
+    background-color: #1e2028 !important;
+    border-color: #2e3542 !important;
+}
+
+[data-bs-theme="dark"] .tf-kpi-label,
+[data-theme="dark"] .tf-kpi-label {
+    color: #94a3b8 !important;
+}
+
+[data-bs-theme="dark"] .tf-kpi-val,
+[data-theme="dark"] .tf-kpi-val {
+    color: #f1f5f9 !important;
+}
+
+[data-bs-theme="dark"] .tf-kpi-val.in,
+[data-theme="dark"] .tf-kpi-val.in {
+    color: #34d399 !important;
+}
+
+[data-bs-theme="dark"] .tf-kpi-val.out,
+[data-theme="dark"] .tf-kpi-val.out {
+    color: #f87171 !important;
+}
+
+[data-bs-theme="dark"] .tf-kpi-val.blue,
+[data-theme="dark"] .tf-kpi-val.blue {
+    color: #60a5fa !important;
+}
+
+[data-bs-theme="dark"] .tf-kpi-sub,
+[data-theme="dark"] .tf-kpi-sub {
+    color: #64748b !important;
+}
+
+/* Filters Bar */
+[data-bs-theme="dark"] .tf-movement-filter-bar,
+[data-theme="dark"] .tf-movement-filter-bar {
+    background-color: #1e2028 !important;
+    border-color: #2e3542 !important;
+}
+
+[data-bs-theme="dark"] .tf-filter-lbl,
+[data-theme="dark"] .tf-filter-lbl {
+    color: #cbd5e1 !important;
+}
+
+[data-bs-theme="dark"] .tf-filter-select,
+[data-theme="dark"] .tf-filter-select {
+    background-color: #17191f !important;
+    border-color: #2e3542 !important;
+    color: #f1f5f9 !important;
+}
+
+/* Ledger Table */
+[data-bs-theme="dark"] .tf-ledger-card,
+[data-theme="dark"] .tf-ledger-card {
+    background-color: #1e2028 !important;
+    border-color: #2e3542 !important;
+}
+
+[data-bs-theme="dark"] .tf-ledger-header-row,
+[data-theme="dark"] .tf-ledger-header-row {
+    background-color: #17191f !important;
+    border-bottom-color: #2e3542 !important;
+    color: #94a3b8 !important;
+}
+
+[data-bs-theme="dark"] .tf-ledger-header-row th,
+[data-theme="dark"] .tf-ledger-header-row th {
+    background-color: #17191f !important;
+    border-color: #2e3542 !important;
+    color: #94a3b8 !important;
+}
+
+[data-bs-theme="dark"] .tf-ledger-table td,
+[data-theme="dark"] .tf-ledger-table td {
+    border-color: #252a34 !important;
+    color: #cbd5e1 !important;
+}
+
+[data-bs-theme="dark"] .tf-ledger-table tr:hover,
+[data-theme="dark"] .tf-ledger-table tr:hover {
+    background-color: #252a34 !important;
+}
+
+[data-bs-theme="dark"] .tf-ledger-note-text,
+[data-theme="dark"] .tf-ledger-note-text {
+    color: #e2e8f0 !important;
+}

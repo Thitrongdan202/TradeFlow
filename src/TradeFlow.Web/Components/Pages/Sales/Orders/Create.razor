@@ -26,27 +26,27 @@
 }
 
 <div class="tf-card tf-mb-4">
-    <div style="padding: 20px; border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
-        <h3 style="margin: 0 0 16px 0; font-size: 16px;">THÔNG TIN ĐƠN BÁN HÀNG</h3>
+    <div style="padding: 20px; border-bottom: 1px solid var(--tf-border); background: var(--tf-bg-card); color: var(--tf-text-primary);">
+        <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: var(--tf-text-primary);">THÔNG TIN ĐƠN BÁN HÀNG</h3>
         
         <div class="tf-form-group">
             <label class="tf-form-label">Khách hàng <span style="color:red">*</span></label>
             <div style="display:flex; gap:10px; align-items:center;">
-                <input type="text" class="tf-form-control" placeholder="🔍 Tìm khách hàng (Tên, Mã, SĐT...)" @bind="_customerSearch" @bind:event="oninput" @onkeyup="SearchCustomers" style="flex:1;" />
+                <input type="text" class="tf-form-control" placeholder="Tìm kiếm khách hàng (Tên, Mã, SĐT...)" @bind="_customerSearch" @bind:event="oninput" @onkeyup="SearchCustomers" style="flex:1;" />
                 @if (_selectedCustomer != null)
                 {
-                    <span style="color:green; font-weight:bold;">Đã chọn: @_selectedCustomer.Name</span>
-                    <button class="tf-btn tf-btn-sm tf-btn-outline-danger" @onclick="ClearCustomer">Bỏ chọn</button>
+                    <span style="color:var(--tf-success); font-weight:bold;">Đã chọn: @_selectedCustomer.Name</span>
+                    <button type="button" class="tf-btn tf-btn-sm tf-btn-outline-danger" @onclick="ClearCustomer">Bỏ chọn</button>
                 }
             </div>
             @if (_isCustomerSearched)
             {
                 <div style="position:relative; z-index:100;">
-                    <ul style="position:absolute; top:0; left:0; right:0; background:white; border:1px solid #ccc; list-style:none; padding:0; margin:0; max-height:200px; overflow-y:auto; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+                    <ul style="position:absolute; top:4px; left:0; right:0; background:var(--tf-bg-card); border:1px solid var(--tf-border); color:var(--tf-text-primary); border-radius:6px; list-style:none; padding:0; margin:0; max-height:220px; overflow-y:auto; box-shadow:0 10px 15px -3px rgba(0,0,0,0.3);">
                         @if (!_customerSearchResults.Any())
                         {
                             <li style="padding:10px; color:var(--tf-text-muted);">Chưa có khách hàng</li>
-                            <li style="padding:10px; border-top:1px solid #eee; text-align:center;">
+                            <li style="padding:10px; border-top:1px solid var(--tf-border); text-align:center;">
                                 <a href="/doi-tac/khach-hang/tao-moi" class="tf-btn tf-btn-sm tf-btn-outline-primary">+ Thêm khách hàng</a>
                             </li>
                         }
@@ -54,8 +54,8 @@
                         {
                             @foreach (var c in _customerSearchResults)
                             {
-                                <li style="padding:10px; border-bottom:1px solid #eee; cursor:pointer;" @onclick="() => SelectCustomer(c)">
-                                    <strong>@c.Name</strong> - @c.Phone - @c.Address
+                                <li style="padding:10px; border-bottom:1px solid var(--tf-border); cursor:pointer;" @onclick="() => SelectCustomer(c)">
+                                    <strong style="color:var(--tf-text-primary);">@c.Name</strong> - <span style="color:var(--tf-text-secondary);">@c.Phone - @c.Address</span>
                                 </li>
                             }
                         }
@@ -100,15 +100,15 @@
           </div>
           
           <div class="tf-form-group" style="margin-bottom:20px;">
-              <input type="text" class="tf-form-control" placeholder="🔍 Tìm sản phẩm (Tên, Mã)..." @bind="_productSearch" @bind:event="oninput" @onkeyup="SearchProducts" />
+              <input type="text" class="tf-form-control" placeholder="Tìm kiếm sản phẩm (Tên, Mã)..." @bind="_productSearch" @bind:event="oninput" @onkeyup="SearchProducts" />
             @if (_isProductSearched)
             {
                 <div style="position:relative; z-index:90;">
-                    <ul style="position:absolute; top:0; left:0; right:0; background:white; border:1px solid #ccc; list-style:none; padding:0; margin:0; max-height:200px; overflow-y:auto; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+                    <ul style="position:absolute; top:4px; left:0; right:0; background:var(--tf-bg-card); border:1px solid var(--tf-border); color:var(--tf-text-primary); border-radius:6px; list-style:none; padding:0; margin:0; max-height:220px; overflow-y:auto; box-shadow:0 10px 15px -3px rgba(0,0,0,0.3);">
                         @if (!_productSearchResults.Any())
                         {
                             <li style="padding:10px; color:var(--tf-text-muted);">Chưa có sản phẩm</li>
-                            <li style="padding:10px; border-top:1px solid #eee; text-align:center;">
+                            <li style="padding:10px; border-top:1px solid var(--tf-border); text-align:center;">
                                 <a href="/danh-muc/san-pham/tao-moi" class="tf-btn tf-btn-sm tf-btn-outline-primary">+ Thêm sản phẩm</a>
                             </li>
                         }
@@ -116,8 +116,8 @@
                         {
                             @foreach (var p in _productSearchResults)
                             {
-                                <li style="padding:10px; border-bottom:1px solid #eee; cursor:pointer;" @onclick="() => SelectProduct(p)">
-                                    <strong>@p.Code</strong> - @p.Name (@p.Unit?.Name)
+                                <li style="padding:10px; border-bottom:1px solid var(--tf-border); cursor:pointer;" @onclick="() => SelectProduct(p)">
+                                    <strong style="color:var(--tf-text-primary);">@p.Code</strong> - <span style="color:var(--tf-text-secondary);">@p.Name (@p.Unit?.Name)</span>
                                 </li>
                             }
                         }
@@ -169,14 +169,19 @@
                                         @if (item.PriceSource == "Thủ công" || string.IsNullOrEmpty(item.PriceSource)) {
                                             <input type="number" class="tf-form-control" style="padding:4px;" @bind="item.UnitPrice" @bind:after="() => OnManualPriceChanged(item)" min="0" step="any" />
                                         } else {
-                                            <input type="number" class="tf-form-control" style="padding:4px; background:#f1f5f9; cursor:not-allowed;" value="@item.UnitPrice" readonly />
+                                            <input type="number" class="tf-form-control" style="padding:4px; background:var(--tf-bg-subtle); color:var(--tf-text-secondary); cursor:not-allowed;" value="@item.UnitPrice" readonly />
                                         }
                                     </NotAuthorized>
                                 </AuthorizeView>
                             </td>
                             <td class="tf-text-right"><strong style="color:var(--tf-color-primary);">@item.LineTotal.ToString("N0") ₫</strong></td>
                             <td>
-                                <button class="tf-btn-icon" style="color:red;" @onclick="() => RemoveItem(item)">🗑</button>
+                                <button type="button" class="tf-btn-icon" style="color:var(--tf-danger); background:none; border:none; cursor:pointer;" @onclick="() => RemoveItem(item)" title="Xóa mặt hàng">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                    </svg>
+                                </button>
                             </td>
                         </tr>
                     }
@@ -191,14 +196,14 @@
         </div>
         
         <div style="margin-top:24px; display:flex; justify-content:flex-end;">
-            <div style="width:340px; background:#f8fafc; padding:20px; border-radius:8px; border:1px solid #e2e8f0;">
+            <div style="width:340px; background:var(--tf-bg-card); padding:20px; border-radius:8px; border:1px solid var(--tf-border); color:var(--tf-text-primary);">
                 <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                    <span style="color:var(--tf-text-muted);">Tiền hàng (Chưa VAT):</span>
-                    <strong>@_orderRequest.SubTotal.ToString("N0") ₫</strong>
+                    <span style="color:var(--tf-text-secondary);">Tiền hàng (Chưa VAT):</span>
+                    <strong style="color:var(--tf-text-primary);">@_orderRequest.SubTotal.ToString("N0") ₫</strong>
                 </div>
-                <div style="display:flex; justify-content:space-between; margin-top:16px; padding-top:16px; border-top:1px dashed #cbd5e1; font-size:18px;">
-                    <span>Tổng giá trị đơn hàng:</span>
-                    <strong style="color:var(--tf-color-primary);">@_orderRequest.GrandTotal.ToString("N0") ₫</strong>
+                <div style="display:flex; justify-content:space-between; margin-top:16px; padding-top:16px; border-top:1px dashed var(--tf-border); font-size:18px;">
+                    <span style="font-weight:600;">Tổng giá trị đơn hàng:</span>
+                    <strong style="color:var(--tf-primary);">@_orderRequest.GrandTotal.ToString("N0") ₫</strong>
                 </div>
             </div>
         </div>

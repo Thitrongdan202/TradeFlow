@@ -631,3 +631,182 @@
     font-weight: 500;
 }
 
+/* Dark Mode Support for Partner Detail Drawer */
+[data-bs-theme="dark"] .tf-drawer-panel,
+[data-theme="dark"] .tf-drawer-panel {
+    background: #17191f;
+    box-shadow: -4px 0 25px rgba(0, 0, 0, 0.5);
+}
+
+[data-bs-theme="dark"] .tf-drawer-header,
+[data-theme="dark"] .tf-drawer-header {
+    background: #1d2028;
+    border-color: #2e3542;
+}
+
+[data-bs-theme="dark"] .tf-drawer-title,
+[data-theme="dark"] .tf-drawer-title {
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-drawer-close-btn,
+[data-theme="dark"] .tf-drawer-close-btn {
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .tf-drawer-close-btn:hover,
+[data-theme="dark"] .tf-drawer-close-btn:hover {
+    background: #282d37;
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .tf-drawer-nav-tabs,
+[data-theme="dark"] .tf-drawer-nav-tabs {
+    background: #1d2028;
+    border-color: #2e3542;
+}
+
+[data-bs-theme="dark"] .tf-drawer-tab-btn,
+[data-theme="dark"] .tf-drawer-tab-btn {
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .tf-drawer-tab-btn:hover,
+[data-theme="dark"] .tf-drawer-tab-btn:hover {
+    color: #818cf8;
+}
+
+[data-bs-theme="dark"] .tf-drawer-tab-btn.active,
+[data-theme="dark"] .tf-drawer-tab-btn.active {
+    color: #818cf8;
+    border-bottom-color: #818cf8;
+    background: #17191f;
+}
+
+[data-bs-theme="dark"] .tf-drawer-body,
+[data-theme="dark"] .tf-drawer-body {
+    background: #17191f;
+    color: #cbd5e1;
+}
+
+[data-bs-theme="dark"] .tf-drawer-metric-card,
+[data-theme="dark"] .tf-drawer-metric-card {
+    background: #222630;
+    border-color: #2e3542;
+}
+
+[data-bs-theme="dark"] .tf-drawer-metric-card.primary,
+[data-theme="dark"] .tf-drawer-metric-card.primary {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+[data-bs-theme="dark"] .tf-drawer-metric-card.primary .tf-drawer-metric-val,
+[data-theme="dark"] .tf-drawer-metric-card.primary .tf-drawer-metric-val {
+    color: #a5b4fc;
+}
+
+[data-bs-theme="dark"] .tf-drawer-metric-card.danger,
+[data-theme="dark"] .tf-drawer-metric-card.danger {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+[data-bs-theme="dark"] .tf-drawer-metric-card.danger .tf-drawer-metric-val,
+[data-theme="dark"] .tf-drawer-metric-card.danger .tf-drawer-metric-val {
+    color: #f87171;
+}
+
+[data-bs-theme="dark"] .tf-drawer-metric-card.warning,
+[data-theme="dark"] .tf-drawer-metric-card.warning {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+[data-bs-theme="dark"] .tf-drawer-metric-card.warning .tf-drawer-metric-val,
+[data-theme="dark"] .tf-drawer-metric-card.warning .tf-drawer-metric-val {
+    color: #fbbf24;
+}
+
+[data-bs-theme="dark"] .tf-drawer-metric-card.neutral,
+[data-theme="dark"] .tf-drawer-metric-card.neutral {
+    background: #222630;
+    border-color: #2e3542;
+}
+
+[data-bs-theme="dark"] .tf-drawer-metric-card.neutral .tf-drawer-metric-val,
+[data-theme="dark"] .tf-drawer-metric-card.neutral .tf-drawer-metric-val {
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-drawer-metric-label,
+[data-theme="dark"] .tf-drawer-metric-label {
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .tf-drawer-metric-sub,
+[data-theme="dark"] .tf-drawer-metric-sub {
+    color: #64748b;
+}
+
+[data-bs-theme="dark"] .tf-drawer-section-title,
+[data-theme="dark"] .tf-drawer-section-title {
+    color: #94a3b8;
+    border-color: #2e3542;
+}
+
+[data-bs-theme="dark"] .tf-field-label,
+[data-theme="dark"] .tf-field-label {
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .tf-field-value,
+[data-theme="dark"] .tf-field-value {
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-drawer-table-wrap,
+[data-theme="dark"] .tf-drawer-table-wrap {
+    border-color: #2e3542;
+}
+
+[data-bs-theme="dark"] .tf-drawer-table th,
+[data-theme="dark"] .tf-drawer-table th {
+    background: #1d2028;
+    color: #94a3b8;
+    border-color: #2e3542;
+}
+
+[data-bs-theme="dark"] .tf-drawer-table td,
+[data-theme="dark"] .tf-drawer-table td {
+    color: #e2e8f0;
+    border-color: #252a34;
+}
+
+[data-bs-theme="dark"] .tf-drawer-empty-table,
+[data-theme="dark"] .tf-drawer-empty-table {
+    background: #1d2028;
+    border-color: #2e3542;
+    color: #64748b;
+}
+
+[data-bs-theme="dark"] .tf-debt-action-btn,
+[data-theme="dark"] .tf-debt-action-btn {
+    background: #222630;
+    border-color: #2e3542;
+    color: #cbd5e1;
+}
+
+[data-bs-theme="dark"] .tf-debt-action-btn:hover,
+[data-theme="dark"] .tf-debt-action-btn:hover {
+    background: #282d37;
+    border-color: #383e4b;
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .tf-drawer-doc-type,
+[data-theme="dark"] .tf-drawer-doc-type {
+    background: #222630;
+    color: #94a3b8;
+}
+

@@ -41,16 +41,16 @@ else
 {
     <div class="tf-card" style="max-width: 800px;">
         <div class="tf-card-body">
-            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <div class="tf-branding-banner">
+                <div class="tf-branding-banner-left">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6z"/>
                     </svg>
-                    <span style="font-size: 13px; color: #15803d; font-weight: 500;">
+                    <span class="tf-branding-banner-text">
                         Bạn muốn tùy chỉnh <strong>Logo công ty</strong> và <strong>Màn hình tải toàn cục</strong>?
                     </span>
                 </div>
-                <a href="/cai-dat/thuong-hieu" class="tf-btn tf-btn-sm tf-btn-outline" style="border-color: #86efac; color: #166534; background: #fff; text-decoration: none;">
+                <a href="/cai-dat/thuong-hieu" class="tf-btn tf-btn-sm tf-branding-banner-btn">
                     Cấu hình thương hiệu &rarr;
                 </a>
             </div>
@@ -138,23 +138,23 @@ else
 
             <div class="tf-field tf-mb-4">
                 <label class="tf-label">Mã QR Thanh toán / Chuyển khoản (Đơn đặt hàng)</label>
-                <div style="display:flex; gap:20px; align-items:flex-start; background:#f8fafc; padding:16px; border:1px solid #e2e8f0; border-radius:8px;">
-                    <div style="width:120px; height:120px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                <div class="tf-qr-upload-container">
+                    <div class="tf-qr-preview-box">
                         @if (!string.IsNullOrEmpty(_settings.OrderQrCodePath))
                         {
-                            <img src="@_settings.OrderQrCodePath" alt="QR Code" style="max-width:100%; max-height:100%; object-fit:contain;" />
+                            <img src="@_settings.OrderQrCodePath" alt="QR Code" class="tf-qr-preview-img" />
                         }
                         else
                         {
-                            <span style="color:#94a3b8; font-size:12px; text-align:center;">Chưa có mã QR</span>
+                            <span class="tf-qr-empty-text">Chưa có mã QR</span>
                         }
                     </div>
-                    <div style="flex:1;">
-                        <p style="font-size:13px; color:#475569; margin:0 0 8px;">Tải lên ảnh mã QR chuyển khoản hiển thị trên mẫu chứng từ Đơn đặt hàng (PNG, JPG, tối đa 5MB):</p>
+                    <div class="tf-qr-upload-body">
+                        <p class="tf-qr-upload-hint">Tải lên ảnh mã QR chuyển khoản hiển thị trên mẫu chứng từ Đơn đặt hàng (PNG, JPG, tối đa 5MB):</p>
                         <InputFile OnChange="HandleQrUpload" accept=".png,.jpg,.jpeg,.webp" class="tf-form-control" style="margin-bottom:8px;" />
                         @if (!string.IsNullOrEmpty(_uploadError))
                         {
-                            <div style="color:#dc2626; font-size:12px; margin-bottom:8px;">@_uploadError</div>
+                            <div style="color:var(--tf-danger, #dc2626); font-size:12px; margin-bottom:8px;">@_uploadError</div>
                         }
                         @if (!string.IsNullOrEmpty(_settings.OrderQrCodePath) && _settings.OrderQrCodePath != "/images/lacasa_qr.png")
                         {
@@ -166,15 +166,15 @@ else
                 </div>
             </div>
 
-            <hr style="margin:24px 0; border:0; border-top:1px solid #e2e8f0;" />
-            <h3 style="font-size:16px; font-weight:600; color:#1e293b; margin-bottom:16px;">Cấu hình mẫu chứng từ "Đơn đặt hàng"</h3>
+            <hr class="tf-settings-divider" />
+            <h3 class="tf-settings-subtitle">Cấu hình mẫu chứng từ "Đơn đặt hàng"</h3>
 
             <div class="tf-field tf-mb-4">
                 <label class="tf-label">Ghi chú thuế VAT mặc định</label>
                 <div class="tf-input-wrapper">
                     <input type="text" class="tf-input" @bind="_settings.DefaultVatNote" placeholder="VD: Đơn giá trên chưa bao gồm thuế GTGT (8%)." />
                 </div>
-                <small style="color:#64748b; font-size:12px;">Hiển thị ngay dưới dòng Ghi chú KH trên mẫu Đơn đặt hàng</small>
+                <small class="tf-settings-field-hint">Hiển thị ngay dưới dòng Ghi chú KH trên mẫu Đơn đặt hàng</small>
             </div>
 
             <div class="tf-field tf-mb-4">

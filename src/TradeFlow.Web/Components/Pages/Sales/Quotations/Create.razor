@@ -79,13 +79,13 @@
                 @if (_isCustomerSearched)
                 {
                     <div style="position:relative; z-index:100;">
-                        <ul style="position:absolute; top:4px; left:0; right:0; background:white; border:1px solid #cbd5e1; border-radius:8px; list-style:none; padding:6px 0; margin:0; max-height:240px; overflow-y:auto; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);">
+                        <ul style="position:absolute; top:4px; left:0; right:0; background:var(--tf-bg-card); border:1px solid var(--tf-border); border-radius:8px; list-style:none; padding:6px 0; margin:0; max-height:240px; overflow-y:auto; box-shadow:0 10px 15px -3px rgba(0,0,0,0.25);">
                             @if (!_customerSearchResults.Any())
                             {
-                                <li style="padding:12px 16px; color:#64748b; font-size:13px; text-align:center;">
+                                <li style="padding:12px 16px; color:var(--tf-text-muted); font-size:13px; text-align:center;">
                                     Không tìm thấy khách hàng phù hợp với từ khóa "@_customerSearch".
                                 </li>
-                                <li style="padding:8px 16px; border-top:1px solid #f1f5f9; text-align:center;">
+                                <li style="padding:8px 16px; border-top:1px solid var(--tf-border); text-align:center;">
                                     <a href="/doi-tac/khach-hang/tao-moi" target="_blank" class="tf-btn tf-btn-sm tf-btn-outline-primary">+ Thêm khách hàng mới</a>
                                 </li>
                             }
@@ -93,15 +93,13 @@
                             {
                                 @foreach (var c in _customerSearchResults)
                                 {
-                                    <li style="padding:10px 16px; border-bottom:1px solid #f8fafc; cursor:pointer; transition:background-color 0.15s ease;"
-                                        onmouseover="this.style.backgroundColor='#f1f5f9'"
-                                        onmouseout="this.style.backgroundColor='white'"
+                                    <li class="tf-search-result-item" style="padding:10px 16px; border-bottom:1px solid var(--tf-border); cursor:pointer;"
                                         @onclick="() => SelectCustomer(c)">
                                         <div style="display:flex; justify-content:space-between; align-items:center;">
-                                            <div style="font-weight:600; color:#1e293b; font-size:13.5px;">@c.Name</div>
+                                            <div style="font-weight:600; color:var(--tf-text-primary); font-size:13.5px;">@c.Name</div>
                                             <span class="tf-badge tf-badge-secondary" style="font-size:11px;">Mã: @c.Code</span>
                                         </div>
-                                        <div style="font-size:12px; color:#64748b; margin-top:2px;">
+                                        <div style="font-size:12px; color:var(--tf-text-muted); margin-top:2px;">
                                             MST: @(c.TaxCode ?? "—") | SĐT: @(c.Phone ?? "—") | Đ/c: @(c.Address ?? "—")
                                         </div>
                                     </li>
@@ -242,10 +240,10 @@
                 @if (_isProductSearched)
                 {
                     <div style="position:relative; z-index:90;">
-                        <ul style="position:absolute; top:4px; left:0; right:0; background:white; border:1px solid #cbd5e1; border-radius:8px; list-style:none; padding:6px 0; margin:0; max-height:240px; overflow-y:auto; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);">
+                        <ul style="position:absolute; top:4px; left:0; right:0; background:var(--tf-bg-card); border:1px solid var(--tf-border); border-radius:8px; list-style:none; padding:6px 0; margin:0; max-height:240px; overflow-y:auto; box-shadow:0 10px 15px -3px rgba(0,0,0,0.25);">
                             @if (!_productSearchResults.Any())
                             {
-                                <li style="padding:12px 16px; color:#64748b; font-size:13px; text-align:center;">
+                                <li style="padding:12px 16px; color:var(--tf-text-muted); font-size:13px; text-align:center;">
                                     Không tìm thấy sản phẩm phù hợp với từ khóa "@_productSearch".
                                 </li>
                             }
@@ -253,15 +251,13 @@
                             {
                                 @foreach (var p in _productSearchResults)
                                 {
-                                    <li style="padding:10px 16px; border-bottom:1px solid #f8fafc; cursor:pointer; transition:background-color 0.15s ease;"
-                                        onmouseover="this.style.backgroundColor='#f1f5f9'"
-                                        onmouseout="this.style.backgroundColor='white'"
+                                    <li class="tf-search-result-item" style="padding:10px 16px; border-bottom:1px solid var(--tf-border); cursor:pointer;"
                                         @onclick="() => SelectProduct(p)">
                                         <div style="display:flex; justify-content:space-between; align-items:center;">
-                                            <div style="font-weight:600; color:#1e293b; font-size:13.5px;">@p.Name</div>
+                                            <div style="font-weight:600; color:var(--tf-text-primary); font-size:13.5px;">@p.Name</div>
                                             <span class="tf-badge tf-badge-secondary" style="font-size:11px;">Mã: @p.Code</span>
                                         </div>
-                                        <div style="font-size:12px; color:#64748b; margin-top:2px;">
+                                        <div style="font-size:12px; color:var(--tf-text-muted); margin-top:2px;">
                                             Đơn vị tính: @(p.Unit?.Name ?? "—")
                                         </div>
                                     </li>
@@ -289,9 +285,9 @@
         }
         else
         {
-            <div class="tf-table-responsive" style="border:1px solid #e2e8f0; border-radius:8px; overflow:hidden;">
+            <div class="tf-table-responsive" style="border:1px solid var(--tf-border); border-radius:8px; overflow:hidden;">
                 <table class="tf-table" style="font-size:13px; margin-bottom:0;">
-                    <thead style="background:#f8fafc;">
+                    <thead style="background:var(--tf-surface-variant); color:var(--tf-text-primary);">
                         <tr>
                             <th style="width:36px; text-align:center;">#</th>
                             <th style="width:110px;">Mã SP</th>
@@ -312,10 +308,10 @@
                             foreach (var item in _quotation.Items)
                             {
                                 <tr>
-                                    <td style="text-align:center; color:#64748b;">@rowNum</td>
+                                    <td style="text-align:center; color:var(--tf-text-muted);">@rowNum</td>
                                     <td><strong>@item.ProductCode</strong></td>
                                     <td>
-                                        <div style="font-weight:600; color:#1e293b;">@item.ProductName</div>
+                                        <div style="font-weight:600; color:var(--tf-text-primary);">@item.ProductName</div>
                                         <input type="text" class="tf-form-control" style="font-size:11.5px; padding:3px 8px; margin-top:4px; height:28px;" placeholder="Ghi chú quy cách mặt hàng..." @bind="item.Notes" />
                                     </td>
                                     <td style="text-align:center;">@item.UnitName</td>
@@ -334,7 +330,7 @@
                                     <td>
                                         <input type="number" min="0" step="1000" class="tf-form-control" style="text-align:right; padding:3px 8px; height:32px;" @bind="item.DiscountAmount" @bind:after="() => OnDiscountAmountChanged(item)" />
                                     </td>
-                                    <td style="text-align:right; font-weight:700; color:#0f766e; font-size:13.5px;">
+                                    <td style="text-align:right; font-weight:700; color:var(--tf-primary); font-size:13.5px;">
                                         @item.LineTotal.ToString("N0") đ
                                     </td>
                                     <td style="text-align:center;">
@@ -350,10 +346,10 @@
 
             @* Totals Summary *@
             <div style="display:flex; justify-content:flex-end; margin-top:20px;">
-                <div style="width:360px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:18px;">
+                <div style="width:360px; background:var(--tf-bg-card); border:1px solid var(--tf-border); border-radius:8px; padding:18px;">
                     <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13.5px;">
-                        <span style="color:#64748b;">Tổng tiền hàng trước VAT:</span>
-                        <strong style="color:#1e293b;">@_quotation.SubTotal.ToString("N0") đ</strong>
+                        <span style="color:var(--tf-text-muted);">Tổng tiền hàng trước VAT:</span>
+                        <strong style="color:var(--tf-text-primary);">@_quotation.SubTotal.ToString("N0") đ</strong>
                     </div>
                     @if (_quotation.TotalDiscount > 0)
                     {
@@ -362,11 +358,11 @@
                             <strong>-@_quotation.TotalDiscount.ToString("N0") đ</strong>
                         </div>
                     }
-                    <div style="display:flex; justify-content:space-between; padding-top:10px; border-top:2px solid #cbd5e1; font-size:16px;">
-                        <span style="font-weight:700; color:#0f766e;">TỔNG GIÁ TRỊ:</span>
-                        <strong style="color:#0f766e; font-size:17px;">@_quotation.GrandTotal.ToString("N0") đ</strong>
+                    <div style="display:flex; justify-content:space-between; padding-top:10px; border-top:2px solid var(--tf-border); font-size:16px;">
+                        <span style="font-weight:700; color:var(--tf-primary);">TỔNG GIÁ TRỊ:</span>
+                        <strong style="color:var(--tf-primary); font-size:17px;">@_quotation.GrandTotal.ToString("N0") đ</strong>
                     </div>
-                    <div style="font-size:11.5px; color:#64748b; font-style:italic; margin-top:6px; text-align:right;">
+                    <div style="font-size:11.5px; color:var(--tf-text-muted); font-style:italic; margin-top:6px; text-align:right;">
                         (Đơn giá thương mại chưa bao gồm thuế GTGT)
                     </div>
                 </div>

@@ -631,7 +631,7 @@ else
 @if (_showIssueCodeModal)
 {
     <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
-        <div style="background:white; padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+        <div style="background:var(--tf-bg-card); color:var(--tf-text-primary); border:1px solid var(--tf-border); padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.4);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                 <h3 style="margin:0; font-size:18px; color:var(--tf-primary);">🔑 Cấp mã kích hoạt người ký số</h3>
                 <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showIssueCodeModal = false">✕</button>
@@ -705,7 +705,7 @@ else
 @if (_newlyIssuedCode != null)
 {
     <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1100; display:flex; align-items:center; justify-content:center;">
-        <div style="background:white; padding:28px; border-radius:8px; width:540px; max-width:95%; box-shadow:0 12px 30px rgba(0,0,0,0.3);">
+        <div style="background:var(--tf-bg-card); color:var(--tf-text-primary); border:1px solid var(--tf-border); padding:28px; border-radius:8px; width:540px; max-width:95%; box-shadow:0 12px 30px rgba(0,0,0,0.4);">
             <div style="text-align:center; margin-bottom:16px;">
                 <div style="font-size:32px; margin-bottom:8px;">🔐</div>
                 <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--tf-primary);">Mã kích hoạt đã được tạo thành công</h3>
@@ -749,7 +749,7 @@ else
 @if (_showEnrollSignerModal)
 {
     <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
-        <div style="background:white; padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+        <div style="background:var(--tf-bg-card); color:var(--tf-text-primary); border:1px solid var(--tf-border); padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.4);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                 <h3 style="margin:0; font-size:18px; color:var(--tf-primary);">🛡️ Kích hoạt chứng thư ký số mới</h3>
                 <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showEnrollSignerModal = false">✕</button>
@@ -792,7 +792,7 @@ else
 @if (_showRevokeSignerModal && _selectedSignerToRevoke != null)
 {
     <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
-        <div style="background:white; padding:24px; border-radius:8px; width:500px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+        <div style="background:var(--tf-bg-card); color:var(--tf-text-primary); border:1px solid var(--tf-border); padding:24px; border-radius:8px; width:500px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.4);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                 <h3 style="margin:0; font-size:18px; color:#dc2626;">⚠️ Xác nhận thu hồi chứng thư ký số</h3>
                 <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showRevokeSignerModal = false">✕</button>
@@ -828,7 +828,7 @@ else
 @if (_showRevokeCodeModal && _selectedCodeToRevoke != null)
 {
     <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
-        <div style="background:white; padding:24px; border-radius:8px; width:500px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+        <div style="background:var(--tf-bg-card); color:var(--tf-text-primary); border:1px solid var(--tf-border); padding:24px; border-radius:8px; width:500px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.4);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                 <h3 style="margin:0; font-size:18px; color:#dc2626;">Hủy mã kích hoạt người ký</h3>
                 <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showRevokeCodeModal = false">✕</button>
@@ -862,7 +862,7 @@ else
 @if (_showSetupPinModal && _selectedSignerToSetup != null)
 {
     <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
-        <div style="background:white; padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+        <div style="background:var(--tf-bg-card); color:var(--tf-text-primary); border:1px solid var(--tf-border); padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.4);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                 <h3 style="margin:0; font-size:18px; color:var(--tf-primary);">🔑 Thiết lập mã PIN &amp; Tạo khóa chứng thư</h3>
                 <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showSetupPinModal = false">✕</button>
@@ -905,7 +905,7 @@ else
 @if (_showChangePinModal && _selectedSignerToChangePin != null)
 {
     <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
-        <div style="background:white; padding:24px; border-radius:8px; width:500px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+        <div style="background:var(--tf-bg-card); color:var(--tf-text-primary); border:1px solid var(--tf-border); padding:24px; border-radius:8px; width:500px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.4);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                 <h3 style="margin:0; font-size:18px; color:var(--tf-primary);">🔄 Đổi mã PIN ký số</h3>
                 <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showChangePinModal = false">✕</button>
@@ -950,7 +950,7 @@ else
 @if (_showAdminResetPinModal && _selectedSignerToResetPin != null)
 {
     <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
-        <div style="background:white; padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+        <div style="background:var(--tf-bg-card); color:var(--tf-text-primary); border:1px solid var(--tf-border); padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.4);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                 <h3 style="margin:0; font-size:18px; color:#d97706;">⚠️ Đặt lại mã PIN người ký</h3>
                 <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showAdminResetPinModal = false">✕</button>
@@ -986,7 +986,7 @@ else
 @if (_showEditSignatureModal && _selectedSignerToEditSig != null)
 {
     <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
-        <div style="background:white; padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+        <div style="background:var(--tf-bg-card); color:var(--tf-text-primary); border:1px solid var(--tf-border); padding:24px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.4);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                 <h3 style="margin:0; font-size:18px; color:var(--tf-primary);">✍ Quản lý ảnh chữ ký tay</h3>
                 <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showEditSignatureModal = false">✕</button>

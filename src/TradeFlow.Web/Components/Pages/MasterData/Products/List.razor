@@ -1,4 +1,5 @@
 @page "/danh-muc/san-pham"
+@page "/san-pham"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
@@ -247,20 +248,20 @@
                                                 <td>
                                                     @if (!string.IsNullOrEmpty(item.LegacyCode))
                                                     {
-                                                        <span style="color: #64748b; font-family: monospace; font-size: 12px;">@item.LegacyCode</span>
+                                                        <span class="tf-product-legacy-code" style="font-family: monospace; font-size: 12px;">@item.LegacyCode</span>
                                                     }
                                                     else
                                                     {
-                                                        <span style="color: #94a3b8;">—</span>
+                                                        <span class="tf-text-muted">—</span>
                                                     }
                                                 </td>
 
                                                 @* Product Name & Specs Summary *@
                                                 <td>
-                                                    <div style="font-weight: 600; color: #1e293b;">@item.Name</div>
+                                                    <div class="tf-product-name" style="font-weight: 600;">@item.Name</div>
                                                     @if (!string.IsNullOrWhiteSpace(item.Specifications))
                                                     {
-                                                        <div style="font-size: 11px; color: #64748b; margin-top: 2px; max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="@item.Specifications">
+                                                        <div class="tf-product-specs" style="font-size: 11px; margin-top: 2px; max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="@item.Specifications">
                                                             • @item.Specifications.Replace("\r\n", " • ").Replace("\n", " • ")
                                                         </div>
                                                     }
@@ -268,12 +269,12 @@
 
                                                 @* Category *@
                                                 <td>
-                                                    <span style="font-size: 12.5px; color: #334155;">@(item.Category?.Name ?? "—")</span>
+                                                    <span class="tf-product-category" style="font-size: 12.5px;">@(item.Category?.Name ?? "—")</span>
                                                 </td>
 
                                                 @* Unit *@
                                                 <td>
-                                                    <span style="font-size: 12px; color: #64748b;">@(item.Unit?.Name ?? "Cái")</span>
+                                                    <span class="tf-product-unit" style="font-size: 12px;">@(item.Unit?.Name ?? "Cái")</span>
                                                 </td>
 
                                                 @* Pre-VAT Price *@
@@ -314,12 +315,12 @@
                                             @if (isExpanded)
                                             {
                                                 <tr class="tf-product-detail-tr">
-                                                    <td colspan="11" style="padding: 0; background-color: #f8fafc; border-bottom: 2px solid #3b82f6;">
+                                                    <td colspan="11" class="tf-product-expanded-td" style="padding: 0;">
                                                         <div class="tf-product-expanded-box">
                                                             @* Expanded Header Bar *@
                                                             <div class="tf-product-expanded-header">
                                                                 <div style="display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1;">
-                                                                    <div style="width: 48px; height: 48px; border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
+                                                                    <div style="width: 48px; height: 48px; border-radius: 8px; border: 1px solid var(--tf-border, #e2e8f0); background: var(--tf-bg-card, #ffffff); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
                                                                         @if (primaryImg != null && !string.IsNullOrEmpty(primaryImg.StorageReference))
                                                                         {
                                                                             <img src="@FileStorage.GetPublicUrl(primaryImg.StorageReference)" alt="" style="width: 100%; height: 100%; object-fit: contain;" />
@@ -335,7 +336,7 @@
                                                                     </div>
                                                                     <div>
                                                                         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                                                                            <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: #0f172a;">@item.Name</h3>
+                                                                            <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: var(--tf-text-primary, #0f172a);">@item.Name</h3>
                                                                             <span class="tf-product-code" style="font-size: 13px; background: #e0f2fe; padding: 2px 8px; border-radius: 4px;">@item.Code</span>
                                                                             @if (!string.IsNullOrEmpty(item.NewCode))
                                                                             {
@@ -450,8 +451,8 @@
                                                                     </div>
 
                                                                     @* Col 2: Identification & Category Edit *@
-                                                                    <div style="background: #ffffff; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 10px;">
-                                                                        <div style="font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
+                                                                    <div style="background: var(--tf-bg-card, #ffffff); padding: 16px; border-radius: 8px; border: 1px solid var(--tf-border, #e2e8f0); display: flex; flex-direction: column; gap: 10px;">
+                                                                        <div style="font-size: 12px; font-weight: 700; color: var(--tf-text-secondary, #475569); text-transform: uppercase; border-bottom: 1px solid var(--tf-border, #f1f5f9); padding-bottom: 6px;">
                                                                             Thông tin sản phẩm &amp; Mã
                                                                         </div>
                                                                         <div>
@@ -498,8 +499,8 @@
                                                                     </div>
 
                                                                     @* Col 3: Price & Specs Edit *@
-                                                                    <div style="background: #ffffff; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 10px;">
-                                                                        <div style="font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
+                                                                    <div style="background: var(--tf-bg-card, #ffffff); padding: 16px; border-radius: 8px; border: 1px solid var(--tf-border, #e2e8f0); display: flex; flex-direction: column; gap: 10px;">
+                                                                        <div style="font-size: 12px; font-weight: 700; color: var(--tf-text-secondary, #475569); text-transform: uppercase; border-bottom: 1px solid var(--tf-border, #f1f5f9); padding-bottom: 6px;">
                                                                             Đơn giá (Chưa VAT) &amp; Quy cách
                                                                         </div>
                                                                         <div>
@@ -544,7 +545,7 @@
                                                                             <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;">
                                                                                 @foreach (var subImg in item.Images.Where(i => i.IsActive))
                                                                                 {
-                                                                                    <div style="width: 38px; height: 38px; border-radius: 4px; border: 1px solid @(subImg.IsPrimary ? "#2563eb" : "#e2e8f0"); overflow: hidden; padding: 2px; background: #fff;">
+                                                                                    <div style="width: 38px; height: 38px; border-radius: 4px; border: 1px solid @(subImg.IsPrimary ? "#2563eb" : "var(--tf-border, #e2e8f0)"); overflow: hidden; padding: 2px; background: var(--tf-bg-card, #fff);">
                                                                                         <img src="@FileStorage.GetPublicUrl(subImg.StorageReference)" alt="" style="width: 100%; height: 100%; object-fit: cover;" />
                                                                                     </div>
                                                                                 }
@@ -553,69 +554,69 @@
                                                                     </div>
 
                                                                     @* Col 2: Identification & Classification *@
-                                                                    <div style="background: #ffffff; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 12px;">
-                                                                        <div style="font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
+                                                                    <div style="background: var(--tf-bg-card, #ffffff); padding: 16px; border-radius: 8px; border: 1px solid var(--tf-border, #e2e8f0); display: flex; flex-direction: column; gap: 12px;">
+                                                                        <div style="font-size: 12px; font-weight: 700; color: var(--tf-text-secondary, #475569); text-transform: uppercase; border-bottom: 1px solid var(--tf-border, #f1f5f9); padding-bottom: 6px;">
                                                                             Thông tin cơ bản
                                                                         </div>
                                                                         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
                                                                             <div>
-                                                                                <span style="color: #64748b;">Mã hệ thống:</span>
+                                                                                <span style="color: var(--tf-text-muted, #64748b);">Mã hệ thống:</span>
                                                                                 <span style="font-weight: 600; color: #0f766e; font-family: monospace; margin-left: 6px;">@item.Code</span>
                                                                             </div>
                                                                             <div>
-                                                                                <span style="color: #64748b;">Mã hàng mới:</span>
-                                                                                <span style="font-weight: 600; color: #1e293b; margin-left: 6px;">@(item.NewCode ?? "—")</span>
+                                                                                <span style="color: var(--tf-text-muted, #64748b);">Mã hàng mới:</span>
+                                                                                <span style="font-weight: 600; color: var(--tf-text-primary, #1e293b); margin-left: 6px;">@(item.NewCode ?? "—")</span>
                                                                             </div>
                                                                             <div>
-                                                                                <span style="color: #64748b;">Mã hàng cũ:</span>
-                                                                                <span style="font-family: monospace; color: #475569; margin-left: 6px;">@(item.LegacyCode ?? "—")</span>
+                                                                                <span style="color: var(--tf-text-muted, #64748b);">Mã hàng cũ:</span>
+                                                                                <span style="font-family: monospace; color: var(--tf-text-secondary, #475569); margin-left: 6px;">@(item.LegacyCode ?? "—")</span>
                                                                             </div>
                                                                             <div>
-                                                                                <span style="color: #64748b;">Loại hàng:</span>
-                                                                                <span style="font-weight: 500; color: #1e293b; margin-left: 6px;">@(item.Category?.Name ?? "—")</span>
+                                                                                <span style="color: var(--tf-text-muted, #64748b);">Loại hàng:</span>
+                                                                                <span style="font-weight: 500; color: var(--tf-text-primary, #1e293b); margin-left: 6px;">@(item.Category?.Name ?? "—")</span>
                                                                             </div>
                                                                             <div>
-                                                                                <span style="color: #64748b;">Đơn vị tính:</span>
-                                                                                <span style="font-weight: 500; color: #1e293b; margin-left: 6px;">@(item.Unit?.Name ?? "Cái")</span>
+                                                                                <span style="color: var(--tf-text-muted, #64748b);">Đơn vị tính:</span>
+                                                                                <span style="font-weight: 500; color: var(--tf-text-primary, #1e293b); margin-left: 6px;">@(item.Unit?.Name ?? "Cái")</span>
                                                                             </div>
                                                                             @if (!string.IsNullOrEmpty(item.ShortName))
                                                                             {
                                                                                 <div>
-                                                                                    <span style="color: #64748b;">Tên viết tắt:</span>
-                                                                                    <span style="margin-left: 6px;">@item.ShortName</span>
+                                                                                    <span style="color: var(--tf-text-muted, #64748b);">Tên viết tắt:</span>
+                                                                                    <span style="margin-left: 6px; color: var(--tf-text-primary);">@item.ShortName</span>
                                                                                 </div>
                                                                             }
                                                                         </div>
                                                                     </div>
 
                                                                     @* Col 3: Pricing, VAT & Specifications *@
-                                                                    <div style="background: #ffffff; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 12px;">
-                                                                        <div style="font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
+                                                                    <div style="background: var(--tf-bg-card, #ffffff); padding: 16px; border-radius: 8px; border: 1px solid var(--tf-border, #e2e8f0); display: flex; flex-direction: column; gap: 12px;">
+                                                                        <div style="font-size: 12px; font-weight: 700; color: var(--tf-text-secondary, #475569); text-transform: uppercase; border-bottom: 1px solid var(--tf-border, #f1f5f9); padding-bottom: 6px;">
                                                                             Chính sách giá &amp; Quy cách
                                                                         </div>
                                                                         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
                                                                             <div>
-                                                                                <span style="color: #64748b;">Đơn giá trước VAT:</span>
+                                                                                <span style="color: var(--tf-text-muted, #64748b);">Đơn giá trước VAT:</span>
                                                                                 @if (_currentPrices.TryGetValue(item.Id, out var p) && p.HasValue && p.Value > 0)
                                                                                 {
                                                                                     <span style="font-weight: 700; color: #047857; font-size: 16px; margin-left: 6px;">@p.Value.ToString("N0") ₫</span>
                                                                                 }
                                                                                 else
                                                                                 {
-                                                                                    <span style="color: #94a3b8; margin-left: 6px;">Chưa thiết lập giá</span>
+                                                                                    <span style="color: var(--tf-text-muted, #94a3b8); margin-left: 6px;">Chưa thiết lập giá</span>
                                                                                 }
                                                                             </div>
                                                                             <div>
-                                                                                <span style="color: #64748b;">Thuế suất GTGT:</span>
-                                                                                <span style="font-weight: 500; color: #1e293b; margin-left: 6px;">
+                                                                                <span style="color: var(--tf-text-muted, #64748b);">Thuế suất GTGT:</span>
+                                                                                <span style="font-weight: 500; color: var(--tf-text-primary, #1e293b); margin-left: 6px;">
                                                                                     @(item.TaxTreatment == TaxTreatment.Standard10 ? (item.IsTaxReductionEligible ? "8% (Giảm từ 10%)" : "10%") : item.TaxTreatment.ToString())
                                                                                 </span>
                                                                             </div>
                                                                             @if (!string.IsNullOrWhiteSpace(item.Specifications))
                                                                             {
                                                                                 <div>
-                                                                                    <div style="color: #64748b; margin-bottom: 2px;">Quy cách kỹ thuật:</div>
-                                                                                    <div style="background: #f8fafc; padding: 8px; border-radius: 6px; font-size: 12px; color: #334155; line-height: 1.4; white-space: pre-line;">
+                                                                                    <div style="color: var(--tf-text-muted, #64748b); margin-bottom: 2px;">Quy cách kỹ thuật:</div>
+                                                                                    <div style="background: var(--tf-bg-subtle, #f8fafc); border: 1px solid var(--tf-border, #e2e8f0); padding: 8px; border-radius: 6px; font-size: 12px; color: var(--tf-text-secondary, #334155); line-height: 1.4; white-space: pre-line;">
                                                                                         @item.Specifications
                                                                                     </div>
                                                                                 </div>

@@ -103,9 +103,9 @@ public class QuotationDocumentPdf : IDocument
                         c.Item().PaddingTop(2).Text($"Địa chỉ: {_model.CustomerAddress}");
                     }
 
-                    if (!string.IsNullOrWhiteSpace(_model.SalespersonName))
+                    if (!string.IsNullOrWhiteSpace(_model.DisplayCreatorName) && !string.Equals(_model.DisplayCreatorName, "Người lập báo giá", StringComparison.OrdinalIgnoreCase))
                     {
-                        c.Item().PaddingTop(2).Text($"Nhân viên phụ trách: {_model.SalespersonName}").Italic();
+                        c.Item().PaddingTop(2).Text($"Người lập / Phụ trách: {_model.DisplayCreatorName}").Italic().FontSize(9f);
                     }
                 });
 
@@ -122,20 +122,17 @@ public class QuotationDocumentPdf : IDocument
                 {
                     row.RelativeItem().AlignCenter().Column(c =>
                     {
-                        c.Item().Text("ĐẠI DIỆN KHÁCH HÀNG").Bold();
-                        c.Item().Text("(Ký, ghi rõ họ tên)").Italic().FontSize(8.5f);
-                        c.Item().Height(40);
+                        c.Item().Text("ĐẠI DIỆN KHÁCH HÀNG").Bold().FontSize(9.5f);
+                        c.Item().Text("(Ký, ghi rõ họ tên)").Italic().FontSize(8.5f).FontColor(Colors.Grey.Darken1);
+                        c.Item().Height(42);
                     });
 
                     row.RelativeItem().AlignCenter().Column(c =>
                     {
-                        c.Item().Text("ĐẠI DIỆN BÊN BÁO GIÁ").Bold();
-                        c.Item().Text("(Ký, đóng dấu, ghi rõ họ tên)").Italic().FontSize(8.5f);
-                        c.Item().Height(40);
-                        if (!string.IsNullOrWhiteSpace(_model.SalespersonName))
-                        {
-                            c.Item().Text(_model.SalespersonName).Bold();
-                        }
+                        c.Item().Text("ĐẠI DIỆN BÊN BÁO GIÁ").Bold().FontSize(9.5f);
+                        c.Item().Text("(Ký, ghi rõ họ tên)").Italic().FontSize(8.5f).FontColor(Colors.Grey.Darken1);
+                        c.Item().Height(42);
+                        c.Item().Text($"Người lập: {_model.DisplayCreatorName}").Bold().FontSize(9.5f);
                     });
                 });
             });
@@ -229,39 +226,40 @@ public class QuotationDocumentPdf : IDocument
     {
         container.Border(1).BorderColor(Colors.Black).Row(row =>
         {
-            // Left: Terms and Conditions
-            row.RelativeItem(3).Column(col =>
+            // Left: Terms and Conditions & Banking
+            row.RelativeItem().Column(col =>
             {
-                col.Item().Padding(4).Text("ĐIỀU KHOẢN VÀ GHI CHÚ THƯƠNG MẠI:").Bold();
-                col.Item().LineHorizontal(0.5f).LineColor(Colors.Black);
-
+                // Section: Ghi chú & Điều khoản (compact italic note section)
                 col.Item().Padding(4).Column(c =>
                 {
-                    if (string.IsNullOrWhiteSpace(_model.Terms) || !_model.Terms.Contains("thuế GTGT", StringComparison.OrdinalIgnoreCase))
+                    c.Item().Text("Ghi chú & Điều khoản:").Bold().Italic().FontSize(9f);
+
+                    if (!string.IsNullOrWhiteSpace(_model.Notes))
                     {
-                        c.Item().Text("• Đơn giá trên là giá bán thương mại trước thuế GTGT (8%).").Bold();
-                    }
-                    if (_model.ExpiryDate.HasValue)
-                    {
-                        c.Item().PaddingTop(2).Text($"• Hiệu lực báo giá: Đến hết ngày {_model.ExpiryDate.Value:dd/MM/yyyy}.");
+                        c.Item().PaddingTop(1).Text($"• Ghi chú: {_model.Notes}").Italic().FontSize(8.5f);
                     }
                     if (!string.IsNullOrWhiteSpace(_model.Terms))
                     {
-                        c.Item().PaddingTop(2).Text(_model.Terms);
+                        c.Item().PaddingTop(1).Text($"• {_model.Terms}").Italic().FontSize(8.5f);
                     }
-                    if (!string.IsNullOrWhiteSpace(_model.Notes))
+                    c.Item().PaddingTop(1).Text(t =>
                     {
-                        c.Item().PaddingTop(2).Text($"• Ghi chú: {_model.Notes}").Italic();
-                    }
+                        t.Span("• Đơn giá là giá thương mại chuẩn chưa bao gồm thuế GTGT. ").Italic().FontSize(8.5f);
+                        if (_model.ExpiryDate.HasValue)
+                        {
+                            t.Span($"Hiệu lực báo giá đến hết ngày {_model.ExpiryDate.Value:dd/MM/yyyy}.").Italic().FontSize(8.5f);
+                        }
+                    });
                 });
 
                 col.Item().LineHorizontal(0.5f).LineColor(Colors.Black);
+
+                // Section: Banking Information
                 col.Item().Padding(4).Column(c =>
                 {
-                    c.Item().Text("THÔNG TIN TÀI KHOẢN THANH TOÁN:").Bold();
-                    c.Item().Text($"• Chủ tài khoản: {(_company?.BankAccountHolder ?? "LACASA").ToUpper()}");
-                    c.Item().Text($"• Số tài khoản: {_company?.BankAccount ?? "---"}");
-                    c.Item().Text($"• Ngân hàng: {(_company?.BankName ?? "---").ToUpper()}");
+                    c.Item().Text("THÔNG TIN TÀI KHOẢN THANH TOÁN:").Bold().FontSize(8.5f);
+                    c.Item().PaddingTop(1).Text($"• Tên tài khoản: {(_company?.BankAccountHolder ?? "LACASA").ToUpper()}").FontSize(8.5f);
+                    c.Item().PaddingTop(1).Text($"• Số tài khoản: {_company?.BankAccount ?? "---"} | Ngân hàng: {(_company?.BankName ?? "---").ToUpper()}").FontSize(8.5f);
                 });
             });
 
@@ -284,12 +282,16 @@ public class QuotationDocumentPdf : IDocument
 
                 if (!string.IsNullOrEmpty(resolvedQrPath) && File.Exists(resolvedQrPath))
                 {
-                    c.Width(100).Height(100).Image(resolvedQrPath).FitArea();
+                    c.Width(95).Height(95).Image(resolvedQrPath).FitArea();
                 }
                 else
                 {
-                    c.Width(100).Height(100).Border(0.5f).BorderColor(Colors.Grey.Lighten1).AlignCenter().AlignMiddle()
-                        .Text("Quét mã QR\nđể thanh toán").FontSize(8).Italic().AlignCenter();
+                    c.Width(95).Height(95).Border(0.5f).BorderColor(Colors.Grey.Lighten1).AlignCenter().AlignMiddle()
+                        .Column(box =>
+                        {
+                            box.Item().AlignCenter().Text("VietQR").FontSize(8.5f).Bold();
+                            box.Item().AlignCenter().Text("Quét mã thanh toán").FontSize(7.5f).Italic();
+                        });
                 }
             });
         });

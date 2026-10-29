@@ -89,7 +89,15 @@ public class QuotationService : IQuotationService
         query = query.OrderByDescending(x => x.QuotationDate);
 
         var list = await query.ToListAsync(cancellationToken);
-        return list.Select(MapToDto).ToList();
+        var dtos = list.Select(MapToDto).ToList();
+        foreach (var d in dtos)
+        {
+            if (string.Equals(d.SalespersonName?.Trim(), "admin", StringComparison.OrdinalIgnoreCase))
+            {
+                d.SalespersonName = "Quản trị viên";
+            }
+        }
+        return dtos;
     }
 
     public async Task<QuotationDto?> GetQuotationByIdAsync(int id, CancellationToken cancellationToken = default)
@@ -102,7 +110,13 @@ public class QuotationService : IQuotationService
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (quotation == null) return null;
-        return MapToDto(quotation);
+        var dto = MapToDto(quotation);
+        dto.CreatorFullName = await ResolveCreatorDisplayNameAsync(quotation.CreatedBy, null, cancellationToken);
+        if (string.IsNullOrWhiteSpace(dto.SalespersonName) || string.Equals(dto.SalespersonName.Trim(), "admin", StringComparison.OrdinalIgnoreCase))
+        {
+            dto.SalespersonName = dto.CreatorFullName;
+        }
+        return dto;
     }
 
     public async Task<QuotationDto> CreateQuotationAsync(QuotationDto dto, CancellationToken cancellationToken = default)
@@ -137,6 +151,16 @@ public class QuotationService : IQuotationService
             seq.CurrentNumber++;
         }
 
+        string creatorUsername = !string.IsNullOrWhiteSpace(dto.CreatedBy)
+            ? dto.CreatedBy
+            : (_currentUserService.UserName ?? "admin");
+
+        string resolvedCreatorName = await ResolveCreatorDisplayNameAsync(creatorUsername, _currentUserService.UserId, cancellationToken);
+
+        string salesperson = !string.IsNullOrWhiteSpace(dto.SalespersonName) && !string.Equals(dto.SalespersonName.Trim(), "admin", StringComparison.OrdinalIgnoreCase)
+            ? dto.SalespersonName.Trim()
+            : resolvedCreatorName;
+
         var quotation = new Quotation
         {
             Code = code,
@@ -149,9 +173,11 @@ public class QuotationService : IQuotationService
             CustomerPhone = customer.Phone,
             CustomerContactPerson = dto.CustomerContactPerson ?? customer.ContactPerson,
             CustomerEmail = dto.CustomerEmail ?? customer.Email,
-            SalespersonName = dto.SalespersonName ?? _currentUserService.UserName ?? "Kinh doanh",
+            SalespersonName = salesperson,
+            CreatedBy = creatorUsername,
+            CreatedAt = DateTime.UtcNow,
             Notes = dto.Notes,
-            Terms = dto.Terms ?? "1. Đơn giá trên là giá bán chưa bao gồm thuế GTGT (8%).\n2. Thanh toán: Tiền mặt hoặc chuyển khoản theo thỏa thuận.\n3. Thời gian giao hàng: Theo tiến độ hợp đồng/đơn hàng.\n4. Bảo hành: Theo tiêu chuẩn kỹ thuật của nhà sản xuất.",
+            Terms = dto.Terms ?? "Đơn giá chưa bao gồm thuế GTGT. Thanh toán bằng tiền mặt hoặc chuyển khoản theo thỏa thuận. Giao hàng và bảo hành theo tiêu chuẩn nhà sản xuất.",
             Status = dto.Status == QuotationStatus.Sent ? QuotationStatus.Sent : QuotationStatus.Draft
         };
 
@@ -241,7 +267,16 @@ public class QuotationService : IQuotationService
         quotation.CustomerEmail = dto.CustomerEmail;
         quotation.QuotationDate = NormalizeToUtc(dto.QuotationDate);
         quotation.ExpiryDate = dto.ExpiryDate.HasValue ? NormalizeToUtc(dto.ExpiryDate.Value) : null;
-        quotation.SalespersonName = dto.SalespersonName ?? quotation.SalespersonName;
+        if (!string.IsNullOrWhiteSpace(dto.SalespersonName) && !string.Equals(dto.SalespersonName.Trim(), "admin", StringComparison.OrdinalIgnoreCase))
+        {
+            quotation.SalespersonName = dto.SalespersonName.Trim();
+        }
+        else if (string.Equals(quotation.SalespersonName?.Trim(), "admin", StringComparison.OrdinalIgnoreCase))
+        {
+            quotation.SalespersonName = await ResolveCreatorDisplayNameAsync(quotation.CreatedBy, null, cancellationToken);
+        }
+        quotation.UpdatedBy = _currentUserService.UserName ?? "admin";
+        quotation.UpdatedAt = DateTime.UtcNow;
         quotation.Notes = dto.Notes;
         quotation.Terms = dto.Terms;
 
@@ -492,5 +527,58 @@ public class QuotationService : IQuotationService
                 Notes = item.Notes
             }).ToList()
         };
+    }
+
+    /// <summary>
+    /// Phân giải tên hiển thị thực tế của người lập báo giá từ tài khoản CreatedBy hoặc UserId.
+    /// Tra cứu ưu tiên: Nhân viên liên kết (Employee.FullName) -> Người dùng (ApplicationUser.FullName) -> fallback trung thực.
+    /// Tuyệt đối không trả về chuỗi "admin".
+    /// </summary>
+    private async Task<string> ResolveCreatorDisplayNameAsync(string? createdBy, string? currentUserId = null, CancellationToken cancellationToken = default)
+    {
+        // 1. Nếu có currentUserId, kiểm tra Employee liên kết
+        if (!string.IsNullOrWhiteSpace(currentUserId))
+        {
+            var empByUserId = await _context.Employees
+                .AsNoTracking()
+                .FirstOrDefaultAsync(e => e.UserId == currentUserId, cancellationToken);
+            if (empByUserId != null && !string.IsNullOrWhiteSpace(empByUserId.FullName))
+            {
+                return empByUserId.FullName.Trim();
+            }
+        }
+
+        // 2. Tra cứu qua username createdBy
+        if (!string.IsNullOrWhiteSpace(createdBy))
+        {
+            var user = await _context.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.UserName == createdBy || u.Id == createdBy, cancellationToken);
+
+            if (user != null)
+            {
+                var emp = await _context.Employees
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(e => e.UserId == user.Id, cancellationToken);
+
+                if (emp != null && !string.IsNullOrWhiteSpace(emp.FullName))
+                {
+                    return emp.FullName.Trim();
+                }
+
+                if (!string.IsNullOrWhiteSpace(user.FullName) && !string.Equals(user.FullName.Trim(), "admin", StringComparison.OrdinalIgnoreCase))
+                {
+                    return user.FullName.Trim();
+                }
+            }
+        }
+
+        // 3. Fallback có ý nghĩa cho tài khoản admin mặc định
+        if (string.Equals(createdBy?.Trim(), "admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Quản trị viên";
+        }
+
+        return "Người lập báo giá";
     }
 }

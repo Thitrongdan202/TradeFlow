@@ -271,6 +271,14 @@ html {
   font-size: var(--tf-text-base);
   -webkit-text-size-adjust: 100%;
   tab-size: 4;
+  background-color: var(--tf-bg);
+}
+
+body,
+.tf-app,
+.tf-main-wrapper,
+.tf-content {
+  background-color: var(--tf-bg);
 }
 
 body {
@@ -281,7 +289,6 @@ body {
   font-weight: var(--tf-font-normal);
   line-height: 1.6;
   color: var(--tf-text-primary);
-  background-color: var(--tf-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -508,8 +515,8 @@ h1:focus { outline: none; }
   height: 32px;
   border-radius: 6px;
   border: 1px solid var(--tf-border);
-  background: #ffffff;
-  color: #64748b;
+  background: var(--tf-surface-card, #ffffff);
+  color: var(--tf-text-secondary, #64748b);
   font-size: 16px;
   align-items: center;
   justify-content: center;
@@ -1746,6 +1753,41 @@ textarea.tf-form-control {
   padding: 0 4px;
   color: var(--tf-text-muted);
   user-select: none;
+}
+
+/* ============================================================
+   BREADCRUMBS
+   ============================================================ */
+.tf-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--tf-text-muted);
+  margin-bottom: 6px;
+}
+
+.tf-breadcrumb-link {
+  color: var(--tf-primary);
+  text-decoration: none;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tf-breadcrumb-link:hover {
+  text-decoration: underline;
+}
+
+.tf-breadcrumb-sep {
+  color: var(--tf-text-muted);
+  opacity: 0.7;
+}
+
+.tf-breadcrumb-current {
+  color: var(--tf-text-secondary);
+  font-weight: 500;
 }
 
 /* ============================================================
@@ -3419,16 +3461,30 @@ textarea.tf-form-control {
 .tf-skeleton {
   background: linear-gradient(
     90deg,
-    #f1f5f9 0%,
-    #e2e8f0 37%,
-    #cbd5e1 50%,
-    #e2e8f0 63%,
-    #f1f5f9 100%
+    var(--tf-surface-subtle, #f1f5f9) 0%,
+    var(--tf-surface-hover, #e2e8f0) 37%,
+    var(--tf-border, #cbd5e1) 50%,
+    var(--tf-surface-hover, #e2e8f0) 63%,
+    var(--tf-surface-subtle, #f1f5f9) 100%
   );
   background-size: 300% 100%;
   animation: tf-shimmer 1.8s ease-in-out infinite;
   border-radius: var(--tf-radius);
   display: block;
+}
+
+[data-bs-theme="dark"] .tf-skeleton,
+[data-theme="dark"] .tf-skeleton,
+html.dark .tf-skeleton {
+  background: linear-gradient(
+    90deg,
+    #1D2028 0%,
+    #292E39 37%,
+    #383E4B 50%,
+    #292E39 63%,
+    #1D2028 100%
+  ) !important;
+  background-size: 300% 100% !important;
 }
 
 .tf-skeleton-text {
@@ -3471,42 +3527,82 @@ textarea.tf-form-control {
 }
 
 .tf-skeleton-card {
-  background: #ffffff;
+  background: var(--tf-surface-card, var(--tf-white, #ffffff));
   border: 1px solid var(--tf-border);
   border-radius: var(--tf-radius-md);
   padding: 16px;
   box-shadow: var(--tf-shadow-sm);
 }
 
+[data-bs-theme="dark"] .tf-skeleton-card,
+[data-theme="dark"] .tf-skeleton-card,
+html.dark .tf-skeleton-card {
+  background: #222630 !important;
+  border-color: #383E4B !important;
+}
+
 .tf-skeleton-stat-card {
-  background: #ffffff;
+  background: var(--tf-surface-card, var(--tf-white, #ffffff));
   border: 1px solid var(--tf-border);
   border-radius: var(--tf-radius-md);
-  padding: 20px;
+  padding: var(--tf-space-5, 20px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-3, 12px);
+  min-height: 124px;
+  box-sizing: border-box;
   box-shadow: var(--tf-shadow-sm);
 }
 
+[data-bs-theme="dark"] .tf-skeleton-stat-card,
+[data-theme="dark"] .tf-skeleton-stat-card,
+html.dark .tf-skeleton-stat-card {
+  background: #222630 !important;
+  border-color: #383E4B !important;
+}
+
 .tf-skeleton-table-wrapper {
-  background: #ffffff;
+  background: var(--tf-surface-card, var(--tf-white, #ffffff));
   border: 1px solid var(--tf-border);
   border-radius: var(--tf-radius-md);
   overflow: hidden;
+}
+
+[data-bs-theme="dark"] .tf-skeleton-table-wrapper,
+[data-theme="dark"] .tf-skeleton-table-wrapper,
+html.dark .tf-skeleton-table-wrapper {
+  background: #222630 !important;
+  border-color: #383E4B !important;
 }
 
 .tf-skeleton-table-header {
   display: flex;
   gap: 16px;
   padding: 12px 16px;
-  background: var(--tf-gray-50);
+  background: var(--tf-surface-subtle, var(--tf-gray-50, #F7F8FA));
   border-bottom: 1px solid var(--tf-border);
+}
+
+[data-bs-theme="dark"] .tf-skeleton-table-header,
+[data-theme="dark"] .tf-skeleton-table-header,
+html.dark .tf-skeleton-table-header {
+  background: #1D2028 !important;
+  border-bottom-color: #383E4B !important;
 }
 
 .tf-skeleton-table-row {
   display: flex;
   gap: 16px;
   padding: 14px 16px;
-  border-bottom: 1px solid var(--tf-gray-100);
+  border-bottom: 1px solid var(--tf-border-subtle, var(--tf-gray-100, #F1F3F6));
   align-items: center;
+}
+
+[data-bs-theme="dark"] .tf-skeleton-table-row,
+[data-theme="dark"] .tf-skeleton-table-row,
+html.dark .tf-skeleton-table-row {
+  background: #222630 !important;
+  border-bottom-color: #2A2F3A !important;
 }
 
 .tf-skeleton-table-row:last-child {
@@ -3547,14 +3643,23 @@ textarea.tf-form-control {
   align-items: center;
   gap: 10px;
   padding: 8px 16px;
-  background: #ffffff;
+  background: var(--tf-surface-card, var(--tf-white, #ffffff));
   border: 1px solid var(--tf-border);
   border-radius: 9999px;
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
   font-size: 13px;
   font-weight: 500;
-  color: var(--tf-gray-700);
+  color: var(--tf-text-secondary, var(--tf-gray-700));
   animation: tf-badge-pop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-bs-theme="dark"] .tf-table-loading-badge,
+[data-theme="dark"] .tf-table-loading-badge,
+html.dark .tf-table-loading-badge {
+  background: #292E39 !important;
+  border-color: #383E4B !important;
+  color: #F0F2F6 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
 }
 
 @keyframes tf-badge-pop {
@@ -4465,7 +4570,9 @@ button.tf-search-spinner {
 /* ============================================================
    GLOBAL DARK MODE COMPONENT STYLES & CONTRAST CALIBRATION
    ============================================================ */
-/* Root & Body smooth theme transitions */
+/* Zero-flash instantaneous theme rendering:
+   Structural canvas and content containers switch themes immediately with 0ms interpolation lag.
+   Transitions on backgrounds during route changes animate through light colors and cause visible flicker. */
 body,
 .tf-topbar,
 .tf-sidebar,
@@ -4478,9 +4585,7 @@ body,
 .tf-table td,
 .tf-action-footer,
 .tf-modal-container {
-  transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-              border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-              color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: none;
 }
 
 /* Global Dark Theme Element Overrides — Premium Neutral Enterprise Hierarchy */

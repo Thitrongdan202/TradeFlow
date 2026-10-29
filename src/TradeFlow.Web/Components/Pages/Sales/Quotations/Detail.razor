@@ -335,64 +335,71 @@ else
                 </tbody>
             </table>
 
-            @* 4. NOTES & TERMS *@
-            <div class="quotation-terms-box" style="border:1px solid #000; border-top:none; padding:8px 12px; margin-bottom:16px; background:#fff;">
-                <div style="font-weight:bold; margin-bottom:4px;">GHI CHÚ & ĐIỀU KHOẢN THƯƠNG MẠI:</div>
-                @if (!string.IsNullOrWhiteSpace(_quotation.Notes))
-                {
-                    <div style="margin-bottom:6px;"><strong>Ghi chú riêng:</strong> @_quotation.Notes</div>
-                }
-                @if (!string.IsNullOrWhiteSpace(_quotation.Terms))
-                {
-                    <div style="white-space:pre-line; font-size:12.5px; color:#1e293b;">@_quotation.Terms</div>
-                }
-                <div style="font-size:12px; font-style:italic; color:#475569; margin-top:6px;">
-                    * Lưu ý: Đơn giá trong bảng báo giá là giá thương mại chuẩn chưa bao gồm thuế giá trị gia tăng (GTGT). Thuế GTGT sẽ được áp dụng theo quy định hiện hành khi xuất hóa đơn.
-                </div>
-            </div>
-
-            @* 5. BANK INFO & QR CODE BOX *@
-            <div style="border:1px solid #000; display:flex; margin-bottom:20px;">
+            @* 4. NOTES, BANK INFO & QR CODE BOX (Streamlined Hierarchy referencing Sales Order) *@
+            <div style="border:1px solid #000; border-top:none; display:flex; margin-bottom:12px; font-size:12px;">
                 <div style="flex:1; display:flex; flex-direction:column;">
-                    <div style="border-bottom:1px solid #000; padding:4px 8px; font-weight:bold;">
-                        THÔNG TIN TÀI KHOẢN THANH TOÁN:
+                    @* Compact Italic Notes & Terms *@
+                    <div style="border-bottom:1px solid #000; padding:6px 10px; line-height:1.45;">
+                        <span style="font-weight:bold; font-style:italic;">Ghi chú & Điều khoản: </span>
+                        @if (!string.IsNullOrWhiteSpace(_quotation.Notes))
+                        {
+                            <span style="font-style:italic; margin-right:8px;">• <strong>Ghi chú:</strong> @_quotation.Notes</span>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(_quotation.Terms))
+                        {
+                            <span style="font-style:italic; margin-right:8px;">• @_quotation.Terms</span>
+                        }
+                        <span style="font-style:italic; color:#475569; font-size:11.5px;">
+                            • Đơn giá thương mại chuẩn chưa bao gồm thuế GTGT.
+                            @if (_quotation.ExpiryDate.HasValue)
+                            {
+                                <span> Hiệu lực báo giá đến hết ngày @_quotation.ExpiryDate.Value.ToString("dd/MM/yyyy").</span>
+                            }
+                        </span>
                     </div>
-                    <div style="border-bottom:1px solid #000; padding:4px 8px;">
-                        <strong>Tên tài khoản:</strong> @((_company?.BankAccountHolder ?? "").ToUpper())
-                    </div>
-                    <div style="border-bottom:1px solid #000; padding:4px 8px;">
-                        <strong>Số tài khoản:</strong> @(_company?.BankAccount ?? "—")
-                    </div>
-                    <div style="padding:4px 8px;">
-                        <strong>Ngân hàng:</strong> @((_company?.BankName ?? "").ToUpper())
+
+                    @* Bank Payment Information *@
+                    <div style="padding:6px 10px; line-height:1.4;">
+                        <div style="font-weight:bold; margin-bottom:2px; font-size:12px;">THÔNG TIN TÀI KHOẢN THANH TOÁN:</div>
+                        <div style="margin-bottom:1px;">TÊN TÀI KHOẢN: <strong>@((_company?.BankAccountHolder ?? "LACASA").ToUpper())</strong></div>
+                        <div style="margin-bottom:1px;">SỐ TÀI KHOẢN: <strong>@(_company?.BankAccount ?? "—")</strong></div>
+                        <div>NGÂN HÀNG: <strong>@((_company?.BankName ?? "—").ToUpper())</strong></div>
                     </div>
                 </div>
-                <div style="width:145px; border-left:1px solid #000; display:flex; align-items:center; justify-content:center; padding:6px;">
+
+                @* Right QR Code Box *@
+                <div style="width:135px; border-left:1px solid #000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:6px;">
                     @if (!string.IsNullOrEmpty(_company?.OrderQrCodePath))
                     {
-                        <img src="@_company.OrderQrCodePath" alt="QR Code" style="max-width:130px; max-height:130px; object-fit:contain;" />
+                        <img src="@_company.OrderQrCodePath" alt="QR Code" style="max-width:110px; max-height:110px; object-fit:contain;" />
+                        <div style="font-size:9.5px; color:#64748b; margin-top:2px;">Quét mã thanh toán</div>
                     }
                     else
                     {
-                        <div style="width:115px; height:115px; border:1px dashed #999; display:flex; align-items:center; justify-content:center; font-size:11px; color:#888;">VietQR</div>
+                        <div style="width:100px; height:100px; border:1px dashed #cbd5e1; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:10.5px; color:#94a3b8; text-align:center;">
+                            <span style="font-weight:bold;">VietQR</span>
+                            <span style="font-size:9px; margin-top:1px;">(Chưa cấu hình)</span>
+                        </div>
                     }
                 </div>
             </div>
 
-            @* 6. SIGNATURE AREA *@
-            <div style="display:flex; justify-content:space-between; margin-top:24px; text-align:center;">
+            @* 5. RESTRAINED SIGNATURE AREA *@
+            <div style="display:flex; justify-content:space-between; margin-top:16px; text-align:center;">
                 <div style="flex:1;">
-                    <div style="font-weight:bold; font-size:14px; text-transform:uppercase;">ĐẠI DIỆN KHÁCH HÀNG</div>
-                    <div style="font-size:12px; font-style:italic; color:#64748b;">(Ký, ghi rõ họ tên và đóng dấu)</div>
-                    <div style="height:90px;"></div>
+                    <div style="font-weight:bold; font-size:13px; text-transform:uppercase;">ĐẠI DIỆN KHÁCH HÀNG</div>
+                    <div style="font-size:11.5px; font-style:italic; color:#64748b;">(Ký, ghi rõ họ tên)</div>
+                    <div style="height:50px;"></div>
                 </div>
                 <div style="flex:1;">
-                    <div style="font-weight:bold; font-size:14px; text-transform:uppercase;">
+                    <div style="font-weight:bold; font-size:13px; text-transform:uppercase;">
                         ĐẠI DIỆN BÊN BÁO GIÁ
                     </div>
-                    <div style="font-size:12px; font-style:italic; color:#64748b;">(Ký, ghi rõ họ tên và đóng dấu)</div>
-                    <div style="height:90px; display:flex; align-items:flex-end; justify-content:center;">
-                        <div style="font-weight:bold;">@(_quotation.SalespersonName ?? "Người lập báo giá")</div>
+                    <div style="font-size:11.5px; font-style:italic; color:#64748b;">(Ký, ghi rõ họ tên)</div>
+                    <div style="height:50px; display:flex; align-items:flex-end; justify-content:center;">
+                        <div style="font-weight:bold; font-size:12.5px;">
+                            Người lập: @(_quotation.DisplayCreatorName)
+                        </div>
                     </div>
                 </div>
             </div>

@@ -11,10 +11,10 @@
         (function() {
             function getPreferredTheme() {
                 try {
-                    var cookieMatch = document.cookie.match(/(?:^|;\s*)tf_theme=([^;]+)/);
+                    var cookieMatch = document.cookie.match(/(?:^|;\s*)(?:tf_theme|tradeflow_theme)=([^;]+)/);
                     var cookieTheme = cookieMatch ? cookieMatch[1] : null;
                     if (cookieTheme === 'dark' || cookieTheme === 'light') return cookieTheme;
-                    var stored = localStorage.getItem('tf_theme');
+                    var stored = localStorage.getItem('tf_theme') || localStorage.getItem('tradeflow_theme');
                     if (stored === 'dark' || stored === 'light') return stored;
                 } catch (e) {}
                 return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -28,6 +28,18 @@
             } else {
                 document.documentElement.classList.remove('dark');
             }
+
+            // Immediately ensure both cookies and localStorage are synced synchronously
+            try {
+                if (!document.cookie.includes('tf_theme=' + theme)) {
+                    document.cookie = 'tf_theme=' + theme + ';path=/;max-age=31536000;SameSite=Lax';
+                }
+                if (!document.cookie.includes('tradeflow_theme=' + theme)) {
+                    document.cookie = 'tradeflow_theme=' + theme + ';path=/;max-age=31536000;SameSite=Lax';
+                }
+                localStorage.setItem('tf_theme', theme);
+                localStorage.setItem('tradeflow_theme', theme);
+            } catch (e) {}
 
             // Continuous guardian observer: prevents any Blazor enhanced nav or script from temporarily flashing Light Mode
             if (typeof MutationObserver !== 'undefined') {
@@ -54,6 +66,19 @@
         <link rel="preload" as="image" href="@_branding.LogoPath" />
     }
     <style>
+        /* Continuous Root & Body Canvas Stability - Zero light flashes across all frames */
+        html, body {
+            background-color: var(--tf-bg, #17191F);
+        }
+        html[data-bs-theme="dark"], html[data-theme="dark"], html.dark {
+            background-color: #17191F !important;
+            color-scheme: dark;
+        }
+        html[data-bs-theme="light"], html[data-theme="light"] {
+            background-color: #F1F3F6 !important;
+            color-scheme: light;
+        }
+
         /* Critical Startup Loading Screen - Inlined for instant 60 FPS render with 0 layout shift */
         #tf-startup-loader {
             position: fixed;
@@ -63,7 +88,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background-color: #F1F3F6;
+            background-color: var(--tf-bg, #F1F3F6);
             opacity: 1;
             visibility: visible;
             pointer-events: auto;
@@ -84,7 +109,7 @@
         #tf-startup-loader .tf-loading-backdrop {
             position: absolute;
             inset: 0;
-            background-color: #F1F3F6 !important;
+            background-color: var(--tf-bg, #F1F3F6);
             backdrop-filter: none !important;
             -webkit-backdrop-filter: none !important;
             pointer-events: none;
@@ -687,11 +712,11 @@
             applyTheme: function () {
                 var theme = 'light';
                 try {
-                    var cookieMatch = document.cookie.match(/(?:^|;\s*)tf_theme=([^;]+)/);
+                    var cookieMatch = document.cookie.match(/(?:^|;\s*)(?:tf_theme|tradeflow_theme)=([^;]+)/);
                     if (cookieMatch && (cookieMatch[1] === 'dark' || cookieMatch[1] === 'light')) {
                         theme = cookieMatch[1];
                     } else {
-                        var stored = localStorage.getItem('tf_theme');
+                        var stored = localStorage.getItem('tf_theme') || localStorage.getItem('tradeflow_theme');
                         if (stored === 'dark' || stored === 'light') {
                             theme = stored;
                         }
@@ -709,11 +734,11 @@
             },
             getTheme: function () {
                 try {
-                    var cookieMatch = document.cookie.match(/(?:^|;\s*)tf_theme=([^;]+)/);
+                    var cookieMatch = document.cookie.match(/(?:^|;\s*)(?:tf_theme|tradeflow_theme)=([^;]+)/);
                     if (cookieMatch && (cookieMatch[1] === 'dark' || cookieMatch[1] === 'light')) {
                         return cookieMatch[1];
                     }
-                    var stored = localStorage.getItem('tf_theme');
+                    var stored = localStorage.getItem('tf_theme') || localStorage.getItem('tradeflow_theme');
                     if (stored === 'dark' || stored === 'light') return stored;
                 } catch (e) {}
                 return document.documentElement.getAttribute('data-bs-theme') || 'light';
@@ -729,7 +754,9 @@
                 }
                 try {
                     localStorage.setItem('tf_theme', theme);
+                    localStorage.setItem('tradeflow_theme', theme);
                     document.cookie = 'tf_theme=' + theme + ';path=/;max-age=31536000;SameSite=Lax';
+                    document.cookie = 'tradeflow_theme=' + theme + ';path=/;max-age=31536000;SameSite=Lax';
                 } catch (e) {}
                 window.dispatchEvent(new CustomEvent('tf-theme-changed', { detail: { theme: theme } }));
                 return theme;
@@ -823,16 +850,29 @@
         try
         {
             var ctx = CascadedHttpContext ?? HttpContextAccessor?.HttpContext;
-            if (ctx?.Request?.Headers != null && ctx.Request.Headers.ContainsKey("blazor-enhanced-nav"))
+            if (ctx?.Request?.Headers != null)
             {
-                _isEnhancedNav = true;
+                var acceptHeader = ctx.Request.Headers.Accept.ToString();
+                if (!string.IsNullOrEmpty(acceptHeader) && acceptHeader.Contains("blazor-enhanced-nav=on", StringComparison.OrdinalIgnoreCase))
+                {
+                    _isEnhancedNav = true;
+                }
+                else if (ctx.Request.Headers.ContainsKey("blazor-enhanced-nav") ||
+                         ctx.Request.Headers.ContainsKey("X-Blazor-Enhanced-Nav"))
+                {
+                    _isEnhancedNav = true;
+                }
             }
 
-            if (ctx?.Request?.Cookies != null && ctx.Request.Cookies.TryGetValue("tf_theme", out var cookieTheme))
+            if (ctx?.Request?.Cookies != null)
             {
-                if (cookieTheme == "dark" || cookieTheme == "light")
+                if (ctx.Request.Cookies.TryGetValue("tf_theme", out var cookieTheme) ||
+                    ctx.Request.Cookies.TryGetValue("tradeflow_theme", out cookieTheme))
                 {
-                    _serverTheme = cookieTheme;
+                    if (cookieTheme == "dark" || cookieTheme == "light")
+                    {
+                        _serverTheme = cookieTheme;
+                    }
                 }
             }
         }

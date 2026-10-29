@@ -17,7 +17,7 @@
             </div>
         </a>
         <button type="button" class="tf-mobile-close-btn" @onclick="OnCloseMobile" title="Đóng menu" aria-label="Đóng menu">
-            ✕
+            &times;
         </button>
     </div>
 
@@ -502,116 +502,89 @@
                 </span>
             </button>
 
-            @* Desktop Fly-out Submenu *@
+            @* Desktop Fly-out Submenu — Scalable Grouped Portal *@
             <div class="tf-nav-flyout">
-                <div class="tf-nav-flyout-header">Cài đặt &amp; Quản trị</div>
+                <div class="tf-nav-flyout-header">Trung tâm Cài đặt</div>
                 <div class="tf-nav-flyout-body">
                     <NavLink class="tf-flyout-link" href="/cai-dat" Match="NavLinkMatch.All" ActiveClass="active" @onclick="HandleLinkClick">
                         <span class="tf-flyout-dot"></span>
-                        <span>Cài đặt hệ thống</span>
+                        <span style="font-weight: 600;">Trung tâm Cài đặt (Hub)</span>
                     </NavLink>
                     <AuthorizeView Policy="Permission:CompanySettings:View">
-                        <NavLink class="tf-flyout-link" href="/cai-dat/thuong-hieu" ActiveClass="active" @onclick="HandleLinkClick">
+                        <NavLink class="tf-flyout-link" href="/cai-dat/cong-ty" ActiveClass="active" @onclick="HandleLinkClick">
                             <span class="tf-flyout-dot"></span>
-                            <span>Thương hiệu &amp; Màn hình tải</span>
+                            <span>Hệ thống &amp; Thương hiệu</span>
                         </NavLink>
                     </AuthorizeView>
                     <AuthorizeView Policy="Permission:UnitOfMeasures:View">
                         <NavLink class="tf-flyout-link" href="/danh-muc/don-vi-tinh" ActiveClass="active" @onclick="HandleLinkClick">
                             <span class="tf-flyout-dot"></span>
-                            <span>Đơn vị tính</span>
-                        </NavLink>
-                    </AuthorizeView>
-                    <AuthorizeView Policy="Permission:Currencies:View">
-                        <NavLink class="tf-flyout-link" href="/danh-muc/loai-tien" ActiveClass="active" @onclick="HandleLinkClick">
-                            <span class="tf-flyout-dot"></span>
-                            <span>Loại tiền tệ</span>
+                            <span>Danh mục &amp; Quy ước</span>
                         </NavLink>
                     </AuthorizeView>
                     <AuthorizeView Policy="Permission:Users:View">
-                        <NavLink class="tf-flyout-link" href="/cai-dat/an-ninh" ActiveClass="active" @onclick="HandleLinkClick">
-                            <span class="tf-flyout-dot"></span>
-                            <span>An ninh &amp; Chữ ký số</span>
-                        </NavLink>
                         <NavLink class="tf-flyout-link" href="/cai-dat/nguoi-dung" ActiveClass="active" @onclick="HandleLinkClick">
                             <span class="tf-flyout-dot"></span>
-                            <span>Quản lý người dùng</span>
-                        </NavLink>
-                        <NavLink class="tf-flyout-link" href="/cai-dat/nhat-ky" ActiveClass="active" @onclick="HandleLinkClick">
-                            <span class="tf-flyout-dot"></span>
-                            <span>Nhật ký kiểm toán</span>
+                            <span>Người dùng &amp; An ninh</span>
                         </NavLink>
                     </AuthorizeView>
                     <AuthorizeView Policy="Permission:CompanySettings:View">
                         <NavLink class="tf-flyout-link" href="/cai-dat/sao-luu" ActiveClass="active" @onclick="HandleLinkClick">
                             <span class="tf-flyout-dot"></span>
-                            <span>Sao lưu &amp; Khôi phục dữ liệu</span>
+                            <span>Dữ liệu &amp; Kiểm soát</span>
                         </NavLink>
                     </AuthorizeView>
-                    <NavLink class="tf-flyout-link" href="/cai-dat/ho-tro" ActiveClass="active" @onclick="HandleLinkClick">
-                        <span class="tf-flyout-dot"></span>
-                        <span>Hỗ trợ kỹ thuật</span>
-                    </NavLink>
+                    <AuthorizeView Policy="Permission:TechnicalSupport:View">
+                        <NavLink class="tf-flyout-link" href="/cai-dat/ho-tro" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-flyout-dot"></span>
+                            <span>Hỗ trợ &amp; Trợ giúp</span>
+                        </NavLink>
+                    </AuthorizeView>
                 </div>
             </div>
 
-            @* Mobile / Click Accordion Submenu *@
+            @* Mobile / Click Accordion Submenu — Scalable Grouped Portal *@
             <div class="tf-nav-sub @(IsSettingsOpen ? "expanded" : "")">
                 <div class="tf-nav-sub-item">
                     <NavLink class="tf-nav-sub-link" href="/cai-dat" Match="NavLinkMatch.All" ActiveClass="active" @onclick="HandleLinkClick">
-                        <span class="tf-nav-sub-dot"></span>Cài đặt hệ thống
+                        <span class="tf-nav-sub-dot"></span><span style="font-weight: 600;">Trung tâm Cài đặt (Hub)</span>
                     </NavLink>
                 </div>
+                <AuthorizeView Policy="Permission:CompanySettings:View">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/cai-dat/cong-ty" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-nav-sub-dot"></span>Hệ thống &amp; Thương hiệu
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
                 <AuthorizeView Policy="Permission:UnitOfMeasures:View">
                     <div class="tf-nav-sub-item">
                         <NavLink class="tf-nav-sub-link" href="/danh-muc/don-vi-tinh" ActiveClass="active" @onclick="HandleLinkClick">
-                            <span class="tf-nav-sub-dot"></span>Đơn vị tính
-                        </NavLink>
-                    </div>
-                </AuthorizeView>
-                <AuthorizeView Policy="Permission:Currencies:View">
-                    <div class="tf-nav-sub-item">
-                        <NavLink class="tf-nav-sub-link" href="/danh-muc/loai-tien" ActiveClass="active" @onclick="HandleLinkClick">
-                            <span class="tf-nav-sub-dot"></span>Loại tiền tệ
-                        </NavLink>
-                    </div>
-                </AuthorizeView>
-                <AuthorizeView Policy="Permission:CompanySettings:View">
-                    <div class="tf-nav-sub-item">
-                        <NavLink class="tf-nav-sub-link" href="/cai-dat/thuong-hieu" ActiveClass="active" @onclick="HandleLinkClick">
-                            <span class="tf-nav-sub-dot"></span>Thương hiệu &amp; Màn hình tải
+                            <span class="tf-nav-sub-dot"></span>Danh mục &amp; Quy ước
                         </NavLink>
                     </div>
                 </AuthorizeView>
                 <AuthorizeView Policy="Permission:Users:View">
                     <div class="tf-nav-sub-item">
-                        <NavLink class="tf-nav-sub-link" href="/cai-dat/an-ninh" ActiveClass="active" @onclick="HandleLinkClick">
-                            <span class="tf-nav-sub-dot"></span>An ninh &amp; Chữ ký số
-                        </NavLink>
-                    </div>
-                    <div class="tf-nav-sub-item">
                         <NavLink class="tf-nav-sub-link" href="/cai-dat/nguoi-dung" ActiveClass="active" @onclick="HandleLinkClick">
-                            <span class="tf-nav-sub-dot"></span>Người dùng
-                        </NavLink>
-                    </div>
-                    <div class="tf-nav-sub-item">
-                        <NavLink class="tf-nav-sub-link" href="/cai-dat/nhat-ky" ActiveClass="active" @onclick="HandleLinkClick">
-                            <span class="tf-nav-sub-dot"></span>Nhật ký kiểm toán
+                            <span class="tf-nav-sub-dot"></span>Người dùng &amp; An ninh
                         </NavLink>
                     </div>
                 </AuthorizeView>
                 <AuthorizeView Policy="Permission:CompanySettings:View">
                     <div class="tf-nav-sub-item">
                         <NavLink class="tf-nav-sub-link" href="/cai-dat/sao-luu" ActiveClass="active" @onclick="HandleLinkClick">
-                            <span class="tf-nav-sub-dot"></span>Sao lưu &amp; Khôi phục dữ liệu
+                            <span class="tf-nav-sub-dot"></span>Dữ liệu &amp; Kiểm soát
                         </NavLink>
                     </div>
                 </AuthorizeView>
-                <div class="tf-nav-sub-item">
-                    <NavLink class="tf-nav-sub-link" href="/cai-dat/ho-tro" ActiveClass="active" @onclick="HandleLinkClick">
-                        <span class="tf-nav-sub-dot"></span>Hỗ trợ kỹ thuật
-                    </NavLink>
-                </div>
+                <AuthorizeView Policy="Permission:TechnicalSupport:View">
+                    <div class="tf-nav-sub-item">
+                        <NavLink class="tf-nav-sub-link" href="/cai-dat/ho-tro" ActiveClass="active" @onclick="HandleLinkClick">
+                            <span class="tf-nav-sub-dot"></span>Hỗ trợ &amp; Trợ giúp
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
             </div>
         </div>
 
@@ -711,7 +684,18 @@
     }
     private void ToggleDocuments() => IsDocumentsOpen = !IsDocumentsOpen;
     private void ToggleEmployees() => IsEmployeesOpen = !IsEmployeesOpen;
-    private void ToggleSettings() => IsSettingsOpen = !IsSettingsOpen;
+    private void ToggleSettings()
+    {
+        if (!IsSectionActive("cai-dat"))
+        {
+            IsSettingsOpen = true;
+            Nav.NavigateTo("/cai-dat");
+        }
+        else
+        {
+            IsSettingsOpen = !IsSettingsOpen;
+        }
+    }
 
     public void Dispose()
     {

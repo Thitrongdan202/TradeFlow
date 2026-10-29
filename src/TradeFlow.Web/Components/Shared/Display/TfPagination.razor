@@ -38,8 +38,12 @@
                         disabled="@(CurrentPage <= 1)"
                         @onclick="() => SetPage(CurrentPage - 1)"
                         title="Trang trước"
-                        aria-label="Trang trước">
-                    ‹ Trước
+                        aria-label="Trang trước"
+                        style="display: inline-flex; align-items: center; gap: 4px;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                    <span>Trước</span>
                 </button>
 
                 @foreach (var p in VisiblePages)
@@ -66,8 +70,12 @@
                         disabled="@(CurrentPage >= TotalPages)"
                         @onclick="() => SetPage(CurrentPage + 1)"
                         title="Trang sau"
-                        aria-label="Trang sau">
-                    Sau ›
+                        aria-label="Trang sau"
+                        style="display: inline-flex; align-items: center; gap: 4px;">
+                    <span>Sau</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
                 </button>
             </div>
         }

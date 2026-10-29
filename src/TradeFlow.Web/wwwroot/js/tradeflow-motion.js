@@ -178,7 +178,7 @@
 
         gsap.killTweensOf(content);
         gsap.fromTo(content,
-            { opacity: 0.88, y: 4 },
+            { opacity: 1, y: 4 },
             { opacity: 1, y: 0, duration: 0.22, ease: 'power2.out', clearProps: 'transform' }
         );
     }

@@ -61,7 +61,7 @@
     font-size: 12px;
     font-weight: 600;
     text-align: center;
-    transition: all 0.15s ease-in-out;
+    transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
     cursor: pointer;
     min-width: 0;
     box-sizing: border-box;
@@ -93,7 +93,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.15s ease-in-out;
+    transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .tf-quick-action:hover .tf-quick-action-icon {
@@ -362,4 +362,30 @@
     background-color: rgba(245, 158, 11, 0.2);
     color: #FCD34D;
     border-color: rgba(245, 158, 11, 0.4);
+}
+
+[data-bs-theme="dark"] .tf-quick-action,
+[data-theme="dark"] .tf-quick-action {
+    background-color: #222630;
+    border-color: #383E4B;
+    color: #F0F2F6;
+}
+
+[data-bs-theme="dark"] .tf-quick-action:hover,
+[data-theme="dark"] .tf-quick-action:hover {
+    background-color: #292E39;
+    border-color: #3B82F6;
+    color: #60A5FA;
+}
+
+[data-bs-theme="dark"] .tf-quick-action-icon,
+[data-theme="dark"] .tf-quick-action-icon {
+    background-color: #1D2028;
+    color: #B4BBC8;
+}
+
+[data-bs-theme="dark"] .tf-quick-action:hover .tf-quick-action-icon,
+[data-theme="dark"] .tf-quick-action:hover .tf-quick-action-icon {
+    background-color: rgba(59, 130, 246, 0.2);
+    color: #60A5FA;
 }

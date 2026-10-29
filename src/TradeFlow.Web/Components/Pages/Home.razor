@@ -12,6 +12,7 @@
 @inject IDbContextFactory<TradeFlowDbContext> DbContextFactory
 @inject INotificationService NotificationService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject TradeFlow.Web.Services.IDashboardStateService DashboardState
 
 <PageTitle>Tổng quan — TradeFlow</PageTitle>
 
@@ -262,10 +263,9 @@
     private bool _isLoadingNotifications = true;
     private string? _notificationError;
 
-    private record StatItem(string Label, string Value, string Meta, string Color);
     private record QuickAction(string Label, string Href, string Icon);
 
-    private List<StatItem> _stats = [];
+    private List<TradeFlow.Web.Services.DashboardStatItem> _stats = [];
     private List<SystemNotificationDto> _notifications = [];
     private List<AuditLog> _recentActivities = [];
 
@@ -281,10 +281,35 @@
             """<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>""")
     ];
 
+    protected override void OnInitialized()
+    {
+        // Immediately present cached data on return navigation to completely eliminate skeleton flashes
+        if (DashboardState.HasLoaded)
+        {
+            _stats = DashboardState.Stats.ToList();
+            _recentActivities = DashboardState.RecentActivities.ToList();
+            _notifications = DashboardState.Notifications.ToList();
+            _isLoading = false;
+            _isLoadingNotifications = false;
+        }
+        else
+        {
+            _isLoading = true;
+            _isLoadingNotifications = true;
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
-        _isLoading = true;
-        _isLoadingNotifications = true;
+        await LoadDashboardDataAsync();
+    }
+
+    private async Task LoadDashboardDataAsync()
+    {
+        List<TradeFlow.Web.Services.DashboardStatItem> newStats;
+        List<AuditLog> newActivities;
+        List<SystemNotificationDto> newNotifications = [];
+        string? notifError = null;
 
         try
         {
@@ -306,7 +331,7 @@
             var productsCount = await db.Products
                 .CountAsync(p => p.IsActive);
 
-            _stats =
+            newStats =
             [
                 new("Đơn bán hàng hôm nay", todayOrdersCount.ToString("N0"), $"{todayOrdersCount} đơn phát sinh hôm nay", "primary"),
                 new("Doanh thu tháng này", monthRevenue > 0 ? $"{monthRevenue:N0} ₫" : "0 ₫", "Hóa đơn trong tháng", "success"),
@@ -314,7 +339,7 @@
                 new("Sản phẩm đang bán", productsCount.ToString("N0"), $"{productsCount} mặt hàng trong danh mục", "warning")
             ];
 
-            _recentActivities = await db.AuditLogs
+            newActivities = await db.AuditLogs
                 .AsNoTracking()
                 .OrderByDescending(x => x.OccurredAt)
                 .Take(5)
@@ -322,32 +347,41 @@
         }
         catch
         {
-            _stats =
+            newStats =
             [
                 new("Đơn bán hàng hôm nay", "—", "Chưa có dữ liệu", "primary"),
                 new("Doanh thu tháng này", "—", "Chưa có dữ liệu", "success"),
                 new("Khách hàng hoạt động", "—", "Chưa có dữ liệu", "info"),
                 new("Sản phẩm đang bán", "—", "Chưa có dữ liệu", "warning")
             ];
-        }
-        finally
-        {
-            _isLoading = false;
+            newActivities = [];
         }
 
         try
         {
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            _notifications = await NotificationService.GetNotificationsAsync(authState.User, 5);
+            newNotifications = await NotificationService.GetNotificationsAsync(authState.User, 5);
         }
         catch
         {
-            _notificationError = "Không thể tải thông báo.";
+            notifError = "Không thể tải thông báo.";
         }
-        finally
+
+        _stats = newStats;
+        _recentActivities = newActivities;
+        if (newNotifications.Count > 0 || notifError == null)
         {
-            _isLoadingNotifications = false;
+            _notifications = newNotifications;
         }
+        _notificationError = notifError;
+
+        _isLoading = false;
+        _isLoadingNotifications = false;
+
+        // Persist to scoped session cache so subsequent navigations are instant
+        DashboardState.SetState(_stats, _recentActivities, _notifications);
+
+        StateHasChanged();
     }
 
     private string? _dashboardActionLoadingId;
@@ -362,6 +396,7 @@
             if (success)
             {
                 _notifications = await NotificationService.GetNotificationsAsync(authState.User, 5);
+                DashboardState.SetState(_stats, _recentActivities, _notifications);
             }
         }
         catch (Exception ex)

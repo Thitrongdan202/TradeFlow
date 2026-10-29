@@ -1,13 +1,17 @@
 @page "/ban-hang/bao-gia/tao-moi"
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
 @using TradeFlow.Application.Common.Interfaces
 @using TradeFlow.Application.Common.Models.Pricing
 @using TradeFlow.Application.Common.Models.Sales
 @using TradeFlow.Domain.Entities.MasterData
 @using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
 @inject IQuotationService QuotationService
 @inject ISalesService SalesService
 @inject IPriceListService PriceListService
+@inject TradeFlowDbContext DbContext
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @rendermode InteractiveServer
@@ -400,11 +404,11 @@
     </div>
     <div class="tf-quotation-section-body">
         <textarea class="tf-terms-editor"
-                  placeholder="Nhập các điều khoản thương mại, tiến độ thanh toán, thời gian giao hàng, bảo hành..."
+                  placeholder="Nhập các điều khoản thương mại tinh gọn: thuế GTGT, điều kiện thanh toán, thời gian giao hàng, bảo hành..."
                   @bind="_quotation.Terms"
                   @bind:event="oninput"></textarea>
         <div class="tf-terms-footer-hint">
-            <span>💡 <strong>Gợi ý:</strong> Khung soạn thảo tự động mở rộng theo nội dung. Nhấn <code>Enter</code> để xuống dòng, phân tách rõ các điều khoản bằng đánh số 1, 2, 3...</span>
+            <span>💡 <strong>Gợi ý:</strong> Nội dung điều khoản sẽ hiển thị tinh gọn dạng chữ nghiêng dưới bảng giá, tương tự mẫu Đơn đặt hàng chuẩn.</span>
         </div>
     </div>
 </div>
@@ -459,7 +463,7 @@
     {
         QuotationDate = DateTime.Today,
         ExpiryDate = DateTime.Today.AddDays(30),
-        Terms = "1. Đơn giá trên là giá bán chưa bao gồm thuế GTGT (8%).\n2. Thanh toán: Tiền mặt hoặc chuyển khoản theo thỏa thuận hợp đồng.\n3. Thời gian giao hàng: Theo tiến độ thỏa thuận giữa hai bên.\n4. Bảo hành: Theo tiêu chuẩn kỹ thuật của nhà sản xuất."
+        Terms = "Đơn giá chưa bao gồm thuế GTGT. Thanh toán bằng tiền mặt hoặc chuyển khoản theo thỏa thuận. Giao hàng và bảo hành theo tiêu chuẩn nhà sản xuất."
     };
 
     private List<Customer> _customerSearchResults = new();
@@ -486,10 +490,44 @@
         {
             var priceLists = await PriceListService.GetPriceListsAsync();
             _availablePriceLists = priceLists.Where(x => x.Status == PriceListStatus.Active).ToList();
+
+            // Phân giải danh tính thực tế của người dùng đang đăng nhập
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userPrincipal = authState.User;
+            var userName = userPrincipal.Identity?.Name ?? "";
+            var userId = userPrincipal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            // 1. Ưu tiên nhân viên được liên kết
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var emp = await DbContext.Employees.AsNoTracking().FirstOrDefaultAsync(e => e.UserId == userId);
+                if (emp != null && !string.IsNullOrWhiteSpace(emp.FullName))
+                {
+                    _quotation.SalespersonName = emp.FullName.Trim();
+                }
+            }
+
+            // 2. Tra cứu ApplicationUser
+            if (string.IsNullOrWhiteSpace(_quotation.SalespersonName) && !string.IsNullOrEmpty(userName))
+            {
+                var dbUser = await DbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserName == userName || u.Id == userId);
+                if (dbUser != null && !string.IsNullOrWhiteSpace(dbUser.FullName) && !string.Equals(dbUser.FullName.Trim(), "admin", StringComparison.OrdinalIgnoreCase))
+                {
+                    _quotation.SalespersonName = dbUser.FullName.Trim();
+                }
+                else if (string.Equals(userName, "admin", StringComparison.OrdinalIgnoreCase))
+                {
+                    _quotation.SalespersonName = "Quản trị viên";
+                }
+                else
+                {
+                    _quotation.SalespersonName = userName;
+                }
+            }
         }
         catch (Exception ex)
         {
-            _errorMessage = "Không thể tải danh sách bảng giá: " + ex.Message;
+            _errorMessage = "Không thể tải thông tin khởi tạo: " + ex.Message;
         }
     }
 
@@ -507,7 +545,7 @@
 
     private void ResetDefaultTerms()
     {
-        _quotation.Terms = "1. Đơn giá trên là giá bán chưa bao gồm thuế GTGT (8%).\n2. Thanh toán: Tiền mặt hoặc chuyển khoản theo thỏa thuận hợp đồng.\n3. Thời gian giao hàng: Theo tiến độ thỏa thuận giữa hai bên.\n4. Bảo hành: Theo tiêu chuẩn kỹ thuật của nhà sản xuất.";
+        _quotation.Terms = "Đơn giá chưa bao gồm thuế GTGT. Thanh toán bằng tiền mặt hoặc chuyển khoản theo thỏa thuận. Giao hàng và bảo hành theo tiêu chuẩn nhà sản xuất.";
     }
 
     private async Task SearchCustomers(KeyboardEventArgs e)

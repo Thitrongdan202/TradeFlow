@@ -350,4 +350,157 @@ public class QuotationTests
         var qAccepted = await service.GetQuotationByIdAsync(quotation.Id);
         Assert.Equal(QuotationStatus.Accepted, qAccepted!.Status);
     }
+
+    [Fact]
+    public async Task CreateQuotation_ResolvesCreatorIdentity_NeverHardcodesAdmin()
+    {
+        using var context = CreateInMemoryDbContext();
+        var (service, _, _) = CreateService(context);
+
+        // Add ApplicationUser for admin with FullName = "Quản trị viên"
+        var adminUser = new ApplicationUser
+        {
+            Id = "user-1",
+            UserName = "admin",
+            FullName = "Quản trị viên"
+        };
+        context.Users.Add(adminUser);
+        await context.SaveChangesAsync();
+
+        var dto = new QuotationDto
+        {
+            CustomerId = 1,
+            QuotationDate = DateTime.UtcNow,
+            // Leaving SalespersonName null so service resolves creator identity
+            SalespersonName = null,
+            Items = new List<QuotationItemDto>
+            {
+                new() { ProductId = 1, ProductCode = "SP-001", ProductName = "SP A", Quantity = 1, UnitPrice = 100000m }
+            }
+        };
+
+        var created = await service.CreateQuotationAsync(dto);
+
+        Assert.NotNull(created);
+        Assert.Equal("admin", created.CreatedBy);
+        // DisplayCreatorName MUST NOT be literal "admin"
+        Assert.NotEqual("admin", created.DisplayCreatorName, StringComparer.OrdinalIgnoreCase);
+        Assert.Equal("Quản trị viên", created.DisplayCreatorName);
+    }
+
+    [Fact]
+    public async Task CreateQuotation_WithLinkedEmployee_ResolvesEmployeeFullName()
+    {
+        using var context = CreateInMemoryDbContext();
+
+        // Setup mock user for employee
+        var mockUser = new Mock<ICurrentUserService>();
+        mockUser.Setup(u => u.UserId).Returns("user-emp-1");
+        mockUser.Setup(u => u.UserName).Returns("kinhdoanh01");
+
+        var mockAudit = new Mock<IAuditService>();
+        var mockSales = new Mock<ISalesService>();
+        var mockEnv = new Mock<IWebHostEnvironment>();
+        mockEnv.Setup(e => e.WebRootPath).Returns(Path.GetTempPath());
+
+        var service = new QuotationService(context, mockUser.Object, mockAudit.Object, mockSales.Object, mockEnv.Object);
+
+        // Seed User and Employee
+        var user = new ApplicationUser { Id = "user-emp-1", UserName = "kinhdoanh01", FullName = "Kinh Doanh 01" };
+        var employee = new TradeFlow.Domain.Entities.Employees.Employee
+        {
+            Code = "NV00001",
+            FullName = "Nguyễn Văn An",
+            UserId = "user-emp-1"
+        };
+        context.Users.Add(user);
+        context.Employees.Add(employee);
+        await context.SaveChangesAsync();
+
+        var dto = new QuotationDto
+        {
+            CustomerId = 1,
+            QuotationDate = DateTime.UtcNow,
+            SalespersonName = null, // service should auto-resolve to linked employee
+            Items = new List<QuotationItemDto>
+            {
+                new() { ProductId = 1, ProductCode = "SP-001", ProductName = "SP A", Quantity = 2, UnitPrice = 500000m }
+            }
+        };
+
+        var created = await service.CreateQuotationAsync(dto);
+
+        Assert.NotNull(created);
+        Assert.Equal("kinhdoanh01", created.CreatedBy);
+        Assert.Equal("Nguyễn Văn An", created.DisplayCreatorName);
+    }
+
+    [Fact]
+    public void DisplayCreatorName_NeverReturnsLiteralAdmin()
+    {
+        // Case 1: Both SalespersonName and CreatorFullName are "admin"
+        var dto1 = new QuotationDto { SalespersonName = "admin", CreatorFullName = "admin" };
+        Assert.Equal("Người lập báo giá", dto1.DisplayCreatorName);
+
+        // Case 2: SalespersonName is null, CreatorFullName is "admin"
+        var dto2 = new QuotationDto { SalespersonName = null, CreatorFullName = "admin" };
+        Assert.Equal("Người lập báo giá", dto2.DisplayCreatorName);
+
+        // Case 3: SalespersonName is null, CreatorFullName is "Quản trị viên"
+        var dto3 = new QuotationDto { SalespersonName = null, CreatorFullName = "Quản trị viên" };
+        Assert.Equal("Quản trị viên", dto3.DisplayCreatorName);
+
+        // Case 4: SalespersonName is "Nguyễn Văn An", CreatorFullName is "admin"
+        var dto4 = new QuotationDto { SalespersonName = "Nguyễn Văn An", CreatorFullName = "admin" };
+        Assert.Equal("Nguyễn Văn An", dto4.DisplayCreatorName);
+    }
+
+    [Fact]
+    public async Task HistoricalQuotation_RetainsOriginalCreator_WhenViewedByDifferentUser()
+    {
+        using var context = CreateInMemoryDbContext();
+
+        // 1. User A creates quotation
+        var mockUserA = new Mock<ICurrentUserService>();
+        mockUserA.Setup(u => u.UserId).Returns("user-a");
+        mockUserA.Setup(u => u.UserName).Returns("kinhdoanh01");
+
+        var serviceA = new QuotationService(context, mockUserA.Object, new Mock<IAuditService>().Object, new Mock<ISalesService>().Object, new Mock<IWebHostEnvironment>().Object);
+
+        var userA = new ApplicationUser { Id = "user-a", UserName = "kinhdoanh01", FullName = "Kinh Doanh 01" };
+        var empA = new TradeFlow.Domain.Entities.Employees.Employee { Code = "NV00001", FullName = "Nguyễn Văn An", UserId = "user-a" };
+        context.Users.Add(userA);
+        context.Employees.Add(empA);
+        await context.SaveChangesAsync();
+
+        var dto = new QuotationDto
+        {
+            CustomerId = 1,
+            QuotationDate = DateTime.UtcNow,
+            SalespersonName = "Nguyễn Văn An",
+            Items = new List<QuotationItemDto>
+            {
+                new() { ProductId = 1, ProductCode = "SP-001", ProductName = "SP A", Quantity = 1, UnitPrice = 200000m }
+            }
+        };
+
+        var created = await serviceA.CreateQuotationAsync(dto);
+        Assert.Equal("kinhdoanh01", created.CreatedBy);
+        Assert.Equal("Nguyễn Văn An", created.SalespersonName);
+
+        // 2. User B (e.g. Director "quanly01") views the quotation
+        var mockUserB = new Mock<ICurrentUserService>();
+        mockUserB.Setup(u => u.UserId).Returns("user-b");
+        mockUserB.Setup(u => u.UserName).Returns("quanly01");
+
+        var serviceB = new QuotationService(context, mockUserB.Object, new Mock<IAuditService>().Object, new Mock<ISalesService>().Object, new Mock<IWebHostEnvironment>().Object);
+
+        var retrieved = await serviceB.GetQuotationByIdAsync(created.Id);
+        Assert.NotNull(retrieved);
+
+        // The quotation MUST retain the original creator and salesperson, NOT be replaced with User B
+        Assert.Equal("kinhdoanh01", retrieved.CreatedBy);
+        Assert.Equal("Nguyễn Văn An", retrieved.SalespersonName);
+        Assert.Equal("Nguyễn Văn An", retrieved.DisplayCreatorName);
+    }
 }

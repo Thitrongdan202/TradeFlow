@@ -445,11 +445,11 @@ else
         </div>
         <div class="tf-quotation-section-body">
             <textarea class="tf-terms-editor"
-                      placeholder="Nhập các điều khoản thương mại, tiến độ thanh toán, thời gian giao hàng, bảo hành..."
+                      placeholder="Nhập các điều khoản thương mại tinh gọn: thuế GTGT, điều kiện thanh toán, thời gian giao hàng, bảo hành..."
                       @bind="_quotation.Terms"
                       @bind:event="oninput"></textarea>
             <div class="tf-terms-footer-hint">
-                <span>💡 <strong>Gợi ý:</strong> Khung soạn thảo tự động mở rộng theo nội dung. Nhấn <code>Enter</code> để xuống dòng, phân tách rõ các điều khoản bằng đánh số 1, 2, 3...</span>
+                <span>💡 <strong>Gợi ý:</strong> Nội dung điều khoản sẽ hiển thị tinh gọn dạng chữ nghiêng dưới bảng giá, tương tự mẫu Đơn đặt hàng chuẩn.</span>
             </div>
         </div>
     </div>
@@ -552,7 +552,7 @@ else
     private void ResetDefaultTerms()
     {
         if (_quotation == null) return;
-        _quotation.Terms = "1. Đơn giá trên là giá bán chưa bao gồm thuế GTGT (8%).\n2. Thanh toán: Tiền mặt hoặc chuyển khoản theo thỏa thuận hợp đồng.\n3. Thời gian giao hàng: Theo tiến độ thỏa thuận giữa hai bên.\n4. Bảo hành: Theo tiêu chuẩn kỹ thuật của nhà sản xuất.";
+        _quotation.Terms = "Đơn giá chưa bao gồm thuế GTGT. Thanh toán bằng tiền mặt hoặc chuyển khoản theo thỏa thuận. Giao hàng và bảo hành theo tiêu chuẩn nhà sản xuất.";
     }
 
     private async Task SearchCustomers(KeyboardEventArgs e)

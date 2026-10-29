@@ -2,132 +2,408 @@
 @attribute [Authorize]
 @rendermode InteractiveServer
 
-<PageTitle>Cài đặt hệ thống — TradeFlow</PageTitle>
+<PageTitle>Trung tâm Cài đặt & Quản trị — TradeFlow</PageTitle>
 
-<div class="tf-page-header">
-    <div>
-        <h1 class="tf-page-title">Cài đặt hệ thống</h1>
-        <p class="tf-page-subtitle">Quản lý cấu hình chung, người dùng, phân quyền và giám sát hệ thống</p>
+<div class="tf-settings-hub">
+    @* Page Header *@
+    <div class="tf-page-header">
+        <div class="tf-page-header-left">
+            <h1 class="tf-page-title">Trung tâm Cài đặt</h1>
+            <p class="tf-page-subtitle">Quản lý cấu hình toàn diện, danh mục quy ước, tài khoản bảo mật và an toàn dữ liệu hệ thống</p>
+        </div>
     </div>
+
+    @* Search Bar *@
+    <div class="tf-settings-search-bar">
+        <svg class="tf-settings-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text"
+               class="tf-settings-search-input"
+               placeholder="Tìm kiếm cài đặt (người dùng, tiền tệ, chữ ký số, sao lưu...)"
+               @bind="_searchTerm"
+               @bind:event="oninput" />
+        @if (!string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            <button type="button" class="tf-settings-search-clear" @onclick="ClearSearch" title="Xóa tìm kiếm">
+                &times;
+            </button>
+        }
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_searchTerm))
+    {
+        <div class="tf-settings-search-status">
+            Tìm thấy <strong>@FilteredCount</strong> mục cài đặt phù hợp với từ khóa "<strong>@_searchTerm</strong>"
+        </div>
+    }
+
+    @* Group 1: Hệ thống & Giao diện *@
+    @if (IsCategoryVisible("system"))
+    {
+        <div class="tf-settings-category-section">
+            <div class="tf-settings-category-header">
+                <h2 class="tf-settings-category-title">Hệ thống &amp; Giao diện</h2>
+                <span class="tf-settings-category-desc">Cấu hình pháp nhân doanh nghiệp, nhận diện thương hiệu và tham số giao diện</span>
+            </div>
+            <div class="tf-settings-grid">
+                @if (IsItemVisible("cong-ty"))
+                {
+                    <AuthorizeView Policy="Permission:CompanySettings:View">
+                        <a href="/cai-dat/cong-ty" class="tf-settings-card">
+                            <div class="tf-settings-icon-box">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M14 9h1"/><path d="M14 13h1"/><path d="M14 17h1"/>
+                                </svg>
+                            </div>
+                            <div class="tf-settings-card-content">
+                                <div class="tf-settings-card-header">
+                                    <h3 class="tf-settings-card-title">Thông tin công ty</h3>
+                                    <svg class="tf-settings-card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="9 18 15 12 9 6"></polyline>
+                                    </svg>
+                                </div>
+                                <p class="tf-settings-card-desc">Cập nhật tên pháp nhân công ty, địa chỉ trụ sở, số điện thoại liên hệ và mã số thuế.</p>
+                            </div>
+                        </a>
+                    </AuthorizeView>
+                }
+
+                @if (IsItemVisible("thuong-hieu"))
+                {
+                    <AuthorizeView Policy="Permission:CompanySettings:View">
+                        <a href="/cai-dat/thuong-hieu" class="tf-settings-card">
+                            <div class="tf-settings-icon-box">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6z"/>
+                                </svg>
+                            </div>
+                            <div class="tf-settings-card-content">
+                                <div class="tf-settings-card-header">
+                                    <h3 class="tf-settings-card-title">Thương hiệu &amp; Màn hình tải</h3>
+                                    <svg class="tf-settings-card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="9 18 15 12 9 6"></polyline>
+                                    </svg>
+                                </div>
+                                <p class="tf-settings-card-desc">Tùy biến logo nhận diện thương hiệu, màu xoay tiến trình và màn hình tải toàn cục.</p>
+                            </div>
+                        </a>
+                    </AuthorizeView>
+                }
+            </div>
+        </div>
+    }
+
+    @* Group 2: Danh mục & Quy ước *@
+    @if (IsCategoryVisible("master-data"))
+    {
+        <div class="tf-settings-category-section">
+            <div class="tf-settings-category-header">
+                <h2 class="tf-settings-category-title">Danh mục &amp; Quy ước</h2>
+                <span class="tf-settings-category-desc">Đơn vị tính hàng hóa, loại tiền tệ giao dịch và các quy chuẩn dùng chung</span>
+            </div>
+            <div class="tf-settings-grid">
+                @if (IsItemVisible("don-vi-tinh"))
+                {
+                    <AuthorizeView Policy="Permission:UnitOfMeasures:View">
+                        <a href="/danh-muc/don-vi-tinh" class="tf-settings-card">
+                            <div class="tf-settings-icon-box">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                                </svg>
+                            </div>
+                            <div class="tf-settings-card-content">
+                                <div class="tf-settings-card-header">
+                                    <h3 class="tf-settings-card-title">Đơn vị tính</h3>
+                                    <svg class="tf-settings-card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="9 18 15 12 9 6"></polyline>
+                                    </svg>
+                                </div>
+                                <p class="tf-settings-card-desc">Quản lý danh mục đơn vị tính sản phẩm, tỷ lệ quy đổi và tiêu chuẩn đo lường.</p>
+                            </div>
+                        </a>
+                    </AuthorizeView>
+                }
+
+                @if (IsItemVisible("loai-tien"))
+                {
+                    <AuthorizeView Policy="Permission:Currencies:View">
+                        <a href="/danh-muc/loai-tien" class="tf-settings-card">
+                            <div class="tf-settings-icon-box">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                            </div>
+                            <div class="tf-settings-card-content">
+                                <div class="tf-settings-card-header">
+                                    <h3 class="tf-settings-card-title">Loại tiền tệ</h3>
+                                    <svg class="tf-settings-card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="9 18 15 12 9 6"></polyline>
+                                    </svg>
+                                </div>
+                                <p class="tf-settings-card-desc">Quản lý danh sách đồng tiền hạch toán, tỷ giá quy đổi và tiền tệ cơ sở.</p>
+                            </div>
+                        </a>
+                    </AuthorizeView>
+                }
+            </div>
+        </div>
+    }
+
+    @* Group 3: Người dùng & An ninh *@
+    @if (IsCategoryVisible("security"))
+    {
+        <div class="tf-settings-category-section">
+            <div class="tf-settings-category-header">
+                <h2 class="tf-settings-category-title">Người dùng &amp; An ninh</h2>
+                <span class="tf-settings-category-desc">Quản trị tài khoản nhân sự, phân quyền vai trò và chữ ký số mật mã học RSA</span>
+            </div>
+            <div class="tf-settings-grid">
+                @if (IsItemVisible("nguoi-dung"))
+                {
+                    <AuthorizeView Policy="Permission:Users:View">
+                        <a href="/cai-dat/nguoi-dung" class="tf-settings-card">
+                            <div class="tf-settings-icon-box">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+                                </svg>
+                            </div>
+                            <div class="tf-settings-card-content">
+                                <div class="tf-settings-card-header">
+                                    <h3 class="tf-settings-card-title">Quản lý người dùng</h3>
+                                    <svg class="tf-settings-card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="9 18 15 12 9 6"></polyline>
+                                    </svg>
+                                </div>
+                                <p class="tf-settings-card-desc">Thêm mới tài khoản, phân vai trò, khóa/mở khóa tài khoản và thiết lập lại mật khẩu.</p>
+                            </div>
+                        </a>
+                    </AuthorizeView>
+                }
+
+                @if (IsItemVisible("vai-tro"))
+                {
+                    <AuthorizeView Policy="Permission:Roles:View">
+                        <a href="/cai-dat/vai-tro" class="tf-settings-card">
+                            <div class="tf-settings-icon-box">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                </svg>
+                            </div>
+                            <div class="tf-settings-card-content">
+                                <div class="tf-settings-card-header">
+                                    <h3 class="tf-settings-card-title">Vai trò &amp; Phân quyền</h3>
+                                    <svg class="tf-settings-card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="9 18 15 12 9 6"></polyline>
+                                    </svg>
+                                </div>
+                                <p class="tf-settings-card-desc">Định nghĩa các nhóm vai trò và ma trận phân quyền chi tiết (Xem, Thêm, Sửa, Xóa, Duyệt).</p>
+                            </div>
+                        </a>
+                    </AuthorizeView>
+                }
+
+                @if (IsItemVisible("an-ninh"))
+                {
+                    <AuthorizeView Policy="Permission:Users:View">
+                        <a href="/cai-dat/an-ninh" class="tf-settings-card">
+                            <div class="tf-settings-icon-box">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                </svg>
+                            </div>
+                            <div class="tf-settings-card-content">
+                                <div class="tf-settings-card-header">
+                                    <h3 class="tf-settings-card-title">An ninh &amp; Chữ ký số</h3>
+                                    <svg class="tf-settings-card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="9 18 15 12 9 6"></polyline>
+                                    </svg>
+                                </div>
+                                <p class="tf-settings-card-desc">Quản lý người ký, cấp mã kích hoạt bảo mật, chứng thư RSA-2048 và xác thực hóa đơn.</p>
+                            </div>
+                        </a>
+                    </AuthorizeView>
+                }
+            </div>
+        </div>
+    }
+
+    @* Group 4: Dữ liệu & Kiểm soát *@
+    @if (IsCategoryVisible("data"))
+    {
+        <div class="tf-settings-category-section">
+            <div class="tf-settings-category-header">
+                <h2 class="tf-settings-category-title">Dữ liệu &amp; Kiểm soát</h2>
+                <span class="tf-settings-category-desc">Sao lưu dữ liệu định kỳ, khôi phục an toàn và giám sát vết kiểm toán</span>
+            </div>
+            <div class="tf-settings-grid">
+                @if (IsItemVisible("sao-luu"))
+                {
+                    <AuthorizeView Policy="Permission:CompanySettings:View">
+                        <a href="/cai-dat/sao-luu" class="tf-settings-card">
+                            <div class="tf-settings-icon-box">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                            </div>
+                            <div class="tf-settings-card-content">
+                                <div class="tf-settings-card-header">
+                                    <h3 class="tf-settings-card-title">Sao lưu &amp; Khôi phục dữ liệu</h3>
+                                    <svg class="tf-settings-card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="9 18 15 12 9 6"></polyline>
+                                    </svg>
+                                </div>
+                                <p class="tf-settings-card-desc">Xuất toàn diện 38 bảng thực thể và tệp hồ sơ ra tệp ZIP; Nạp và khôi phục an toàn.</p>
+                            </div>
+                        </a>
+                    </AuthorizeView>
+                }
+
+                @if (IsItemVisible("nhat-ky"))
+                {
+                    <AuthorizeView Policy="Permission:AuditLog:View">
+                        <a href="/cai-dat/nhat-ky" class="tf-settings-card">
+                            <div class="tf-settings-icon-box">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                                </svg>
+                            </div>
+                            <div class="tf-settings-card-content">
+                                <div class="tf-settings-card-header">
+                                    <h3 class="tf-settings-card-title">Nhật ký kiểm toán</h3>
+                                    <svg class="tf-settings-card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="9 18 15 12 9 6"></polyline>
+                                    </svg>
+                                </div>
+                                <p class="tf-settings-card-desc">Tra cứu lịch sử thao tác của tất cả tài khoản, địa chỉ IP và dòng thời gian tác vụ.</p>
+                            </div>
+                        </a>
+                    </AuthorizeView>
+                }
+            </div>
+        </div>
+    }
+
+    @* Group 5: Hỗ trợ & Trợ giúp *@
+    @if (IsCategoryVisible("support"))
+    {
+        <div class="tf-settings-category-section">
+            <div class="tf-settings-category-header">
+                <h2 class="tf-settings-category-title">Hỗ trợ &amp; Trợ giúp</h2>
+                <span class="tf-settings-category-desc">Kênh hỗ trợ kỹ thuật trực tiếp, tài liệu hướng dẫn và chẩn đoán sự cố</span>
+            </div>
+            <div class="tf-settings-grid">
+                @if (IsItemVisible("ho-tro"))
+                {
+                    <AuthorizeView Policy="Permission:TechnicalSupport:View">
+                        <a href="/cai-dat/ho-tro" class="tf-settings-card">
+                            <div class="tf-settings-icon-box">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                                </svg>
+                            </div>
+                            <div class="tf-settings-card-content">
+                                <div class="tf-settings-card-header">
+                                    <h3 class="tf-settings-card-title">Hỗ trợ kỹ thuật</h3>
+                                    <svg class="tf-settings-card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="9 18 15 12 9 6"></polyline>
+                                    </svg>
+                                </div>
+                                <p class="tf-settings-card-desc">Gửi nhật ký chẩn đoán, yêu cầu can thiệp từ xa và hướng dẫn vận hành hệ thống.</p>
+                            </div>
+                        </a>
+                    </AuthorizeView>
+                }
+            </div>
+        </div>
+    }
+
+    @* Empty Search Result State *@
+    @if (!string.IsNullOrWhiteSpace(_searchTerm) && FilteredCount == 0)
+    {
+        <div class="tf-settings-empty">
+            <svg class="tf-settings-empty-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                <line x1="8" y1="11" x2="14" y2="11"></line>
+            </svg>
+            <h3 class="tf-settings-empty-title">Không tìm thấy tính năng cài đặt</h3>
+            <p class="tf-settings-empty-text">Không có mục cài đặt nào khớp với từ khóa "@_searchTerm". Thử từ khóa khác hoặc xem tất cả danh mục.</p>
+            <button type="button" class="tf-btn tf-btn-primary tf-btn-sm" @onclick="ClearSearch">
+                Xem tất cả cài đặt
+            </button>
+        </div>
+    }
 </div>
 
-<div class="tf-card" style="max-width: 800px;">
-    <div class="tf-card-body">
-        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 16px;">
-            <AuthorizeView Policy="Permission:CompanySettings:View">
-                <li style="padding: 12px; border: 1px solid var(--tf-border); border-radius: 8px; transition: background 0.15s ease;">
-                    <a href="/cai-dat/cong-ty" style="font-weight: 600; font-size: 15px; color: var(--tf-primary); text-decoration: none; display: flex; align-items: center; gap: 8px;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M14 9h1"/><path d="M14 13h1"/><path d="M14 17h1"/>
-                        </svg>
-                        Thông tin công ty
-                    </a>
-                    <p style="margin: 6px 0 0; font-size: 13px; color: var(--tf-text-secondary); padding-left: 26px;">
-                        Cập nhật tên pháp nhân công ty, địa chỉ trụ sở, số điện thoại liên hệ và mã số thuế.
-                    </p>
-                </li>
-            </AuthorizeView>
+@code {
+    private string _searchTerm = "";
 
-            <AuthorizeView Policy="Permission:CompanySettings:View">
-                <li style="padding: 12px; border: 1px solid var(--tf-border); border-radius: 8px; transition: background 0.15s ease;">
-                    <a href="/cai-dat/thuong-hieu" style="font-weight: 600; font-size: 15px; color: var(--tf-primary); text-decoration: none; display: flex; align-items: center; gap: 8px;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6z"/>
-                        </svg>
-                        Thương hiệu &amp; Màn hình tải
-                    </a>
-                    <p style="margin: 6px 0 0; font-size: 13px; color: var(--tf-text-secondary); padding-left: 26px;">
-                        Tùy chỉnh logo nhận diện thương hiệu, màu sắc vòng xoay và màn hình tải ứng dụng toàn cục (Global Loading Screen).
-                    </p>
-                </li>
-            </AuthorizeView>
+    private readonly List<SettingMeta> _allSettings = new()
+    {
+        new SettingMeta("cong-ty", "system", "Thông tin công ty", "Cập nhật tên pháp nhân công ty, địa chỉ trụ sở, số điện thoại liên hệ và mã số thuế", new[] { "cong ty", "doanh nghiep", "dia chi", "ma so thue", "mst", "ten", "tru so" }),
+        new SettingMeta("thuong-hieu", "system", "Thương hiệu & Màn hình tải", "Tùy biến logo nhận diện thương hiệu, màu xoay tiến trình và màn hình tải toàn cục", new[] { "thuong hieu", "logo", "branding", "loading", "man hinh cho", "giao dien" }),
+        new SettingMeta("don-vi-tinh", "master-data", "Đơn vị tính", "Quản lý danh mục đơn vị tính sản phẩm, tỷ lệ quy đổi và tiêu chuẩn đo lường", new[] { "don vi tinh", "dvt", "uom", "quy doi", "don vi", "hang hoa" }),
+        new SettingMeta("loai-tien", "master-data", "Loại tiền tệ", "Quản lý danh sách đồng tiền hạch toán, tỷ giá quy đổi và tiền tệ cơ sở", new[] { "tien te", "loai tien", "ty gia", "vnd", "usd", "ngoai te", "currency" }),
+        new SettingMeta("nguoi-dung", "security", "Quản lý người dùng", "Thêm mới tài khoản, phân vai trò, khóa/mở khóa tài khoản và thiết lập lại mật khẩu", new[] { "nguoi dung", "tai khoan", "user", "mat khau", "password", "nhan vien" }),
+        new SettingMeta("vai-tro", "security", "Vai trò & Phân quyền", "Định nghĩa các nhóm vai trò và ma trận phân quyền chi tiết (Xem, Thêm, Sửa, Xóa, Duyệt)", new[] { "vai tro", "phan quyen", "role", "permission", "quyen han", "ma tran" }),
+        new SettingMeta("an-ninh", "security", "An ninh & Chữ ký số", "Quản lý người ký, cấp mã kích hoạt bảo mật, chứng thư RSA-2048 và xác thực hóa đơn", new[] { "an ninh", "chu ky so", "rsa", "digital signature", "otp", "pin", "xac thuc", "toan ven" }),
+        new SettingMeta("sao-luu", "data", "Sao lưu & Khôi phục dữ liệu", "Xuất toàn diện 38 bảng thực thể và tệp hồ sơ ra tệp ZIP; Nạp và khôi phục an toàn", new[] { "sao luu", "khoi phuc", "backup", "restore", "zip", "du lieu", "database" }),
+        new SettingMeta("nhat-ky", "data", "Nhật ký kiểm toán", "Tra cứu lịch sử thao tác của tất cả tài khoản, địa chỉ IP và dòng thời gian tác vụ", new[] { "nhat ky", "kiem toan", "audit log", "ip", "lich su", "truy vet" }),
+        new SettingMeta("ho-tro", "support", "Hỗ trợ kỹ thuật", "Gửi nhật ký chẩn đoán, yêu cầu can thiệp từ xa và hướng dẫn vận hành hệ thống", new[] { "ho tro", "ky thuat", "support", "tro giup", "huong dan", "chan doan" })
+    };
 
-            <AuthorizeView Policy="Permission:Users:View">
-                <li style="padding: 12px; border: 1px solid var(--tf-border); border-radius: 8px; transition: background 0.15s ease;">
-                    <a href="/cai-dat/nguoi-dung" style="font-weight: 600; font-size: 15px; color: var(--tf-primary); text-decoration: none; display: flex; align-items: center; gap: 8px;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
-                        </svg>
-                        Quản lý người dùng
-                    </a>
-                    <p style="margin: 6px 0 0; font-size: 13px; color: var(--tf-text-secondary); padding-left: 26px;">
-                        Thêm mới tài khoản, phân vai trò, khóa/mở khóa tài khoản và thiết lập lại mật khẩu.
-                    </p>
-                </li>
-            </AuthorizeView>
+    private void ClearSearch()
+    {
+        _searchTerm = "";
+    }
 
-            <AuthorizeView Policy="Permission:Roles:View">
-                <li style="padding: 12px; border: 1px solid var(--tf-border); border-radius: 8px; transition: background 0.15s ease;">
-                    <a href="/cai-dat/vai-tro" style="font-weight: 600; font-size: 15px; color: var(--tf-primary); text-decoration: none; display: flex; align-items: center; gap: 8px;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                        </svg>
-                        Vai trò &amp; Phân quyền
-                    </a>
-                    <p style="margin: 6px 0 0; font-size: 13px; color: var(--tf-text-secondary); padding-left: 26px;">
-                        Định nghĩa các nhóm vai trò và phân quyền chi tiết (Xem, Thêm, Sửa, Xóa, Phê duyệt, Import, Export).
-                    </p>
-                </li>
-            </AuthorizeView>
+    private bool IsItemVisible(string id)
+    {
+        if (string.IsNullOrWhiteSpace(_searchTerm)) return true;
+        var item = _allSettings.FirstOrDefault(s => s.Id == id);
+        if (item == null) return false;
 
-            <AuthorizeView Policy="Permission:Users:View">
-                <li style="padding: 12px; border: 1px solid var(--tf-border); border-radius: 8px; transition: background 0.15s ease;">
-                    <a href="/cai-dat/an-ninh" style="font-weight: 600; font-size: 15px; color: var(--tf-primary); text-decoration: none; display: flex; align-items: center; gap: 8px;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                        </svg>
-                        An ninh &amp; Chữ ký số
-                    </a>
-                    <p style="margin: 6px 0 0; font-size: 13px; color: var(--tf-text-secondary); padding-left: 26px;">
-                        Quản lý người ký, cấp mã kích hoạt bảo mật, chứng thư ký số RSA, giám sát vi phạm và cấu hình chính sách ký số.
-                    </p>
-                </li>
-            </AuthorizeView>
+        var term = RemoveDiacritics(_searchTerm.Trim().ToLowerInvariant());
+        var title = RemoveDiacritics(item.Title.ToLowerInvariant());
+        var desc = RemoveDiacritics(item.Description.ToLowerInvariant());
 
-            <AuthorizeView Policy="Permission:AuditLog:View">
-                <li style="padding: 12px; border: 1px solid var(--tf-border); border-radius: 8px; transition: background 0.15s ease;">
-                    <a href="/cai-dat/nhat-ky" style="font-weight: 600; font-size: 15px; color: var(--tf-primary); text-decoration: none; display: flex; align-items: center; gap: 8px;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-                        </svg>
-                        Nhật ký hoạt động hệ thống
-                    </a>
-                    <p style="margin: 6px 0 0; font-size: 13px; color: var(--tf-text-secondary); padding-left: 26px;">
-                        Tra cứu lịch sử thao tác của tất cả tài khoản, địa chỉ IP và thời gian truy cập.
-                    </p>
-                </li>
-            </AuthorizeView>
+        if (title.Contains(term) || desc.Contains(term)) return true;
 
-            <AuthorizeView Policy="Permission:TechnicalSupport:View">
-                <li style="padding: 12px; border: 1px solid var(--tf-border); border-radius: 8px; transition: background 0.15s ease;">
-                    <a href="/cai-dat/ho-tro" style="font-weight: 600; font-size: 15px; color: var(--tf-primary); text-decoration: none; display: flex; align-items: center; gap: 8px;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-                        </svg>
-                        Hỗ trợ kỹ thuật &amp; Khôi phục
-                    </a>
-                    <p style="margin: 6px 0 0; font-size: 13px; color: var(--tf-text-secondary); padding-left: 26px;">
-                        Yêu cầu can thiệp từ xa, gửi nhật ký chẩn đoán và hướng dẫn xử lý sự cố.
-                    </p>
-                </li>
-            </AuthorizeView>
+        return item.Tags.Any(t => RemoveDiacritics(t.ToLowerInvariant()).Contains(term));
+    }
 
-            <AuthorizeView Policy="Permission:CompanySettings:View">
-                <li style="padding: 12px; border: 1px solid var(--tf-border); border-radius: 8px; transition: background 0.15s ease;">
-                    <a href="/cai-dat/sao-luu" style="font-weight: 600; font-size: 15px; color: var(--tf-primary); text-decoration: none; display: flex; align-items: center; gap: 8px;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="7 10 12 15 17 10"></polyline>
-                            <line x1="12" y1="15" x2="12" y2="3"></line>
-                        </svg>
-                        Sao lưu &amp; Khôi phục dữ liệu
-                    </a>
-                    <p style="margin: 6px 0 0; font-size: 13px; color: var(--tf-text-secondary); padding-left: 26px;">
-                        Xuất toàn diện 38 bảng thực thể và tệp đính kèm ra tệp ZIP; Nạp và khôi phục an toàn với tiền kiểm đối chiếu trùng lặp.
-                    </p>
-                </li>
-            </AuthorizeView>
-        </ul>
-    </div>
-</div>
+    private bool IsCategoryVisible(string categoryId)
+    {
+        if (string.IsNullOrWhiteSpace(_searchTerm)) return true;
+        return _allSettings.Where(s => s.CategoryId == categoryId).Any(s => IsItemVisible(s.Id));
+    }
+
+    private int FilteredCount => _allSettings.Count(s => IsItemVisible(s.Id));
+
+    private static string RemoveDiacritics(string text)
+    {
+        var normalizedString = text.Normalize(System.Text.NormalizationForm.FormD);
+        var stringBuilder = new System.Text.StringBuilder();
+
+        foreach (var c in normalizedString)
+        {
+            var unicodeCategory = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
+            if (unicodeCategory != System.Globalization.UnicodeCategory.NonSpacingMark)
+            {
+                stringBuilder.Append(c);
+            }
+        }
+
+        return stringBuilder.ToString().Normalize(System.Text.NormalizationForm.FormC).Replace('đ', 'd').Replace('Đ', 'D');
+    }
+
+    private record SettingMeta(string Id, string CategoryId, string Title, string Description, string[] Tags);
+}

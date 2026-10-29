@@ -32,6 +32,32 @@ public class QuotationDto
     public DateTime CreatedAt { get; set; }
     public string? CreatedBy { get; set; }
 
+    /// <summary>
+    /// Họ tên đầy đủ của người tạo báo giá (được phân giải từ CreatedBy qua bảng Employees/Users).
+    /// </summary>
+    public string? CreatorFullName { get; set; }
+
+    /// <summary>
+    /// Tên người đại diện / lập báo giá hiển thị trên chứng từ.
+    /// Ưu tiên SalespersonName hợp lệ, sau đó đến CreatorFullName, và fallback trung thực "Người lập báo giá".
+    /// Tuyệt đối không bao giờ hiển thị chuỗi kỹ thuật "admin".
+    /// </summary>
+    public string DisplayCreatorName
+    {
+        get
+        {
+            if (!string.IsNullOrWhiteSpace(SalespersonName) && !string.Equals(SalespersonName.Trim(), "admin", StringComparison.OrdinalIgnoreCase))
+            {
+                return SalespersonName.Trim();
+            }
+            if (!string.IsNullOrWhiteSpace(CreatorFullName) && !string.Equals(CreatorFullName.Trim(), "admin", StringComparison.OrdinalIgnoreCase))
+            {
+                return CreatorFullName.Trim();
+            }
+            return "Người lập báo giá";
+        }
+    }
+
     public List<QuotationItemDto> Items { get; set; } = new();
 }
 

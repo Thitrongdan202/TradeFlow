@@ -971,8 +971,8 @@
     padding: 5px 6px;
     border-radius: 4px;
     border: 1px solid var(--tf-border, #cbd5e1);
-    background-color: #ffffff;
-    color: #1e293b;
+    background-color: var(--tf-surface-card, #ffffff);
+    color: var(--tf-text-primary, #1e293b);
     cursor: pointer;
     transition: all 0.12s ease;
 }
@@ -2997,7 +2997,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 8px 14px;
-    background-color: #ffffff;
+    background-color: var(--tf-surface-card, #ffffff);
     border-top: 1px solid var(--tf-border, #e2e8f0);
     gap: 12px;
     flex-shrink: 0;

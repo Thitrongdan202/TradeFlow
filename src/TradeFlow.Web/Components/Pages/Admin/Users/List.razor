@@ -52,7 +52,10 @@
 @if (_resetPasswordInfo != null)
 {
     <div class="tf-alert tf-alert-success tf-mb-4" style="flex-direction:column;align-items:flex-start;gap:8px;">
-        <div style="font-weight:600;">✅ Mật khẩu đã được đặt lại</div>
+        <div style="font-weight:600;display:flex;align-items:center;gap:6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:#16a34a;"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Mật khẩu đã được đặt lại</span>
+        </div>
         <div>Tài khoản: <strong>@_resetPasswordInfo.Value.Username</strong></div>
         <div style="font-family:monospace;background:rgba(0,0,0,0.05);padding:6px 12px;border-radius:6px;">
             Mật khẩu mới: <strong>@_resetPasswordInfo.Value.TempPassword</strong>
@@ -187,7 +190,7 @@
 </div>
 
 <TfModal IsOpen="@(_showOffboardModal && _offboardUser != null)"
-         Title="⚠️ Xác nhận quy trình thôi việc"
+         Title="Xác nhận quy trình thôi việc"
          Size="md"
          OnClose="CancelOffboard">
     <BodyContent>

@@ -3099,7 +3099,9 @@ textarea.tf-form-control {
 }
 
 .tf-excel-modal-card {
-  background: #ffffff;
+  background: var(--tf-surface-card, #ffffff);
+  color: var(--tf-text-primary, #0f172a);
+  border: 1px solid var(--tf-border, #e2e8f0);
   border-radius: 12px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   width: 100%;
@@ -3111,25 +3113,26 @@ textarea.tf-form-control {
 }
 
 .tf-excel-dropzone {
-  border: 2px dashed #cbd5e1;
+  border: 2px dashed var(--tf-border, #cbd5e1);
   border-radius: 10px;
   padding: 36px 20px;
   text-align: center;
-  background-color: #f8fafc;
+  background-color: var(--tf-surface-subtle, #f8fafc);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .tf-excel-dropzone:hover {
-  border-color: #3b82f6;
-  background-color: #eff6ff;
+  border-color: var(--tf-primary, #3b82f6);
+  background-color: var(--tf-surface-hover, #eff6ff);
 }
 
 .tf-excel-table th {
   font-size: 11.5px;
   font-weight: 600;
-  color: #475569;
-  background-color: #f1f5f9;
+  color: var(--tf-text-secondary, #475569);
+  background-color: var(--tf-surface-subtle, #f1f5f9);
+  border-bottom: 1px solid var(--tf-border, #e2e8f0);
   padding: 8px 10px;
   white-space: nowrap;
 }
@@ -6606,6 +6609,11 @@ body,
 }
 
 /* Warehouse Subnavigation & Multi-Warehouse Cards */
+.tf-warehouse-nav-container {
+  background-color: var(--tf-surface-card, #ffffff);
+  border: 1px solid var(--tf-border, #e2e8f0);
+}
+
 [data-bs-theme="dark"] .tf-warehouse-nav-container,
 [data-theme="dark"] .tf-warehouse-nav-container {
   background-color: #1e2028 !important;
@@ -6635,6 +6643,24 @@ body,
   background-color: #1e2028 !important;
   border-color: #2e3542 !important;
   color: #f1f5f9 !important;
+}
+
+/* Warehouse Quarantine Isolation Warning Banner */
+[data-bs-theme="dark"] .tf-quarantine-warning-banner,
+[data-theme="dark"] .tf-quarantine-warning-banner {
+  background-color: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+  color: #fde68a !important;
+}
+
+[data-bs-theme="dark"] .tf-quarantine-warning-banner .tf-banner-title,
+[data-theme="dark"] .tf-quarantine-warning-banner .tf-banner-title {
+  color: #fbbf24 !important;
+}
+
+[data-bs-theme="dark"] .tf-quarantine-warning-banner .tf-banner-text,
+[data-theme="dark"] .tf-quarantine-warning-banner .tf-banner-text {
+  color: #fef3c7 !important;
 }
 
 [data-bs-theme="dark"] .tf-wh-card:hover,
@@ -6674,6 +6700,7 @@ select:not(.tf-document-paper *),
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
   background-repeat: no-repeat;
   background-position: right 10px center;
   background-size: 14px 10px;
@@ -6812,6 +6839,43 @@ select:not(.tf-document-paper *),
   background-color: #17191f !important;
   color: #f1f5f9 !important;
   border-color: #383e4b !important;
+}
+
+/* Document Attachment Surfaces Dark Mode Resilience */
+[data-bs-theme="dark"] .tf-attachment-panel,
+[data-theme="dark"] .tf-attachment-panel {
+  background: var(--tf-surface-card, #1e2028) !important;
+  border-color: var(--tf-border, #2e3542) !important;
+}
+
+[data-bs-theme="dark"] .tf-attachment-header,
+[data-theme="dark"] .tf-attachment-header {
+  background: var(--tf-surface-card, #1e2028) !important;
+  border-bottom-color: var(--tf-border, #2e3542) !important;
+}
+
+[data-bs-theme="dark"] .tf-attachment-empty,
+[data-theme="dark"] .tf-attachment-empty {
+  background: var(--tf-surface-subtle, #17191f) !important;
+  border-color: var(--tf-border, #2e3542) !important;
+}
+
+[data-bs-theme="dark"] .tf-attachment-table th,
+[data-theme="dark"] .tf-attachment-table th {
+  background: var(--tf-surface-subtle, #17191f) !important;
+  border-bottom-color: var(--tf-border, #2e3542) !important;
+  color: var(--tf-text-secondary, #94a3b8) !important;
+}
+
+[data-bs-theme="dark"] .tf-attachment-table td,
+[data-theme="dark"] .tf-attachment-table td {
+  border-bottom-color: var(--tf-border-subtle, #242933) !important;
+  color: var(--tf-text-primary, #e2e8f0) !important;
+}
+
+[data-bs-theme="dark"] .tf-attachment-table tr:hover td,
+[data-theme="dark"] .tf-attachment-table tr:hover td {
+  background: var(--tf-surface-hover, #232833) !important;
 }
 
 

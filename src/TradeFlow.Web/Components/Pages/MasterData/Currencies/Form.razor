@@ -1,5 +1,7 @@
-﻿@page "/danh-muc/loai-tien/them-moi"
+@page "/danh-muc/loai-tien/them-moi"
 @page "/danh-muc/loai-tien/sua/{Id:int}"
+@page "/danh-muc/tien-te/them-moi"
+@page "/danh-muc/tien-te/sua/{Id:int}"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
@@ -7,6 +9,7 @@
 @using TradeFlow.Domain.Entities.MasterData
 @using TradeFlow.Infrastructure.Persistence
 @using TradeFlow.Domain.Enums
+@using TradeFlow.Web.Components.Shared.Forms
 @attribute [Authorize]
 
 @inject TradeFlowDbContext DbContext
@@ -21,7 +24,7 @@
 <div class="tf-page-header">
     <div class="tf-page-header-left">
         <h1 class="tf-page-title">@(IsEdit ? "Sửa" : "Thêm") Loại tiền</h1>
-        <p class="tf-page-subtitle">Quản lý đồng tiền thanh toán và tỷ giá quy đổi</p>
+        <p class="tf-page-subtitle">Quản lý đồng tiền thanh toán và tỷ giá quy đổi cơ sở VND</p>
     </div>
 </div>
 
@@ -36,19 +39,20 @@
 }
 else
 {
-    <div class="tf-card" style="max-width: 600px;">
+    <div class="tf-card" style="max-width: 650px;">
         <div class="tf-card-body">
             <EditForm Model="_model" OnValidSubmit="HandleValidSubmit">
                 <DataAnnotationsValidator />
 
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
                     <div class="tf-form-group">
-                        <label class="tf-label">Mã tiền tệ (ISO) <span style="color:var(--tf-error);">*</span></label>
+                        <label class="tf-label">Mã tiền tệ (ISO 4217) <span style="color:var(--tf-error);">*</span></label>
                         <InputText @bind-Value="_model.Code" class="tf-input" placeholder="VND, USD, EUR..." disabled="@IsEdit" />
+                        <div style="font-size: 11px; color: var(--tf-text-secondary); margin-top: 2px;">Chuẩn 3 ký tự viết hoa (ví dụ: USD)</div>
                     </div>
                     <div class="tf-form-group">
-                        <label class="tf-label">Ký hiệu</label>
-                        <InputText @bind-Value="_model.Symbol" class="tf-input" placeholder="₫, $, €..." />
+                        <label class="tf-label">Ký hiệu tiền tệ</label>
+                        <InputText @bind-Value="_model.Symbol" class="tf-input" placeholder="₫, $, €, ¥..." />
                     </div>
                 </div>
 
@@ -57,18 +61,37 @@ else
                     <InputText @bind-Value="_model.Name" class="tf-input" placeholder="Ví dụ: Việt Nam đồng, Đô la Mỹ..." />
                 </div>
 
-                <div class="tf-form-group">
-                    <label class="tf-label">Tỷ giá so với VND</label>
-                    <InputNumber @bind-Value="_model.ExchangeRate" class="tf-input" />
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div class="tf-form-group">
+                        <label class="tf-label">Tỷ giá so với VND (1 [Mã] = X VND) <span style="color:var(--tf-error);">*</span></label>
+                        <InputNumber @bind-Value="_model.ExchangeRate" class="tf-input" disabled="@(_model.IsDefault || _model.Code == "VND")" />
+                    </div>
+                    <div class="tf-form-group">
+                        <label class="tf-label">Số chữ số thập phân</label>
+                        <InputSelect @bind-Value="_model.DecimalPlaces" class="tf-input">
+                            <option value="0">0 (VND, JPY, KRW...)</option>
+                            <option value="2">2 (USD, EUR, SGD...)</option>
+                            <option value="3">3 (BHD, KWD...)</option>
+                            <option value="4">4 (Ngoại hối vi mô)</option>
+                        </InputSelect>
+                    </div>
                 </div>
 
-                <div style="display:flex;gap:24px;margin-top:12px;">
+                <div class="tf-form-group">
+                    <label class="tf-label">Căn cứ / Ghi chú</label>
+                    <InputText @bind-Value="_model.Notes" class="tf-input" placeholder="Căn cứ tỷ giá hoặc thông tin bổ sung..." />
+                </div>
+
+                <div style="display:flex;gap:24px;margin-top:12px;flex-wrap: wrap;">
+                    @if (!_model.IsDefault && _model.Code != "VND")
+                    {
+                        <label class="tf-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                            <InputCheckbox @bind-Value="_model.IsManualOverride" />
+                            <span>Cố định tỷ giá thủ công</span>
+                        </label>
+                    }
                     <label class="tf-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                        <InputCheckbox @bind-Value="_model.IsDefault" />
-                        <span>Tiền tệ mặc định</span>
-                    </label>
-                    <label class="tf-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                        <InputCheckbox @bind-Value="_model.IsActive" />
+                        <InputCheckbox @bind-Value="_model.IsActive" disabled="@(_model.IsDefault || _model.Code == "VND")" />
                         <span>Đang hoạt động</span>
                     </label>
                 </div>
@@ -76,44 +99,43 @@ else
                 <div class="tf-form-actions" style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
                     <a href="/danh-muc/loai-tien" class="tf-btn tf-btn-secondary">Hủy bỏ</a>
                     
-                @if (IsEdit)
-                {
-                    <AuthorizeView Policy="Permission:Currencies:Delete" Context="authContext">
-                        <button type="button" class="tf-btn tf-btn-danger" style="margin-left: auto;" @onclick="ConfirmDelete">Xóa</button>
-                    </AuthorizeView>
-                }
-<button type="submit" class="tf-btn tf-btn-primary">@(IsEdit ? "Lưu thay đổi" : "Tạo loại tiền")</button>
+                    @if (IsEdit && !_model.IsDefault && _model.Code != "VND")
+                    {
+                        <AuthorizeView Policy="Permission:Currencies:Delete" Context="authContext">
+                            <button type="button" class="tf-btn tf-btn-danger" style="margin-left: auto;" @onclick="ConfirmDelete">Xóa</button>
+                        </AuthorizeView>
+                    }
+                    <button type="submit" class="tf-btn tf-btn-primary">@(IsEdit ? "Lưu thay đổi" : "Tạo loại tiền")</button>
                 </div>
             </EditForm>
         </div>
     </div>
 }
 
-
-@if (_showDeleteModal)
-{
-    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 24px; border-radius: 8px; width: 400px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
-            <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 18px; color: var(--tf-danger);">Xóa dữ liệu?</h3>
-            <p style="margin-bottom: 24px;">Bạn có chắc chắn muốn xóa bản ghi này?</p>
-            @if (!string.IsNullOrEmpty(_deleteError))
-            {
-                <div class="tf-alert tf-alert-danger" style="margin-bottom: 16px;">
-                    @_deleteError
-                </div>
-            }
-            <div style="display: flex; justify-content: flex-end; gap: 12px;">
-                <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="CancelDelete">Hủy</button>
-                <button type="button" class="tf-btn tf-btn-danger" @onclick="ExecuteDelete">Xóa</button>
+<TfModal IsOpen="@_showDeleteModal"
+         Title="Xóa loại tiền tệ?"
+         Size="sm"
+         OnClose="CancelDelete">
+    <BodyContent>
+        <p class="tw-text-slate-600 tw-mb-4">Bạn có chắc chắn muốn xóa bản ghi này?</p>
+        @if (!string.IsNullOrEmpty(_deleteError))
+        {
+            <div class="tf-alert tf-alert-error tw-mb-3">
+                @_deleteError
             </div>
-        </div>
-    </div>
-}
+        }
+    </BodyContent>
+    <FooterContent>
+        <button type="button" class="tf-btn tf-btn-secondary" @onclick="CancelDelete">Hủy</button>
+        <button type="button" class="tf-btn tf-btn-danger" @onclick="ExecuteDelete">Xóa</button>
+    </FooterContent>
+</TfModal>
 
 @code {
     [Parameter] public int? Id { get; set; }
     private bool IsEdit => Id.HasValue;
     private Currency? _model;
+    private decimal _originalRate = 1m;
     private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
@@ -131,6 +153,7 @@ else
                 Nav.NavigateTo("/danh-muc/loai-tien");
                 return;
             }
+            _originalRate = _model.ExchangeRate;
         }
         else
         {
@@ -139,7 +162,7 @@ else
                 Nav.NavigateTo("/Account/AccessDenied");
                 return;
             }
-            _model = new Currency { IsActive = true, ExchangeRate = 1 };
+            _model = new Currency { IsActive = true, ExchangeRate = 1m, DecimalPlaces = 2, EffectiveAt = DateTime.UtcNow, RateSource = "Thủ công" };
         }
     }
 
@@ -156,26 +179,69 @@ else
             }
 
             _model.Code = _model.Code.Trim().ToUpperInvariant();
+            if (_model.ExchangeRate <= 0)
+            {
+                _errorMessage = "Tỷ giá quy đổi phải lớn hơn 0.";
+                return;
+            }
 
             if (await DbContext.Currencies.AnyAsync(x => x.Code == _model.Code && x.Id != _model.Id))
             {
-                _errorMessage = "Mã tiền tệ này đã tồn tại.";
+                _errorMessage = "Mã tiền tệ này đã tồn tại trong hệ thống.";
                 return;
             }
+
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var username = authState.User.Identity?.Name ?? CurrentUser.UserName;
 
             if (IsEdit)
             {
                 _model.UpdatedAt = DateTime.UtcNow;
-                _model.UpdatedBy = CurrentUser.UserName;
+                _model.UpdatedBy = username;
+
+                if (_model.ExchangeRate != _originalRate)
+                {
+                    _model.EffectiveAt = DateTime.UtcNow;
+                    _model.RateSource = "Thủ công";
+                    DbContext.ExchangeRateHistories.Add(new ExchangeRateHistory
+                    {
+                        CurrencyId = _model.Id,
+                        CurrencyCode = _model.Code,
+                        Rate = _model.ExchangeRate,
+                        PreviousRate = _originalRate,
+                        Source = "Thủ công",
+                        EffectiveAt = DateTime.UtcNow,
+                        Notes = _model.Notes,
+                        ChangedBy = username,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+
                 DbContext.Currencies.Update(_model);
-                await AuditService.LogAsync(AuditEventType.CurrencyUpdated, CurrentUser.UserName, "Currency", _model.Id.ToString());
+                await AuditService.LogAsync(AuditEventType.CurrencyUpdated, username, "Currency", _model.Id.ToString(), $"Cập nhật loại tiền {_model.Code}");
             }
             else
             {
                 _model.CreatedAt = DateTime.UtcNow;
-                _model.CreatedBy = CurrentUser.UserName;
+                _model.CreatedBy = username;
+                _model.EffectiveAt = DateTime.UtcNow;
+                _model.RateSource = "Thủ công";
                 DbContext.Currencies.Add(_model);
-                await AuditService.LogAsync(AuditEventType.CurrencyCreated, CurrentUser.UserName, "Currency", _model.Code);
+                await DbContext.SaveChangesAsync();
+
+                DbContext.ExchangeRateHistories.Add(new ExchangeRateHistory
+                {
+                    CurrencyId = _model.Id,
+                    CurrencyCode = _model.Code,
+                    Rate = _model.ExchangeRate,
+                    PreviousRate = null,
+                    Source = "Khởi tạo",
+                    EffectiveAt = DateTime.UtcNow,
+                    Notes = _model.Notes ?? "Khởi tạo loại tiền mới",
+                    ChangedBy = username,
+                    CreatedAt = DateTime.UtcNow
+                });
+                await AuditService.LogAsync(AuditEventType.CurrencyCreated, username, "Currency", _model.Code, $"Thêm mới loại tiền {_model.Code}");
             }
 
             await DbContext.SaveChangesAsync();
@@ -213,18 +279,31 @@ else
 
         try
         {
-            
-            
-DbContext.Currencies.Remove(_model);
+            if (_model == null) return;
+            if (_model.IsDefault || _model.Code == "VND")
+            {
+                _deleteError = "Không thể xóa đồng tiền cơ sở mặc định (VND).";
+                return;
+            }
 
+            string code = _model.Code;
+            bool isReferenced = await DbContext.PriceListItems.AnyAsync(x => x.CurrencyCode == code)
+                                || await DbContext.Contracts.AnyAsync(x => x.CurrencyCode == code);
+
+            if (isReferenced)
+            {
+                _deleteError = "Không thể xóa vì dữ liệu này đang được sử dụng trong bảng giá hoặc đơn hàng.";
+                return;
+            }
+
+            DbContext.Currencies.Remove(_model);
             await DbContext.SaveChangesAsync();
-            await AuditService.LogAsync(TradeFlow.Domain.Enums.AuditEventType.CurrencyDeleted, authState.User.Identity?.Name ?? "System", "Currency", _model.Id.ToString(), "Xóa", authState.User.Identity?.Name);
-            Nav.NavigateTo(Nav.Uri.Split('/')[1] == "danh-muc" ? "/danh-muc/" + Nav.Uri.Split('/')[2] : (Nav.Uri.Split('/')[1] == "doi-tac" ? "/doi-tac/" + Nav.Uri.Split('/')[2] : "/kho-hang"));
+            await AuditService.LogAsync(AuditEventType.CurrencyDeleted, authState.User.Identity?.Name ?? "System", "Currency", _model.Id.ToString(), $"Xóa loại tiền {code}");
+            Nav.NavigateTo("/danh-muc/loai-tien");
         }
         catch (Exception ex)
         {
             _deleteError = "Đã xảy ra lỗi: " + ex.Message;
         }
     }
-
 }

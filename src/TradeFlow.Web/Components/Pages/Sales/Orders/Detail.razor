@@ -58,7 +58,10 @@ else
             <p class="tf-page-subtitle">Ngày tạo: @_order.OrderDate.ToString("dd/MM/yyyy")</p>
         </div>
         <div class="tf-page-header-actions">
-            <a href="/hoa-don/don-dat-hang/@Id" class="tf-btn tf-btn-outline-primary" style="margin-right:8px;">📄 Xem / In Đơn đặt hàng</a>
+            <a href="/hoa-don/don-dat-hang/@Id" class="tf-btn tf-btn-outline-primary" style="margin-right:8px; display:inline-flex; align-items:center; gap:6px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                <span>Xem / In Đơn đặt hàng</span>
+            </a>
             @if (_order.Status == SalesOrderStatus.Draft)
             {
                 <AuthorizeView Policy="Permission:SalesOrders:Approve">
@@ -72,7 +75,10 @@ else
             @if (_order.Status == SalesOrderStatus.Confirmed || _order.Status == SalesOrderStatus.Invoiced)
             {
                 <AuthorizeView Policy="Permission:Invoices:Create">
-                    <button class="tf-btn tf-btn-primary" @onclick="OpenCreateInvoiceModal" disabled="@_isProcessing">🧾 Tạo hóa đơn</button>
+                    <button class="tf-btn tf-btn-primary" @onclick="OpenCreateInvoiceModal" disabled="@_isProcessing" style="display:inline-flex; align-items:center; gap:6px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>
+                        <span>Tạo hóa đơn</span>
+                    </button>
                 </AuthorizeView>
             }
         </div>
@@ -103,8 +109,9 @@ else
                     {
                         <p style="margin-top:6px;">
                             Báo giá nguồn:
-                            <a href="/ban-hang/bao-gia/chi-tiet/@_order.QuotationId" class="tf-badge tf-badge-info" style="text-decoration:none; font-size:12px; margin-left:4px;">
-                                📄 @(!string.IsNullOrEmpty(_order.QuotationCode) ? _order.QuotationCode : $"BG #{_order.QuotationId}")
+                            <a href="/ban-hang/bao-gia/chi-tiet/@_order.QuotationId" class="tf-badge tf-badge-info" style="text-decoration:none; font-size:12px; margin-left:4px; display:inline-flex; align-items:center; gap:4px;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                <span>@(!string.IsNullOrEmpty(_order.QuotationCode) ? _order.QuotationCode : $"BG #{_order.QuotationId}")</span>
                             </a>
                         </p>
                     }
@@ -296,7 +303,7 @@ else
 @if (_showDeleteModal)
 {
     <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 24px; border-radius: 8px; width: 400px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+        <div style="background: var(--tf-surface-card, #ffffff); color: var(--tf-text-primary, #0f172a); border: 1px solid var(--tf-border, #e2e8f0); padding: 24px; border-radius: 8px; width: 400px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
             <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 18px; color: var(--tf-danger);">Xóa dữ liệu?</h3>
             <p style="margin-bottom: 24px;">Bạn có chắc chắn muốn xóa bản ghi này?</p>
             @if (!string.IsNullOrEmpty(_deleteError))

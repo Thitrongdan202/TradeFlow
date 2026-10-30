@@ -323,18 +323,18 @@
                                                     @if (isExpanded && t.LineItems.Any())
                                                     {
                                                         <tr class="tf-tx-lineitems-row">
-                                                            <td colspan="7" style="padding: 6px 12px 12px 28px; background-color: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                                            <td colspan="7" style="padding: 6px 12px 12px 28px; background-color: var(--tf-surface-subtle, #f8fafc); border-bottom: 2px solid var(--tf-border, #e2e8f0);">
                                                                 <div class="tf-tx-lineitems-box">
-                                                                    <div style="font-size: 11.5px; font-weight: 600; color: #475569; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                                                                    <div style="font-size: 11.5px; font-weight: 600; color: var(--tf-text-secondary, #475569); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
                                                                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                                             <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
                                                                             <line x1="3" y1="6" x2="21" y2="6"/>
                                                                         </svg>
                                                                         <span>Chi tiết các mặt hàng mua (@t.LineItems.Count sản phẩm):</span>
                                                                     </div>
-                                                                    <table class="tf-drawer-table" style="font-size: 11.5px; background: #ffffff; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%;">
+                                                                    <table class="tf-drawer-table" style="font-size: 11.5px; background: var(--tf-surface-card, #ffffff); border-radius: 6px; border: 1px solid var(--tf-border, #e2e8f0); width: 100%;">
                                                                         <thead>
-                                                                            <tr style="background: #f1f5f9; color: #475569;">
+                                                                            <tr style="background: var(--tf-surface-subtle, #f1f5f9); color: var(--tf-text-secondary, #475569);">
                                                                                 <th style="width: 36px; text-align: center; padding: 4px 6px;">STT</th>
                                                                                 <th style="min-width: 80px; padding: 4px 6px;">Mã SP</th>
                                                                                 <th style="min-width: 140px; padding: 4px 6px;">Tên sản phẩm</th>
@@ -350,20 +350,20 @@
                                                                             @for (int i = 0; i < t.LineItems.Count; i++)
                                                                             {
                                                                                 var line = t.LineItems[i];
-                                                                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                                                                <tr style="border-bottom: 1px solid var(--tf-border-subtle, #f1f5f9);">
                                                                                     <td style="text-align: center; color: #94a3b8; padding: 4px 6px;">@(i + 1)</td>
                                                                                     <td style="font-family: monospace; font-weight: 600; color: #2563eb; padding: 4px 6px;">@line.ProductCode</td>
-                                                                                    <td style="color: #1e293b; padding: 4px 6px;">@line.ProductName</td>
-                                                                                    <td style="text-align: center; color: #64748b; padding: 4px 6px;">@line.UnitName</td>
+                                                                                    <td style="color: var(--tf-text-primary, #1e293b); padding: 4px 6px;">@line.ProductName</td>
+                                                                                    <td style="text-align: center; color: var(--tf-text-secondary, #64748b); padding: 4px 6px;">@line.UnitName</td>
                                                                                     <td style="text-align: right; font-weight: 600; padding: 4px 6px;">@line.Quantity.ToString("N0")</td>
-                                                                                    <td style="text-align: right; color: #475569; padding: 4px 6px;">@line.UnitPrice.ToString("N0") ₫</td>
+                                                                                    <td style="text-align: right; color: var(--tf-text-secondary, #475569); padding: 4px 6px;">@line.UnitPrice.ToString("N0") ₫</td>
                                                                                     <td style="text-align: right; color: @(line.DiscountAmount > 0 ? "#16a34a" : "#94a3b8"); padding: 4px 6px;">
                                                                                         @(line.DiscountAmount > 0 ? line.DiscountAmount.ToString("N0") + " ₫" : "-")
                                                                                     </td>
-                                                                                    <td style="text-align: center; color: #64748b; padding: 4px 6px;">
+                                                                                    <td style="text-align: center; color: var(--tf-text-secondary, #64748b); padding: 4px 6px;">
                                                                                         @(line.TaxRate > 0 ? $"{line.TaxRate}%" : "0%")
                                                                                     </td>
-                                                                                    <td style="text-align: right; font-weight: 600; color: #0f172a; padding: 4px 6px;">
+                                                                                    <td style="text-align: right; font-weight: 600; color: var(--tf-text-primary, #0f172a); padding: 4px 6px;">
                                                                                         @line.LineTotal.ToString("N0") ₫
                                                                                     </td>
                                                                                 </tr>
@@ -652,18 +652,18 @@
                                                     @if (isExpanded && t.LineItems.Any())
                                                     {
                                                         <tr class="tf-tx-lineitems-row">
-                                                            <td colspan="7" style="padding: 6px 12px 12px 28px; background-color: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                                            <td colspan="7" style="padding: 6px 12px 12px 28px; background-color: var(--tf-surface-subtle, #f8fafc); border-bottom: 2px solid var(--tf-border, #e2e8f0);">
                                                                 <div class="tf-tx-lineitems-box">
-                                                                    <div style="font-size: 11.5px; font-weight: 600; color: #475569; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                                                                    <div style="font-size: 11.5px; font-weight: 600; color: var(--tf-text-secondary, #475569); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
                                                                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                                             <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
                                                                             <line x1="3" y1="6" x2="21" y2="6"/>
                                                                         </svg>
                                                                         <span>Chi tiết các mặt hàng (@t.LineItems.Count sản phẩm):</span>
                                                                     </div>
-                                                                    <table class="tf-drawer-table" style="font-size: 11.5px; background: #ffffff; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%;">
+                                                                    <table class="tf-drawer-table" style="font-size: 11.5px; background: var(--tf-surface-card, #ffffff); border-radius: 6px; border: 1px solid var(--tf-border, #e2e8f0); width: 100%;">
                                                                         <thead>
-                                                                            <tr style="background: #f1f5f9; color: #475569;">
+                                                                            <tr style="background: var(--tf-surface-subtle, #f1f5f9); color: var(--tf-text-secondary, #475569);">
                                                                                 <th style="width: 36px; text-align: center; padding: 4px 6px;">STT</th>
                                                                                 <th style="min-width: 80px; padding: 4px 6px;">Mã SP</th>
                                                                                 <th style="min-width: 140px; padding: 4px 6px;">Tên sản phẩm</th>
@@ -679,20 +679,20 @@
                                                                             @for (int i = 0; i < t.LineItems.Count; i++)
                                                                             {
                                                                                 var line = t.LineItems[i];
-                                                                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                                                                <tr style="border-bottom: 1px solid var(--tf-border-subtle, #f1f5f9);">
                                                                                     <td style="text-align: center; color: #94a3b8; padding: 4px 6px;">@(i + 1)</td>
                                                                                     <td style="font-family: monospace; font-weight: 600; color: #2563eb; padding: 4px 6px;">@line.ProductCode</td>
-                                                                                    <td style="color: #1e293b; padding: 4px 6px;">@line.ProductName</td>
-                                                                                    <td style="text-align: center; color: #64748b; padding: 4px 6px;">@line.UnitName</td>
+                                                                                    <td style="color: var(--tf-text-primary, #1e293b); padding: 4px 6px;">@line.ProductName</td>
+                                                                                    <td style="text-align: center; color: var(--tf-text-secondary, #64748b); padding: 4px 6px;">@line.UnitName</td>
                                                                                     <td style="text-align: right; font-weight: 600; padding: 4px 6px;">@line.Quantity.ToString("N0")</td>
-                                                                                    <td style="text-align: right; color: #475569; padding: 4px 6px;">@line.UnitPrice.ToString("N0") ₫</td>
+                                                                                    <td style="text-align: right; color: var(--tf-text-secondary, #475569); padding: 4px 6px;">@line.UnitPrice.ToString("N0") ₫</td>
                                                                                     <td style="text-align: right; color: @(line.DiscountAmount > 0 ? "#16a34a" : "#94a3b8"); padding: 4px 6px;">
                                                                                         @(line.DiscountAmount > 0 ? line.DiscountAmount.ToString("N0") + " ₫" : "-")
                                                                                     </td>
-                                                                                    <td style="text-align: center; color: #64748b; padding: 4px 6px;">
+                                                                                    <td style="text-align: center; color: var(--tf-text-secondary, #64748b); padding: 4px 6px;">
                                                                                         @(line.TaxRate > 0 ? $"{line.TaxRate}%" : "0%")
                                                                                     </td>
-                                                                                    <td style="text-align: right; font-weight: 600; color: #0f172a; padding: 4px 6px;">
+                                                                                    <td style="text-align: right; font-weight: 600; color: var(--tf-text-primary, #0f172a); padding: 4px 6px;">
                                                                                         @line.LineTotal.ToString("N0") ₫
                                                                                     </td>
                                                                                 </tr>

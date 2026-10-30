@@ -128,6 +128,15 @@ public static class InfrastructureServiceExtensions
         // Register Warehouse Management & Operations services
         services.AddScoped<IWarehouseService, Services.WarehouseService>();
 
+        // Register Multi-Currency & Exchange Rate services
+        services.AddHttpClient("ExchangeRateProvider", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(8);
+            client.DefaultRequestHeaders.Add("User-Agent", "TradeFlow-ERP/1.0");
+        });
+        services.AddScoped<IExchangeRateProvider, Services.ExchangeRateProvider>();
+        services.AddScoped<ICurrencyService, Services.CurrencyService>();
+
         return services;
     }
 }

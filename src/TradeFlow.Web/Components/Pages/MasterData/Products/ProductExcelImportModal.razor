@@ -13,9 +13,9 @@
     <div class="tf-excel-modal" @onclick="HandleBackdropClick">
         <div class="tf-excel-modal-card" @onclick:stopPropagation="true">
             @* Modal Header *@
-            <div style="padding: 18px 24px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; background: #ffffff;">
+            <div style="padding: 18px 24px; border-bottom: 1px solid var(--tf-border, #e2e8f0); display: flex; align-items: center; justify-content: space-between; background: var(--tf-surface-card, #ffffff);">
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="width: 36px; height: 36px; border-radius: 8px; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center;">
+                    <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(37, 99, 235, 0.12); color: #2563eb; display: flex; align-items: center; justify-content: center;">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                             <polyline points="14 2 14 8 20 8"></polyline>
@@ -25,11 +25,11 @@
                         </svg>
                     </div>
                     <div>
-                        <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; margin: 0;">Nhập danh mục &amp; Bảng giá từ Excel</h3>
-                        <p style="font-size: 12px; color: #64748b; margin: 2px 0 0;">Hỗ trợ file .xlsx dung lượng đến 200MB, trích xuất hình ảnh nhúng và giá chưa VAT</p>
+                        <h3 style="font-size: 17px; font-weight: 700; color: var(--tf-text-primary, #0f172a); margin: 0;">Nhập danh mục &amp; Bảng giá từ Excel</h3>
+                        <p style="font-size: 12px; color: var(--tf-text-muted, #64748b); margin: 2px 0 0;">Hỗ trợ file .xlsx dung lượng đến 200MB, trích xuất hình ảnh nhúng và giá chưa VAT</p>
                     </div>
                 </div>
-                <button type="button" class="tf-btn-icon" @onclick="CloseModal" style="background:none; border:none; font-size: 18px; color:#64748b; cursor:pointer; padding:4px;" title="Đóng">
+                <button type="button" class="tf-btn-icon" @onclick="CloseModal" style="background:none; border:none; font-size: 18px; color:var(--tf-text-muted, #64748b); cursor:pointer; padding:4px;" title="Đóng">
                     ✕
                 </button>
             </div>
@@ -55,10 +55,10 @@
                                 <line x1="12" y1="3" x2="12" y2="15"/>
                             </svg>
                         </div>
-                        <h4 style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">
+                        <h4 style="font-size: 16px; font-weight: 700; color: var(--tf-text-primary, #0f172a); margin-bottom: 6px;">
                             Chọn hoặc kéo thả file Excel bảng giá (.xlsx)
                         </h4>
-                        <p style="color: #64748b; font-size: 13px; max-width: 520px; margin: 0 auto 18px;">
+                        <p style="color: var(--tf-text-muted, #64748b); font-size: 13px; max-width: 520px; margin: 0 auto 18px;">
                             Hệ thống tự động đọc cấu trúc bảng tính, mã hàng mới, mã cũ, quy cách kỹ thuật, hình ảnh sản phẩm trong ô và đơn giá đại lý chưa VAT.
                         </p>
 

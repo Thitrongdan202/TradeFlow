@@ -21,13 +21,13 @@
         <LoadingButton Variant="secondary"
                        IsLoading="@_isPrinting"
                        LoadingText="Đang in..."
-                       Text="🖨 In đơn hàng"
+                       Text="In đơn hàng"
                        OnClick="PrintOrder"
                        Disabled="@_isProcessing" />
         <LoadingButton Variant="primary"
                        IsLoading="@_isExporting"
                        LoadingText="Đang tải PDF..."
-                       Text="⬇ Tải PDF"
+                       Text="Tải PDF"
                        OnClick="ExportPdf"
                        Disabled="@_isProcessing" />
     </div>

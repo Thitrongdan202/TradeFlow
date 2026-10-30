@@ -72,14 +72,14 @@
     justify-content: center;
     text-align: center;
     padding: 28px 20px;
-    background: #f8fafc;
-    border: 1px dashed #cbd5e1;
+    background: var(--tf-surface-subtle, #f8fafc);
+    border: 1px dashed var(--tf-border, #cbd5e1);
     border-radius: 6px;
     transition: all 0.15s ease;
 }
 
 .tf-attachment-empty-icon {
-    color: #94a3b8;
+    color: var(--tf-text-muted, #94a3b8);
     margin-bottom: 8px;
 }
 
@@ -105,23 +105,23 @@
 }
 
 .tf-attachment-table th {
-    background: #f8fafc;
-    color: #475569;
+    background: var(--tf-surface-subtle, #f8fafc);
+    color: var(--tf-text-secondary, #475569);
     font-weight: 600;
     padding: 10px 12px;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--tf-border, #e2e8f0);
     text-align: left;
 }
 
 .tf-attachment-table td {
     padding: 11px 12px;
-    border-bottom: 1px solid #f1f5f9;
-    color: #1e293b;
+    border-bottom: 1px solid var(--tf-border-subtle, #f1f5f9);
+    color: var(--tf-text-primary, #1e293b);
     vertical-align: middle;
 }
 
 .tf-attachment-table tr:hover td {
-    background-color: #f8fafc;
+    background-color: var(--tf-surface-subtle, #f8fafc);
 }
 
 .tf-attachment-link {

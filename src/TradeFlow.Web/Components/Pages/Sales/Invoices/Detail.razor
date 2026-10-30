@@ -38,14 +38,14 @@
             {
                 @if (_invoice.SignatureStatus != DigitalSignatureStatus.Signed && _invoice.SignatureStatus != DigitalSignatureStatus.Valid)
                 {
-                    <button class="tf-btn tf-btn-success" @onclick="OpenSignModal" disabled="@_isProcessing">✍ Ký điện tử</button>
+                    <button class="tf-btn tf-btn-success" @onclick="OpenSignModal" disabled="@_isProcessing"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px; vertical-align:-2px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Ký điện tử</button>
                 }
                 @if (_invoice.SignatureStatus != DigitalSignatureStatus.Unsigned)
                 {
-                    <LoadingButton Class="tf-btn tf-btn-outline-primary" IsLoading="@_isVerifying" LoadingText="Đang kiểm tra..." OnClick="VerifySignature">🔍 Kiểm tra chữ ký</LoadingButton>
+                    <LoadingButton Class="tf-btn tf-btn-outline-primary" IsLoading="@_isVerifying" LoadingText="Đang kiểm tra..." OnClick="VerifySignature"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px; vertical-align:-2px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Kiểm tra chữ ký</LoadingButton>
                 }
-                <LoadingButton Class="tf-btn tf-btn-outline-primary" IsLoading="@_isExportingPdf" LoadingText="Đang tạo PDF..." OnClick="ExportPdf">⬇ Tải PDF</LoadingButton>
-                <LoadingButton Class="tf-btn tf-btn-outline-secondary" IsLoading="@_isExportingXml" LoadingText="Đang tạo XML..." OnClick="ExportXml">📄 Tải XML</LoadingButton>
+                <LoadingButton Class="tf-btn tf-btn-outline-primary" IsLoading="@_isExportingPdf" LoadingText="Đang tạo PDF..." OnClick="ExportPdf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px; vertical-align:-2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Tải PDF</LoadingButton>
+                <LoadingButton Class="tf-btn tf-btn-outline-secondary" IsLoading="@_isExportingXml" LoadingText="Đang tạo XML..." OnClick="ExportXml"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px; vertical-align:-2px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Tải XML</LoadingButton>
             }
         }
         else
@@ -53,7 +53,7 @@
             @if (_orderDoc != null)
             {
                 <span class="tf-badge tf-badge-secondary" style="margin-right:4px;">Chứng từ nội bộ</span>
-                <LoadingButton Class="tf-btn tf-btn-outline-primary" IsLoading="@_isExportingOrderPdf" LoadingText="Đang tạo PDF..." OnClick="ExportOrderPdf">⬇ Tải PDF Đơn đặt hàng</LoadingButton>
+                <LoadingButton Class="tf-btn tf-btn-outline-primary" IsLoading="@_isExportingOrderPdf" LoadingText="Đang tạo PDF..." OnClick="ExportOrderPdf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px; vertical-align:-2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Tải PDF Đơn đặt hàng</LoadingButton>
             }
         }
     </div>
@@ -87,19 +87,22 @@ else
         <div style="display:flex; align-items:center; gap:10px;">
             <span style="font-size:13px; font-weight:600; color:var(--tf-text-primary);">Loại mẫu chứng từ:</span>
             <button type="button" class="tf-btn @(_selectedDocType == "gtgt" ? "tf-btn-primary" : "tf-btn-outline-secondary")"
-                    style="padding:5px 14px; font-size:13px;"
+                    style="padding:5px 14px; font-size:13px; display:inline-flex; align-items:center;"
                     @onclick='() => SwitchDocType("gtgt")'>
-                🧾 @(IsVat ? "Hóa đơn điện tử GTGT" : "Hóa đơn bán hàng")
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>
+                @(IsVat ? "Hóa đơn điện tử GTGT" : "Hóa đơn bán hàng")
             </button>
             <button type="button" class="tf-btn @(_selectedDocType == "order" ? "tf-btn-primary" : "tf-btn-outline-secondary")"
-                    style="padding:5px 14px; font-size:13px;"
+                    style="padding:5px 14px; font-size:13px; display:inline-flex; align-items:center;"
                     @onclick='() => SwitchDocType("order")'>
-                📝 Đơn đặt hàng (Sales Order)
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                Đơn đặt hàng (Sales Order)
             </button>
         </div>
         <div>
-            <button type="button" class="tf-btn tf-btn-sm tf-btn-secondary" @onclick="PrintDocument">
-                🖨 In chứng từ
+            <button type="button" class="tf-btn tf-btn-sm tf-btn-secondary" @onclick="PrintDocument" style="display:inline-flex; align-items:center;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                In chứng từ
             </button>
         </div>
     </div>
@@ -738,7 +741,10 @@ else
     <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:center; justify-content:center;">
         <div style="background:var(--tf-bg-card); color:var(--tf-text-primary); border:1px solid var(--tf-border); padding:24px; border-radius:8px; width:560px; max-width:95%; box-shadow:0 10px 25px rgba(0,0,0,0.3);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                <h3 style="margin:0; font-size:18px; color:var(--tf-primary);">🔍 Kết quả kiểm tra chữ ký điện tử</h3>
+                <h3 style="margin:0; font-size:18px; color:var(--tf-primary); display:flex; align-items:center; gap:8px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <span>Kết quả kiểm tra chữ ký điện tử</span>
+                </h3>
                 <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => _showVerifyModal = false">✕</button>
             </div>
 

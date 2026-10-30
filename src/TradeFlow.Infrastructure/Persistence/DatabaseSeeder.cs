@@ -440,13 +440,41 @@ public class DatabaseSeeder
         _logger.LogInformation("Seeding reference data...");
         var now = DateTime.UtcNow;
 
-        if (!await _context.Currencies.AnyAsync(c => c.Code == "VND"))
+        var standardCurrencies = new[]
         {
-            _context.Currencies.Add(new Currency { Code = "VND", Name = "Việt Nam đồng", Symbol = "₫", ExchangeRate = 1, IsDefault = true, IsActive = true, CreatedAt = now, CreatedBy = "System" });
-        }
-        if (!await _context.Currencies.AnyAsync(c => c.Code == "USD"))
+            new Currency { Code = "VND", Name = "Việt Nam đồng", Symbol = "₫", ExchangeRate = 1m, DecimalPlaces = 0, IsDefault = true, IsActive = true, RateSource = "Gốc", EffectiveAt = now, CreatedAt = now, CreatedBy = "System" },
+            new Currency { Code = "USD", Name = "Đô la Mỹ", Symbol = "$", ExchangeRate = 25400m, DecimalPlaces = 2, IsDefault = false, IsActive = true, RateSource = "Thủ công", EffectiveAt = now, CreatedAt = now, CreatedBy = "System" },
+            new Currency { Code = "EUR", Name = "Euro", Symbol = "€", ExchangeRate = 27500m, DecimalPlaces = 2, IsDefault = false, IsActive = true, RateSource = "Thủ công", EffectiveAt = now, CreatedAt = now, CreatedBy = "System" },
+            new Currency { Code = "CNY", Name = "Nhân dân tệ", Symbol = "¥", ExchangeRate = 3500m, DecimalPlaces = 2, IsDefault = false, IsActive = true, RateSource = "Thủ công", EffectiveAt = now, CreatedAt = now, CreatedBy = "System" },
+            new Currency { Code = "JPY", Name = "Yên Nhật", Symbol = "¥", ExchangeRate = 165m, DecimalPlaces = 0, IsDefault = false, IsActive = true, RateSource = "Thủ công", EffectiveAt = now, CreatedAt = now, CreatedBy = "System" },
+            new Currency { Code = "KRW", Name = "Won Hàn Quốc", Symbol = "₩", ExchangeRate = 18.5m, DecimalPlaces = 0, IsDefault = false, IsActive = true, RateSource = "Thủ công", EffectiveAt = now, CreatedAt = now, CreatedBy = "System" },
+            new Currency { Code = "THB", Name = "Baht Thái", Symbol = "฿", ExchangeRate = 720m, DecimalPlaces = 2, IsDefault = false, IsActive = true, RateSource = "Thủ công", EffectiveAt = now, CreatedAt = now, CreatedBy = "System" },
+            new Currency { Code = "SGD", Name = "Đô la Singapore", Symbol = "S$", ExchangeRate = 19000m, DecimalPlaces = 2, IsDefault = false, IsActive = true, RateSource = "Thủ công", EffectiveAt = now, CreatedAt = now, CreatedBy = "System" },
+            new Currency { Code = "MYR", Name = "Ringgit Malaysia", Symbol = "RM", ExchangeRate = 5700m, DecimalPlaces = 2, IsDefault = false, IsActive = true, RateSource = "Thủ công", EffectiveAt = now, CreatedAt = now, CreatedBy = "System" },
+            new Currency { Code = "IDR", Name = "Rupiah Indonesia", Symbol = "Rp", ExchangeRate = 1.6m, DecimalPlaces = 2, IsDefault = false, IsActive = true, RateSource = "Thủ công", EffectiveAt = now, CreatedAt = now, CreatedBy = "System" },
+            new Currency { Code = "GBP", Name = "Bảng Anh", Symbol = "£", ExchangeRate = 32500m, DecimalPlaces = 2, IsDefault = false, IsActive = true, RateSource = "Thủ công", EffectiveAt = now, CreatedAt = now, CreatedBy = "System" },
+            new Currency { Code = "AUD", Name = "Đô la Úc", Symbol = "A$", ExchangeRate = 16500m, DecimalPlaces = 2, IsDefault = false, IsActive = true, RateSource = "Thủ công", EffectiveAt = now, CreatedAt = now, CreatedBy = "System" },
+            new Currency { Code = "CAD", Name = "Đô la Canada", Symbol = "C$", ExchangeRate = 18200m, DecimalPlaces = 2, IsDefault = false, IsActive = true, RateSource = "Thủ công", EffectiveAt = now, CreatedAt = now, CreatedBy = "System" },
+            new Currency { Code = "CHF", Name = "Franc Thụy Sĩ", Symbol = "CHF", ExchangeRate = 28800m, DecimalPlaces = 2, IsDefault = false, IsActive = true, RateSource = "Thủ công", EffectiveAt = now, CreatedAt = now, CreatedBy = "System" },
+            new Currency { Code = "HKD", Name = "Đô la Hồng Kông", Symbol = "HK$", ExchangeRate = 3260m, DecimalPlaces = 2, IsDefault = false, IsActive = true, RateSource = "Thủ công", EffectiveAt = now, CreatedAt = now, CreatedBy = "System" },
+            new Currency { Code = "TWD", Name = "Tân Đài tệ", Symbol = "NT$", ExchangeRate = 780m, DecimalPlaces = 2, IsDefault = false, IsActive = true, RateSource = "Thủ công", EffectiveAt = now, CreatedAt = now, CreatedBy = "System" },
+            new Currency { Code = "INR", Name = "Rupee Ấn Độ", Symbol = "₹", ExchangeRate = 300m, DecimalPlaces = 2, IsDefault = false, IsActive = true, RateSource = "Thủ công", EffectiveAt = now, CreatedAt = now, CreatedBy = "System" },
+            new Currency { Code = "AED", Name = "Dirham UAE", Symbol = "AED", ExchangeRate = 6915m, DecimalPlaces = 2, IsDefault = false, IsActive = true, RateSource = "Thủ công", EffectiveAt = now, CreatedAt = now, CreatedBy = "System" }
+        };
+
+        foreach (var c in standardCurrencies)
         {
-            _context.Currencies.Add(new Currency { Code = "USD", Name = "Đô la Mỹ", Symbol = "$", ExchangeRate = 25000, IsDefault = false, IsActive = true, CreatedAt = now, CreatedBy = "System" });
+            var existing = await _context.Currencies.FirstOrDefaultAsync(x => x.Code == c.Code);
+            if (existing == null)
+            {
+                _context.Currencies.Add(c);
+            }
+            else if (existing.Code == "VND" && (!existing.IsDefault || existing.DecimalPlaces != 0))
+            {
+                existing.IsDefault = true;
+                existing.DecimalPlaces = 0;
+                existing.RateSource = "Gốc";
+            }
         }
 
         var units = new[]

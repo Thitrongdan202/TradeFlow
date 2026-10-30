@@ -69,7 +69,7 @@ else if (_hasSearched)
     else
     {
         var firstItem = _historyItems.First();
-        <div class="tf-card tf-mb-4" style="padding: 20px; display:flex; gap: 20px; align-items: center; background: #fff;">
+        <div class="tf-card tf-mb-4" style="padding: 20px; display:flex; gap: 20px; align-items: center;">
             @if (!string.IsNullOrEmpty(firstItem.ImageStorageRef))
             {
                 <img src="@FileStorage.GetPublicUrl(firstItem.ImageStorageRef)"

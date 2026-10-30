@@ -57,7 +57,7 @@ else
             @if (_priceList.Status != PriceListStatus.Cancelled)
             {
                 <AuthorizeView Policy="Permission:PriceLists:Edit">
-                    <button type="button" class="tf-btn tf-btn-secondary" style="color: #ea580c; border-color: #ea580c; background: #fff;" @onclick="ConfirmCancel">Hủy bảng giá</button>
+                    <button type="button" class="tf-btn tf-btn-secondary" style="color: #ea580c; border-color: #ea580c; background: transparent;" @onclick="ConfirmCancel">Hủy bảng giá</button>
                 </AuthorizeView>
             }
 
@@ -101,7 +101,7 @@ else
     }
 
     @* Reference Document Header Container (Modeled after original document) *@
-    <div class="tf-card tf-mb-4" style="border: 2px solid #ea580c; background: #fff; padding: 24px;">
+    <div class="tf-card tf-mb-4" style="border: 2px solid #ea580c; padding: 24px;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e5e7eb; padding-bottom: 16px; margin-bottom: 16px;">
             <div>
                 <div style="font-size: 18px; font-weight: 800; color: #78350f; letter-spacing: 0.5px;">
@@ -131,7 +131,7 @@ else
                             <span class="tf-badge tf-badge-success" style="background:#ecfdf5; color:#065f46; font-weight:700;">ĐANG ÁP DỤNG</span>
                             break;
                         case PriceListStatus.Draft:
-                            <span class="tf-badge tf-badge-warning" style="background:#fffbeb; color:#92400e; font-weight:700;">BẢN NHÁP</span>
+                            <span class="tf-badge tf-badge-warning" style="font-weight:700;">BẢN NHÁP</span>
                             break;
                         case PriceListStatus.Expired:
                             <span class="tf-badge" style="background:#f3f4f6; color:#4b5563;">HẾT HIỆU LỰC</span>
@@ -145,7 +145,7 @@ else
         </div>
 
         @* Red / Highlight notice box matching reference screenshot *@
-        <div style="background: #fff7ed; border-left: 4px solid #ea580c; padding: 12px 16px; border-radius: 4px;">
+        <div style="background: var(--tf-surface-subtle, #fff7ed); border-left: 4px solid #ea580c; padding: 12px 16px; border-radius: 4px;">
             <div style="font-weight: 700; color: #b91c1c; font-size: 13px; line-height: 1.6;">
                 - Thời gian áp dụng: từ ngày @(_priceList.EffectiveFrom?.ToString("dd/MM/yyyy") ?? "áp dụng")
                 @if (_priceList.EffectiveTo.HasValue)
@@ -350,7 +350,7 @@ else
 @if (_previewItem != null)
 {
     <div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:9999; display:flex; align-items:center; justify-content:center;" @onclick="CloseImagePreview">
-        <div class="tf-card" style="max-width: 500px; width: 90%; padding: 20px; background:#fff; border-radius:8px;" @onclick:stopPropagation>
+        <div class="tf-card" style="max-width: 500px; width: 90%; padding: 20px; background:var(--tf-surface-card, #fff); color:var(--tf-text-primary); border:1px solid var(--tf-border); border-radius:8px;" @onclick:stopPropagation>
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 12px;">
                 <div>
                     <h3 style="font-size: 16px; font-weight: 700; color: #dc2626;">@_previewItem.NewCode</h3>
@@ -358,7 +358,7 @@ else
                 </div>
                 <button type="button" style="background:none; border:none; font-size: 20px; cursor:pointer;" @onclick="CloseImagePreview">✕</button>
             </div>
-            <div style="text-align: center; padding: 12px 0; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+            <div style="text-align: center; padding: 12px 0; background: var(--tf-surface-subtle, #f9fafb); border-radius: 6px; border: 1px solid var(--tf-border, #e5e7eb);">
                 <img src="@FileStorage.GetPublicUrl(_previewItem.ImageStorageRef ?? "")"
                      alt="@_previewItem.NewCode"
                      style="max-height: 320px; max-width: 100%; object-fit: contain;" />
@@ -378,7 +378,7 @@ else
 @if (_showCancelModal)
 {
     <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 24px; border-radius: 8px; width: 400px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+        <div style="background: var(--tf-surface-card, #ffffff); color: var(--tf-text-primary, #0f172a); border: 1px solid var(--tf-border, #e2e8f0); padding: 24px; border-radius: 8px; width: 400px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
             <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 18px; color: #ea580c;">Xác nhận hủy bảng giá</h3>
             <p style="margin-bottom: 24px;">Bạn có chắc chắn muốn hủy bảng giá này?</p>
             <div style="display: flex; justify-content: flex-end; gap: 12px;">
@@ -394,7 +394,7 @@ else
 @if (_showPermanentDeleteModal)
 {
     <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 24px; border-radius: 8px; width: 400px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+        <div style="background: var(--tf-surface-card, #ffffff); color: var(--tf-text-primary, #0f172a); border: 1px solid var(--tf-border, #e2e8f0); padding: 24px; border-radius: 8px; width: 400px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
             <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 18px; color: var(--tf-danger);">Xóa vĩnh viễn bảng giá?</h3>
             <p style="margin-bottom: 24px;">Toàn bộ dữ liệu của bảng giá này sẽ bị xóa khỏi hệ thống và không thể khôi phục.</p>
             @if (!string.IsNullOrEmpty(_deleteError))
@@ -416,15 +416,15 @@ else
 @if (_showEditPriceModal && _editingItem != null)
 {
     <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 24px; border-radius: 8px; width: 440px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+        <div style="background: var(--tf-surface-card, #ffffff); color: var(--tf-text-primary, #0f172a); border: 1px solid var(--tf-border, #e2e8f0); padding: 24px; border-radius: 8px; width: 440px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
-                <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #1e293b;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: var(--tf-text-primary, #1e293b);">
                     Điều chỉnh giá: @_editingItem.NewCode
                 </h3>
                 <button type="button" style="background:none; border:none; font-size: 18px; cursor:pointer;" @onclick="CloseEditPriceModal">✕</button>
             </div>
             
-            <div style="font-size: 12px; color: #4b5563; margin-bottom: 14px;">
+            <div style="font-size: 12px; color: var(--tf-text-secondary, #4b5563); margin-bottom: 14px;">
                 @( _editingItem.ProductName ?? _editingItem.ProductInfo ?? "-")
             </div>
 

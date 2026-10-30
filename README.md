@@ -342,3 +342,77 @@ Phân hệ Hợp đồng cung cấp giải pháp toàn diện cho việc lập, 
 
 
 
+
+
+---
+
+## Phân hệ Quản lý Đa tiền tệ & Tỷ giá Quy đổi (Multi-Currency Management & Secure Exchange Rates)
+
+Màn hình **Tiền tệ & Tỷ giá** (`/danh-muc/loai-tien`, `/danh-muc/tien-te`, `/cai-dat/tien-te`) cung cấp giải pháp quản lý danh mục đồng tiền thanh toán, thiết lập tỷ giá cơ sở VND, đồng bộ tỷ giá ngoại tệ trực tuyến an toàn và quy đổi ngoại tệ mô phỏng trong hệ thống TradeFlow ERP.
+
+### 1. Nguyên lý Thiết kế & Quy ước Hạch toán
+- **Đồng tiền cơ sở mặc định (Base Currency)**: **VND (Việt Nam đồng - ₫)**.
+- **Quy ước tỷ giá chuẩn mực**: `1 đơn vị ngoại tệ = X VND` (Ví dụ: `1 USD = 25,400 VND`, `1 EUR = 27,500 VND`).
+  - Tỷ giá cơ sở của VND luôn cố định bằng **1.0**.
+  - Tính toán số học chuẩn `decimal` trong C#, kiểm soát và từ chối các giá trị tỷ giá $\le 0$ hoặc không hợp lệ.
+  - Số chữ số thập phân (`DecimalPlaces`): 0 chữ số cho VND, JPY, KRW; 2 chữ số cho USD, EUR, GBP, SGD...
+- **Bảo toàn dữ liệu lịch sử & Đơn giá sản phẩm**:
+  - Tuyệt đối không tự ý ghi đè hay làm thay đổi đơn giá sản phẩm trong danh mục, bảng giá đang áp dụng, báo giá, đơn hàng, hóa đơn hay công nợ đối tác đã xác lập.
+
+### 2. Danh mục Tiền tệ Khởi tạo Sẵn (Seed Data 18 Đồng tiền Phổ biến)
+Hệ thống tự động khởi tạo tối thiểu 18 loại tiền tệ thông dụng và cho phép người dùng thêm mới các mã chuẩn ISO 4217:
+1. **VND** - Việt Nam đồng (₫) - Cơ sở mặc định, 0 số thập phân, tỷ giá = 1.0.
+2. **USD** - Đô la Mỹ ($)
+3. **EUR** - Euro (€)
+4. **CNY** - Nhân dân tệ (¥)
+5. **JPY** - Yên Nhật (¥) - 0 số thập phân
+6. **KRW** - Won Hàn Quốc (₩) - 0 số thập phân
+7. **THB** - Baht Thái (฿)
+8. **SGD** - Đô la Singapore (S$)
+9. **MYR** - Ringgit Malaysia (RM)
+10. **IDR** - Rupiah Indonesia (Rp)
+11. **GBP** - Bảng Anh (£)
+12. **AUD** - Đô la Úc (A$)
+13. **CAD** - Đô la Canada (C$)
+14. **CHF** - Franc Thụy Sĩ (CHF)
+15. **HKD** - Đô la Hồng Kông (HK$)
+16. **TWD** - Tân Đài tệ (NT$)
+17. **INR** - Rupee Ấn Độ (₹)
+18. **AED** - Dirham UAE (AED)
+
+### 3. Tích hợp Dịch vụ Tỷ giá Ngoại hối Trực tuyến An toàn (Server-Side HTTPS Integration)
+- **Giao thức an toàn máy chủ**: Yêu cầu lấy tỷ giá được thực thi hoàn toàn từ phía server thông qua `IHttpClientFactory` (`ExchangeRateProvider`). Trình duyệt người dùng không trực tiếp kết nối với API bên ngoài, loại bỏ nguy cơ lộ thông tin hạ tầng hoặc lỗi CORS.
+- **Nhà cung cấp tỷ giá uy tín**: Cổng dữ liệu ExchangeRate-API (HTTPS) với cơ chế phân giải chính xác theo USD và VND.
+- **Giới hạn thời gian & Kích thước dữ liệu**:
+  - Thời gian chờ phản hồi tối đa: **8 giây** (`Timeout = 8s`), tự động ngắt kết nối an toàn nếu mạng chậm.
+  - Giới hạn luồng tải tối đa: **256 KB** (`MaxResponseBytes = 256KB`), ngăn chặn tấn công từ chối dịch vụ hoặc payload khổng lồ.
+  - Phân tích cú pháp JSON nghiêm ngặt (`System.Text.Json`), tự động phát hiện và loại bỏ tỷ giá bất thường.
+- **Quy trình Xem trước & Xác nhận (Preview & Confirmation)**:
+  - Khi người dùng bấm **"Cập nhật tỷ giá trực tuyến"**, hệ thống tải bảng so sánh: Tỷ giá hiện tại, Tỷ giá mới, Chênh lệch (+/- và %), Trạng thái cố định.
+  - Chỉ cập nhật các đồng tiền được người dùng tích chọn và bấm **"Áp dụng tỷ giá đã chọn"**.
+- **Cơ chế Bảo lưu Tỷ giá Thủ công (`IsManualOverride`)**:
+  - Nếu người dùng đã điều chỉnh tỷ giá thủ công cho một đồng tiền và chọn **"Cố định tỷ giá"**, tính năng cập nhật trực tuyến sẽ tự động bỏ chọn đồng tiền đó và cảnh báo rõ ràng, không bao giờ tự ý ghi đè.
+
+### 4. Công cụ Quy đổi Ngoại tệ Mô phỏng (Interactive Currency Calculator)
+- Nhúng trực quan ngay đầu màn hình quản lý tiền tệ.
+- Hỗ trợ nhập số tiền, chọn đồng tiền nguồn, đồng tiền đích, và nút **"⇄ Đảo chiều"** tiện lợi.
+- Hiển thị kết quả quy đổi tức thì kèm diễn giải công thức và tỷ giá chéo áp dụng:
+  $$\text{Số tiền VND} = \text{Số tiền nguồn} \times \text{Tỷ giá nguồn}$$
+  $$\text{Số tiền đích} = \frac{\text{Số tiền VND}}{\text{Tỷ giá đích}} = \text{Số tiền nguồn} \times \frac{\text{Tỷ giá nguồn}}{\text{Tỷ giá đích}}$$
+- Định dạng dấu phân cách nghìn và số chữ số thập phân chuẩn xác theo từng loại tiền.
+
+### 5. Truy vết Lịch sử & Kiểm toán Tỷ giá (`ExchangeRateHistories`)
+- Mọi thao tác điều chỉnh tỷ giá thủ công hoặc áp dụng tỷ giá từ API đều được tự động lưu vào bảng `ExchangeRateHistories`:
+  - `CurrencyId`, `CurrencyCode`: Định danh loại tiền.
+  - `Rate`, `PreviousRate`: Tỷ giá mới và tỷ giá trước đó.
+  - `Source`: Nguồn cập nhật ("Thủ công", "API ExchangeRate", "Khởi tạo").
+  - `EffectiveAt`: Thời điểm áp dụng tỷ giá.
+  - `Notes`: Căn cứ điều chỉnh (ví dụ: "Theo tỷ giá bán chuyển khoản Vietcombank").
+  - `ChangedBy`: Tài khoản thực hiện.
+  - `CreatedAt`: Thời điểm ghi nhận.
+- Cửa sổ Modal **"Lịch sử tỷ giá"** cho phép tra cứu nhanh dòng thời gian biến động của từng đồng tiền.
+
+### 6. Đảm bảo Giao diện Nhất quán (Dark Mode & Light Mode)
+- Tuân thủ hệ màu `tf-*` và CSS custom properties: `var(--tf-bg)`, `var(--tf-card-bg)`, `var(--tf-border)`, `var(--tf-text-primary)`.
+- Không sử dụng nền trắng thô, không gây lóa mắt (zero-flicker) khi chuyển hướng giữa các chức năng.
+- Tích hợp liên kết điều hướng từ **Trung tâm Cài đặt (Settings Hub)** `/cai-dat` tại danh mục Danh mục & Quy ước.

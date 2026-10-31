@@ -16,7 +16,7 @@
 
 <PageTitle>Quản lý Khách hàng - TradeFlow</PageTitle>
 
-<div class="tf-page-container">
+<div class="tf-customer-container">
     @* 1. Page Header *@
     <div class="tf-page-header">
         <div class="tf-page-header-left">
@@ -24,41 +24,45 @@
             <p class="tf-page-subtitle">Quản lý hồ sơ đối tác khách hàng, phân loại cá nhân / doanh nghiệp và theo dõi công nợ bán hàng</p>
         </div>
         <div class="tf-page-header-actions">
-            <div class="tf-header-search-wrap">
-                <DebouncedSearchInput Placeholder="Tìm theo mã KH, tên, công ty, MST, SĐT..."
-                                      Value="@_filter.SearchTerm"
-                                      ValueChanged="OnSearchChanged" />
+            <div class="tf-header-filter-cluster">
+                <div class="tf-header-search-wrap">
+                    <DebouncedSearchInput Placeholder="Tìm theo mã KH, tên, công ty, MST, SĐT..."
+                                          Value="@_filter.SearchTerm"
+                                          ValueChanged="OnSearchChanged" />
+                </div>
+
+                <button type="button" class="tf-btn tf-btn-secondary @(_showSidebar ? "active" : "")" @onclick="ToggleSidebar" title="Bật/Tắt bộ lọc nâng cao">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="22 3 2 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    <span>Bộ lọc</span>
+                    @if (ActiveFilterCount > 0)
+                    {
+                        <span class="tf-filter-active-count">@ActiveFilterCount</span>
+                    }
+                </button>
             </div>
 
-            <button type="button" class="tf-btn tf-btn-secondary @(_showSidebar ? "active" : "")" @onclick="ToggleSidebar" title="Bật/Tắt bộ lọc nâng cao">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                </svg>
-                <span>Bộ lọc</span>
-                @if (ActiveFilterCount > 0)
-                {
-                    <span class="tf-filter-active-count">@ActiveFilterCount</span>
-                }
-            </button>
+            <div class="tf-header-action-cluster">
+                <AuthorizeView Policy="Permission:Customers:Edit">
+                    <button type="button" class="tf-btn tf-btn-secondary" @onclick="OpenCreateReceiptModal" title="Lập phiếu thu tiền khách hàng">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                        <span>Lập phiếu thu</span>
+                    </button>
+                </AuthorizeView>
 
-            <AuthorizeView Policy="Permission:Customers:Edit">
-                <button type="button" class="tf-btn tf-btn-secondary" @onclick="OpenCreateReceiptModal" title="Lập phiếu thu tiền khách hàng">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                    </svg>
-                    <span>Lập phiếu thu</span>
-                </button>
-            </AuthorizeView>
-
-            <AuthorizeView Policy="Permission:Customers:Create">
-                <a href="/doi-tac/khach-hang/them-moi" class="tf-btn tf-btn-primary">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    <span>Thêm khách hàng</span>
-                </a>
-            </AuthorizeView>
+                <AuthorizeView Policy="Permission:Customers:Create">
+                    <a href="/doi-tac/khach-hang/them-moi" class="tf-btn tf-btn-primary" title="Thêm khách hàng mới">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        <span>Thêm khách hàng</span>
+                    </a>
+                </AuthorizeView>
+            </div>
         </div>
     </div>
 

@@ -16,7 +16,7 @@
 
 <PageTitle>Quản lý Nhà cung cấp - TradeFlow</PageTitle>
 
-<div class="tf-page-container">
+<div class="tf-supplier-container">
     @* 1. Page Header *@
     <div class="tf-page-header">
         <div class="tf-page-header-left">
@@ -24,42 +24,46 @@
             <p class="tf-page-subtitle">Quản lý danh sách nhà cung ứng vật tư, theo dõi công nợ phải trả và lịch sử mua hàng</p>
         </div>
         <div class="tf-page-header-actions">
-            <div class="tf-header-search-wrap">
-                <DebouncedSearchInput Placeholder="Tìm theo mã NCC, tên, công ty, MST, SĐT..."
-                                      Value="@_filter.SearchTerm"
-                                      ValueChanged="OnSearchChanged" />
+            <div class="tf-header-filter-cluster">
+                <div class="tf-header-search-wrap">
+                    <DebouncedSearchInput Placeholder="Tìm theo mã NCC, tên, công ty, MST, SĐT..."
+                                          Value="@_filter.SearchTerm"
+                                          ValueChanged="OnSearchChanged" />
+                </div>
+
+                <button type="button" class="tf-btn tf-btn-secondary @(_showSidebar ? "active" : "")" @onclick="ToggleSidebar" title="Bật/Tắt bộ lọc nâng cao">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="22 3 2 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    <span>Bộ lọc</span>
+                    @if (ActiveFilterCount > 0)
+                    {
+                        <span class="tf-filter-active-count">@ActiveFilterCount</span>
+                    }
+                </button>
             </div>
 
-            <button type="button" class="tf-btn tf-btn-secondary @(_showSidebar ? "active" : "")" @onclick="ToggleSidebar" title="Bật/Tắt bộ lọc nâng cao">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                </svg>
-                <span>Bộ lọc</span>
-                @if (ActiveFilterCount > 0)
-                {
-                    <span class="tf-filter-active-count">@ActiveFilterCount</span>
-                }
-            </button>
+            <div class="tf-header-action-cluster">
+                <AuthorizeView Policy="Permission:Suppliers:Edit">
+                    <button type="button" class="tf-btn tf-btn-secondary" @onclick="OpenCreatePaymentModal" title="Lập phiếu chi tiền nhà cung cấp">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="5" width="20" height="14" rx="2"/>
+                            <line x1="2" y1="10" x2="22" y2="10"/>
+                        </svg>
+                        <span>Lập phiếu chi</span>
+                    </button>
+                </AuthorizeView>
 
-            <AuthorizeView Policy="Permission:Suppliers:Edit">
-                <button type="button" class="tf-btn tf-btn-secondary" @onclick="OpenCreatePaymentModal" title="Lập phiếu chi tiền nhà cung cấp">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="2" y="5" width="20" height="14" rx="2"/>
-                        <line x1="2" y1="10" x2="22" y2="10"/>
-                    </svg>
-                    <span>Lập phiếu chi</span>
-                </button>
-            </AuthorizeView>
-
-            <AuthorizeView Policy="Permission:Suppliers:Create">
-                <a href="/doi-tac/nha-cung-cap/them-moi" class="tf-btn tf-btn-primary">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    <span>Thêm nhà cung cấp</span>
-                </a>
-            </AuthorizeView>
+                <AuthorizeView Policy="Permission:Suppliers:Create">
+                    <a href="/doi-tac/nha-cung-cap/them-moi" class="tf-btn tf-btn-primary" title="Thêm nhà cung cấp mới">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        <span>Thêm nhà cung cấp</span>
+                    </a>
+                </AuthorizeView>
+            </div>
         </div>
     </div>
 

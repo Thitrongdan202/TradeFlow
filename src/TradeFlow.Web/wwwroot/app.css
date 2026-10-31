@@ -7870,9 +7870,8 @@ select:not(.tf-document-paper *),
 .tf-req-body {
   scroll-behavior: auto !important;
   -webkit-overflow-scrolling: touch;
-  transform: translateZ(0);
-  contain: paint layout;
-  overscroll-behavior: contain;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
 }
 
 /* ============================================================
@@ -7969,17 +7968,35 @@ select:not(.tf-document-paper *),
 
 /* Request Cards */
 .tf-req-card {
+  position: relative;
   background: var(--tf-bg-card, #ffffff);
   border: 1px solid var(--tf-border, #e2e8f0);
   border-radius: 10px;
   padding: 18px 20px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease;
+  contain: layout paint;
+  isolation: isolate;
+  transform: translateZ(0);
+}
+
+.tf-req-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
 }
 
 .tf-req-card:hover {
   border-color: #cbd5e1;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.tf-req-card:hover::after {
+  opacity: 1;
 }
 
 [data-bs-theme="dark"] .tf-req-card,
@@ -7989,10 +8006,14 @@ select:not(.tf-document-paper *),
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
+[data-bs-theme="dark"] .tf-req-card::after,
+[data-theme="dark"] .tf-req-card::after {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+
 [data-bs-theme="dark"] .tf-req-card:hover,
 [data-theme="dark"] .tf-req-card:hover {
   border-color: #475569;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 
 .tf-req-avatar {
@@ -8334,4 +8355,14 @@ select:not(.tf-document-paper *),
   0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.5); }
   70% { box-shadow: 0 0 0 6px rgba(37, 99, 235, 0); }
   100% { box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25); }
+}
+
+/* Form Section Card Isolation for Smooth Scroll */
+.tf-form-section-card {
+  background: var(--tf-bg-card, #ffffff);
+  border: 1px solid var(--tf-border, #e2e8f0);
+  border-radius: 8px;
+  padding: 16px;
+  contain: layout paint;
+  isolation: isolate;
 }

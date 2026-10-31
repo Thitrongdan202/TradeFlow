@@ -1473,6 +1473,8 @@ namespace TradeFlow.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CreatedAt");
+
                     b.HasIndex("CreatedEmployeeId");
 
                     b.HasIndex("DepartmentId");
@@ -1482,6 +1484,8 @@ namespace TradeFlow.Infrastructure.Migrations
                     b.HasIndex("RequestedBy");
 
                     b.HasIndex("Status");
+
+                    b.HasIndex("Status", "CreatedAt");
 
                     b.ToTable("EmployeeRequests", (string)null);
                 });

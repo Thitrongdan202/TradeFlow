@@ -5,6 +5,7 @@
 @using TradeFlow.Application.Common.Interfaces
 @using TradeFlow.Application.Common.Models.Documents
 @using TradeFlow.Application.Common.Models.Employees
+@using TradeFlow.Application.Common.Models.Users
 @using TradeFlow.Domain.Entities.Employees
 @using TradeFlow.Domain.Enums
 @using TradeFlow.Infrastructure.Persistence
@@ -105,7 +106,7 @@
                     }
 
                     @* Group 1: Thông tin cơ bản *@
-                    <div style="background: var(--tf-bg-card, #ffffff); border: 1px solid var(--tf-border, #e2e8f0); border-radius: 8px; padding: 16px;">
+                    <div class="tf-form-section-card">
                         <div style="font-weight: 600; font-size: 14px; color: var(--tf-text-primary, #1e293b); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
                             <span style="width: 4px; height: 16px; background-color: var(--tf-primary); border-radius: 2px;"></span>
                             Thông tin cơ bản
@@ -153,7 +154,7 @@
                     </div>
 
                     @* Group 2: Vị trí & Bộ phận làm việc *@
-                    <div style="background: var(--tf-bg-card, #ffffff); border: 1px solid var(--tf-border, #e2e8f0); border-radius: 8px; padding: 16px;">
+                    <div class="tf-form-section-card">
                         <div style="font-weight: 600; font-size: 14px; color: var(--tf-text-primary, #1e293b); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
                             <span style="width: 4px; height: 16px; background-color: var(--tf-primary); border-radius: 2px;"></span>
                             Vị trí &amp; Bộ phận làm việc
@@ -212,7 +213,7 @@
                     </div>
 
                     @* Group 3: Liên hệ & Tài khoản hệ thống *@
-                    <div style="background: var(--tf-bg-card, #ffffff); border: 1px solid var(--tf-border, #e2e8f0); border-radius: 8px; padding: 16px;">
+                    <div class="tf-form-section-card">
                         <div style="font-weight: 600; font-size: 14px; color: var(--tf-text-primary, #1e293b); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
                             <span style="width: 4px; height: 16px; background-color: var(--tf-primary); border-radius: 2px;"></span>
                             Liên hệ &amp; Tài khoản TradeFlow
@@ -255,7 +256,7 @@
                     </div>
 
                     @* Group 4: Tài khoản ngân hàng & Ghi chú *@
-                    <div style="background: var(--tf-bg-card, #ffffff); border: 1px solid var(--tf-border, #e2e8f0); border-radius: 8px; padding: 16px;">
+                    <div class="tf-form-section-card">
                         <div style="font-weight: 600; font-size: 14px; color: var(--tf-text-primary, #1e293b); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
                             <span style="width: 4px; height: 16px; background-color: var(--tf-primary); border-radius: 2px;"></span>
                             Ngân hàng &amp; Ghi chú
@@ -285,7 +286,7 @@
                     @* Group 5: Hồ sơ cá nhân & Tài liệu đính kèm (khi Gửi yêu cầu phê duyệt) *@
                     @if (!_isDirectCreate)
                     {
-                        <div style="background: var(--tf-bg-card, #ffffff); border: 1px solid var(--tf-border, #e2e8f0); border-radius: 8px; padding: 16px;">
+                        <div class="tf-form-section-card">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                                 <div style="font-weight: 600; font-size: 14px; color: var(--tf-text-primary, #1e293b); display: flex; align-items: center; gap: 8px;">
                                     <span style="width: 4px; height: 16px; background-color: var(--tf-primary); border-radius: 2px;"></span>
@@ -475,7 +476,7 @@
 
     private List<DepartmentDto> _departments = new();
     private List<PositionDto> _positions = new();
-    private List<ApplicationUser> _availableUsers = new();
+    private List<UserLookupDto> _availableUsers = new();
 
     private bool _showQuickDept;
     private bool _showQuickPos;
@@ -591,10 +592,7 @@
 
             if (_availableUsers.Count == 0)
             {
-                _availableUsers = await DbContext.Users
-                    .AsNoTracking()
-                    .OrderBy(u => u.UserName)
-                    .ToListAsync();
+                _availableUsers = await EmployeeService.GetAvailableUsersAsync();
             }
         }
         catch (Exception ex)

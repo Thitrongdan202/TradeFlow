@@ -2,7 +2,9 @@ using TradeFlow.Application.Common.Models.Documents;
 using TradeFlow.Domain.Entities.Documents;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using TradeFlow.Application.Common.Models.Users;
 using TradeFlow.Application.Common.Constants;
 using TradeFlow.Application.Common.Interfaces;
 using TradeFlow.Application.Common.Models.Employees;
@@ -21,6 +23,11 @@ public class EmployeeService : IEmployeeService
     private readonly ISecurityService _securityService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<EmployeeService> _logger;
+    private readonly IMemoryCache? _cache;
+
+    private const string CacheKeyDepartments = "RefData_Departments";
+    private const string CacheKeyPositions = "RefData_Positions";
+    private const string CacheKeyUserLookups = "RefData_UserLookups";
 
     public EmployeeService(
         TradeFlowDbContext context,
@@ -29,7 +36,8 @@ public class EmployeeService : IEmployeeService
         IAuditService auditService,
         ISecurityService securityService,
         UserManager<ApplicationUser> userManager,
-        ILogger<EmployeeService> logger)
+        ILogger<EmployeeService> logger,
+        IMemoryCache? cache = null)
     {
         _context = context;
         _codeGenerator = codeGenerator;
@@ -38,7 +46,12 @@ public class EmployeeService : IEmployeeService
         _securityService = securityService;
         _userManager = userManager;
         _logger = logger;
+        _cache = cache;
     }
+
+    private void InvalidateDepartmentCache() => _cache?.Remove(CacheKeyDepartments);
+    private void InvalidatePositionCache() => _cache?.Remove(CacheKeyPositions);
+    private void InvalidateUserCache() => _cache?.Remove(CacheKeyUserLookups);
 
     private static DateTime? NormalizeToUtc(DateTime? date)
     {
@@ -362,6 +375,11 @@ public class EmployeeService : IEmployeeService
 
     public async Task<List<DepartmentDto>> GetDepartmentsAsync(bool includeInactive = false, CancellationToken cancellationToken = default)
     {
+        if (!includeInactive && _cache != null && _cache.TryGetValue(CacheKeyDepartments, out List<DepartmentDto>? cached) && cached != null)
+        {
+            return cached;
+        }
+
         var query = _context.Departments.AsNoTracking();
 
         if (!includeInactive)
@@ -369,7 +387,7 @@ public class EmployeeService : IEmployeeService
             query = query.Where(d => d.IsActive);
         }
 
-        return await query.OrderBy(d => d.Name)
+        var list = await query.OrderBy(d => d.Name)
             .Select(d => new DepartmentDto
             {
                 Id = d.Id,
@@ -380,6 +398,13 @@ public class EmployeeService : IEmployeeService
                 EmployeeCount = d.Employees.Count(e => e.Status == EmployeeStatus.Active)
             })
             .ToListAsync(cancellationToken);
+
+        if (!includeInactive && _cache != null)
+        {
+            _cache.Set(CacheKeyDepartments, list, TimeSpan.FromMinutes(15));
+        }
+
+        return list;
     }
 
     public async Task<DepartmentDto?> GetDepartmentByIdAsync(int id, CancellationToken cancellationToken = default)
@@ -428,6 +453,7 @@ public class EmployeeService : IEmployeeService
             department.Code,
             $"Tạo mới phòng ban '{department.Name}' (Mã: {department.Code}).");
 
+        InvalidateDepartmentCache();
         return new DepartmentDto
         {
             Id = department.Id,
@@ -475,6 +501,7 @@ public class EmployeeService : IEmployeeService
             department.Code,
             $"Cập nhật thông tin phòng ban '{department.Name}' (Mã: {department.Code}).");
 
+        InvalidateDepartmentCache();
         return new DepartmentDto
         {
             Id = department.Id,
@@ -504,6 +531,7 @@ public class EmployeeService : IEmployeeService
             department.Code,
             $"Ngừng sử dụng phòng ban '{department.Name}' (Mã: {department.Code}).");
 
+        InvalidateDepartmentCache();
         return true;
     }
 
@@ -525,6 +553,7 @@ public class EmployeeService : IEmployeeService
             department.Code,
             $"Kích hoạt lại phòng ban '{department.Name}' (Mã: {department.Code}).");
 
+        InvalidateDepartmentCache();
         return true;
     }
 
@@ -551,11 +580,17 @@ public class EmployeeService : IEmployeeService
             department.Code,
             $"Xóa vĩnh viễn phòng ban '{department.Name}' (Mã: {department.Code}).");
 
+        InvalidateDepartmentCache();
         return true;
     }
 
     public async Task<List<PositionDto>> GetPositionsAsync(bool includeInactive = false, CancellationToken cancellationToken = default)
     {
+        if (!includeInactive && _cache != null && _cache.TryGetValue(CacheKeyPositions, out List<PositionDto>? cached) && cached != null)
+        {
+            return cached;
+        }
+
         var query = _context.Positions.AsNoTracking();
 
         if (!includeInactive)
@@ -563,7 +598,7 @@ public class EmployeeService : IEmployeeService
             query = query.Where(p => p.IsActive);
         }
 
-        return await query.OrderBy(p => p.Name)
+        var list = await query.OrderBy(p => p.Name)
             .Select(p => new PositionDto
             {
                 Id = p.Id,
@@ -574,6 +609,13 @@ public class EmployeeService : IEmployeeService
                 EmployeeCount = p.Employees.Count(e => e.Status == EmployeeStatus.Active)
             })
             .ToListAsync(cancellationToken);
+
+        if (!includeInactive && _cache != null)
+        {
+            _cache.Set(CacheKeyPositions, list, TimeSpan.FromMinutes(15));
+        }
+
+        return list;
     }
 
     public async Task<PositionDto?> GetPositionByIdAsync(int id, CancellationToken cancellationToken = default)
@@ -622,6 +664,7 @@ public class EmployeeService : IEmployeeService
             position.Code,
             $"Tạo mới chức danh '{position.Name}' (Mã: {position.Code}).");
 
+        InvalidatePositionCache();
         return new PositionDto
         {
             Id = position.Id,
@@ -669,6 +712,7 @@ public class EmployeeService : IEmployeeService
             position.Code,
             $"Cập nhật thông tin chức danh '{position.Name}' (Mã: {position.Code}).");
 
+        InvalidatePositionCache();
         return new PositionDto
         {
             Id = position.Id,
@@ -698,6 +742,7 @@ public class EmployeeService : IEmployeeService
             position.Code,
             $"Ngừng sử dụng chức danh '{position.Name}' (Mã: {position.Code}).");
 
+        InvalidatePositionCache();
         return true;
     }
 
@@ -719,6 +764,7 @@ public class EmployeeService : IEmployeeService
             position.Code,
             $"Kích hoạt lại chức danh '{position.Name}' (Mã: {position.Code}).");
 
+        InvalidatePositionCache();
         return true;
     }
 
@@ -745,79 +791,89 @@ public class EmployeeService : IEmployeeService
             position.Code,
             $"Xóa vĩnh viễn chức danh '{position.Name}' (Mã: {position.Code}).");
 
+        InvalidatePositionCache();
         return true;
     }
 
     public async Task<List<EmployeeRequestDto>> GetEmployeeRequestsAsync(EmployeeRequestStatus? status = null, CancellationToken cancellationToken = default)
     {
-        var query = _context.EmployeeRequests
-            .Include(r => r.Department)
-            .Include(r => r.Position)
-            .AsNoTracking();
+        var query = _context.EmployeeRequests.AsNoTracking();
 
         if (status.HasValue)
         {
             query = query.Where(r => r.Status == status.Value);
         }
 
-        var list = await query.OrderByDescending(r => r.CreatedAt).ToListAsync(cancellationToken);
-        var reqIds = list.Select(r => r.Id).ToList();
-
-        var attachments = await _context.DocumentAttachments
-            .Include(d => d.Category)
-            .Where(d => d.RelatedEntityType == "EmployeeRequest" && d.RelatedEntityId.HasValue && reqIds.Contains(d.RelatedEntityId.Value))
-            .AsNoTracking()
+        var list = await query.OrderByDescending(r => r.CreatedAt)
+            .Select(r => new EmployeeRequestDto
+            {
+                Id = r.Id,
+                FullName = r.FullName,
+                Code = r.Code,
+                AttendanceCode = r.AttendanceCode,
+                Phone = r.Phone,
+                Email = r.Email,
+                NationalId = r.NationalId,
+                DateOfBirth = r.DateOfBirth,
+                Gender = r.Gender,
+                Address = r.Address,
+                DepartmentId = r.DepartmentId,
+                DepartmentName = r.Department != null ? r.Department.Name : null,
+                PositionId = r.PositionId,
+                PositionName = r.Position != null ? r.Position.Name : null,
+                WorkingBranch = r.WorkingBranch,
+                PayrollBranch = r.PayrollBranch,
+                StartDate = r.StartDate,
+                BankInformation = r.BankInformation,
+                Notes = r.Notes,
+                ProposedUserId = r.ProposedUserId,
+                Status = r.Status,
+                RequestedBy = r.RequestedBy,
+                ApprovedBy = r.ApprovedBy,
+                ApprovedAt = r.ApprovedAt,
+                ReviewNotes = r.ReviewNotes,
+                CreatedEmployeeId = r.CreatedEmployeeId,
+                CreatedAt = r.CreatedAt
+            })
             .ToListAsync(cancellationToken);
 
-        var attLookup = attachments
-            .GroupBy(d => d.RelatedEntityId!.Value)
-            .ToDictionary(g => g.Key, g => g.Select(d => new DocumentAttachmentDto
-            {
-                Id = d.Id,
-                FileName = d.FileName,
-                ContentType = d.ContentType,
-                FileSize = d.FileSize,
-                CategoryId = d.CategoryId,
-                CategoryName = d.Category?.Name,
-                RelatedEntityType = d.RelatedEntityType,
-                RelatedEntityId = d.RelatedEntityId,
-                Description = d.Description,
-                Status = d.Status,
-                CreatedAt = d.CreatedAt,
-                CreatedBy = d.CreatedBy
-            }).ToList());
-
-        return list.Select(r => new EmployeeRequestDto
+        if (list.Count > 0)
         {
-            Id = r.Id,
-            FullName = r.FullName,
-            Code = r.Code,
-            AttendanceCode = r.AttendanceCode,
-            Phone = r.Phone,
-            Email = r.Email,
-            NationalId = r.NationalId,
-            DateOfBirth = r.DateOfBirth,
-            Gender = r.Gender,
-            Address = r.Address,
-            DepartmentId = r.DepartmentId,
-            DepartmentName = r.Department?.Name,
-            PositionId = r.PositionId,
-            PositionName = r.Position?.Name,
-            WorkingBranch = r.WorkingBranch,
-            PayrollBranch = r.PayrollBranch,
-            StartDate = r.StartDate,
-            BankInformation = r.BankInformation,
-            Notes = r.Notes,
-            ProposedUserId = r.ProposedUserId,
-            Status = r.Status,
-            RequestedBy = r.RequestedBy,
-            ApprovedBy = r.ApprovedBy,
-            ApprovedAt = r.ApprovedAt,
-            ReviewNotes = r.ReviewNotes,
-            CreatedEmployeeId = r.CreatedEmployeeId,
-            CreatedAt = r.CreatedAt,
-            Attachments = attLookup.TryGetValue(r.Id, out var atts) ? atts : new List<DocumentAttachmentDto>()
-        }).ToList();
+            var reqIds = list.Select(r => r.Id).ToList();
+            var attachments = await _context.DocumentAttachments
+                .AsNoTracking()
+                .Where(d => d.RelatedEntityType == "EmployeeRequest" && d.RelatedEntityId.HasValue && reqIds.Contains(d.RelatedEntityId.Value))
+                .Select(d => new DocumentAttachmentDto
+                {
+                    Id = d.Id,
+                    FileName = d.FileName,
+                    ContentType = d.ContentType,
+                    FileSize = d.FileSize,
+                    CategoryId = d.CategoryId,
+                    CategoryName = d.Category != null ? d.Category.Name : null,
+                    RelatedEntityType = d.RelatedEntityType,
+                    RelatedEntityId = d.RelatedEntityId,
+                    Description = d.Description,
+                    Status = d.Status,
+                    CreatedAt = d.CreatedAt,
+                    CreatedBy = d.CreatedBy
+                })
+                .ToListAsync(cancellationToken);
+
+            var attLookup = attachments
+                .GroupBy(d => d.RelatedEntityId!.Value)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            foreach (var req in list)
+            {
+                if (attLookup.TryGetValue(req.Id, out var atts))
+                {
+                    req.Attachments = atts;
+                }
+            }
+        }
+
+        return list;
     }
 
     public async Task<int> GetPendingRequestCountAsync(CancellationToken cancellationToken = default)
@@ -1189,5 +1245,31 @@ public async Task<List<DocumentAttachmentDto>> GetEmployeeAttachmentsAsync(int e
             CreatedAt = d.CreatedAt,
             CreatedBy = d.CreatedBy
         }).ToList();
+    }
+
+    public async Task<List<UserLookupDto>> GetAvailableUsersAsync(CancellationToken cancellationToken = default)
+    {
+        if (_cache != null && _cache.TryGetValue(CacheKeyUserLookups, out List<UserLookupDto>? cached) && cached != null)
+        {
+            return cached;
+        }
+
+        var users = await _userManager.Users
+            .AsNoTracking()
+            .OrderBy(u => u.UserName)
+            .Select(u => new UserLookupDto
+            {
+                Id = u.Id,
+                UserName = u.UserName ?? string.Empty,
+                FullName = u.FullName ?? string.Empty
+            })
+            .ToListAsync(cancellationToken);
+
+        if (_cache != null)
+        {
+            _cache.Set(CacheKeyUserLookups, users, TimeSpan.FromMinutes(15));
+        }
+
+        return users;
     }
 }

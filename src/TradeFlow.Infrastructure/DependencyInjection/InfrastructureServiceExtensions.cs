@@ -36,6 +36,9 @@ public static class InfrastructureServiceExtensions
 #endif
         };
 
+        // In-memory cache for reference data (Departments, Positions, DocumentCategories, UserLookups)
+        services.AddMemoryCache();
+
         // Register IDbContextFactory for thread-safe isolated contexts in Blazor components & background services
         services.AddDbContextFactory<Persistence.TradeFlowDbContext>(configureDbOptions);
 

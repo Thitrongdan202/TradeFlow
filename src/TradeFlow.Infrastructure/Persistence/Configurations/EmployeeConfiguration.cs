@@ -37,6 +37,8 @@ public class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
         builder.HasIndex(x => x.AttendanceCode);
         builder.HasIndex(x => x.Status);
         builder.HasIndex(x => x.UserId);
+        builder.HasIndex(x => x.DepartmentId);
+        builder.HasIndex(x => x.PositionId);
 
         builder.HasOne(x => x.Department)
             .WithMany(d => d.Employees)

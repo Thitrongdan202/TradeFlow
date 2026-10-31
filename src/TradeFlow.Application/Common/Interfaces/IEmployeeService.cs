@@ -1,5 +1,6 @@
 using TradeFlow.Application.Common.Models.Documents;
 using TradeFlow.Application.Common.Models.Employees;
+using TradeFlow.Application.Common.Models.Users;
 using TradeFlow.Domain.Enums;
 
 namespace TradeFlow.Application.Common.Interfaces;
@@ -48,4 +49,7 @@ public interface IEmployeeService
     // === Hồ sơ & Tài liệu đính kèm nhân sự ===
     Task<List<DocumentAttachmentDto>> GetEmployeeAttachmentsAsync(int employeeId, CancellationToken cancellationToken = default);
     Task<List<DocumentAttachmentDto>> GetEmployeeRequestAttachmentsAsync(int requestId, CancellationToken cancellationToken = default);
+
+    // === Danh mục người dùng liên kết (nhẹ, tối ưu hóa bộ nhớ) ===
+    Task<List<UserLookupDto>> GetAvailableUsersAsync(CancellationToken cancellationToken = default);
 }

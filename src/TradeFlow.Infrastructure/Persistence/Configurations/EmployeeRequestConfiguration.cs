@@ -30,6 +30,11 @@ public class EmployeeRequestConfiguration : IEntityTypeConfiguration<EmployeeReq
 
         builder.HasIndex(x => x.Status);
         builder.HasIndex(x => x.RequestedBy);
+        builder.HasIndex(x => x.CreatedAt);
+        builder.HasIndex(x => new { x.Status, x.CreatedAt });
+        builder.HasIndex(x => x.DepartmentId);
+        builder.HasIndex(x => x.PositionId);
+        builder.HasIndex(x => x.CreatedEmployeeId);
 
         builder.HasOne(x => x.Department)
             .WithMany()

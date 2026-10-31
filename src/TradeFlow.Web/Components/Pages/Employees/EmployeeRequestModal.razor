@@ -25,12 +25,19 @@
                         Xem xét, thẩm định hồ sơ đính kèm, phê duyệt hoặc yêu cầu bổ sung thông tin nhân sự
                     </p>
                 </div>
-                <button type="button" class="tf-modal-close-btn" @onclick="Close" aria-label="Đóng" title="Đóng">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                </button>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <button type="button" class="tf-modal-close-btn" @onclick="() => LoadRequestsAsync(true)" aria-label="Làm mới" title="Tải lại danh sách" disabled="@_isLoading">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="@(_isLoading ? "tf-spin" : "")">
+                            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                        </svg>
+                    </button>
+                    <button type="button" class="tf-modal-close-btn" @onclick="Close" aria-label="Đóng" title="Đóng">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             @* Filter tabs bar (Fixed) *@
@@ -70,7 +77,7 @@
                     </div>
                 }
 
-                @if (_isLoading)
+                @if (_isLoading && _allRequests.Count == 0)
                 {
                     <div style="padding:40px; text-align:center; color:var(--tf-text-muted);">
                         <span class="tf-spinner-sm"></span> Đang tải danh sách yêu cầu...
@@ -397,11 +404,19 @@
                 var authResult = await AuthorizationService.AuthorizeAsync(authState.User, "Permission:EmployeeRequests:Approve");
                 _canApprove = authResult.Succeeded;
 
-                if (!TargetRequestId.HasValue && justOpened)
+                if (!TargetRequestId.HasValue && justOpened && _selectedStatus == null)
                 {
                     _selectedStatus = EmployeeRequestStatus.Pending;
                 }
-                await LoadRequestsAsync();
+
+                if (_allRequests.Count > 0 && !targetChanged)
+                {
+                    ApplyFilter();
+                }
+                else
+                {
+                    await LoadRequestsAsync(true);
+                }
             }
         }
         else
@@ -410,8 +425,14 @@
         }
     }
 
-    private async Task LoadRequestsAsync()
+    private async Task LoadRequestsAsync(bool force = false)
     {
+        if (!force && _allRequests.Count > 0 && !TargetRequestId.HasValue)
+        {
+            ApplyFilter();
+            return;
+        }
+
         _isLoading = true;
         try
         {
@@ -506,7 +527,7 @@
             _processingRequestId = null;
             _reviewNotes = string.Empty;
 
-            await LoadRequestsAsync();
+            await LoadRequestsAsync(true);
 
             if (approve && OnApproved.HasDelegate)
             {

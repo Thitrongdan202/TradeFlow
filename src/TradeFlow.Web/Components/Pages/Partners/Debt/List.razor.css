@@ -6,16 +6,19 @@
 /* Page Header */
 .tf-page-header {
     display: flex;
+    flex-direction: row;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     flex-wrap: wrap;
     gap: 16px;
     margin-bottom: 20px;
+    width: 100%;
 }
 
 .tf-page-header-left {
     flex: 0 1 auto;
     max-width: 440px;
+    text-align: left;
 }
 
 .tf-page-title {
@@ -24,6 +27,7 @@
     color: #0f172a;
     margin: 0 0 4px 0;
     letter-spacing: -0.01em;
+    text-align: left;
 }
 
 .tf-page-subtitle {
@@ -31,29 +35,32 @@
     color: #64748b;
     margin: 0;
     line-height: 1.4;
+    text-align: left;
 }
 
 .tf-page-header-actions {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     flex-wrap: wrap;
     justify-content: flex-end;
     flex: 1 1 auto;
+    margin-left: auto;
 }
 
 .tf-header-filter-cluster {
     display: flex;
     align-items: center;
     gap: 8px;
-    flex-shrink: 0;
+    flex: 1 1 auto;
+    max-width: 420px;
 }
 
 .tf-header-action-cluster {
     display: flex;
     align-items: center;
     gap: 8px;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     flex-shrink: 0;
 }
 
@@ -103,7 +110,7 @@
 .tf-header-search-wrap {
     flex: 1 1 240px;
     max-width: 340px;
-    min-width: 180px;
+    min-width: 200px;
 }
 
 .tf-filter-active-count {
@@ -138,6 +145,7 @@
     gap: 14px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
     transition: all 0.15s;
+    min-height: 72px;
 }
 
 .tf-debt-kpi-card:hover {
@@ -190,6 +198,7 @@
 .tf-kpi-content {
     flex: 1;
     min-width: 0;
+    text-align: left;
 }
 
 .tf-kpi-label {

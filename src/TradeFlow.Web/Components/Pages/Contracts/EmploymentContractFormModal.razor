@@ -5,6 +5,7 @@
 @using TradeFlow.Domain.Entities.Contracts
 @using TradeFlow.Domain.Enums
 @using TradeFlow.Infrastructure.Persistence
+@using TradeFlow.Web.Components.Shared.Forms
 
 @inject IEmploymentContractService EmploymentContractService
 @inject IContractService ContractService
@@ -24,7 +25,7 @@
         <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-width: 1100px; max-height: 92vh;" @onclick:stopPropagation="true">
             <div class="modal-content shadow-2xl border-0 rounded-4 overflow-hidden" style="max-height: 92vh; display: flex; flex-direction: column; position: relative;">
                 <!-- Modal Header with Segmented Tabs -->
-                <div class="modal-header bg-white border-bottom px-4 pt-3.5 pb-2.5 flex-column align-items-stretch gap-2.5 flex-shrink-0">
+                <div class="modal-header tf-contract-modal-header px-4 pt-3.5 pb-2.5 flex-column align-items-stretch gap-2.5 flex-shrink-0">
                     <div class="d-flex align-items-center justify-content-between w-100">
                         <div class="d-flex align-items-center gap-3">
                             <div class="d-flex align-items-center justify-content-center rounded-3 bg-primary bg-opacity-10 text-primary shadow-2xs border border-primary border-opacity-20" style="width: 44px; height: 44px;">
@@ -37,7 +38,7 @@
                             </div>
                             <div>
                                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                                    <h5 class="modal-title fw-bold text-dark mb-0">
+                                    <h5 class="modal-title fw-bold tf-contract-modal-title mb-0">
                                         @(IsEditMode ? $"Chỉnh sửa Hợp đồng lao động: {ContractNumber}" : "Soạn thảo Hợp đồng lao động mới")
                                     </h5>
                                     <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-0.5 small">
@@ -91,7 +92,7 @@
                         <button type="button" class="tf-segmented-tab @(activeTab == "preview" ? "is-active" : "") flex-grow-1 justify-content-center py-2"
                                 @onclick='() => SwitchModalTab("preview")'>
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
                             </svg>
                             <span>4. Xem trước văn bản A4</span>
                         </button>
@@ -99,7 +100,7 @@
                 </div>
 
                 <!-- Modal Body -->
-                <div class="modal-body p-4 bg-light bg-opacity-50" style="overflow-y: auto; flex: 1 1 auto;">
+                <div class="modal-body tf-contract-modal-body p-4" style="overflow-y: auto; flex: 1 1 auto; min-height: 0; overscroll-behavior: contain;">
                     @if (!string.IsNullOrEmpty(errorMessage))
                     {
                         <div class="alert alert-danger py-2.5 px-3 small mb-3 d-flex align-items-center gap-2 rounded-3 shadow-2xs border border-danger border-opacity-25">
@@ -112,8 +113,7 @@
 
                     <div id="emp-modal-tab-content">
                         <!-- TAB 1: THÔNG TIN CHUNG & NHÂN SỰ -->
-                        @if (activeTab == "info")
-                        {
+                        <div id="emp-tab-info" style="display: @(activeTab == "info" ? "block" : "none");">
                             <!-- Section 1: Bên B - Nhân viên -->
                             <div class="tf-form-section">
                                 <div class="tf-form-section-header">
@@ -201,11 +201,11 @@
 
                                     <div class="col-12 col-md-3">
                                         <label class="form-label small fw-semibold text-slate-700 mb-1">Ngày lập hợp đồng</label>
-                                        <input type="date" class="tf-custom-input w-100" @bind="model.ContractDate" />
+                                        <TfDateInput @bind-Value="ContractDateWrapper" />
                                     </div>
                                     <div class="col-12 col-md-3">
                                         <label class="form-label small fw-semibold text-slate-700 mb-1">Ngày bắt đầu hiệu lực <span class="text-danger">*</span></label>
-                                        <input type="date" class="tf-custom-input w-100" @bind="model.StartDate" />
+                                        <TfDateInput @bind-Value="StartDateWrapper" />
                                     </div>
                                     <div class="col-12 col-md-3">
                                         <label class="form-label small fw-semibold text-slate-700 mb-1">
@@ -215,7 +215,7 @@
                                                 <span class="text-danger">*</span>
                                             }
                                         </label>
-                                        <input type="date" class="tf-custom-input w-100" @bind="model.EndDate" disabled="@(model.ContractType == EmploymentContractType.IndefiniteTerm)" />
+                                        <TfDateInput @bind-Value="model.EndDate" Disabled="@(model.ContractType == EmploymentContractType.IndefiniteTerm)" />
                                     </div>
 
                                     @if (model.ContractType == EmploymentContractType.Probation)
@@ -297,11 +297,10 @@
                                     </div>
                                 </div>
                             </div>
-                        }
+                        </div>
 
                         <!-- TAB 2: TIỀN LƯƠNG & CHẾ ĐỘ -->
-                        @if (activeTab == "remuneration")
-                        {
+                        <div id="emp-tab-remuneration" style="display: @(activeTab == "remuneration" ? "block" : "none");">
                             <div class="tf-form-section">
                                 <div class="tf-form-section-header">
                                     <h6 class="tf-form-section-title">
@@ -310,12 +309,12 @@
                                         </svg>
                                         <span>Thỏa thuận tiền lương &amp; Chế độ thù lao</span>
                                     </h6>
-                                    <span class="badge bg-warning bg-opacity-10 text-dark border small px-2 py-1">Linh hoạt theo thỏa thuận</span>
+                                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 small px-2 py-1">Linh hoạt theo thỏa thuận</span>
                                 </div>
                                 <div class="row g-3">
                                     <div class="col-12 col-md-6">
                                         <label class="form-label small fw-semibold text-slate-700 mb-1">
-                                            Mức lương số học (VND) <span class="badge bg-light text-muted border ms-1">Tùy chọn</span>
+                                            Mức lương số học (VND) <span class="badge bg-secondary bg-opacity-10 text-muted border ms-1">Tùy chọn</span>
                                         </label>
                                         <input type="number" class="tf-custom-input w-100" @bind="model.BasicSalary" placeholder="Bỏ trống nếu thỏa thuận riêng theo Phụ lục..." step="500000" />
                                         <div class="form-text smaller text-muted">
@@ -436,14 +435,13 @@
                                     </div>
                                 </div>
                             </div>
-                        }
+                        </div>
 
                         <!-- TAB 3: SOẠN THẢO ĐIỀU KHOẢN (CLAUSE EDITOR) -->
-                        @if (activeTab == "clauses")
-                        {
+                        <div id="emp-tab-clauses" style="display: @(activeTab == "clauses" ? "block" : "none");">
                             <div class="d-flex align-items-center justify-content-between mb-3">
                                 <div>
-                                    <h6 class="fw-bold text-dark mb-0">Danh mục điều khoản văn bản hợp đồng</h6>
+                                    <h6 class="fw-bold tf-contract-modal-title mb-0">Danh mục điều khoản văn bản hợp đồng</h6>
                                     <div class="text-muted smaller">Bạn có thể chỉnh sửa trực tiếp nội dung từng điều, thêm điều khoản mới hoặc xóa điều khoản tùy chọn.</div>
                                 </div>
                                 <div class="d-flex align-items-center gap-2">
@@ -469,10 +467,10 @@
                                     {
                                         var index = i;
                                         var clause = model.Clauses[i];
-                                        <div class="tf-form-section p-3 mb-0">
+                                        <div class="tf-form-section p-3 mb-0" @key="clause">
                                             <div class="d-flex align-items-center justify-content-between mb-2">
                                                 <div class="d-flex align-items-center gap-2 flex-grow-1 me-3">
-                                                    <input type="text" class="tf-custom-input fw-bold bg-light" style="max-width: 95px;" @bind="clause.ArticleNumber" />
+                                                    <input type="text" class="tf-custom-input fw-bold" style="max-width: 95px;" @bind="clause.ArticleNumber" />
                                                     <input type="text" class="tf-custom-input fw-semibold flex-grow-1" @bind="clause.Title" />
                                                 </div>
                                                 <div class="d-flex align-items-center gap-2 flex-shrink-0">
@@ -498,11 +496,12 @@
                                     }
                                 </div>
                             }
-                        }
+                        </div>
 
                         <!-- TAB 4: LIVE PREVIEW A4 -->
                         @if (activeTab == "preview")
                         {
+                        <div id="emp-tab-preview">
                             <div class="d-flex justify-content-center">
                                 <div class="tf-a4-preview-canvas">
                                     <!-- Header Preview -->
@@ -575,54 +574,94 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
                         }
                     </div>
                 </div>
 
-                <!-- Footer Actions -->
-                <div class="modal-footer bg-white border-top px-4 py-3 d-flex justify-content-between flex-shrink-0">
+                <!-- Footer Actions (Step-by-Step Wizard Navigation) -->
+                <div class="modal-footer tf-contract-modal-footer px-4 py-3 d-flex justify-content-between flex-shrink-0">
                     <button type="button" class="btn btn-outline-secondary btn-sm px-3 rounded-2" @onclick="RequestCloseModal" disabled="@isSubmitting">
                         Đóng
                     </button>
                     <div class="d-flex align-items-center gap-2">
-                        @if (activeTab != "preview")
+                        @if (activeTab == "info")
                         {
-                            <button type="button" class="btn btn-outline-primary btn-sm px-3 rounded-2 d-inline-flex align-items-center gap-1.5" @onclick='() => SwitchModalTab("preview")'>
+                            <button type="button" class="btn btn-primary btn-sm px-4 fw-semibold rounded-2 shadow-2xs d-inline-flex align-items-center gap-1.5" @onclick="GoNextStep">
+                                <span>Tiếp tục: Tiền lương &amp; Chế độ</span>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                                    <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                                 </svg>
-                                <span>Xem trước văn bản</span>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary btn-sm px-3 rounded-2" @onclick="HandleSubmitAsync" disabled="@isSubmitting">
+                                <span>Lưu bản nháp</span>
+                            </button>
+                        }
+                        else if (activeTab == "remuneration")
+                        {
+                            <button type="button" class="btn btn-outline-secondary btn-sm px-3 rounded-2 d-inline-flex align-items-center gap-1.5" @onclick="GoPrevStep">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+                                </svg>
+                                <span>Quay lại: Thông tin chung</span>
+                            </button>
+                            <button type="button" class="btn btn-primary btn-sm px-4 fw-semibold rounded-2 shadow-2xs d-inline-flex align-items-center gap-1.5" @onclick="GoNextStep">
+                                <span>Tiếp tục: Soạn điều khoản</span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                                </svg>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary btn-sm px-3 rounded-2" @onclick="HandleSubmitAsync" disabled="@isSubmitting">
+                                <span>Lưu bản nháp</span>
+                            </button>
+                        }
+                        else if (activeTab == "clauses")
+                        {
+                            <button type="button" class="btn btn-outline-secondary btn-sm px-3 rounded-2 d-inline-flex align-items-center gap-1.5" @onclick="GoPrevStep">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+                                </svg>
+                                <span>Quay lại: Tiền lương</span>
+                            </button>
+                            <button type="button" class="btn btn-primary btn-sm px-4 fw-semibold rounded-2 shadow-2xs d-inline-flex align-items-center gap-1.5" @onclick="GoNextStep">
+                                <span>Xem trước văn bản A4</span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary btn-sm px-3 rounded-2" @onclick="HandleSubmitAsync" disabled="@isSubmitting">
+                                <span>Lưu bản nháp</span>
                             </button>
                         }
                         else
                         {
-                            <button type="button" class="btn btn-outline-secondary btn-sm px-3 rounded-2 d-inline-flex align-items-center gap-1.5" @onclick='() => SwitchModalTab("info")'>
+                            <button type="button" class="btn btn-outline-secondary btn-sm px-3 rounded-2 d-inline-flex align-items-center gap-1.5" @onclick="GoPrevStep">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
                                 </svg>
                                 <span>Quay lại chỉnh sửa</span>
                             </button>
+                            <button type="button" class="btn btn-primary btn-sm px-4 fw-semibold rounded-2 shadow-2xs" @onclick="HandleSubmitAsync" disabled="@isSubmitting">
+                                @if (isSubmitting)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                    <span>Đang lưu...</span>
+                                }
+                                else
+                                {
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1.5">
+                                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                        <polyline points="17 21 17 13 7 13 7 21"/>
+                                        <polyline points="7 3 7 8 15 8"/>
+                                    </svg>
+                                    <span>@(IsEditMode ? "Cập nhật hợp đồng" : "Lưu bản nháp hợp đồng")</span>
+                                }
+                            </button>
                         }
-                        <button type="button" class="btn btn-primary btn-sm px-4 fw-semibold rounded-2 shadow-2xs" @onclick="HandleSubmitAsync" disabled="@isSubmitting">
-                            @if (isSubmitting)
-                            {
-                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                                <span>Đang lưu...</span>
-                            }
-                            else
-                            {
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1.5">
-                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                                    <polyline points="17 21 17 13 7 13 7 21"/>
-                                    <polyline points="7 3 7 8 15 8"/>
-                                </svg>
-                                <span>@(IsEditMode ? "Cập nhật hợp đồng" : "Lưu bản nháp hợp đồng")</span>
-                            }
-                        </button>
                     </div>
                 </div>
 
-                @* Unsaved Changes Confirm Dialog *@
+@* Unsaved Changes Confirm Dialog *@
                 @if (_showDiscardConfirm)
                 {
                     <div class="tf-modal-confirm-overlay" @onclick:stopPropagation="true">
@@ -725,16 +764,51 @@
         return "TP. Cần Thơ";
     }
 
-    private async Task SwitchModalTab(string tab)
+    private DateTime? ContractDateWrapper
+    {
+        get => model.ContractDate;
+        set { if (value.HasValue) model.ContractDate = value.Value; }
+    }
+
+    private DateTime? StartDateWrapper
+    {
+        get => model.StartDate;
+        set { if (value.HasValue) model.StartDate = value.Value; }
+    }
+
+    private static readonly string[] WizardSteps = { "info", "remuneration", "clauses", "preview" };
+
+    private int GetCurrentStepIndex() => activeTab switch
+    {
+        "remuneration" => 1,
+        "clauses" => 2,
+        "preview" => 3,
+        _ => 0
+    };
+
+    private void GoNextStep()
+    {
+        var idx = GetCurrentStepIndex();
+        if (idx < WizardSteps.Length - 1)
+        {
+            SwitchModalTab(WizardSteps[idx + 1]);
+        }
+    }
+
+    private void GoPrevStep()
+    {
+        var idx = GetCurrentStepIndex();
+        if (idx > 0)
+        {
+            SwitchModalTab(WizardSteps[idx - 1]);
+        }
+    }
+
+    private void SwitchModalTab(string tab)
     {
         if (activeTab == tab) return;
+        errorMessage = string.Empty;
         activeTab = tab;
-        StateHasChanged();
-        try
-        {
-            await JS.InvokeVoidAsync("TradeFlowMotion.animateTabContent", "#emp-modal-tab-content");
-        }
-        catch { }
     }
 
     public async Task OpenCreateAsync()
@@ -772,7 +846,7 @@
         selectedEmployeeDisplay = string.Empty;
 
         await LoadEmployeesAsync();
-        RegenerateClauses();
+        RegenerateClauses(force: true);
 
         IsOpen = true;
         await IsOpenChanged.InvokeAsync(true);
@@ -849,7 +923,7 @@
 
         if (model.Clauses == null || !model.Clauses.Any())
         {
-            RegenerateClauses();
+            RegenerateClauses(force: true);
         }
 
         IsOpen = true;
@@ -874,7 +948,7 @@
             if (string.IsNullOrWhiteSpace(model.DepartmentName))
                 model.DepartmentName = selectedEmployee.Department?.Name ?? "Khối Nghiệp vụ";
 
-            RegenerateClauses();
+            RegenerateClauses(force: false);
         }
     }
 
@@ -912,7 +986,7 @@
                 model.JobTitle = "Học viên tập nghề kỹ thuật";
         }
 
-        RegenerateClauses();
+        RegenerateClauses(force: true);
     }
 
     private string GetJobTitleLabel()
@@ -978,8 +1052,13 @@
         }
     }
 
-    private void RegenerateClauses()
+    private void RegenerateClauses(bool force = false)
     {
+        if (!force && model.Clauses != null && model.Clauses.Count > 0)
+        {
+            return;
+        }
+
         var tempDto = new EmploymentContractDto
         {
             ContractType = model.ContractType,
@@ -1025,7 +1104,7 @@
 
     private void ResetAllClausesToDefault()
     {
-        RegenerateClauses();
+        RegenerateClauses(force: true);
     }
 
     private void AddNewClause()

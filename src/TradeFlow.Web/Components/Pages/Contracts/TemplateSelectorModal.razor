@@ -6,8 +6,15 @@
 
 @if (IsOpen)
 {
-    <div class="modal fade show d-block tf-gallery-modal-backdrop" tabindex="-1" role="dialog" aria-modal="true">
-        <div class="modal-dialog modal-dialog-centered tf-gallery-modal-dialog">
+    <div class="modal fade show d-block tf-gallery-modal-backdrop"
+         tabindex="-1"
+         role="dialog"
+         aria-modal="true"
+         @onclick="HandleBackdropClick"
+         @onkeydown="HandleKeyDown"
+         @ref="backdropRef">
+        <div class="modal-dialog modal-dialog-centered tf-gallery-modal-dialog"
+             @onclick:stopPropagation="true">
             <div class="modal-content tf-gallery-modal-content">
                 <!-- Modal Header (Clean Light Theme) -->
                 <div class="modal-header tf-gallery-modal-header">
@@ -172,6 +179,32 @@
 
     private List<ContractTemplateDto> templates = new();
     private bool isLoading = true;
+    private ElementReference backdropRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsOpen)
+        {
+            try
+            {
+                await backdropRef.FocusAsync();
+            }
+            catch { }
+        }
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        await CloseAsync();
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await CloseAsync();
+        }
+    }
 
     protected override async Task OnParametersSetAsync()
     {

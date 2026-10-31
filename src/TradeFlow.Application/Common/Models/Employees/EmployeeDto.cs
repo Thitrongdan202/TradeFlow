@@ -1,3 +1,4 @@
+using TradeFlow.Application.Common.Models.Documents;
 using TradeFlow.Domain.Enums;
 
 namespace TradeFlow.Application.Common.Models.Employees;
@@ -41,4 +42,9 @@ public class EmployeeDto
     public string? CreatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public string? UpdatedBy { get; set; }
+
+    /// <summary>
+    /// Danh sách hồ sơ cá nhân &amp; tài liệu đính kèm của nhân viên
+    /// </summary>
+    public List<DocumentAttachmentDto> Attachments { get; set; } = new();
 }

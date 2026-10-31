@@ -6,18 +6,18 @@
 
 @if (IsOpen)
 {
-    <div class="tf-modal-overlay" @onclick="HandleBackdropClick">
-        <div class="tf-modal tf-modal-md" @onclick:stopPropagation="true">
+    <div class="tf-modal-overlay" @onclick="HandleBackdropClick" @onkeydown="HandleKeyDown" tabindex="-1">
+        <div class="tf-modal tf-modal-md" @onclick:stopPropagation="true" style="position: relative;">
             <div class="tf-modal-header">
                 <h3 class="tf-modal-title">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;vertical-align:text-bottom;color:var(--tf-primary);">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                         <circle cx="12" cy="7" r="4"/>
                     </svg>
-                    Thêm chức danh mới
+                    @(IsEditMode ? "Chỉnh sửa chức danh" : "Thêm chức danh mới")
                 </h3>
-                <button type="button" class="tf-btn-icon" @onclick="Close">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <button type="button" class="tf-modal-close-btn" @onclick="RequestCloseAsync" aria-label="Đóng" title="Đóng">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18"/>
                         <line x1="6" y1="6" x2="18" y2="18"/>
                     </svg>
@@ -38,7 +38,9 @@
                     <div class="tf-form-group tf-mb-4">
                         <label class="tf-label">Mã chức danh</label>
                         <InputText class="tf-input" @bind-Value="_model.Code" placeholder="Ví dụ: NV_KD, TP_KHO, KT_TH..." />
-                        <span class="tf-text-muted" style="font-size:12px;">Để trống để hệ thống tự động sinh mã từ tên chức danh.</span>
+                        <span class="tf-text-muted" style="font-size:12px;">
+                            @(IsEditMode ? "Mã định danh duy nhất của chức danh." : "Để trống để hệ thống tự động sinh mã từ tên chức danh.")
+                        </span>
                     </div>
 
                     <div class="tf-form-group tf-mb-4">
@@ -54,7 +56,7 @@
                 </div>
 
                 <div class="tf-modal-footer">
-                    <button type="button" class="tf-btn tf-btn-ghost" @onclick="Close" disabled="@_isSubmitting">Hủy</button>
+                    <button type="button" class="tf-btn tf-btn-ghost" @onclick="RequestCloseAsync" disabled="@_isSubmitting">Hủy</button>
                     <button type="submit" class="tf-btn tf-btn-primary" disabled="@_isSubmitting">
                         @if (_isSubmitting)
                         {
@@ -63,11 +65,37 @@
                         }
                         else
                         {
-                            <span>Lưu chức danh</span>
+                            <span>@(IsEditMode ? "Cập nhật chức danh" : "Lưu chức danh")</span>
                         }
                     </button>
                 </div>
             </EditForm>
+
+            @* Unsaved Changes Confirmation Modal Overlay *@
+            @if (_showDirtyConfirm)
+            {
+                <div class="tf-modal-confirm-overlay" @onclick:stopPropagation="true">
+                    <div class="tf-modal-confirm-box text-center">
+                        <div class="tw-w-12 tw-h-12 tw-rounded-full tw-bg-amber-100 tw-text-amber-600 tw-flex tw-items-center tw-justify-center tw-mx-auto tw-mb-3">
+                            <svg class="tw-w-6 tw-h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <h4 class="tw-text-base tw-font-bold tw-text-slate-900 dark:tw-text-slate-100 tw-mb-1.5">Bạn có thay đổi chưa lưu</h4>
+                        <p class="tw-text-xs tw-text-slate-500 dark:tw-text-slate-400 tw-mb-5 tw-leading-relaxed">
+                            Bạn có chắc muốn đóng và hủy thay đổi? Thông tin chức danh bạn vừa nhập sẽ không được lưu.
+                        </p>
+                        <div class="tw-flex tw-items-center tw-justify-center tw-gap-2.5">
+                            <button type="button" class="tf-btn tf-btn-secondary tw-text-xs" @onclick="() => _showDirtyConfirm = false">
+                                Tiếp tục chỉnh sửa
+                            </button>
+                            <button type="button" class="tf-btn tf-btn-danger tw-text-xs" @onclick="ConfirmDiscardAsync">
+                                Hủy thay đổi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
         </div>
     </div>
 }
@@ -75,28 +103,103 @@
 @code {
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public PositionDto? PositionToEdit { get; set; }
     [Parameter] public EventCallback<PositionDto> OnPositionCreated { get; set; }
+    [Parameter] public EventCallback<PositionDto> OnPositionSaved { get; set; }
 
     private FormModel _model = new();
+    private string _initialCode = string.Empty;
+    private string _initialName = string.Empty;
+    private string _initialDesc = string.Empty;
+
     private bool _isSubmitting;
+    private bool _showDirtyConfirm;
     private string? _errorMessage;
+
+    private bool IsEditMode => PositionToEdit != null;
+
+    private bool IsDirty =>
+        (_model.Code?.Trim() ?? "") != _initialCode ||
+        (_model.Name.Trim()) != _initialName ||
+        (_model.Description?.Trim() ?? "") != _initialDesc;
 
     protected override void OnParametersSet()
     {
         if (IsOpen)
         {
-            _model = new();
+            if (PositionToEdit != null)
+            {
+                _initialCode = PositionToEdit.Code ?? "";
+                _initialName = PositionToEdit.Name ?? "";
+                _initialDesc = PositionToEdit.Description ?? "";
+
+                _model = new FormModel
+                {
+                    Code = PositionToEdit.Code,
+                    Name = PositionToEdit.Name,
+                    Description = PositionToEdit.Description
+                };
+            }
+            else
+            {
+                _initialCode = "";
+                _initialName = "";
+                _initialDesc = "";
+                _model = new FormModel();
+            }
+
             _errorMessage = null;
             _isSubmitting = false;
+            _showDirtyConfirm = false;
         }
     }
 
     private async Task HandleBackdropClick()
     {
-        if (!_isSubmitting)
+        if (_isSubmitting) return;
+
+        if (IsDirty)
         {
-            await Close();
+            _showDirtyConfirm = true;
+            return;
         }
+
+        await Close();
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (_isSubmitting) return;
+
+        if (e.Key == "Escape")
+        {
+            if (_showDirtyConfirm)
+            {
+                _showDirtyConfirm = false;
+                return;
+            }
+
+            await RequestCloseAsync();
+        }
+    }
+
+    public async Task RequestCloseAsync()
+    {
+        if (_isSubmitting) return;
+
+        if (IsDirty)
+        {
+            _showDirtyConfirm = true;
+            return;
+        }
+
+        await Close();
+    }
+
+    private async Task ConfirmDiscardAsync()
+    {
+        _showDirtyConfirm = false;
+        await Close();
     }
 
     private async Task Close()
@@ -119,8 +222,35 @@
                 ? GenerateCodeFromName(_model.Name)
                 : _model.Code.Trim().ToUpperInvariant();
 
-            var pos = await EmployeeService.CreatePositionAsync(code, _model.Name.Trim(), _model.Description?.Trim(), username);
-            await OnPositionCreated.InvokeAsync(pos);
+            PositionDto resultPos;
+
+            if (IsEditMode && PositionToEdit != null)
+            {
+                resultPos = await EmployeeService.UpdatePositionAsync(
+                    PositionToEdit.Id,
+                    code,
+                    _model.Name.Trim(),
+                    _model.Description?.Trim(),
+                    username);
+            }
+            else
+            {
+                resultPos = await EmployeeService.CreatePositionAsync(
+                    code,
+                    _model.Name.Trim(),
+                    _model.Description?.Trim(),
+                    username);
+            }
+
+            if (OnPositionSaved.HasDelegate)
+            {
+                await OnPositionSaved.InvokeAsync(resultPos);
+            }
+            if (OnPositionCreated.HasDelegate)
+            {
+                await OnPositionCreated.InvokeAsync(resultPos);
+            }
+
             await Close();
         }
         catch (Exception ex)

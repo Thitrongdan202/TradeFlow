@@ -169,14 +169,22 @@
                                             @if (!string.IsNullOrEmpty(n.TargetUrl))
                                             {
                                                 <a href="@n.TargetUrl" class="tf-notif-detail-link" @onclick="CloseDropdown">
-                                                    Chi tiết &rarr;
+                                                    @(n.ActionButtonText ?? "Chi tiết") &rarr;
                                                 </a>
                                             }
                                         </div>
                                     }
                                     else
                                     {
-                                        <div class="tf-notif-item-time">@n.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;" @onclick:stopPropagation="true">
+                                            <div class="tf-notif-item-time">@n.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                                            @if (!string.IsNullOrEmpty(n.ActionButtonText) && !string.IsNullOrEmpty(n.TargetUrl))
+                                            {
+                                                <a href="@n.TargetUrl" class="tf-btn-action-pill @(n.Type == "warning" ? "warning" : n.Type == "error" ? "danger" : n.Type == "success" ? "success" : "")" @onclick="() => HandleActionClick(n.TargetUrl)">
+                                                    @n.ActionButtonText &rarr;
+                                                </a>
+                                            }
+                                        </div>
                                     }
                                 </div>
                                 @if (!n.IsRead)
@@ -340,4 +348,14 @@
             CloseDropdown();
         }
     }
+
+    private void HandleActionClick(string? url)
+    {
+        CloseDropdown();
+        if (!string.IsNullOrEmpty(url))
+        {
+            Nav.NavigateTo(url);
+        }
+    }
+
 }

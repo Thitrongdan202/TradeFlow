@@ -2,6 +2,7 @@
 @page "/pos"
 @page "/ban-hang/pos"
 @rendermode InteractiveServer
+@implements IDisposable
 @attribute [Authorize(Policy = "Permission:SalesOrders:Create")]
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
@@ -2020,18 +2021,30 @@
 @* ============================================================
    PRODUCT DETAIL MODAL (Xem chi tiết thông số hàng hóa)
    ============================================================ *@
-@if (_showProductDetailModal && _viewingProductDetail != null)
+@if (_showProductDetailModal)
 {
     <div class="tf-modal-backdrop" @onclick="() => _showProductDetailModal = false">
         <div class="tf-modal-dialog tf-product-detail-dialog" @onclick:stopPropagation="true">
             <div class="tf-modal-header">
                 <div class="tf-product-detail-header-text">
                     <h3 class="tf-modal-title">Chi tiết sản phẩm</h3>
-                    <span class="tf-product-detail-sub">@(_viewingProductDetail.NewCode ?? _viewingProductDetail.Code) — @_viewingProductDetail.Name</span>
+                    @if (_viewingProductDetail != null)
+                    {
+                        <span class="tf-product-detail-sub">@(_viewingProductDetail.NewCode ?? _viewingProductDetail.Code) — @_viewingProductDetail.Name</span>
+                    }
                 </div>
                 <button type="button" class="tf-modal-close-btn" @onclick="() => _showProductDetailModal = false">✕</button>
             </div>
             <div class="tf-modal-body tf-detail-modal-body">
+                @if (_isLoadingProductDetail || _viewingProductDetail == null)
+                {
+                    <div style="padding:32px 16px; text-align:center;">
+                        <div class="tf-spinner" style="margin:0 auto 12px auto; width:30px; height:30px;"></div>
+                        <div style="font-size:13px; color:var(--tf-text-secondary);">Đang nạp thông số sản phẩm...</div>
+                    </div>
+                }
+                else
+                {
                 <div class="tf-detail-info-grid">
                     <div class="tf-detail-field">
                         <span class="tf-detail-label">Mã sản phẩm:</span>
@@ -2087,6 +2100,7 @@
                         </div>
                     }
                 </div>
+                }
             </div>
             <div class="tf-modal-footer">
                 <button type="button" class="tf-btn tf-btn-primary" @onclick="() => _showProductDetailModal = false">Đóng</button>
@@ -2260,6 +2274,7 @@
     private bool _showItemNoteModal;
     private Product? _viewingProductDetail;
     private bool _showProductDetailModal;
+    private bool _isLoadingProductDetail;
     private string? _checkoutErrorMessage;
 
     // Checkout Execution State
@@ -2278,18 +2293,26 @@
 
     // Cashier
     private string _cashierName = "Thu ngân";
+    private readonly CancellationTokenSource _cts = new();
+    private bool _disposed;
 
     protected override async Task OnInitializedAsync()
     {
+        if (_disposed) return;
         try
         {
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (_disposed) return;
             if (authState.User.Identity?.IsAuthenticated == true)
             {
                 _cashierName = authState.User.Identity.Name ?? "Thu ngân";
             }
 
             await LoadInitialDataAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected on component disposal/navigation
         }
         catch (Exception ex)
         {
@@ -2362,11 +2385,15 @@
 
     private async Task LoadInitialDataAsync()
     {
+        if (_disposed) return;
+
         // 0. Company Settings (for QR Code & Bank configuration)
-        _companySettings = await DbContext.CompanySettings.AsNoTracking().FirstOrDefaultAsync();
+        _companySettings = await DbContext.CompanySettings.AsNoTracking().FirstOrDefaultAsync(_cts.Token);
+        if (_disposed) return;
 
         // 1. Applicable Price lists
         _priceLists = await SalesService.GetApplicablePriceListsAsync(DateTime.UtcNow);
+        if (_disposed) return;
         if (_priceLists.Any())
         {
             var defaultPlId = _priceLists.First().Id;
@@ -2385,13 +2412,16 @@
             .Where(c => c.IsActive)
             .OrderBy(c => c.DisplayOrder)
             .ThenBy(c => c.Name)
-            .ToListAsync();
+            .ToListAsync(_cts.Token);
+        if (_disposed) return;
 
         // 3. Load catalog products
         await LoadCatalogPageAsync();
+        if (_disposed) return;
 
         // 4. Load recent orders
         var allOrders = await SalesService.GetOrdersAsync();
+        if (_disposed) return;
         _recentOrders = allOrders.Take(15).ToList();
     }
 
@@ -2434,19 +2464,23 @@
             query = ApplyAttributeFilters(query, _selectedAttributes);
         }
 
-        _catalogTotalCount = await query.CountAsync();
+        if (_disposed) return;
+        _catalogTotalCount = await query.CountAsync(_cts.Token);
+        if (_disposed) return;
         _catalogProducts = await query
             .OrderBy(p => p.Name)
             .Skip((_catalogPage - 1) * _catalogPageSize)
             .Take(_catalogPageSize)
-            .ToListAsync();
+            .ToListAsync(_cts.Token);
 
         // Cache prices for catalog products
         foreach (var p in _catalogProducts)
         {
+            if (_disposed) return;
             if (!_productPrices.ContainsKey(p.Id))
             {
                 var priceResult = await SalesService.GetProductPriceAsync(p.Id, ActiveTab.PriceListId, ActiveTab.OrderDate);
+                if (_disposed) return;
                 _productPrices[p.Id] = priceResult.Price;
             }
 
@@ -2688,11 +2722,17 @@
     private async Task ShowProductDetailsAsync(int productId)
     {
         _openItemMenuId = null;
+        _showProductDetailModal = true;
+        _isLoadingProductDetail = true;
+        _viewingProductDetail = null;
+        StateHasChanged();
+
         _viewingProductDetail = await DbContext.Products
             .Include(p => p.Category)
             .Include(p => p.Unit)
             .FirstOrDefaultAsync(p => p.Id == productId);
-        _showProductDetailModal = true;
+        _isLoadingProductDetail = false;
+        StateHasChanged();
     }
 
     private static string GetMaterialTag(string productName, string? specs = null, string? desc = null)
@@ -3370,5 +3410,16 @@
             _showPromotionModal = false;
             _showRecentOrdersModal = false;
         }
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        try
+        {
+            _cts.Cancel();
+            _cts.Dispose();
+        }
+        catch { }
     }
 }

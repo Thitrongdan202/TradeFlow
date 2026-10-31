@@ -1,3 +1,5 @@
+using TradeFlow.Application.Common.Models.Documents;
+using TradeFlow.Domain.Entities.Documents;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -358,23 +360,43 @@ public class EmployeeService : IEmployeeService
         return true;
     }
 
-    public async Task<List<DepartmentDto>> GetDepartmentsAsync(CancellationToken cancellationToken = default)
+    public async Task<List<DepartmentDto>> GetDepartmentsAsync(bool includeInactive = false, CancellationToken cancellationToken = default)
     {
-        var departments = await _context.Departments
-            .Where(d => d.IsActive)
-            .Include(d => d.Employees)
-            .OrderBy(d => d.Name)
-            .ToListAsync(cancellationToken);
+        var query = _context.Departments.AsNoTracking();
 
-        return departments.Select(d => new DepartmentDto
+        if (!includeInactive)
         {
-            Id = d.Id,
-            Code = d.Code,
-            Name = d.Name,
-            Description = d.Description,
-            IsActive = d.IsActive,
-            EmployeeCount = d.Employees.Count(e => e.Status == EmployeeStatus.Active)
-        }).ToList();
+            query = query.Where(d => d.IsActive);
+        }
+
+        return await query.OrderBy(d => d.Name)
+            .Select(d => new DepartmentDto
+            {
+                Id = d.Id,
+                Code = d.Code,
+                Name = d.Name,
+                Description = d.Description,
+                IsActive = d.IsActive,
+                EmployeeCount = d.Employees.Count(e => e.Status == EmployeeStatus.Active)
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<DepartmentDto?> GetDepartmentByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await _context.Departments
+            .AsNoTracking()
+            .Where(d => d.Id == id)
+            .Select(d => new DepartmentDto
+            {
+                Id = d.Id,
+                Code = d.Code,
+                Name = d.Name,
+                Description = d.Description,
+                IsActive = d.IsActive,
+                EmployeeCount = d.Employees.Count(e => e.Status == EmployeeStatus.Active)
+            })
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<DepartmentDto> CreateDepartmentAsync(string code, string name, string? description, string performedBy, CancellationToken cancellationToken = default)
@@ -417,23 +439,158 @@ public class EmployeeService : IEmployeeService
         };
     }
 
-    public async Task<List<PositionDto>> GetPositionsAsync(CancellationToken cancellationToken = default)
+    public async Task<DepartmentDto> UpdateDepartmentAsync(int id, string code, string name, string? description, string performedBy, CancellationToken cancellationToken = default)
     {
-        var positions = await _context.Positions
-            .Where(p => p.IsActive)
-            .Include(p => p.Employees)
-            .OrderBy(p => p.Name)
-            .ToListAsync(cancellationToken);
+        var department = await _context.Departments
+            .Include(d => d.Employees)
+            .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
 
-        return positions.Select(p => new PositionDto
+        if (department == null)
         {
-            Id = p.Id,
-            Code = p.Code,
-            Name = p.Name,
-            Description = p.Description,
-            IsActive = p.IsActive,
-            EmployeeCount = p.Employees.Count(e => e.Status == EmployeeStatus.Active)
-        }).ToList();
+            throw new KeyNotFoundException($"Không tìm thấy phòng ban với ID '{id}'.");
+        }
+
+        string normCode = code.Trim().ToUpperInvariant();
+        if (normCode != department.Code)
+        {
+            bool exists = await _context.Departments.AnyAsync(d => d.Code == normCode && d.Id != id, cancellationToken);
+            if (exists)
+            {
+                throw new InvalidOperationException($"Mã phòng ban '{normCode}' đã tồn tại.");
+            }
+            department.Code = normCode;
+        }
+
+        department.Name = name.Trim();
+        department.Description = description?.Trim();
+        department.UpdatedAt = DateTime.UtcNow;
+        department.UpdatedBy = performedBy;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        await _auditService.LogAsync(
+            AuditEventType.DepartmentUpdated,
+            performedBy,
+            "Department",
+            department.Code,
+            $"Cập nhật thông tin phòng ban '{department.Name}' (Mã: {department.Code}).");
+
+        return new DepartmentDto
+        {
+            Id = department.Id,
+            Code = department.Code,
+            Name = department.Name,
+            Description = department.Description,
+            IsActive = department.IsActive,
+            EmployeeCount = department.Employees.Count(e => e.Status == EmployeeStatus.Active)
+        };
+    }
+
+    public async Task<bool> DeactivateDepartmentAsync(int id, string performedBy, CancellationToken cancellationToken = default)
+    {
+        var department = await _context.Departments.FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+        if (department == null) return false;
+
+        department.IsActive = false;
+        department.UpdatedAt = DateTime.UtcNow;
+        department.UpdatedBy = performedBy;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        await _auditService.LogAsync(
+            AuditEventType.DepartmentDeactivated,
+            performedBy,
+            "Department",
+            department.Code,
+            $"Ngừng sử dụng phòng ban '{department.Name}' (Mã: {department.Code}).");
+
+        return true;
+    }
+
+    public async Task<bool> ReactivateDepartmentAsync(int id, string performedBy, CancellationToken cancellationToken = default)
+    {
+        var department = await _context.Departments.FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+        if (department == null) return false;
+
+        department.IsActive = true;
+        department.UpdatedAt = DateTime.UtcNow;
+        department.UpdatedBy = performedBy;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        await _auditService.LogAsync(
+            AuditEventType.DepartmentReactivated,
+            performedBy,
+            "Department",
+            department.Code,
+            $"Kích hoạt lại phòng ban '{department.Name}' (Mã: {department.Code}).");
+
+        return true;
+    }
+
+    public async Task<bool> DeleteDepartmentAsync(int id, string performedBy, CancellationToken cancellationToken = default)
+    {
+        var department = await _context.Departments.FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+        if (department == null) return false;
+
+        // Safety check: Cannot hard-delete if referenced by any Employee or EmployeeRequest
+        int empCount = await _context.Employees.CountAsync(e => e.DepartmentId == id, cancellationToken);
+        int reqCount = await _context.EmployeeRequests.CountAsync(r => r.DepartmentId == id, cancellationToken);
+        if (empCount > 0 || reqCount > 0)
+        {
+            throw new InvalidOperationException($"Không thể xóa phòng ban '{department.Name}' vì đang được tham chiếu bởi {empCount + reqCount} hồ sơ nhân sự hoặc yêu cầu tuyển dụng. Vui lòng chuyển sang 'Ngừng sử dụng' thay thế.");
+        }
+
+        _context.Departments.Remove(department);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        await _auditService.LogAsync(
+            AuditEventType.DepartmentDeleted,
+            performedBy,
+            "Department",
+            department.Code,
+            $"Xóa vĩnh viễn phòng ban '{department.Name}' (Mã: {department.Code}).");
+
+        return true;
+    }
+
+    public async Task<List<PositionDto>> GetPositionsAsync(bool includeInactive = false, CancellationToken cancellationToken = default)
+    {
+        var query = _context.Positions.AsNoTracking();
+
+        if (!includeInactive)
+        {
+            query = query.Where(p => p.IsActive);
+        }
+
+        return await query.OrderBy(p => p.Name)
+            .Select(p => new PositionDto
+            {
+                Id = p.Id,
+                Code = p.Code,
+                Name = p.Name,
+                Description = p.Description,
+                IsActive = p.IsActive,
+                EmployeeCount = p.Employees.Count(e => e.Status == EmployeeStatus.Active)
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<PositionDto?> GetPositionByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await _context.Positions
+            .AsNoTracking()
+            .Where(p => p.Id == id)
+            .Select(p => new PositionDto
+            {
+                Id = p.Id,
+                Code = p.Code,
+                Name = p.Name,
+                Description = p.Description,
+                IsActive = p.IsActive,
+                EmployeeCount = p.Employees.Count(e => e.Status == EmployeeStatus.Active)
+            })
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<PositionDto> CreatePositionAsync(string code, string name, string? description, string performedBy, CancellationToken cancellationToken = default)
@@ -476,6 +633,121 @@ public class EmployeeService : IEmployeeService
         };
     }
 
+    public async Task<PositionDto> UpdatePositionAsync(int id, string code, string name, string? description, string performedBy, CancellationToken cancellationToken = default)
+    {
+        var position = await _context.Positions
+            .Include(p => p.Employees)
+            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+
+        if (position == null)
+        {
+            throw new KeyNotFoundException($"Không tìm thấy chức danh với ID '{id}'.");
+        }
+
+        string normCode = code.Trim().ToUpperInvariant();
+        if (normCode != position.Code)
+        {
+            bool exists = await _context.Positions.AnyAsync(p => p.Code == normCode && p.Id != id, cancellationToken);
+            if (exists)
+            {
+                throw new InvalidOperationException($"Mã chức danh '{normCode}' đã tồn tại.");
+            }
+            position.Code = normCode;
+        }
+
+        position.Name = name.Trim();
+        position.Description = description?.Trim();
+        position.UpdatedAt = DateTime.UtcNow;
+        position.UpdatedBy = performedBy;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        await _auditService.LogAsync(
+            AuditEventType.PositionUpdated,
+            performedBy,
+            "Position",
+            position.Code,
+            $"Cập nhật thông tin chức danh '{position.Name}' (Mã: {position.Code}).");
+
+        return new PositionDto
+        {
+            Id = position.Id,
+            Code = position.Code,
+            Name = position.Name,
+            Description = position.Description,
+            IsActive = position.IsActive,
+            EmployeeCount = position.Employees.Count(e => e.Status == EmployeeStatus.Active)
+        };
+    }
+
+    public async Task<bool> DeactivatePositionAsync(int id, string performedBy, CancellationToken cancellationToken = default)
+    {
+        var position = await _context.Positions.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+        if (position == null) return false;
+
+        position.IsActive = false;
+        position.UpdatedAt = DateTime.UtcNow;
+        position.UpdatedBy = performedBy;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        await _auditService.LogAsync(
+            AuditEventType.PositionDeactivated,
+            performedBy,
+            "Position",
+            position.Code,
+            $"Ngừng sử dụng chức danh '{position.Name}' (Mã: {position.Code}).");
+
+        return true;
+    }
+
+    public async Task<bool> ReactivatePositionAsync(int id, string performedBy, CancellationToken cancellationToken = default)
+    {
+        var position = await _context.Positions.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+        if (position == null) return false;
+
+        position.IsActive = true;
+        position.UpdatedAt = DateTime.UtcNow;
+        position.UpdatedBy = performedBy;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        await _auditService.LogAsync(
+            AuditEventType.PositionReactivated,
+            performedBy,
+            "Position",
+            position.Code,
+            $"Kích hoạt lại chức danh '{position.Name}' (Mã: {position.Code}).");
+
+        return true;
+    }
+
+    public async Task<bool> DeletePositionAsync(int id, string performedBy, CancellationToken cancellationToken = default)
+    {
+        var position = await _context.Positions.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+        if (position == null) return false;
+
+        // Safety check: Cannot hard-delete if referenced by any Employee or EmployeeRequest
+        int empCount = await _context.Employees.CountAsync(e => e.PositionId == id, cancellationToken);
+        int reqCount = await _context.EmployeeRequests.CountAsync(r => r.PositionId == id, cancellationToken);
+        if (empCount > 0 || reqCount > 0)
+        {
+            throw new InvalidOperationException($"Không thể xóa chức danh '{position.Name}' vì đang được tham chiếu bởi {empCount + reqCount} hồ sơ nhân sự hoặc yêu cầu tuyển dụng. Vui lòng chuyển sang 'Ngừng sử dụng' thay thế.");
+        }
+
+        _context.Positions.Remove(position);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        await _auditService.LogAsync(
+            AuditEventType.PositionDeleted,
+            performedBy,
+            "Position",
+            position.Code,
+            $"Xóa vĩnh viễn chức danh '{position.Name}' (Mã: {position.Code}).");
+
+        return true;
+    }
+
     public async Task<List<EmployeeRequestDto>> GetEmployeeRequestsAsync(EmployeeRequestStatus? status = null, CancellationToken cancellationToken = default)
     {
         var query = _context.EmployeeRequests
@@ -489,6 +761,31 @@ public class EmployeeService : IEmployeeService
         }
 
         var list = await query.OrderByDescending(r => r.CreatedAt).ToListAsync(cancellationToken);
+        var reqIds = list.Select(r => r.Id).ToList();
+
+        var attachments = await _context.DocumentAttachments
+            .Include(d => d.Category)
+            .Where(d => d.RelatedEntityType == "EmployeeRequest" && d.RelatedEntityId.HasValue && reqIds.Contains(d.RelatedEntityId.Value))
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        var attLookup = attachments
+            .GroupBy(d => d.RelatedEntityId!.Value)
+            .ToDictionary(g => g.Key, g => g.Select(d => new DocumentAttachmentDto
+            {
+                Id = d.Id,
+                FileName = d.FileName,
+                ContentType = d.ContentType,
+                FileSize = d.FileSize,
+                CategoryId = d.CategoryId,
+                CategoryName = d.Category?.Name,
+                RelatedEntityType = d.RelatedEntityType,
+                RelatedEntityId = d.RelatedEntityId,
+                Description = d.Description,
+                Status = d.Status,
+                CreatedAt = d.CreatedAt,
+                CreatedBy = d.CreatedBy
+            }).ToList());
 
         return list.Select(r => new EmployeeRequestDto
         {
@@ -518,7 +815,8 @@ public class EmployeeService : IEmployeeService
             ApprovedAt = r.ApprovedAt,
             ReviewNotes = r.ReviewNotes,
             CreatedEmployeeId = r.CreatedEmployeeId,
-            CreatedAt = r.CreatedAt
+            CreatedAt = r.CreatedAt,
+            Attachments = attLookup.TryGetValue(r.Id, out var atts) ? atts : new List<DocumentAttachmentDto>()
         }).ToList();
     }
 
@@ -597,6 +895,78 @@ public class EmployeeService : IEmployeeService
         };
     }
 
+    public async Task<EmployeeRequestDto> ResubmitEmployeeRequestAsync(ResubmitEmployeeRequestCommand command, string performedBy, CancellationToken cancellationToken = default)
+    {
+        var request = await _context.EmployeeRequests
+            .Include(r => r.Department)
+            .Include(r => r.Position)
+            .FirstOrDefaultAsync(r => r.Id == command.RequestId, cancellationToken);
+
+        if (request == null)
+        {
+            throw new KeyNotFoundException($"Không tìm thấy yêu cầu thêm nhân viên ID '{command.RequestId}'.");
+        }
+
+        if (request.Status != EmployeeRequestStatus.NeedAdditionalDocs && request.Status != EmployeeRequestStatus.Pending)
+        {
+            throw new InvalidOperationException($"Chỉ có thể gửi lại yêu cầu đang ở trạng thái 'Cần bổ sung hồ sơ' hoặc 'Chờ duyệt'. Trạng thái hiện tại: {request.Status}.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(command.FullName)) request.FullName = command.FullName.Trim();
+        if (!string.IsNullOrWhiteSpace(command.Phone)) request.Phone = command.Phone.Trim();
+        if (!string.IsNullOrWhiteSpace(command.Email)) request.Email = command.Email.Trim();
+        if (!string.IsNullOrWhiteSpace(command.NationalId)) request.NationalId = command.NationalId.Trim();
+        if (command.DepartmentId.HasValue && command.DepartmentId.Value > 0) request.DepartmentId = command.DepartmentId.Value;
+        if (command.PositionId.HasValue && command.PositionId.Value > 0) request.PositionId = command.PositionId.Value;
+        if (command.DateOfBirth.HasValue) request.DateOfBirth = NormalizeToUtc(command.DateOfBirth);
+        if (!string.IsNullOrWhiteSpace(command.Gender)) request.Gender = command.Gender.Trim();
+        if (command.StartDate.HasValue) request.StartDate = NormalizeToUtc(command.StartDate);
+        if (!string.IsNullOrWhiteSpace(command.WorkingBranch)) request.WorkingBranch = command.WorkingBranch.Trim();
+        if (!string.IsNullOrWhiteSpace(command.PayrollBranch)) request.PayrollBranch = command.PayrollBranch.Trim();
+        if (!string.IsNullOrWhiteSpace(command.BankInformation)) request.BankInformation = command.BankInformation.Trim();
+        if (!string.IsNullOrWhiteSpace(command.Address)) request.Address = command.Address.Trim();
+        if (!string.IsNullOrWhiteSpace(command.ProposedUserId)) request.ProposedUserId = command.ProposedUserId.Trim();
+
+        if (!string.IsNullOrWhiteSpace(command.ResubmitNotes))
+        {
+            request.Notes = string.IsNullOrWhiteSpace(request.Notes)
+                ? $"[Gửi lại bổ sung {DateTime.Now:dd/MM/yyyy HH:mm}]: {command.ResubmitNotes.Trim()}"
+                : $"{request.Notes}\n[Gửi lại bổ sung {DateTime.Now:dd/MM/yyyy HH:mm}]: {command.ResubmitNotes.Trim()}";
+        }
+
+        request.Status = EmployeeRequestStatus.Pending; // Transitions back to Pending for review
+        request.UpdatedAt = DateTime.UtcNow;
+        request.UpdatedBy = performedBy;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        await _auditService.LogAsync(
+            AuditEventType.EmployeeRequestResubmitted,
+            performedBy,
+            "EmployeeRequest",
+            request.Id.ToString(),
+            $"Bổ sung hồ sơ và gửi lại yêu cầu tuyển dụng/thêm nhân viên '{request.FullName}' để xem xét phê duyệt.");
+
+        return new EmployeeRequestDto
+        {
+            Id = request.Id,
+            Code = request.Code,
+            FullName = request.FullName,
+            NationalId = request.NationalId,
+            Phone = request.Phone,
+            Email = request.Email,
+            DepartmentId = request.DepartmentId,
+            DepartmentName = request.Department?.Name,
+            PositionId = request.PositionId,
+            PositionName = request.Position?.Name,
+            Status = request.Status,
+            RequestedBy = request.RequestedBy,
+            ReviewNotes = request.ReviewNotes,
+            CreatedAt = request.CreatedAt,
+            UpdatedAt = request.UpdatedAt
+        };
+    }
+
     public async Task<EmployeeDto?> ReviewEmployeeRequestAsync(ReviewEmployeeRequestCommand command, string reviewedBy, CancellationToken cancellationToken = default)
     {
         var request = await _context.EmployeeRequests
@@ -640,6 +1010,30 @@ public class EmployeeService : IEmployeeService
 
             var employeeDto = await CreateEmployeeAsync(createCmd, reviewedBy, cancellationToken);
 
+            // Link attached dossier documents from the EmployeeRequest to the newly created Employee profile
+            var requestAttachments = await _context.DocumentAttachments
+                .Where(d => d.RelatedEntityType == "EmployeeRequest" && d.RelatedEntityId == request.Id)
+                .ToListAsync(cancellationToken);
+
+            foreach (var att in requestAttachments)
+            {
+                var empAttachment = new DocumentAttachment
+                {
+                    FileName = att.FileName,
+                    StoragePath = att.StoragePath,
+                    ContentType = att.ContentType,
+                    FileSize = att.FileSize,
+                    CategoryId = att.CategoryId,
+                    RelatedEntityType = "Employee",
+                    RelatedEntityId = employeeDto.Id,
+                    Description = att.Description,
+                    Status = "Active",
+                    CreatedAt = DateTime.UtcNow,
+                    CreatedBy = reviewedBy
+                };
+                _context.DocumentAttachments.Add(empAttachment);
+            }
+
             request.Status = EmployeeRequestStatus.Approved;
             request.ApprovedBy = reviewedBy;
             request.ApprovedAt = DateTime.UtcNow;
@@ -655,9 +1049,29 @@ public class EmployeeService : IEmployeeService
                 reviewedBy,
                 "EmployeeRequest",
                 request.Id.ToString(),
-                $"Phê duyệt yêu cầu thêm nhân viên '{request.FullName}' -> Đã tạo hồ sơ nhân viên '{employeeDto.Code}'.");
+                $"Phê duyệt yêu cầu thêm nhân viên '{request.FullName}' -> Đã tạo hồ sơ nhân viên '{employeeDto.Code}' và liên kết {requestAttachments.Count} tài liệu hồ sơ.");
 
             return employeeDto;
+        }
+        else if (command.RequestAdditionalDocs)
+        {
+            request.Status = EmployeeRequestStatus.NeedAdditionalDocs;
+            request.ApprovedBy = reviewedBy;
+            request.ApprovedAt = DateTime.UtcNow;
+            request.ReviewNotes = command.ReviewNotes?.Trim();
+            request.UpdatedAt = DateTime.UtcNow;
+            request.UpdatedBy = reviewedBy;
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            await _auditService.LogAsync(
+                AuditEventType.EmployeeRequestAdditionalDocsRequested,
+                reviewedBy,
+                "EmployeeRequest",
+                request.Id.ToString(),
+                $"Yêu cầu bổ sung hồ sơ nhân sự cho '{request.FullName}'. Ý kiến: {command.ReviewNotes}");
+
+            return null;
         }
         else
         {
@@ -724,5 +1138,56 @@ public class EmployeeService : IEmployeeService
             UpdatedAt = e.UpdatedAt,
             UpdatedBy = e.UpdatedBy
         };
+    }
+public async Task<List<DocumentAttachmentDto>> GetEmployeeAttachmentsAsync(int employeeId, CancellationToken cancellationToken = default)
+    {
+        var attachments = await _context.DocumentAttachments
+            .Include(d => d.Category)
+            .Where(d => d.RelatedEntityType == "Employee" && d.RelatedEntityId == employeeId)
+            .OrderByDescending(d => d.CreatedAt)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return attachments.Select(d => new DocumentAttachmentDto
+        {
+            Id = d.Id,
+            FileName = d.FileName,
+            ContentType = d.ContentType,
+            FileSize = d.FileSize,
+            CategoryId = d.CategoryId,
+            CategoryName = d.Category?.Name,
+            RelatedEntityType = d.RelatedEntityType,
+            RelatedEntityId = d.RelatedEntityId,
+            Description = d.Description,
+            Status = d.Status,
+            CreatedAt = d.CreatedAt,
+            CreatedBy = d.CreatedBy
+        }).ToList();
+    }
+
+    public async Task<List<DocumentAttachmentDto>> GetEmployeeRequestAttachmentsAsync(int requestId, CancellationToken cancellationToken = default)
+    {
+        var attachments = await _context.DocumentAttachments
+            .Include(d => d.Category)
+            .Where(d => d.RelatedEntityType == "EmployeeRequest" && d.RelatedEntityId == requestId)
+            .OrderByDescending(d => d.CreatedAt)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return attachments.Select(d => new DocumentAttachmentDto
+        {
+            Id = d.Id,
+            FileName = d.FileName,
+            ContentType = d.ContentType,
+            FileSize = d.FileSize,
+            CategoryId = d.CategoryId,
+            CategoryName = d.Category?.Name,
+            RelatedEntityType = d.RelatedEntityType,
+            RelatedEntityId = d.RelatedEntityId,
+            Description = d.Description,
+            Status = d.Status,
+            CreatedAt = d.CreatedAt,
+            CreatedBy = d.CreatedBy
+        }).ToList();
     }
 }

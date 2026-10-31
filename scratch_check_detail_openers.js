@@ -1,0 +1,5 @@
+const fs = require('fs');
+const content = fs.readFileSync('src/TradeFlow.Web/Components/Pages/Sales/Invoices/Detail.razor', 'utf8');
+const lines = content.split('\n');
+const idx = lines.findIndex(l => l.includes('VerifySignature') || l.includes('OpenSignModal'));
+console.log(lines.slice(idx - 5, idx + 45).join('\n'));

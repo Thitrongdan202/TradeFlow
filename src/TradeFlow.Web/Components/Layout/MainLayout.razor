@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject IJSRuntime JSRuntime
+@inject NavigationManager Nav
 
 <div class="tf-app @(_sidebarCollapsed ? "is-sidebar-collapsed" : "")">
     <aside class="tf-sidebar no-print @(_sidebarOpen ? "open" : "") @(_sidebarCollapsed ? "is-collapsed" : "")">
@@ -65,7 +66,38 @@
         </header>
 
         <main class="tf-content">
-            @Body
+            <ErrorBoundary @ref="_contentErrorBoundary">
+                <ChildContent>
+                    @Body
+                </ChildContent>
+                <ErrorContent Context="ex">
+                    <div class="tf-page-error-container" style="display: flex; justify-content: center; align-items: center; min-height: 400px; padding: 2rem;">
+                        <div class="tf-card text-center" style="max-width: 520px; width: 100%; padding: 2.5rem 2rem; border-radius: 12px; box-shadow: var(--tf-shadow-md); border: 1px solid var(--tf-border); background: var(--tf-surface, #ffffff);">
+                            <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(239, 68, 68, 0.1); color: #ef4444; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem;">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                            </div>
+                            <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--tf-text-primary, #1e293b);">Đã xảy ra sự cố khi tải trang này</h3>
+                            <p style="font-size: 0.875rem; color: var(--tf-text-muted, #64748b); margin-bottom: 1.5rem; line-height: 1.5;">Hệ thống đã ghi nhận sự cố. Toàn bộ thanh điều hướng và menu vẫn hoạt động bình thường. Bạn có thể nhấn nút "Thử lại" bên dưới hoặc quay về Bảng điều khiển.</p>
+                            <div style="display: flex; justify-content: center; gap: 0.75rem;">
+                                <button type="button" class="btn btn-primary" @onclick="() => _contentErrorBoundary?.Recover()">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                                        <polyline points="23 4 23 10 17 10"></polyline>
+                                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                    </svg>
+                                    Thử lại
+                                </button>
+                                <a href="/" class="btn btn-outline-secondary">
+                                    Về bảng điều khiển
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </ErrorContent>
+            </ErrorBoundary>
         </main>
     </div>
 </div>
@@ -82,6 +114,17 @@
     private bool _sidebarOpen;
     private bool _sidebarCollapsed;
     private DotNetObjectReference<MainLayout>? _dotNetRef;
+    private ErrorBoundary? _contentErrorBoundary;
+
+    protected override void OnInitialized()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _contentErrorBoundary?.Recover();
+    }
 
     private async Task HandleToggleClick()
     {
@@ -182,6 +225,7 @@
 
     public void Dispose()
     {
+        Nav.LocationChanged -= OnLocationChanged;
         _dotNetRef?.Dispose();
     }
 }

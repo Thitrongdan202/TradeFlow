@@ -568,7 +568,13 @@ public class DatabaseSeeder
             ("CHUNG_TU",     "Chứng từ kế toán",     DocumentTypeCategory.Accounting, "Chứng từ thu chi, ủy nhiệm chi, đối chiếu công nợ", 9),
             ("HO_SO",        "Hồ sơ pháp lý / CO-CQ",DocumentTypeCategory.Attachment, "Chứng chỉ xuất xứ, chất lượng, hồ sơ năng lực", 10),
             ("HD_LAO_DONG",  "Hợp đồng lao động",    DocumentTypeCategory.Internal,   "Hợp đồng lao động và phụ lục nhân sự", 11),
-            ("KHAC",         "Tài liệu khác",        DocumentTypeCategory.Attachment, "Các tài liệu, hình ảnh hoặc đính kèm khác", 99)
+                        ("KHAC",               "Tài liệu khác",                   DocumentTypeCategory.Attachment, "Các tài liệu, hình ảnh hoặc đính kèm khác", 99),
+            ("HS_CA_NHAN",         "Hồ sơ cá nhân",                   DocumentTypeCategory.Attachment, "Hồ sơ thông tin nhân sự", 12),
+            ("GIAY_TO_TUY_THAN",   "Giấy tờ tùy thân",                DocumentTypeCategory.Attachment, "CMND/CCCD, hộ chiếu, giấy phép lái xe", 13),
+            ("CV_SO_YEU",          "Sơ yếu lý lịch / CV",             DocumentTypeCategory.Attachment, "Bản sơ yếu lý lịch, CV ứng viên", 14),
+            ("BANG_CAP_CHUNG_CHI", "Bằng cấp / Chứng chỉ",            DocumentTypeCategory.Attachment, "Bằng tốt nghiệp, chứng chỉ chuyên môn", 15),
+            ("TL_CONG_VIEC",       "Tài liệu liên quan đến công việc",DocumentTypeCategory.Attachment, "Quyết định, giấy tờ liên quan công việc", 16),
+            ("TL_KHAC",            "Tài liệu hồ sơ khác",             DocumentTypeCategory.Attachment, "Các tài liệu hồ sơ nhân sự khác", 17)
         };
 
         foreach (var cat in defaultCategories)

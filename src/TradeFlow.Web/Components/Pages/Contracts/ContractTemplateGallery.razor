@@ -26,7 +26,7 @@
                 }
             </div>
             <div class="tf-gallery-counter">
-                Hiển thị <span class="tf-counter-val">@FilteredTemplates.Count()</span>/@(Templates?.Count ?? 0) mẫu hợp đồng
+                Hiển thị <span class="tf-counter-val">@_cachedFilteredTemplates.Count</span>/@(Templates?.Count ?? 0) mẫu hợp đồng
             </div>
         </div>
 
@@ -40,16 +40,16 @@
                 <span class="tf-cat-name">Tất cả mẫu</span>
                 <span class="tf-cat-count">@(Templates?.Count ?? 0)</span>
             </button>
-            @foreach (var cat in AvailableCategories)
+            @foreach (var catItem in _categoriesWithCount)
             {
-                var count = Templates?.Count(t => t.Category == cat) ?? 0;
+                var isCatActive = selectedCategory == catItem.Category;
                 <button type="button"
-                        class="tf-cat-pill @(selectedCategory == cat ? "active" : "")"
-                        @onclick="() => SelectCategory(cat)"
+                        class="tf-cat-pill @(isCatActive ? "active" : "")"
+                        @onclick="() => SelectCategory(catItem.Category)"
                         role="tab"
-                        aria-selected="@(selectedCategory == cat)">
-                    <span class="tf-cat-name">@cat</span>
-                    <span class="tf-cat-count">@count</span>
+                        aria-selected="@isCatActive">
+                    <span class="tf-cat-name">@catItem.Category</span>
+                    <span class="tf-cat-count">@catItem.Count</span>
                 </button>
             }
         </div>
@@ -57,7 +57,7 @@
 
     <!-- Gallery Grid of Miniature A4 Documents -->
     <div class="tf-gallery-grid-container">
-        @if (!FilteredTemplates.Any())
+        @if (!_cachedFilteredTemplates.Any())
         {
             <div class="tf-gallery-empty">
                 <div class="tf-empty-icon">
@@ -76,7 +76,7 @@
         else
         {
             <div class="tf-gallery-grid" role="list">
-                @foreach (var t in FilteredTemplates)
+                @foreach (var t in _cachedFilteredTemplates)
                 {
                     var isSelected = SelectedTemplateCode == t.Code;
                     var isActive = activeCardCode == t.Code;
@@ -423,43 +423,72 @@
         catch { }
     }
 
-    private IEnumerable<string> AvailableCategories =>
-        Templates?.Select(t => t.Category).Distinct().ToList() ?? Enumerable.Empty<string>();
+    private List<(string Category, int Count)> _categoriesWithCount = new();
+    private List<ContractTemplateDto> _cachedFilteredTemplates = new();
+    private List<ContractTemplateDto>? _lastTemplates;
 
-    private IEnumerable<ContractTemplateDto> FilteredTemplates
+    protected override void OnParametersSet()
     {
-        get
+        if (Templates != _lastTemplates)
         {
-            if (Templates == null) return Enumerable.Empty<ContractTemplateDto>();
-
-            var list = Templates.AsEnumerable();
-
-            if (!string.IsNullOrWhiteSpace(selectedCategory))
-            {
-                list = list.Where(t => t.Category.Equals(selectedCategory, StringComparison.OrdinalIgnoreCase));
-            }
-
-            if (!string.IsNullOrWhiteSpace(searchQuery))
-            {
-                var q = searchQuery.Trim().ToLowerInvariant();
-                list = list.Where(t =>
-                    t.Title.ToLowerInvariant().Contains(q) ||
-                    t.Category.ToLowerInvariant().Contains(q) ||
-                    t.Description.ToLowerInvariant().Contains(q) ||
-                    t.TypicalUseCase.ToLowerInvariant().Contains(q) ||
-                    t.LegalBasis.ToLowerInvariant().Contains(q) ||
-                    t.Code.ToLowerInvariant().Contains(q)
-                );
-            }
-
-            return list.OrderBy(t => t.DisplayOrder);
+            _lastTemplates = Templates;
+            ComputeCategories();
+            ComputeFilteredTemplates();
         }
+    }
+
+    private void ComputeCategories()
+    {
+        if (Templates == null || Templates.Count == 0)
+        {
+            _categoriesWithCount.Clear();
+            return;
+        }
+
+        _categoriesWithCount = Templates
+            .GroupBy(t => t.Category)
+            .Select(g => (Category: g.Key, Count: g.Count()))
+            .OrderBy(g => g.Category)
+            .ToList();
+    }
+
+    private void ComputeFilteredTemplates()
+    {
+        if (Templates == null)
+        {
+            _cachedFilteredTemplates = new List<ContractTemplateDto>();
+            return;
+        }
+
+        IEnumerable<ContractTemplateDto> list = Templates;
+
+        if (!string.IsNullOrWhiteSpace(selectedCategory))
+        {
+            list = list.Where(t => t.Category.Equals(selectedCategory, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            var q = searchQuery.Trim().ToLowerInvariant();
+            list = list.Where(t =>
+                t.Title.ToLowerInvariant().Contains(q) ||
+                t.Category.ToLowerInvariant().Contains(q) ||
+                t.Description.ToLowerInvariant().Contains(q) ||
+                t.TypicalUseCase.ToLowerInvariant().Contains(q) ||
+                t.LegalBasis.ToLowerInvariant().Contains(q) ||
+                t.Code.ToLowerInvariant().Contains(q)
+            );
+        }
+
+        _cachedFilteredTemplates = list.OrderBy(t => t.DisplayOrder).ToList();
     }
 
     private void SelectCategory(string? category)
     {
+        if (selectedCategory == category) return;
         selectedCategory = category;
         activeCardCode = null;
+        ComputeFilteredTemplates();
     }
 
     private void OnSearchInput(ChangeEventArgs e)
@@ -830,13 +859,6 @@
             {
                 motionModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/contract-gallery-motion.js");
                 await motionModule.InvokeVoidAsync("initGalleryMotion", galleryContainer);
-            }
-            else
-            {
-                if (motionModule != null)
-                {
-                    await motionModule.InvokeVoidAsync("refreshGalleryMotion", galleryContainer);
-                }
             }
         }
         catch (JSDisconnectedException) { }

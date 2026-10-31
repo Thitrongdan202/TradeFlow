@@ -5,7 +5,7 @@
 @using TradeFlow.Application.Common.Interfaces
 @using TradeFlow.Domain.Enums
 @using TradeFlow.Infrastructure.Persistence
-@attribute [Authorize(Policy = "Permission:TechnicalSupport:Create")]
+@attribute [Authorize(Policy = "Permission:TechnicalSupport:View")]
 
 @inject UserManager<ApplicationUser> UserManager
 @inject RoleManager<ApplicationRole> RoleManager

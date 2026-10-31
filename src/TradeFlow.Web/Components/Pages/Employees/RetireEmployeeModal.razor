@@ -8,17 +8,17 @@
 {
     <div class="tf-modal-overlay" @onclick="HandleBackdropClick">
         <div class="tf-modal tf-modal-md" @onclick:stopPropagation="true">
-            <div class="tf-modal-header" style="background-color: #fff7ed; border-bottom: 1px solid #ffedd5;">
-                <h3 class="tf-modal-title" style="color: #9a3412; display: flex; align-items: center; gap: 8px;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#ea580c;">
+            <div class="tf-modal-header" style="background-color: var(--tf-warning-subtle, rgba(245, 158, 11, 0.1)); border-bottom: 1px solid var(--tf-border);">
+                <h3 class="tf-modal-title" style="color: var(--tf-warning, #d97706); display: flex; align-items: center; gap: 8px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tf-warning, #ea580c);">
                         <circle cx="12" cy="12" r="10"/>
                         <line x1="12" y1="8" x2="12" y2="12"/>
                         <line x1="12" y1="16" x2="12.01" y2="16"/>
                     </svg>
                     Xác nhận thôi việc nhân viên
                 </h3>
-                <button type="button" class="tf-btn-icon" @onclick="Close">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <button type="button" class="tf-modal-close-btn" @onclick="Close" aria-label="Đóng" title="Đóng">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18"/>
                         <line x1="6" y1="6" x2="18" y2="18"/>
                     </svg>
@@ -36,15 +36,15 @@
                         </div>
                     }
 
-                    <div style="background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 16px; margin-bottom:16px;">
+                    <div style="background-color:var(--tf-bg-subtle, #f8fafc); border:1px solid var(--tf-border, #e2e8f0); border-radius:8px; padding:12px 16px; margin-bottom:16px;">
                         <div style="display:flex; align-items:center; gap:12px;">
-                            <div style="width:44px; height:44px; border-radius:50%; background-color:#e0e7ff; color:#4338ca; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px;">
+                            <div style="width:44px; height:44px; border-radius:50%; background-color:rgba(37,99,235,0.15); color:var(--tf-primary, #2563eb); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px;">
                                 @GetInitials(Employee.FullName)
                             </div>
                             <div>
-                                <div style="font-weight:700; font-size:15px; color:#1e293b;">@Employee.FullName</div>
-                                <div style="font-size:13px; color:#64748b;">
-                                    Mã: <span style="font-family:monospace; font-weight:600; color:#0f766e;">@Employee.Code</span>
+                                <div style="font-weight:700; font-size:15px; color:var(--tf-text-primary, #1e293b);">@Employee.FullName</div>
+                                <div style="font-size:13px; color:var(--tf-text-muted, #64748b);">
+                                    Mã: <span style="font-family:monospace; font-weight:600; color:var(--tf-teal, #0f766e);">@Employee.Code</span>
                                     @if (!string.IsNullOrEmpty(Employee.DepartmentName))
                                     {
                                         <span> • @Employee.DepartmentName</span>
@@ -73,7 +73,7 @@
 
                     <div class="tf-form-group tf-mb-4">
                         <label class="tf-label">Ngày thôi việc <span class="tf-text-danger">*</span></label>
-                        <InputDate class="tf-input" @bind-Value="_model.TerminationDate" />
+                        <TfDateInput @bind-Value="_model.TerminationDate" Placeholder="dd/MM/yyyy" />
                     </div>
 
                     <div class="tf-form-group">
@@ -151,7 +151,7 @@
             var command = new RetireEmployeeCommand
             {
                 Id = Employee.Id,
-                TerminationDate = _model.TerminationDate,
+                TerminationDate = _model.TerminationDate ?? DateTime.Today,
                 TerminationReason = _model.TerminationReason.Trim()
             };
 
@@ -187,7 +187,8 @@
     private class RetireModel
     {
         public int Id { get; set; }
-        public DateTime TerminationDate { get; set; } = DateTime.Today;
+        [Required(ErrorMessage = "Vui lòng chọn ngày thôi việc")]
+        public DateTime? TerminationDate { get; set; } = DateTime.Today;
 
         [Required(ErrorMessage = "Vui lòng nhập lý do thôi việc")]
         [MaxLength(500, ErrorMessage = "Lý do tối đa 500 ký tự")]

@@ -16,6 +16,7 @@ public enum AuditEventType
     PasswordReset = 14,
     PasswordChanged = 15,
     PasswordViewed = 16,
+    PasswordRecoveryRequested = 17,
 
     // === Quản lý vai trò ===
     RoleCreated = 20,
@@ -131,6 +132,16 @@ public enum AuditEventType
     EmployeeUnlinkedFromUser = 178,
     DepartmentCreated = 179,
     PositionCreated = 180,
+    DepartmentUpdated = 181,
+    DepartmentDeactivated = 182,
+    DepartmentReactivated = 183,
+    DepartmentDeleted = 184,
+    PositionUpdated = 185,
+    PositionDeactivated = 186,
+    PositionReactivated = 187,
+    PositionDeleted = 188,
+    EmployeeRequestAdditionalDocsRequested = 189,
+    EmployeeRequestResubmitted = 194,
 
     // === Quản lý Công nợ & Thanh toán Đối tác ===
     DebtPaymentRecorded = 190,

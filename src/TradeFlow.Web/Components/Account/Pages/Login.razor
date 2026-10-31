@@ -4,6 +4,7 @@
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Authentication
 @using Microsoft.AspNetCore.Identity
+@using TradeFlow.Domain.Enums
 @using TradeFlow.Infrastructure.Persistence
 
 @inject UserManager<ApplicationUser> UserManager
@@ -14,148 +15,113 @@
 
 <PageTitle>Đăng nhập — TradeFlow</PageTitle>
 
-<div class="tf-login-page">
-    @* Left decorative panel (desktop only) *@
-    <div class="tf-login-left">
-        <div class="tf-login-left-content">
-            <div class="tf-login-left-brand">
-                <div class="tf-brand-logo" style="width:42px;height:42px;">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M3 3h7v7H3V3z" fill="white"/>
-                        <path d="M14 3h7v7h-7V3z" fill="white" opacity="0.6"/>
-                        <path d="M3 14h7v7H3v-7z" fill="white" opacity="0.6"/>
-                        <path d="M14 14h7v7h-7v-7z" fill="white"/>
+<div class="tf-login-page tf-login-container">
+    @* Atmospheric maritime gradient overlay *@
+    <div class="tf-login-overlay" aria-hidden="true"></div>
+
+    @* Translucent Frosted Glass Card *@
+    <div class="tf-login-card tf-login-glass-card">
+        @* Brand Header *@
+        <div class="tf-login-brand-header">
+            <div class="tf-login-brand-badge">
+                <div class="tf-login-brand-logo">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 3h7v7H3V3z" fill="#38bdf8"/>
+                        <path d="M14 3h7v7h-7V3z" fill="#818cf8"/>
+                        <path d="M3 14h7v7H3v-7z" fill="#818cf8" opacity="0.8"/>
+                        <path d="M14 14h7v7h-7v-7z" fill="#38bdf8"/>
                     </svg>
                 </div>
                 <div>
-                    <div style="font-size:20px;font-weight:700;color:white;letter-spacing:-0.01em;">TradeFlow</div>
-                    <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.6);letter-spacing:0.08em;text-transform:uppercase;">Quản lý thương mại</div>
+                    <div class="tf-login-brand-name">TradeFlow</div>
+                    <div class="tf-login-brand-tagline">Quản lý thương mại</div>
                 </div>
             </div>
 
-            <div class="tf-login-visual">
-                <div class="tf-login-visual-title">
-                    Quản lý toàn bộ<br />hoạt động thương mại<br />của bạn.
-                </div>
-                <div class="tf-login-visual-desc">
-                    Hệ thống quản lý bán hàng, mua hàng, kho hàng và đối tác trên một nền tảng duy nhất — nhanh, chính xác, dễ dùng.
-                </div>
-
-                <div class="tf-login-features">
-                    @foreach (var feature in _features)
-                    {
-                        <div class="tf-login-feature">
-                            <div class="tf-login-feature-icon">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="20 6 9 17 4 12"/>
-                                </svg>
-                            </div>
-                            <span>@feature</span>
-                        </div>
-                    }
-                </div>
-            </div>
+            <h1 class="tf-login-title">Chào mừng trở lại</h1>
+            <p class="tf-login-subtitle">Đăng nhập để tiếp tục quản lý hoạt động kinh doanh của bạn.</p>
         </div>
-    </div>
 
-    @* Right: Login Card *@
-    <div class="tf-login-right">
-        <div class="tf-login-card">
-            @* Brand *@
-            <div class="tf-login-brand">
-                <div class="tf-login-logo">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M3 3h7v7H3V3z" fill="white"/>
-                        <path d="M14 3h7v7h-7V3z" fill="white" opacity="0.6"/>
-                        <path d="M3 14h7v7H3v-7z" fill="white" opacity="0.6"/>
-                        <path d="M14 14h7v7h-7v-7z" fill="white"/>
-                    </svg>
+        @* Error alert *@
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="tf-login-alert tf-login-alert-error" role="alert" id="tf-login-error-alert">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px;">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <span>@_errorMessage</span>
+            </div>
+        }
+
+        @* Login Form — Static SSR POST with JavaScript eye icon *@
+        <EditForm EditContext="_editContext" method="post" OnSubmit="LoginUser" FormName="login">
+            <DataAnnotationsValidator />
+
+            @* Username or Email *@
+            <div class="tf-login-field">
+                <label class="tf-login-label" for="login-username">Tên đăng nhập hoặc email</label>
+                <div class="tf-login-input-wrap">
+                    <InputText @bind-Value="Input.Username"
+                               id="login-username"
+                               class="@UsernameInputClass"
+                               autocomplete="username"
+                               placeholder="Tên đăng nhập hoặc email"
+                               aria-required="true"
+                               aria-describedby="login-username-error" />
                 </div>
-                <div class="tf-login-brand-name">TradeFlow</div>
-                <div class="tf-login-brand-tagline">Quản lý thương mại</div>
+                <ValidationMessage For="() => Input.Username" id="login-username-error" class="tf-login-val-msg" />
             </div>
 
-            <div class="tf-login-form-title">Đăng nhập</div>
-            <div class="tf-login-form-subtitle">Chào mừng bạn quay trở lại!</div>
+            @* Password with Eye Toggle *@
+            <div class="tf-login-field">
+                <label class="tf-login-label" for="login-password">Mật khẩu</label>
+                <TradeFlow.Web.Components.Account.Shared.PasswordToggleInput
+                    Name="Input.Password"
+                    Id="login-password"
+                    CssClass="@PasswordInputClass"
+                    Placeholder="Nhập mật khẩu"
+                    Autocomplete="current-password"
+                    InitialValue="@Input.Password" />
+                <ValidationMessage For="() => Input.Password" class="tf-login-val-msg" />
+            </div>
 
-            @* Error alert *@
-            @if (!string.IsNullOrEmpty(_errorMessage))
-            {
-                <div class="tf-alert tf-alert-error tf-mb-4" role="alert">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px;">
-                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            @* Remember Me + Forgot Password *@
+            <div class="tf-login-meta-row">
+                <label class="tf-login-checkbox-label">
+                    <InputCheckbox @bind-Value="Input.RememberMe" class="tf-login-checkbox" id="login-remember-me" />
+                    <span>Ghi nhớ đăng nhập</span>
+                </label>
+                <a href="/Account/ForgotPassword" class="tf-login-forgot-link" id="login-forgot-password-link">Quên mật khẩu?</a>
+            </div>
+
+            @* Submit button *@
+            <button type="submit"
+                    class="tf-login-submit-btn"
+                    id="login-submit-button"
+                    disabled="@_isSubmitting"
+                    aria-busy="@(_isSubmitting ? "true" : "false")">
+                @if (_isSubmitting)
+                {
+                    <span class="tf-login-spinner" aria-hidden="true"></span>
+                    <span>Đang đăng nhập...</span>
+                }
+                else
+                {
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/>
+                        <polyline points="10 17 15 12 10 7"/>
+                        <line x1="15" y1="12" x2="3" y2="12"/>
                     </svg>
-                    <span>@_errorMessage</span>
-                </div>
-            }
+                    <span>Đăng nhập</span>
+                }
+            </button>
+        </EditForm>
 
-            @* Login Form — Static SSR POST with JavaScript eye icon *@
-            <EditForm EditContext="_editContext" method="post" OnSubmit="LoginUser" FormName="login">
-                <DataAnnotationsValidator />
-
-                @* Username *@
-                <div class="tf-field tf-mb-4">
-                    <label class="tf-label" for="login-username">Tên đăng nhập</label>
-                    <div class="tf-input-wrapper">
-                        <InputText @bind-Value="Input.Username"
-                                   id="login-username"
-                                   class="@UsernameInputClass"
-                                   autocomplete="username"
-                                   placeholder="Tên đăng nhập hoặc email"
-                                   aria-required="true"
-                                   aria-describedby="login-username-error" />
-                    </div>
-                    <ValidationMessage For="() => Input.Username" id="login-username-error" class="tf-validation-message" />
-                </div>
-
-                @* Password with Interactive Blazor eye toggle *@
-                <div class="tf-field tf-mb-4">
-                    <label class="tf-label" for="login-password">Mật khẩu</label>
-                    <TradeFlow.Web.Components.Account.Shared.PasswordToggleInput
-                        Name="Input.Password"
-                        Id="login-password"
-                        CssClass="@PasswordInputClass"
-                        Placeholder="Nhập mật khẩu"
-                        Autocomplete="current-password"
-                        InitialValue="@Input.Password" />
-                    <ValidationMessage For="() => Input.Password" class="tf-validation-message" />
-                </div>
-
-                @* Remember me + Forgot password *@
-                <div class="tf-login-options">
-                    <label class="tf-checkbox-label">
-                        <InputCheckbox @bind-Value="Input.RememberMe" class="tf-checkbox" />
-                        Duy trì đăng nhập
-                    </label>
-                    <a href="/Account/ForgotPassword" class="tf-forgot-link">Quên mật khẩu?</a>
-                </div>
-
-                @* Submit button *@
-                <button type="submit"
-                        class="tf-btn tf-btn-primary tf-btn-lg tf-btn-full"
-                        disabled="@_isSubmitting"
-                        aria-busy="@(_isSubmitting ? "true" : "false")">
-                    @if (_isSubmitting)
-                    {
-                        <span class="tf-spinner-sm" style="margin-right:8px;border-width:2px;border-top-color:#ffffff;border-right-color:transparent;border-bottom-color:transparent;border-left-color:transparent;" aria-hidden="true"></span>
-                        <span>Đang đăng nhập...</span>
-                    }
-                    else
-                    {
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/>
-                            <polyline points="10 17 15 12 10 7"/>
-                            <line x1="15" y1="12" x2="3" y2="12"/>
-                        </svg>
-                        <span>Đăng nhập</span>
-                    }
-                </button>
-            </EditForm>
+        <div class="tf-login-footer-info">
+            Hệ thống quản lý thương mại và kho vận TradeFlow &copy; @DateTime.Now.Year
         </div>
     </div>
 </div>
-
-
 
 @code {
     private string? _errorMessage;
@@ -164,8 +130,8 @@
     private bool _passwordHasError;
     private bool _isSubmitting;
 
-    private string UsernameInputClass => _usernameHasError ? "tf-input tf-input-error" : "tf-input";
-    private string PasswordInputClass => _passwordHasError ? "tf-input tf-input-error" : "tf-input";
+    private string UsernameInputClass => _usernameHasError ? "tf-login-input tf-input-error" : "tf-login-input";
+    private string PasswordInputClass => _passwordHasError ? "tf-login-input tf-input-error" : "tf-login-input";
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
@@ -175,14 +141,6 @@
 
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
-
-    private static readonly string[] _features =
-    [
-        "Bán hàng & quản lý đơn hàng",
-        "Mua hàng & nhà cung cấp",
-        "Quản lý kho hàng",
-        "Báo cáo doanh thu"
-    ];
 
     protected override async Task OnInitializedAsync()
     {
@@ -194,7 +152,6 @@
             await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
         }
     }
-
 
     public async Task LoginUser()
     {
@@ -233,6 +190,7 @@
 
             if (user == null)
             {
+                // Generic error prevents user enumeration
                 _errorMessage = "Tên đăng nhập hoặc mật khẩu không chính xác.";
                 _usernameHasError = true;
                 _passwordHasError = true;
@@ -240,14 +198,14 @@
             }
 
             // Check account status (custom field)
-            if (user.Status == TradeFlow.Domain.Enums.UserStatus.Locked)
+            if (user.Status == UserStatus.Locked)
             {
                 Logger.LogWarning("Attempt to log in to locked account: {Username}", loginInput);
                 RedirectManager.RedirectTo("Account/Lockout");
                 return;
             }
 
-            if (user.Status != TradeFlow.Domain.Enums.UserStatus.Active)
+            if (user.Status != UserStatus.Active)
             {
                 _errorMessage = "Tài khoản của bạn đang bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.";
                 return;
@@ -280,7 +238,9 @@
             else
             {
                 Logger.LogWarning("Failed login attempt for user {Username}.", user.UserName);
-                _errorMessage = "Mật khẩu không chính xác.";
+                // Consistent generic error prevents user enumeration
+                _errorMessage = "Tên đăng nhập hoặc mật khẩu không chính xác.";
+                _usernameHasError = true;
                 _passwordHasError = true;
             }
         }
@@ -302,14 +262,14 @@
 
     private sealed class InputModel
     {
-        [Required(ErrorMessage = "Vui lòng nhập tên đăng nhập.")]
+        [Required(ErrorMessage = "Vui lòng nhập tên đăng nhập hoặc email.")]
         public string Username { get; set; } = "";
 
         [Required(ErrorMessage = "Vui lòng nhập mật khẩu.")]
         [DataType(DataType.Password)]
         public string Password { get; set; } = "";
 
-        [Display(Name = "Duy trì đăng nhập")]
+        [Display(Name = "Ghi nhớ đăng nhập")]
         public bool RememberMe { get; set; }
     }
 }

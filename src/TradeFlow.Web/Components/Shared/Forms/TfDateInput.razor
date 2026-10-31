@@ -1,0 +1,365 @@
+@namespace TradeFlow.Web.Components.Shared.Forms
+@using System.Globalization
+
+<div class="tf-date-input-container @Class" style="position: relative; width: 100%;">
+    <div class="tf-date-input-wrap" style="position: relative; display: flex; align-items: center; width: 100%;">
+        <input type="text"
+               id="@Id"
+               class="tf-input tf-date-field @(_hasError ? "is-invalid" : "")"
+               style="padding-right: 36px; width: 100%;"
+               placeholder="@Placeholder"
+               value="@_displayString"
+               @onchange="HandleChange"
+               @onblur="HandleBlur"
+               @onkeydown="HandleKeyDown"
+               disabled="@Disabled"
+               autocomplete="off" />
+
+        <button type="button"
+                class="tf-date-calendar-btn"
+                style="position: absolute; right: 8px; background: none; border: none; cursor: pointer; color: var(--tf-text-secondary); display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 4px;"
+                @onclick="ToggleCalendar"
+                disabled="@Disabled"
+                aria-label="Chọn ngày trên lịch"
+                title="Mở lịch chọn ngày"
+                tabindex="-1">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+        </button>
+    </div>
+
+    @if (_isCalendarOpen)
+    {
+        <div class="tf-date-picker-popup" @onclick:stopPropagation="true">
+            <div class="tf-calendar-nav">
+                <button type="button" class="tf-calendar-nav-btn" @onclick="PrevMonth" title="Tháng trước">&lt;</button>
+                <div class="tf-calendar-selectors">
+                    <select class="tf-calendar-month-select" value="@_viewMonth" @onchange="OnMonthChanged">
+                        @for (int m = 1; m <= 12; m++)
+                        {
+                            <option value="@m">Tháng @m</option>
+                        }
+                    </select>
+                    <select class="tf-calendar-year-select" value="@_viewYear" @onchange="OnYearChanged">
+                        @for (int y = _minYear; y <= _maxYear; y++)
+                        {
+                            <option value="@y">@y</option>
+                        }
+                    </select>
+                </div>
+                <button type="button" class="tf-calendar-nav-btn" @onclick="NextMonth" title="Tháng sau">&gt;</button>
+            </div>
+
+            <div class="tf-calendar-weekdays">
+                <span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span>
+            </div>
+
+            <div class="tf-calendar-grid">
+                @foreach (var day in GetCalendarDays())
+                {
+                    <button type="button"
+                            class="tf-calendar-day @(day.IsCurrentMonth ? "in-month" : "out-month") @(day.IsSelected ? "selected" : "") @(day.IsToday ? "today" : "")"
+                            @onclick="() => SelectDate(day.Date)"
+                            title="@day.Date.ToString("dd/MM/yyyy")">
+                        @day.DayNumber
+                    </button>
+                }
+            </div>
+
+            <div class="tf-calendar-footer">
+                <button type="button" class="tf-btn-link tf-btn-sm" @onclick="SelectToday">Hôm nay</button>
+                <button type="button" class="tf-btn-link tf-btn-sm" style="color: var(--tf-text-muted);" @onclick="ClearDate">Xóa</button>
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="CloseCalendar">Đóng</button>
+            </div>
+        </div>
+    }
+
+    @if (_hasError)
+    {
+        <div class="tf-field-error" style="color: var(--tf-danger, #ef4444); font-size: 12px; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            @_errorMessage
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public DateTime? Value { get; set; }
+    [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "dd/MM/yyyy";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public DateTime? MinDate { get; set; }
+    [Parameter] public DateTime? MaxDate { get; set; }
+
+    private string _displayString = string.Empty;
+    private bool _isCalendarOpen = false;
+    private bool _hasError = false;
+    private string? _errorMessage;
+
+    private int _viewYear = DateTime.Today.Year;
+    private int _viewMonth = DateTime.Today.Month;
+    private int _minYear => DateTime.Today.Year - 90;
+    private int _maxYear => DateTime.Today.Year + 25;
+
+    protected override void OnParametersSet()
+    {
+        if (Value.HasValue)
+        {
+            _displayString = Value.Value.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+            _viewYear = Value.Value.Year;
+            _viewMonth = Value.Value.Month;
+            _hasError = false;
+            _errorMessage = null;
+        }
+        else if (!_hasError)
+        {
+            _displayString = string.Empty;
+        }
+    }
+
+    private void HandleInput(ChangeEventArgs e)
+    {
+        _displayString = e.Value?.ToString() ?? string.Empty;
+    }
+
+    private async Task HandleChange(ChangeEventArgs e)
+    {
+        _displayString = e.Value?.ToString() ?? string.Empty;
+        await ProcessTextValueAsync(_displayString);
+    }
+
+    private async Task HandleBlur()
+    {
+        await ProcessTextValueAsync(_displayString);
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            CloseCalendar();
+        }
+        else if (e.Key == "Enter")
+        {
+            await ProcessTextValueAsync(_displayString);
+        }
+    }
+
+    private async Task ProcessTextValueAsync(string text)
+    {
+        string trimmed = text?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrEmpty(trimmed))
+        {
+            _hasError = false;
+            _errorMessage = null;
+            Value = null;
+            await ValueChanged.InvokeAsync(null);
+            return;
+        }
+
+        string[] formats = new[] { "dd/MM/yyyy", "d/M/yyyy", "dd-MM-yyyy", "d-M-yyyy", "ddMMyyyy" };
+        if (DateTime.TryParseExact(trimmed, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
+        {
+            // Range check
+            if (MinDate.HasValue && parsedDate < MinDate.Value)
+            {
+                _hasError = true;
+                _errorMessage = $"Ngày phải từ {MinDate.Value:dd/MM/yyyy}";
+                return;
+            }
+
+            if (MaxDate.HasValue && parsedDate > MaxDate.Value)
+            {
+                _hasError = true;
+                _errorMessage = $"Ngày tối đa là {MaxDate.Value:dd/MM/yyyy}";
+                return;
+            }
+
+            _hasError = false;
+            _errorMessage = null;
+            DateTime cleanDate = new DateTime(parsedDate.Year, parsedDate.Month, parsedDate.Day, 0, 0, 0, DateTimeKind.Unspecified);
+            Value = cleanDate;
+            _displayString = cleanDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+            _viewYear = cleanDate.Year;
+            _viewMonth = cleanDate.Month;
+            await ValueChanged.InvokeAsync(cleanDate);
+        }
+        else
+        {
+            _hasError = true;
+            _errorMessage = "Ngày không hợp lệ (định dạng dd/MM/yyyy)";
+        }
+    }
+
+    private void ToggleCalendar()
+    {
+        if (Disabled) return;
+        _isCalendarOpen = !_isCalendarOpen;
+        if (_isCalendarOpen)
+        {
+            if (Value.HasValue)
+            {
+                _viewYear = Value.Value.Year;
+                _viewMonth = Value.Value.Month;
+            }
+            else
+            {
+                _viewYear = DateTime.Today.Year;
+                _viewMonth = DateTime.Today.Month;
+            }
+        }
+    }
+
+    private void CloseCalendar()
+    {
+        _isCalendarOpen = false;
+    }
+
+    private void PrevMonth()
+    {
+        if (_viewMonth == 1)
+        {
+            _viewMonth = 12;
+            _viewYear--;
+        }
+        else
+        {
+            _viewMonth--;
+        }
+    }
+
+    private void NextMonth()
+    {
+        if (_viewMonth == 12)
+        {
+            _viewMonth = 1;
+            _viewYear++;
+        }
+        else
+        {
+            _viewMonth++;
+        }
+    }
+
+    private void OnMonthChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var m) && m >= 1 && m <= 12)
+        {
+            _viewMonth = m;
+        }
+    }
+
+    private void OnYearChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var y))
+        {
+            _viewYear = y;
+        }
+    }
+
+    private async Task SelectDate(DateTime date)
+    {
+        _hasError = false;
+        _errorMessage = null;
+        DateTime cleanDate = new DateTime(date.Year, date.Month, date.Day, 0, 0, 0, DateTimeKind.Unspecified);
+        Value = cleanDate;
+        _displayString = cleanDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+        _viewYear = cleanDate.Year;
+        _viewMonth = cleanDate.Month;
+        _isCalendarOpen = false;
+        await ValueChanged.InvokeAsync(cleanDate);
+    }
+
+    private async Task SelectToday()
+    {
+        await SelectDate(DateTime.Today);
+    }
+
+    private async Task ClearDate()
+    {
+        _hasError = false;
+        _errorMessage = null;
+        Value = null;
+        _displayString = string.Empty;
+        _isCalendarOpen = false;
+        await ValueChanged.InvokeAsync(null);
+    }
+
+    private List<CalendarDay> GetCalendarDays()
+    {
+        var days = new List<CalendarDay>();
+        var firstDayOfMonth = new DateTime(_viewYear, _viewMonth, 1);
+        int daysInMonth = DateTime.DaysInMonth(_viewYear, _viewMonth);
+
+        // Day of week: Monday is 0, Sunday is 6
+        int dayOfWeek = (int)firstDayOfMonth.DayOfWeek;
+        int leadingDays = (dayOfWeek == 0 ? 7 : dayOfWeek) - 1; // 0 for Monday, 6 for Sunday
+
+        // Days from previous month
+        var prevMonthDate = firstDayOfMonth.AddMonths(-1);
+        int daysInPrevMonth = DateTime.DaysInMonth(prevMonthDate.Year, prevMonthDate.Month);
+        for (int i = leadingDays - 1; i >= 0; i--)
+        {
+            int d = daysInPrevMonth - i;
+            var dt = new DateTime(prevMonthDate.Year, prevMonthDate.Month, d);
+            days.Add(new CalendarDay
+            {
+                DayNumber = d,
+                Date = dt,
+                IsCurrentMonth = false,
+                IsToday = dt.Date == DateTime.Today,
+                IsSelected = Value.HasValue && dt.Date == Value.Value.Date
+            });
+        }
+
+        // Days of current month
+        for (int d = 1; d <= daysInMonth; d++)
+        {
+            var dt = new DateTime(_viewYear, _viewMonth, d);
+            days.Add(new CalendarDay
+            {
+                DayNumber = d,
+                Date = dt,
+                IsCurrentMonth = true,
+                IsToday = dt.Date == DateTime.Today,
+                IsSelected = Value.HasValue && dt.Date == Value.Value.Date
+            });
+        }
+
+        // Trailing days from next month to fill 42 cells (6 rows of 7)
+        int trailingDays = 42 - days.Count;
+        var nextMonthDate = firstDayOfMonth.AddMonths(1);
+        for (int d = 1; d <= trailingDays; d++)
+        {
+            var dt = new DateTime(nextMonthDate.Year, nextMonthDate.Month, d);
+            days.Add(new CalendarDay
+            {
+                DayNumber = d,
+                Date = dt,
+                IsCurrentMonth = false,
+                IsToday = dt.Date == DateTime.Today,
+                IsSelected = Value.HasValue && dt.Date == Value.Value.Date
+            });
+        }
+
+        return days;
+    }
+
+    private class CalendarDay
+    {
+        public int DayNumber { get; set; }
+        public DateTime Date { get; set; }
+        public bool IsCurrentMonth { get; set; }
+        public bool IsToday { get; set; }
+        public bool IsSelected { get; set; }
+    }
+}

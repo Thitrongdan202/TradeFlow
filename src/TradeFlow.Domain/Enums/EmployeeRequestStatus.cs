@@ -13,5 +13,8 @@ public enum EmployeeRequestStatus
     Rejected = 3,
 
     /// <summary>Đã hủy</summary>
-    Cancelled = 4
+    Cancelled = 4,
+
+    /// <summary>Yêu cầu bổ sung hồ sơ</summary>
+    NeedAdditionalDocs = 5
 }

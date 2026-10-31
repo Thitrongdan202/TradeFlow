@@ -412,4 +412,263 @@ public class EmployeeServiceTests : IDisposable
         var inDbPos = await _context.Positions.FirstOrDefaultAsync(p => p.Code == "CV_MKT");
         inDbPos.Should().NotBeNull();
     }
+
+    [Fact]
+    public async Task UpdateDepartmentAsync_SuccessfullyUpdatesNameAndDescription()
+    {
+        // Arrange
+        var dept = await _sut.CreateDepartmentAsync("IT", "Phòng IT Cũ", "Mô tả cũ", "admin");
+
+        // Act
+        var updated = await _sut.UpdateDepartmentAsync(dept.Id, "IT", "Phòng Công Nghệ Thông Tin", "Phụ trách hạ tầng công nghệ", "manager");
+
+        // Assert
+        updated.Name.Should().Be("Phòng Công Nghệ Thông Tin");
+        updated.Description.Should().Be("Phụ trách hạ tầng công nghệ");
+
+        var inDb = await _context.Departments.FindAsync(dept.Id);
+        inDb!.Name.Should().Be("Phòng Công Nghệ Thông Tin");
+        inDb.UpdatedBy.Should().Be("manager");
+    }
+
+    [Fact]
+    public async Task DeactivateAndReactivateDepartment_UpdatesIsActiveAndPreservesData()
+    {
+        // Arrange
+        var dept = await _sut.CreateDepartmentAsync("LOGISTICS", "Hậu cần", null, "admin");
+
+        // Act 1: Deactivate
+        var deactSuccess = await _sut.DeactivateDepartmentAsync(dept.Id, "admin");
+        deactSuccess.Should().BeTrue();
+
+        var deactDept = await _context.Departments.FindAsync(dept.Id);
+        deactDept!.IsActive.Should().BeFalse();
+
+        // Active list should not include deactivated department
+        var activeList = await _sut.GetDepartmentsAsync(includeInactive: false);
+        activeList.Any(d => d.Id == dept.Id).Should().BeFalse();
+
+        // Full list should include deactivated department
+        var fullList = await _sut.GetDepartmentsAsync(includeInactive: true);
+        var item = fullList.FirstOrDefault(d => d.Id == dept.Id);
+        item.Should().NotBeNull();
+        item!.IsActive.Should().BeFalse();
+
+        // Act 2: Reactivate
+        var reactSuccess = await _sut.ReactivateDepartmentAsync(dept.Id, "admin");
+        reactSuccess.Should().BeTrue();
+
+        var reactDept = await _context.Departments.FindAsync(dept.Id);
+        reactDept!.IsActive.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DeleteDepartmentAsync_WhenNoReferences_DeletesSuccessfully()
+    {
+        // Arrange
+        var dept = await _sut.CreateDepartmentAsync("TEMP_DEPT", "Phòng tạm", null, "admin");
+
+        // Act
+        var result = await _sut.DeleteDepartmentAsync(dept.Id, "admin");
+
+        // Assert
+        result.Should().BeTrue();
+        var inDb = await _context.Departments.FindAsync(dept.Id);
+        inDb.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DeleteDepartmentAsync_WhenReferencedByEmployees_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var dept = await _sut.CreateDepartmentAsync("DEPT_REF", "Phòng đang có nhân viên", null, "admin");
+        var emp = new Employee
+        {
+            Code = "NV99991",
+            FullName = "Trần Trọng Đạt",
+            DepartmentId = dept.Id,
+            Status = EmployeeStatus.Active
+        };
+        _context.Employees.Add(emp);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var act = async () => await _sut.DeleteDepartmentAsync(dept.Id, "admin");
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*đang có*nhân viên*");
+    }
+
+    [Fact]
+    public async Task UpdatePositionAsync_SuccessfullyUpdatesNameAndDescription()
+    {
+        // Arrange
+        var pos = await _sut.CreatePositionAsync("TEST_POS", "Tên chức danh cũ", null, "admin");
+
+        // Act
+        var updated = await _sut.UpdatePositionAsync(pos.Id, "TEST_POS", "Tên chức danh mới", "Mô tả công việc mới", "admin");
+
+        // Assert
+        updated.Name.Should().Be("Tên chức danh mới");
+        updated.Description.Should().Be("Mô tả công việc mới");
+
+        var inDb = await _context.Positions.FindAsync(pos.Id);
+        inDb!.Name.Should().Be("Tên chức danh mới");
+    }
+
+    [Fact]
+    public async Task DeactivateAndReactivatePosition_UpdatesIsActiveAndPreservesData()
+    {
+        // Arrange
+        var pos = await _sut.CreatePositionAsync("POS_DEACT", "Chức danh tạm", null, "admin");
+
+        // Act: Deactivate
+        await _sut.DeactivatePositionAsync(pos.Id, "admin");
+        var deactPos = await _context.Positions.FindAsync(pos.Id);
+        deactPos!.IsActive.Should().BeFalse();
+
+        // Act: Reactivate
+        await _sut.ReactivatePositionAsync(pos.Id, "admin");
+        var reactPos = await _context.Positions.FindAsync(pos.Id);
+        reactPos!.IsActive.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DeletePositionAsync_WhenReferencedByEmployees_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var pos = await _sut.CreatePositionAsync("POS_REF", "Chức danh có người giữ", null, "admin");
+        var emp = new Employee
+        {
+            Code = "NV99992",
+            FullName = "Lê Hoàng Nam",
+            PositionId = pos.Id,
+            Status = EmployeeStatus.Active
+        };
+        _context.Employees.Add(emp);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var act = async () => await _sut.DeletePositionAsync(pos.Id, "admin");
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Không thể xóa chức danh*tham chiếu*Ngừng sử dụng*");
+    }
+
+    [Fact]
+    public async Task ReviewEmployeeRequest_WhenRequestAdditionalDocs_TransitionsToNeedAdditionalDocs()
+    {
+        // Arrange
+        var submitCmd = new CreateEmployeeRequestCommand
+        {
+            FullName = "Nguyễn Văn Bổ Sung",
+            Phone = "0988776655",
+            Email = "bosung@tradeflow.vn"
+        };
+        var req = await _sut.SubmitEmployeeRequestAsync(submitCmd, "hr_user");
+
+        // Act
+        var reviewCmd = new ReviewEmployeeRequestCommand
+        {
+            RequestId = req.Id,
+            Approve = false,
+            RequestAdditionalDocs = true,
+            ReviewNotes = "Thiếu bằng tốt nghiệp và CV có ảnh"
+        };
+        var result = await _sut.ReviewEmployeeRequestAsync(reviewCmd, "admin_user");
+
+        // Assert
+        result.Should().BeNull();
+        var updated = await _context.EmployeeRequests.FindAsync(req.Id);
+        updated!.Status.Should().Be(EmployeeRequestStatus.NeedAdditionalDocs);
+        updated.ReviewNotes.Should().Be("Thiếu bằng tốt nghiệp và CV có ảnh");
+        updated.ApprovedBy.Should().Be("admin_user");
+    }
+
+    [Fact]
+    public async Task ResubmitEmployeeRequest_WhenInNeedAdditionalDocs_TransitionsBackToPending()
+    {
+        // Arrange
+        var submitCmd = new CreateEmployeeRequestCommand
+        {
+            FullName = "Trần Thị Hằng",
+            Phone = "0911223344"
+        };
+        var req = await _sut.SubmitEmployeeRequestAsync(submitCmd, "hr_user");
+
+        await _sut.ReviewEmployeeRequestAsync(new ReviewEmployeeRequestCommand
+        {
+            RequestId = req.Id,
+            Approve = false,
+            RequestAdditionalDocs = true,
+            ReviewNotes = "Cần bổ sung số CMND/CCCD"
+        }, "manager");
+
+        // Act: HR supplements info and resubmits
+        var resubmitCmd = new ResubmitEmployeeRequestCommand
+        {
+            RequestId = req.Id,
+            FullName = "Trần Thị Hằng",
+            NationalId = "079198001122",
+            ResubmitNotes = "Đã bổ sung CCCD chính thức"
+        };
+        var resubmittedDto = await _sut.ResubmitEmployeeRequestAsync(resubmitCmd, "hr_user");
+
+        // Assert
+        resubmittedDto.Status.Should().Be(EmployeeRequestStatus.Pending);
+        var inDb = await _context.EmployeeRequests.FindAsync(req.Id);
+        inDb!.Status.Should().Be(EmployeeRequestStatus.Pending);
+        inDb.NationalId.Should().Be("079198001122");
+        inDb.Notes.Should().Contain("Đã bổ sung CCCD chính thức");
+    }
+
+    [Fact]
+    public async Task ReviewEmployeeRequest_WhenResubmitted_CanBeApprovedAndCreatesEmployee()
+    {
+        // Arrange
+        var submitCmd = new CreateEmployeeRequestCommand
+        {
+            FullName = "Võ Minh Trí",
+            Phone = "0977665544",
+            Email = "tri.vo@tradeflow.vn"
+        };
+        var req = await _sut.SubmitEmployeeRequestAsync(submitCmd, "hr_user");
+
+        await _sut.ReviewEmployeeRequestAsync(new ReviewEmployeeRequestCommand
+        {
+            RequestId = req.Id,
+            Approve = false,
+            RequestAdditionalDocs = true,
+            ReviewNotes = "Vui lòng cập nhật email công ty"
+        }, "admin");
+
+        await _sut.ResubmitEmployeeRequestAsync(new ResubmitEmployeeRequestCommand
+        {
+            RequestId = req.Id,
+            FullName = "Võ Minh Trí",
+            Email = "tri.vominh@tradeflow.vn",
+            ResubmitNotes = "Đã cập nhật email chính thức"
+        }, "hr_user");
+
+        // Act: Admin approves resubmitted request
+        var approveCmd = new ReviewEmployeeRequestCommand
+        {
+            RequestId = req.Id,
+            Approve = true,
+            ReviewNotes = "Hồ sơ đạt yêu cầu"
+        };
+        var createdEmp = await _sut.ReviewEmployeeRequestAsync(approveCmd, "admin");
+
+        // Assert
+        createdEmp.Should().NotBeNull();
+        createdEmp!.FullName.Should().Be("Võ Minh Trí");
+        createdEmp.Email.Should().Be("tri.vominh@tradeflow.vn");
+
+        var approvedReq = await _context.EmployeeRequests.FindAsync(req.Id);
+        approvedReq!.Status.Should().Be(EmployeeRequestStatus.Approved);
+        approvedReq.CreatedEmployeeId.Should().Be(createdEmp.Id);
+    }
+
 }

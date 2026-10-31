@@ -1,3 +1,5 @@
+using System.Globalization;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using TradeFlow.Application.Common.Interfaces;
@@ -56,6 +58,17 @@ builder.Services.AddAuthentication(options =>
     })
     .AddIdentityCookies();
 
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    options.ExpireTimeSpan = TimeSpan.FromDays(14);
+    options.SlidingExpiration = true;
+    options.LoginPath = "/Account/Login";
+    options.AccessDeniedPath = "/Account/AccessDenied";
+});
+
 builder.Services.AddTradeFlowAuthorization();
 
 builder.Services.AddHttpContextAccessor();
@@ -93,7 +106,24 @@ else
     app.UseHsts();
 }
 
-//app.UseStatusCodePagesWithReExecute("/loi/{0}");
+app.UseStatusCodePagesWithReExecute("/loi/{0}");
+var viCulture = new CultureInfo("vi-VN");
+viCulture.DateTimeFormat.ShortDatePattern = "dd/MM/yyyy";
+viCulture.DateTimeFormat.LongDatePattern = "dd/MM/yyyy";
+viCulture.DateTimeFormat.ShortTimePattern = "HH:mm";
+viCulture.DateTimeFormat.LongTimePattern = "HH:mm:ss";
+
+CultureInfo.DefaultThreadCurrentCulture = viCulture;
+CultureInfo.DefaultThreadCurrentUICulture = viCulture;
+
+var localizationOptions = new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture(viCulture),
+    SupportedCultures = new List<CultureInfo> { viCulture },
+    SupportedUICultures = new List<CultureInfo> { viCulture }
+};
+app.UseRequestLocalization(localizationOptions);
+
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();

@@ -1,14 +1,17 @@
 @using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Documents
 @using TradeFlow.Application.Common.Models.Employees
 @using TradeFlow.Domain.Enums
 @inject IEmployeeService EmployeeService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject Microsoft.AspNetCore.Authorization.IAuthorizationService AuthorizationService
 
 @if (IsOpen)
 {
     <div class="tf-modal-overlay" @onclick="HandleBackdropClick">
-        <div class="tf-modal tf-modal-lg" style="max-width: 900px; max-height: 85vh;" @onclick:stopPropagation="true">
-            <div class="tf-modal-header">
+        <div class="tf-modal tf-modal-lg" style="max-width: 920px; max-height: calc(100dvh - 32px); min-height: 0; display: flex; flex-direction: column; overflow: hidden; position: relative;" @onclick:stopPropagation="true">
+            @* Fixed Header *@
+            <div class="tf-modal-header" style="flex: 0 0 auto;">
                 <div>
                     <h3 class="tf-modal-title" style="display:flex; align-items:center; gap:8px;">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tf-primary);">
@@ -16,41 +19,50 @@
                             <polyline points="14 2 14 8 20 8"/>
                             <path d="M9 15l2 2 4-4"/>
                         </svg>
-                        Duyệt yêu cầu thêm nhân viên
+                        Xét duyệt yêu cầu nhân sự &amp; Hồ sơ đính kèm
                     </h3>
                     <p style="margin:2px 0 0 0; font-size:13px; color:var(--tf-text-muted);">
-                        Xem xét, phê duyệt hoặc từ chối các đề xuất tạo mới hồ sơ nhân sự từ các bộ phận
+                        Xem xét, thẩm định hồ sơ đính kèm, phê duyệt hoặc yêu cầu bổ sung thông tin nhân sự
                     </p>
                 </div>
-                <button type="button" class="tf-btn-icon" @onclick="Close">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <button type="button" class="tf-modal-close-btn" @onclick="Close" aria-label="Đóng" title="Đóng">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18"/>
                         <line x1="6" y1="6" x2="18" y2="18"/>
                     </svg>
                 </button>
             </div>
 
-            @* Filter tabs *@
-            <div style="padding: 12px 20px 0 20px; border-bottom: 1px solid var(--tf-border); display:flex; gap:16px;">
+            @* Filter tabs bar (Fixed) *@
+            <div class="tf-req-filter-bar">
                 <button type="button" class="tf-tab-btn @(_selectedStatus == EmployeeRequestStatus.Pending ? "active" : "")" @onclick="() => FilterByStatus(EmployeeRequestStatus.Pending)">
-                    Chờ duyệt
+                    <span>Chờ duyệt</span>
                     @if (_pendingCount > 0)
                     {
                         <span class="tf-badge tf-badge-warning" style="margin-left:6px; font-size:11px; padding:2px 6px;">@_pendingCount</span>
                     }
                 </button>
+                <button type="button" class="tf-tab-btn @(_selectedStatus == EmployeeRequestStatus.NeedAdditionalDocs ? "active" : "")" @onclick="() => FilterByStatus(EmployeeRequestStatus.NeedAdditionalDocs)">
+                    <span>Cần bổ sung hồ sơ</span>
+                    @if (_needDocsCount > 0)
+                    {
+                        <span class="tf-badge tf-badge-info" style="margin-left:6px; font-size:11px; padding:2px 6px;">@_needDocsCount</span>
+                    }
+                </button>
                 <button type="button" class="tf-tab-btn @(_selectedStatus == EmployeeRequestStatus.Approved ? "active" : "")" @onclick="() => FilterByStatus(EmployeeRequestStatus.Approved)">
-                    Đã duyệt
+                    <span>Đã duyệt</span>
                 </button>
                 <button type="button" class="tf-tab-btn @(_selectedStatus == EmployeeRequestStatus.Rejected ? "active" : "")" @onclick="() => FilterByStatus(EmployeeRequestStatus.Rejected)">
-                    Từ chối
+                    <span>Từ chối</span>
                 </button>
                 <button type="button" class="tf-tab-btn @(_selectedStatus == null ? "active" : "")" @onclick="() => FilterByStatus(null)">
-                    Tất cả (@_allRequests.Count)
+                    <span>Tất cả</span>
+                    <span class="tf-badge" style="margin-left:6px; font-size:11px; padding:2px 6px;">@_allRequests.Count</span>
                 </button>
             </div>
 
-            <div class="tf-modal-body tf-req-body">
+            @* Scrollable Body *@
+            <div class="tf-modal-body tf-req-body" style="flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;">
                 @if (!string.IsNullOrEmpty(_alertMessage))
                 {
                     <div class="tf-alert @(_alertIsSuccess ? "tf-alert-success" : "tf-alert-error") tf-mb-4">
@@ -83,10 +95,11 @@
                 }
                 else
                 {
-                    <div style="display:flex; flex-direction:column; gap:12px;">
+                    <div style="display:flex; flex-direction:column; gap:16px;">
                         @foreach (var req in _filteredRequests)
                         {
-                            <div class="tf-req-card">
+                            <div id="@($"req-item-{req.Id}")" class="tf-req-card @(req.Id == TargetRequestId ? "highlighted-target" : "")" @key="req.Id">
+                                @* Header of card *@
                                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
                                     <div style="display:flex; align-items:center; gap:12px;">
                                         <div class="tf-req-avatar">
@@ -114,6 +127,12 @@
                                                     Chờ duyệt
                                                 </span>
                                                 break;
+                                            case EmployeeRequestStatus.NeedAdditionalDocs:
+                                                <span class="tf-badge tf-badge-info" style="display:flex; align-items:center; gap:4px;">
+                                                    <span style="width:6px; height:6px; border-radius:50%; background:#0284c7;"></span>
+                                                    Cần bổ sung hồ sơ
+                                                </span>
+                                                break;
                                             case EmployeeRequestStatus.Approved:
                                                 <span class="tf-badge tf-badge-success" style="display:flex; align-items:center; gap:4px;">
                                                     <span style="width:6px; height:6px; border-radius:50%; background:#16a34a;"></span>
@@ -133,6 +152,7 @@
                                     </div>
                                 </div>
 
+                                @* Info grid *@
                                 <div class="tf-req-grid">
                                     <div>
                                         <span class="tf-req-grid-label">Phòng ban:</span>
@@ -151,7 +171,7 @@
                                         <strong>@(req.Email ?? "—")</strong>
                                     </div>
                                     <div>
-                                        <span class="tf-req-grid-label">CMND/CCCD:</span>
+                                        <span class="tf-req-grid-label">CMND / CCCD:</span>
                                         <strong>@(req.NationalId ?? "—")</strong>
                                     </div>
                                     <div>
@@ -162,15 +182,63 @@
 
                                 @if (!string.IsNullOrEmpty(req.Notes))
                                 {
-                                    <div class="tf-req-notes">
-                                        <span class="tf-req-grid-label">Lý do / Ghi chú:</span> @req.Notes
+                                    <div class="tf-req-notes" style="margin-top: 8px;">
+                                        <span class="tf-req-grid-label">Ghi chú đề xuất:</span> @req.Notes
                                     </div>
                                 }
 
+                                @* Attached Personal Dossier Section *@
+                                <div class="tf-req-attachments-box">
+                                    <div class="tf-req-attachments-title">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                                        </svg>
+                                        <span>Hồ sơ cá nhân &amp; Tài liệu đính kèm (@req.Attachments.Count tệp)</span>
+                                    </div>
+
+                                    @if (req.Attachments.Any())
+                                    {
+                                        <div class="tf-req-attachments-list">
+                                            @foreach (var doc in req.Attachments)
+                                            {
+                                                <div class="tf-req-att-item">
+                                                    <span class="tf-badge tf-badge-info" style="font-size:10.5px; padding: 1px 6px;">
+                                                        @(doc.CategoryName ?? "Hồ sơ cá nhân")
+                                                    </span>
+                                                    <span class="tf-req-att-name" title="@doc.FileName">
+                                                        @doc.FileName
+                                                    </span>
+                                                    @if (doc.FileName.Contains("DEMO", StringComparison.OrdinalIgnoreCase))
+                                                    {
+                                                        <span class="tf-dossier-demo-tag">DEMO DATA — NOT A REAL PERSONAL DOCUMENT</span>
+                                                    }
+                                                    <span class="tf-req-att-size">(@doc.FormattedFileSize)</span>
+
+                                                    <div class="tf-req-att-actions">
+                                                        <a href="/api/documents/@doc.Id/preview" target="_blank" class="tf-btn tf-btn-sm tf-btn-outline-primary" style="padding:2px 8px; font-size:11px;" title="Xem trước tài liệu">
+                                                            Xem
+                                                        </a>
+                                                        <a href="/api/documents/@doc.Id/download" class="tf-btn tf-btn-sm tf-btn-outline-secondary" style="padding:2px 8px; font-size:11px;" title="Tải về" download>
+                                                            Tải
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div style="font-size: 12px; color: var(--tf-text-muted); font-style: italic;">
+                                            Chưa có hồ sơ đính kèm trong yêu cầu này.
+                                        </div>
+                                    }
+                                </div>
+
+                                @* Review History / Status Notes *@
                                 @if (req.Status == EmployeeRequestStatus.Approved)
                                 {
-                                    <div class="tf-req-status-box tf-req-approved">
-                                        Duyệt bởi <strong>@req.ApprovedBy</strong> vào @req.ApprovedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                    <div class="tf-req-status-box tf-req-approved" style="margin-top: 10px;">
+                                        Đã phê duyệt bởi <strong>@req.ApprovedBy</strong> vào @req.ApprovedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                                         @if (!string.IsNullOrEmpty(req.ReviewNotes))
                                         {
                                             <span> — Ý kiến: @req.ReviewNotes</span>
@@ -179,49 +247,95 @@
                                 }
                                 else if (req.Status == EmployeeRequestStatus.Rejected)
                                 {
-                                    <div class="tf-req-status-box tf-req-rejected">
+                                    <div class="tf-req-status-box tf-req-rejected" style="margin-top: 10px;">
                                         Từ chối bởi <strong>@req.ApprovedBy</strong> vào @req.ApprovedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                                         @if (!string.IsNullOrEmpty(req.ReviewNotes))
                                         {
-                                            <span> — Lý do từ chối: <strong>@req.ReviewNotes</strong></span>
+                                            <span> — Lý do: <strong>@req.ReviewNotes</strong></span>
                                         }
+                                        <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+                                            <button type="button" class="tf-btn tf-btn-outline-primary tf-btn-sm" style="font-size:12px; padding:4px 10px;" @onclick="() => CloneRequest(req)">
+                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;">
+                                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                                </svg>
+                                                Tạo yêu cầu mới từ hồ sơ này
+                                            </button>
+                                        </div>
                                     </div>
                                 }
-                                else if (req.Status == EmployeeRequestStatus.Pending)
+                                else if (req.Status == EmployeeRequestStatus.NeedAdditionalDocs)
                                 {
-                                    <AuthorizeView Policy="Permission:EmployeeRequests:Approve">
-                                        <div class="tf-req-actions">
+                                    <div class="tf-req-status-box" style="margin-top: 10px; background-color: rgba(2, 132, 199, 0.1); border: 1px solid rgba(2, 132, 199, 0.3); color: var(--tf-text-primary); border-radius: 6px; padding: 8px 12px; font-size: 12.5px;">
+                                        Yêu cầu bổ sung hồ sơ bởi <strong>@req.ApprovedBy</strong> vào @req.ApprovedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                        @if (!string.IsNullOrEmpty(req.ReviewNotes))
+                                        {
+                                            <span> — Nội dung cần bổ sung: <strong>@req.ReviewNotes</strong></span>
+                                        }
+                                        <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+                                            <button type="button" class="tf-btn tf-btn-warning tf-btn-sm" style="font-size:12px; padding:4px 10px;" @onclick="() => RequestResubmit(req)">
+                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;">
+                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                                </svg>
+                                                Bổ sung hồ sơ &amp; Gửi lại
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+
+                                @* Approval Actions for Pending or NeedAdditionalDocs *@
+                                @if (req.Status == EmployeeRequestStatus.Pending || req.Status == EmployeeRequestStatus.NeedAdditionalDocs)
+                                {
+                                    @if (_canApprove)
+                                    {
+                                        <div class="tf-req-actions" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--tf-border);">
                                             @if (_processingRequestId == req.Id)
                                             {
-                                                <div style="display:flex; align-items:center; gap:8px; width:100%;">
-                                                    <input type="text" class="tf-input" placeholder="Lý do từ chối hoặc ghi chú phê duyệt..." @bind="_reviewNotes" style="flex:1; height:34px; font-size:13px;" />
-                                                    <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="CancelReview">Hủy</button>
-                                                    <button type="button" class="tf-btn tf-btn-danger tf-btn-sm" @onclick="() => ConfirmReview(req.Id, false)" disabled="@_isSubmittingAction">
-                                                        Xác nhận từ chối
-                                                    </button>
-                                                    <button type="button" class="tf-btn tf-btn-primary tf-btn-sm" @onclick="() => ConfirmReview(req.Id, true)" disabled="@_isSubmittingAction">
-                                                        Xác nhận duyệt
-                                                    </button>
+                                                <div style="display:flex; flex-direction:column; gap:8px; width:100%;">
+                                                    <input type="text" class="tf-input" placeholder="Nhập ghi chú phê duyệt hoặc nội dung yêu cầu bổ sung / lý do từ chối..." @bind="_reviewNotes" style="width:100%; height:34px; font-size:13px;" />
+                                                    <div style="display:flex; justify-content:flex-end; gap:8px;">
+                                                        <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="CancelReview">Hủy</button>
+                                                        <button type="button" class="tf-btn tf-btn-danger tf-btn-sm" @onclick="() => ConfirmReview(req.Id, false)" disabled="@_isSubmittingAction">
+                                                            Xác nhận từ chối
+                                                        </button>
+                                                        <button type="button" class="tf-btn tf-btn-outline-warning tf-btn-sm" @onclick="() => ConfirmRequestDocs(req.Id)" disabled="@_isSubmittingAction">
+                                                            Yêu cầu bổ sung hồ sơ
+                                                        </button>
+                                                        <button type="button" class="tf-btn tf-btn-primary tf-btn-sm" @onclick="() => ConfirmReview(req.Id, true)" disabled="@_isSubmittingAction">
+                                                            Phê duyệt &amp; Tạo hồ sơ
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             }
                                             else
                                             {
-                                                <button type="button" class="tf-btn tf-btn-outline-danger tf-btn-sm" @onclick="() => StartReview(req.Id)">
-                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;">
-                                                        <line x1="18" y1="6" x2="6" y2="18"/>
-                                                        <line x1="6" y1="6" x2="18" y2="18"/>
-                                                    </svg>
-                                                    Từ chối
-                                                </button>
-                                                <button type="button" class="tf-btn tf-btn-primary tf-btn-sm" @onclick="() => StartReview(req.Id)">
-                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;">
-                                                        <polyline points="20 6 9 17 4 12"/>
-                                                    </svg>
-                                                    Phê duyệt
-                                                </button>
+                                                <div style="display:flex; justify-content:flex-end; gap:8px; width:100%;">
+                                                    <button type="button" class="tf-btn tf-btn-outline-danger tf-btn-sm" @onclick="() => StartReview(req.Id)">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;">
+                                                            <line x1="18" y1="6" x2="6" y2="18"/>
+                                                            <line x1="6" y1="6" x2="18" y2="18"/>
+                                                        </svg>
+                                                        Từ chối
+                                                    </button>
+                                                    <button type="button" class="tf-btn tf-btn-outline-warning tf-btn-sm" @onclick="() => StartReview(req.Id)">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <line x1="12" y1="8" x2="12" y2="12"/>
+                                                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                                                        </svg>
+                                                        Yêu cầu bổ sung
+                                                    </button>
+                                                    <button type="button" class="tf-btn tf-btn-primary tf-btn-sm" @onclick="() => StartReview(req.Id)">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;">
+                                                            <polyline points="20 6 9 17 4 12"/>
+                                                        </svg>
+                                                        Phê duyệt hồ sơ
+                                                    </button>
+                                                </div>
                                             }
                                         </div>
-                                    </AuthorizeView>
+                                    }
                                 }
                             </div>
                         }
@@ -229,216 +343,101 @@
                 }
             </div>
 
-            <div class="tf-modal-footer">
+            @* Fixed Footer *@
+            <div class="tf-modal-footer" style="flex: 0 0 auto;">
                 <button type="button" class="tf-btn tf-btn-ghost" @onclick="Close">Đóng</button>
             </div>
         </div>
     </div>
 }
 
-<style>
-    .tf-tab-btn {
-        background: transparent;
-        border: none;
-        border-bottom: 2px solid transparent;
-        padding: 8px 12px;
-        font-size: 14px;
-        font-weight: 500;
-        color: var(--tf-text-secondary);
-        cursor: pointer;
-        transition: all 0.15s ease;
-        display: flex;
-        align-items: center;
-    }
-    .tf-tab-btn:hover {
-        color: var(--tf-text-primary);
-    }
-    .tf-tab-btn.active {
-        color: var(--tf-primary);
-        border-bottom-color: var(--tf-primary);
-        font-weight: 600;
-    }
-
-    .tf-req-body {
-        padding: 16px 20px;
-        background-color: var(--tf-bg-page, #f8fafc);
-    }
-    [data-bs-theme="dark"] .tf-req-body {
-        background-color: var(--tf-bg-body, #0f1117) !important;
-    }
-
-    .tf-req-empty {
-        padding: 48px 24px;
-        background: var(--tf-bg-card, #ffffff);
-        border-radius: 8px;
-        border: 1px solid var(--tf-border, #e2e8f0);
-    }
-
-    .tf-req-card {
-        background: var(--tf-bg-card, #ffffff);
-        border: 1px solid var(--tf-border, #e2e8f0);
-        border-radius: 8px;
-        padding: 16px;
-        box-shadow: var(--tf-card-shadow, 0 1px 2px rgba(0,0,0,0.03));
-        transition: border-color 0.15s ease;
-    }
-    [data-bs-theme="dark"] .tf-req-card {
-        background: #1e2028 !important;
-        border-color: #2e3542 !important;
-    }
-
-    [data-bs-theme="dark"] .tf-req-empty {
-        background: #1e2028 !important;
-        border-color: #2e3542 !important;
-    }
-
-    .tf-req-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: #e0e7ff;
-        color: #4338ca;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 14px;
-    }
-    [data-bs-theme="dark"] .tf-req-avatar {
-        background: rgba(99, 102, 241, 0.2);
-        color: #a5b4fc;
-        border: 1px solid rgba(99, 102, 241, 0.3);
-    }
-
-    .tf-req-name {
-        font-weight: 700;
-        font-size: 15px;
-        color: var(--tf-text-primary, #1e293b);
-    }
-
-    .tf-req-code {
-        font-size: 13px;
-        font-family: monospace;
-        color: #0f766e;
-        margin-left: 6px;
-    }
-    [data-bs-theme="dark"] .tf-req-code {
-        color: #2dd4bf;
-    }
-
-    .tf-req-meta {
-        font-size: 12px;
-        color: var(--tf-text-secondary, #64748b);
-    }
-
-    .tf-req-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
-        font-size: 13px;
-        padding: 10px 12px;
-        background: var(--tf-bg-subtle, #f8fafc);
-        border: 1px solid var(--tf-border, #e2e8f0);
-        border-radius: 6px;
-        margin-bottom: 12px;
-        color: var(--tf-text-primary);
-    }
-
-    .tf-req-grid-label {
-        color: var(--tf-text-muted, #64748b);
-        margin-right: 4px;
-    }
-
-    .tf-req-notes {
-        font-size: 13px;
-        color: var(--tf-text-secondary, #475569);
-        margin-bottom: 12px;
-    }
-
-    .tf-req-status-box {
-        font-size: 12px;
-        padding: 8px 12px;
-        border-radius: 6px;
-    }
-
-    .tf-req-approved {
-        color: #15803d;
-        background: #f0fdf4;
-    }
-    [data-bs-theme="dark"] .tf-req-approved {
-        color: #4ade80;
-        background: rgba(34, 197, 94, 0.12);
-        border: 1px solid rgba(34, 197, 94, 0.25);
-    }
-
-    .tf-req-rejected {
-        color: #b91c1c;
-        background: #fef2f2;
-    }
-    [data-bs-theme="dark"] .tf-req-rejected {
-        color: #f87171;
-        background: rgba(239, 68, 68, 0.12);
-        border: 1px solid rgba(239, 68, 68, 0.25);
-    }
-
-    .tf-req-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 8px;
-        border-top: 1px solid var(--tf-border, #f1f5f9);
-        padding-top: 12px;
-    }
-</style>
-
 @code {
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
-    [Parameter] public EventCallback OnRequestsChanged { get; set; }
     [Parameter] public int? TargetRequestId { get; set; }
+    [Parameter] public EventCallback OnRequestsChanged { get; set; }
+    [Parameter] public EventCallback OnApproved { get; set; }
+    [Parameter] public EventCallback<EmployeeRequestDto> OnResubmitRequested { get; set; }
+    [Parameter] public EventCallback<EmployeeRequestDto> OnCloneRequested { get; set; }
 
+    private readonly Dictionary<EmployeeRequestStatus, List<EmployeeRequestDto>> _requestsByStatus = new();
     private List<EmployeeRequestDto> _allRequests = new();
+    private bool _canApprove;
     private List<EmployeeRequestDto> _filteredRequests = new();
     private EmployeeRequestStatus? _selectedStatus = EmployeeRequestStatus.Pending;
-    private int _pendingCount;
-    private bool _isLoading;
 
-    private int? _processingRequestId;
-    private string _reviewNotes = string.Empty;
+    private int _pendingCount;
+    private int _needDocsCount;
+    private bool _isLoading;
     private bool _isSubmittingAction;
     private string? _alertMessage;
     private bool _alertIsSuccess;
+
+    private int? _processingRequestId;
+    private string _reviewNotes = string.Empty;
+    private bool _wasOpen;
+    private int? _lastTargetRequestId;
 
     protected override async Task OnParametersSetAsync()
     {
         if (IsOpen)
         {
-            await LoadRequestsAsync();
-            if (TargetRequestId.HasValue)
+            bool justOpened = !_wasOpen;
+            bool targetChanged = TargetRequestId != _lastTargetRequestId;
+            _wasOpen = true;
+            _lastTargetRequestId = TargetRequestId;
+
+            if (justOpened || targetChanged)
             {
-                var target = _allRequests.FirstOrDefault(r => r.Id == TargetRequestId.Value);
-                if (target != null)
+                _alertMessage = null;
+                _processingRequestId = null;
+                _reviewNotes = string.Empty;
+
+                var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+                var authResult = await AuthorizationService.AuthorizeAsync(authState.User, "Permission:EmployeeRequests:Approve");
+                _canApprove = authResult.Succeeded;
+
+                if (!TargetRequestId.HasValue && justOpened)
                 {
-                    _selectedStatus = target.Status;
-                    ApplyFilter();
-                    _processingRequestId = target.Id;
+                    _selectedStatus = EmployeeRequestStatus.Pending;
                 }
+                await LoadRequestsAsync();
             }
+        }
+        else
+        {
+            _wasOpen = false;
         }
     }
 
     private async Task LoadRequestsAsync()
     {
         _isLoading = true;
-        _alertMessage = null;
         try
         {
             _allRequests = await EmployeeService.GetEmployeeRequestsAsync();
             _pendingCount = _allRequests.Count(r => r.Status == EmployeeRequestStatus.Pending);
+            _needDocsCount = _allRequests.Count(r => r.Status == EmployeeRequestStatus.NeedAdditionalDocs);
+
+            _requestsByStatus.Clear();
+            _requestsByStatus[EmployeeRequestStatus.Pending] = _allRequests.Where(r => r.Status == EmployeeRequestStatus.Pending).ToList();
+            _requestsByStatus[EmployeeRequestStatus.NeedAdditionalDocs] = _allRequests.Where(r => r.Status == EmployeeRequestStatus.NeedAdditionalDocs).ToList();
+            _requestsByStatus[EmployeeRequestStatus.Approved] = _allRequests.Where(r => r.Status == EmployeeRequestStatus.Approved).ToList();
+            _requestsByStatus[EmployeeRequestStatus.Rejected] = _allRequests.Where(r => r.Status == EmployeeRequestStatus.Rejected).ToList();
+
+            if (TargetRequestId.HasValue)
+            {
+                var target = _allRequests.FirstOrDefault(r => r.Id == TargetRequestId.Value);
+                if (target != null)
+                {
+                    _selectedStatus = target.Status;
+                }
+            }
             ApplyFilter();
         }
         catch (Exception ex)
         {
-            _alertMessage = $"Lỗi tải danh sách: {ex.Message}";
+            _alertMessage = "Lỗi nạp yêu cầu: " + ex.Message;
             _alertIsSuccess = false;
         }
         finally
@@ -449,6 +448,7 @@
 
     private void FilterByStatus(EmployeeRequestStatus? status)
     {
+        if (_selectedStatus == status) return;
         _selectedStatus = status;
         _processingRequestId = null;
         ApplyFilter();
@@ -456,16 +456,13 @@
 
     private void ApplyFilter()
     {
-        if (_selectedStatus == null)
+        if (_selectedStatus.HasValue && _requestsByStatus.TryGetValue(_selectedStatus.Value, out var list))
         {
-            _filteredRequests = _allRequests.OrderByDescending(r => r.CreatedAt).ToList();
+            _filteredRequests = list;
         }
         else
         {
-            _filteredRequests = _allRequests
-                .Where(r => r.Status == _selectedStatus.Value)
-                .OrderByDescending(r => r.CreatedAt)
-                .ToList();
+            _filteredRequests = _allRequests;
         }
     }
 
@@ -495,24 +492,75 @@
             {
                 RequestId = requestId,
                 Approve = approve,
-                ReviewNotes = string.IsNullOrWhiteSpace(_reviewNotes) ? null : _reviewNotes.Trim()
+                RequestAdditionalDocs = false,
+                ReviewNotes = _reviewNotes
             };
 
             var result = await EmployeeService.ReviewEmployeeRequestAsync(command, username);
-            _alertMessage = approve
-                ? $"Đã phê duyệt thành công yêu cầu và tạo hồ sơ nhân viên {(result?.FullName ?? "")}!"
-                : "Đã từ chối yêu cầu thêm nhân viên.";
+
             _alertIsSuccess = true;
+            _alertMessage = approve
+                ? $"Đã phê duyệt thành công yêu cầu và tạo hồ sơ nhân viên '{result?.Code}'!"
+                : "Đã từ chối yêu cầu thành công.";
+
             _processingRequestId = null;
             _reviewNotes = string.Empty;
 
             await LoadRequestsAsync();
-            await OnRequestsChanged.InvokeAsync();
+
+            if (approve && OnApproved.HasDelegate)
+            {
+                await OnApproved.InvokeAsync();
+            }
+
+            if (OnRequestsChanged.HasDelegate)
+            {
+                await OnRequestsChanged.InvokeAsync();
+            }
         }
         catch (Exception ex)
         {
-            _alertMessage = $"Thao tác thất bại: {ex.Message}";
             _alertIsSuccess = false;
+            _alertMessage = "Lỗi xử lý yêu cầu: " + ex.Message;
+        }
+        finally
+        {
+            _isSubmittingAction = false;
+        }
+    }
+
+    private async Task ConfirmRequestDocs(int requestId)
+    {
+        _isSubmittingAction = true;
+        _alertMessage = null;
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var username = authState.User.Identity?.Name ?? "Admin";
+
+            var command = new ReviewEmployeeRequestCommand
+            {
+                RequestId = requestId,
+                Approve = false,
+                RequestAdditionalDocs = true,
+                ReviewNotes = string.IsNullOrWhiteSpace(_reviewNotes) ? "Cần bổ sung thêm hồ sơ tài liệu xác minh" : _reviewNotes.Trim()
+            };
+
+            await EmployeeService.ReviewEmployeeRequestAsync(command, username);
+
+            _alertIsSuccess = true;
+            _alertMessage = "Đã gửi yêu cầu bổ sung hồ sơ nhân sự.";
+
+            _processingRequestId = null;
+            _reviewNotes = string.Empty;
+
+            await LoadRequestsAsync();
+        }
+        catch (Exception ex)
+        {
+            _alertIsSuccess = false;
+            _alertMessage = "Lỗi xử lý: " + ex.Message;
         }
         finally
         {
@@ -522,16 +570,11 @@
 
     private async Task HandleBackdropClick()
     {
-        if (!_isSubmittingAction)
-        {
-            await Close();
-        }
+        await Close();
     }
 
     private async Task Close()
     {
-        _processingRequestId = null;
-        _reviewNotes = string.Empty;
         IsOpen = false;
         await IsOpenChanged.InvokeAsync(false);
     }
@@ -540,7 +583,25 @@
     {
         if (string.IsNullOrWhiteSpace(fullName)) return "NV";
         var parts = fullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length == 1) return parts[0][0].ToString().ToUpperInvariant();
+        if (parts.Length == 1) return parts[0].Substring(0, Math.Min(2, parts[0].Length)).ToUpperInvariant();
         return $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+    }
+
+    private async Task RequestResubmit(EmployeeRequestDto req)
+    {
+        await Close();
+        if (OnResubmitRequested.HasDelegate)
+        {
+            await OnResubmitRequested.InvokeAsync(req);
+        }
+    }
+
+    private async Task CloneRequest(EmployeeRequestDto req)
+    {
+        await Close();
+        if (OnCloneRequested.HasDelegate)
+        {
+            await OnCloneRequested.InvokeAsync(req);
+        }
     }
 }

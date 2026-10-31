@@ -6,16 +6,19 @@
 /* Header */
 .tf-page-header {
     display: flex;
+    flex-direction: row;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     flex-wrap: wrap;
     gap: 16px;
     margin-bottom: 20px;
+    width: 100%;
 }
 
 .tf-page-header-left {
     flex: 1;
     min-width: 260px;
+    text-align: left;
 }
 
 .tf-page-title {
@@ -24,12 +27,14 @@
     color: #0f172a;
     margin: 0 0 4px 0;
     letter-spacing: -0.01em;
+    text-align: left;
 }
 
 .tf-page-subtitle {
     font-size: 13px;
     color: #64748b;
     margin: 0;
+    text-align: left;
 }
 
 .tf-page-header-actions {
@@ -37,6 +42,8 @@
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
+    justify-content: flex-end;
+    margin-left: auto;
 }
 
 .tf-header-search-wrap {
@@ -76,6 +83,7 @@
     gap: 14px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
     transition: all 0.15s;
+    min-height: 72px;
 }
 
 .tf-partner-metric-card:hover {
@@ -115,6 +123,7 @@
 .tf-metric-data {
     flex: 1;
     min-width: 0;
+    text-align: left;
 }
 
 .tf-metric-label {

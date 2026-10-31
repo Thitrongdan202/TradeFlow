@@ -1,5 +1,7 @@
+@using TradeFlow.Application.Common.Models.Documents;
 @page "/nhan-vien"
 @rendermode InteractiveServer
+@implements IDisposable
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
 @using TradeFlow.Application.Common.Interfaces
@@ -55,7 +57,7 @@
 
         <AuthorizeView Policy="Permission:Employees:Create">
             <Authorized>
-                <button type="button" class="tf-btn tf-btn-primary" @onclick="() => _showCreateModal = true" style="display:flex; align-items:center; gap:6px; height:36px;">
+                <button type="button" class="tf-btn tf-btn-primary" @onclick="OpenCreateModal" style="display:flex; align-items:center; gap:6px; height:36px;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="12" y1="5" x2="12" y2="19"/>
                         <line x1="5" y1="12" x2="19" y2="12"/>
@@ -65,7 +67,7 @@
             </Authorized>
             <NotAuthorized>
                 <AuthorizeView Policy="Permission:EmployeeRequests:Create" Context="reqCreateAuth">
-                    <button type="button" class="tf-btn tf-btn-primary" @onclick="() => _showCreateModal = true" style="display:flex; align-items:center; gap:6px; height:36px;">
+                    <button type="button" class="tf-btn tf-btn-primary" @onclick="OpenCreateModal" style="display:flex; align-items:center; gap:6px; height:36px;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="12" y1="5" x2="12" y2="19"/>
                             <line x1="5" y1="12" x2="19" y2="12"/>
@@ -87,18 +89,18 @@
 }
 
 @* Main Container: Left Filter Panel + Right Table *@
-<div class="tf-employee-layout">
+<div class="tf-employee-layout" @onclick="CloseAllKebabs">
     @* Left Filter Sidebar *@
     <div class="tf-employee-sidebar">
         @* Xét duyệt hồ sơ nhanh *@
         <AuthorizeView Policy="Permission:EmployeeRequests:View">
-            <div class="tf-filter-card tf-mb-4" style="background:#f8fafc; border-color:#cbd5e1;">
+            <div class="tf-filter-card tf-mb-4" style="background:var(--tf-bg-subtle); border-color:var(--tf-border);">
                 <div class="tf-filter-header" style="display:flex; justify-content:space-between; align-items:center;">
-                    <span class="tf-filter-title" style="color:#1e293b; font-weight:600;">Xét duyệt hồ sơ</span>
+                    <span class="tf-filter-title" style="color:var(--tf-text-primary); font-weight:600;">Xét duyệt hồ sơ</span>
                 </div>
                 <div class="tf-filter-body" style="padding-top:4px;">
                     <button type="button" class="tf-filter-option w-100 text-start" style="background:none; border:none; width:100%; cursor:pointer; display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-radius:6px;" @onclick="OpenRequestModal">
-                        <span style="font-weight:500; color:#2563eb; display:flex; align-items:center; gap:6px;">
+                        <span style="font-weight:500; color:var(--tf-primary); display:flex; align-items:center; gap:6px;">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                                 <path d="M9 15l2 2 4-4"/>
@@ -138,19 +140,81 @@
             <div class="tf-filter-header" style="display:flex; justify-content:space-between; align-items:center;">
                 <span class="tf-filter-title">Phòng ban</span>
                 <AuthorizeView Policy="Permission:Departments:Create">
-                    <button type="button" class="tf-link-action" @onclick="() => _showQuickDeptModal = true">
+                    <button type="button" class="tf-link-action" @onclick="OpenCreateDepartmentModal">
                         + Tạo mới
                     </button>
                 </AuthorizeView>
             </div>
             <div class="tf-filter-body">
-                <div class="tf-filter-option @(_selectedDepartmentId == null ? "selected" : "")" @onclick="() => SetDepartmentFilter(null)">
-                    <span>Tất cả phòng ban</span>
+                <div class="tf-filter-item-row @(_selectedDepartmentId == null ? "selected" : "")" @onclick="() => SetDepartmentFilter(null)">
+                    <div class="tf-filter-item-name">
+                        <span>Tất cả phòng ban</span>
+                    </div>
                 </div>
                 @foreach (var dept in _departments)
                 {
-                    <div class="tf-filter-option @(_selectedDepartmentId == dept.Id ? "selected" : "")" @onclick="() => SetDepartmentFilter(dept.Id)">
-                        <span>@dept.Name</span>
+                    <div class="tf-filter-item-row @(_selectedDepartmentId == dept.Id ? "selected" : "")">
+                        <div class="tf-filter-item-name" @onclick="() => SetDepartmentFilter(dept.Id)" title="@dept.Name">
+                            <span style="@(!dept.IsActive ? "opacity:0.6; text-decoration:line-through;" : "")">@dept.Name</span>
+                            @if (!dept.IsActive)
+                            {
+                                <span class="tf-badge tf-badge-secondary" style="font-size:10px; padding:1px 5px; margin-left:4px;">Ngừng</span>
+                            }
+                            @if (dept.EmployeeCount > 0)
+                            {
+                                <span class="tf-filter-count" style="margin-left:auto;">@dept.EmployeeCount</span>
+                            }
+                        </div>
+                        <div class="tf-kebab-container" @onclick:stopPropagation="true">
+                            <button type="button" class="tf-kebab-btn @(_openDeptKebabId == dept.Id ? "active" : "")"
+                                    title="Tùy chọn @dept.Name"
+                                    aria-label="Tùy chọn @dept.Name"
+                                    @onclick="() => ToggleDeptKebab(dept.Id)">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="12" cy="5" r="2"/>
+                                    <circle cx="12" cy="12" r="2"/>
+                                    <circle cx="12" cy="19" r="2"/>
+                                </svg>
+                            </button>
+                            @if (_openDeptKebabId == dept.Id)
+                            {
+                                <div class="tf-kebab-menu" @onclick:stopPropagation="true">
+                                    <button type="button" class="tf-kebab-menu-item" @onclick="() => OpenEditDepartmentModal(dept)">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M12 20h9"/>
+                                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                                        </svg>
+                                        <span>Chỉnh sửa</span>
+                                    </button>
+                                    @if (dept.IsActive)
+                                    {
+                                        <button type="button" class="tf-kebab-menu-item" @onclick="() => ToggleDepartmentActiveAsync(dept)">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <circle cx="12" cy="12" r="10"/>
+                                                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                                            </svg>
+                                            <span>Ngừng sử dụng</span>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="tf-kebab-menu-item" @onclick="() => ToggleDepartmentActiveAsync(dept)">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <polyline points="20 6 9 17 4 12"/>
+                                            </svg>
+                                            <span style="color:var(--tf-success, #16a34a);">Kích hoạt lại</span>
+                                        </button>
+                                    }
+                                    <button type="button" class="tf-kebab-menu-item tf-kebab-menu-item-danger" @onclick="() => PromptDeleteDepartment(dept)">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="3 6 5 6 21 6"/>
+                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                        </svg>
+                                        <span>Xóa phòng ban</span>
+                                    </button>
+                                </div>
+                            }
+                        </div>
                     </div>
                 }
             </div>
@@ -161,19 +225,81 @@
             <div class="tf-filter-header" style="display:flex; justify-content:space-between; align-items:center;">
                 <span class="tf-filter-title">Chức danh</span>
                 <AuthorizeView Policy="Permission:Positions:Create">
-                    <button type="button" class="tf-link-action" @onclick="() => _showQuickPosModal = true">
+                    <button type="button" class="tf-link-action" @onclick="OpenCreatePositionModal">
                         + Tạo mới
                     </button>
                 </AuthorizeView>
             </div>
             <div class="tf-filter-body">
-                <div class="tf-filter-option @(_selectedPositionId == null ? "selected" : "")" @onclick="() => SetPositionFilter(null)">
-                    <span>Tất cả chức danh</span>
+                <div class="tf-filter-item-row @(_selectedPositionId == null ? "selected" : "")" @onclick="() => SetPositionFilter(null)">
+                    <div class="tf-filter-item-name">
+                        <span>Tất cả chức danh</span>
+                    </div>
                 </div>
                 @foreach (var pos in _positions)
                 {
-                    <div class="tf-filter-option @(_selectedPositionId == pos.Id ? "selected" : "")" @onclick="() => SetPositionFilter(pos.Id)">
-                        <span>@pos.Name</span>
+                    <div class="tf-filter-item-row @(_selectedPositionId == pos.Id ? "selected" : "")">
+                        <div class="tf-filter-item-name" @onclick="() => SetPositionFilter(pos.Id)" title="@pos.Name">
+                            <span style="@(!pos.IsActive ? "opacity:0.6; text-decoration:line-through;" : "")">@pos.Name</span>
+                            @if (!pos.IsActive)
+                            {
+                                <span class="tf-badge tf-badge-secondary" style="font-size:10px; padding:1px 5px; margin-left:4px;">Ngừng</span>
+                            }
+                            @if (pos.EmployeeCount > 0)
+                            {
+                                <span class="tf-filter-count" style="margin-left:auto;">@pos.EmployeeCount</span>
+                            }
+                        </div>
+                        <div class="tf-kebab-container" @onclick:stopPropagation="true">
+                            <button type="button" class="tf-kebab-btn @(_openPosKebabId == pos.Id ? "active" : "")"
+                                    title="Tùy chọn @pos.Name"
+                                    aria-label="Tùy chọn @pos.Name"
+                                    @onclick="() => TogglePosKebab(pos.Id)">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="12" cy="5" r="2"/>
+                                    <circle cx="12" cy="12" r="2"/>
+                                    <circle cx="12" cy="19" r="2"/>
+                                </svg>
+                            </button>
+                            @if (_openPosKebabId == pos.Id)
+                            {
+                                <div class="tf-kebab-menu" @onclick:stopPropagation="true">
+                                    <button type="button" class="tf-kebab-menu-item" @onclick="() => OpenEditPositionModal(pos)">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M12 20h9"/>
+                                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                                        </svg>
+                                        <span>Chỉnh sửa</span>
+                                    </button>
+                                    @if (pos.IsActive)
+                                    {
+                                        <button type="button" class="tf-kebab-menu-item" @onclick="() => TogglePositionActiveAsync(pos)">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <circle cx="12" cy="12" r="10"/>
+                                                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                                            </svg>
+                                            <span>Ngừng sử dụng</span>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="tf-kebab-menu-item" @onclick="() => TogglePositionActiveAsync(pos)">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <polyline points="20 6 9 17 4 12"/>
+                                            </svg>
+                                            <span style="color:var(--tf-success, #16a34a);">Kích hoạt lại</span>
+                                        </button>
+                                    }
+                                    <button type="button" class="tf-kebab-menu-item tf-kebab-menu-item-danger" @onclick="() => PromptDeletePosition(pos)">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="3 6 5 6 21 6"/>
+                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                        </svg>
+                                        <span>Xóa chức danh</span>
+                                    </button>
+                                </div>
+                            }
+                        </div>
                     </div>
                 }
             </div>
@@ -247,10 +373,10 @@
                                         <span class="tf-emp-attendance">@(emp.AttendanceCode ?? "—")</span>
                                     </td>
                                     <td>
-                                        <div style="font-weight:600; color:#1e293b;">@emp.FullName</div>
+                                        <div style="font-weight:600; color:var(--tf-text-primary);">@emp.FullName</div>
                                         @if (!string.IsNullOrEmpty(emp.PositionName) || !string.IsNullOrEmpty(emp.DepartmentName))
                                         {
-                                            <div style="font-size:12px; color:#64748b;">
+                                            <div style="font-size:12px; color:var(--tf-text-muted);">
                                                 @(emp.PositionName ?? "")@(!string.IsNullOrEmpty(emp.PositionName) && !string.IsNullOrEmpty(emp.DepartmentName) ? " • " : "")@(emp.DepartmentName ?? "")
                                             </div>
                                         }
@@ -280,7 +406,7 @@
                                 @if (isExpanded)
                                 {
                                     <tr class="tf-emp-detail-tr">
-                                        <td colspan="10" class="tf-emp-expanded-td" style="padding:0; background-color:var(--tf-bg-subtle, #f8fafc); border-bottom:2px solid var(--tf-border, #cbd5e1);">
+                                        <td colspan="10" class="tf-emp-expanded-td" style="padding:0; background-color:var(--tf-bg-card); border-bottom:2px solid var(--tf-border);">
                                             <div class="tf-emp-expanded-box">
                                                 @* Expanded Header Bar *@
                                                 <div class="tf-emp-expanded-header">
@@ -290,7 +416,7 @@
                                                         </div>
                                                         <div>
                                                             <div style="display:flex; align-items:center; gap:10px;">
-                                                                <h2 style="margin:0; font-size:18px; font-weight:700; color:var(--tf-text-primary, #1e293b);">@emp.FullName</h2>
+                                                                <h2 style="margin:0; font-size:18px; font-weight:700; color:var(--tf-text-primary);">@emp.FullName</h2>
                                                                 <span class="tf-emp-badge-code">@emp.Code</span>
                                                                 @if (emp.Status == EmployeeStatus.Active)
                                                                 {
@@ -307,7 +433,7 @@
                                                                     </span>
                                                                 }
                                                             </div>
-                                                            <div style="font-size:13px; color:#64748b; margin-top:4px;">
+                                                            <div style="font-size:13px; color:var(--tf-text-muted); margin-top:4px;">
                                                                 @(emp.DepartmentName ?? "Chưa phân phòng ban")
                                                                 @if (!string.IsNullOrEmpty(emp.PositionName))
                                                                 {
@@ -352,7 +478,7 @@
                                                             @if (emp.Status == EmployeeStatus.Active)
                                                             {
                                                                 <AuthorizeView Policy="Permission:Employees:Edit">
-                                                                    <button type="button" class="tf-btn tf-btn-outline-danger tf-btn-sm" @onclick="() => OpenRetireModal(emp)" style="color:#dc2626; border-color:#fca5a5; display:flex; align-items:center; gap:4px;">
+                                                                    <button type="button" class="tf-btn tf-btn-outline-danger tf-btn-sm" @onclick="() => OpenRetireModal(emp)" style="display:flex; align-items:center; gap:4px;">
                                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                                             <circle cx="12" cy="12" r="10"/>
                                                                             <line x1="15" y1="9" x2="9" y2="15"/>
@@ -390,7 +516,7 @@
                                                                 <label class="tf-label">Phòng ban</label>
                                                                 <select class="tf-input" @bind="_inlineEditModel.DepartmentId">
                                                                     <option value="">-- Chọn phòng ban --</option>
-                                                                    @foreach (var d in _departments)
+                                                                    @foreach (var d in _departments.Where(d => d.IsActive || d.Id == _inlineEditModel.DepartmentId))
                                                                     {
                                                                         <option value="@d.Id">@d.Name</option>
                                                                     }
@@ -406,7 +532,7 @@
                                                             </div>
                                                             <div class="tf-form-group tf-mb-3">
                                                                 <label class="tf-label">Ngày bắt đầu làm việc</label>
-                                                                <input type="date" class="tf-input" @bind="_inlineEditModel.StartDate" />
+                                                                <TfDateInput @bind-Value="_inlineEditModel.StartDate" Placeholder="dd/MM/yyyy" />
                                                             </div>
                                                             <div class="tf-form-group">
                                                                 <label class="tf-label">Thông tin ngân hàng</label>
@@ -421,7 +547,7 @@
                                                                 <label class="tf-label">Chức danh</label>
                                                                 <select class="tf-input" @bind="_inlineEditModel.PositionId">
                                                                     <option value="">-- Chọn chức danh --</option>
-                                                                    @foreach (var p in _positions)
+                                                                    @foreach (var p in _positions.Where(p => p.IsActive || p.Id == _inlineEditModel.PositionId))
                                                                     {
                                                                         <option value="@p.Id">@p.Name</option>
                                                                     }
@@ -433,7 +559,7 @@
                                                             </div>
                                                             <div class="tf-form-group tf-mb-3">
                                                                 <label class="tf-label">Ngày sinh</label>
-                                                                <input type="date" class="tf-input" @bind="_inlineEditModel.DateOfBirth" />
+                                                                <TfDateInput @bind-Value="_inlineEditModel.DateOfBirth" Placeholder="dd/MM/yyyy" />
                                                             </div>
                                                             <div class="tf-form-group tf-mb-3">
                                                                 <label class="tf-label">Email</label>
@@ -581,21 +707,68 @@
                                                             </div>
                                                             @if (emp.Status == EmployeeStatus.Retired)
                                                             {
-                                                                <div class="tf-emp-field" style="background:#fee2e2; padding:6px 10px; border-radius:6px; margin-top:8px;">
-                                                                    <span class="tf-emp-field-label" style="color:#991b1b;">Ngày thôi việc:</span>
-                                                                    <span class="tf-emp-field-value" style="color:#991b1b; font-weight:600;">
+                                                                <div class="tf-emp-field" style="background:rgba(239, 68, 68, 0.12); border:1px solid rgba(239, 68, 68, 0.25); padding:8px 12px; border-radius:6px; margin-top:8px;">
+                                                                    <span class="tf-emp-field-label" style="color:var(--tf-danger, #ef4444); font-weight:600;">Ngày thôi việc:</span>
+                                                                    <span class="tf-emp-field-value" style="color:var(--tf-danger, #ef4444); font-weight:600;">
                                                                         @(emp.TerminationDate?.ToString("dd/MM/yyyy") ?? "—")
                                                                     </span>
                                                                 </div>
                                                                 @if (!string.IsNullOrEmpty(emp.TerminationReason))
                                                                 {
-                                                                    <div class="tf-emp-field" style="background:#fee2e2; padding:6px 10px; border-radius:6px; margin-top:4px;">
-                                                                        <span class="tf-emp-field-label" style="color:#991b1b;">Lý do:</span>
-                                                                        <span class="tf-emp-field-value" style="color:#991b1b;">@emp.TerminationReason</span>
+                                                                    <div class="tf-emp-field" style="background:rgba(239, 68, 68, 0.08); border:1px solid rgba(239, 68, 68, 0.2); padding:8px 12px; border-radius:6px; margin-top:4px;">
+                                                                        <span class="tf-emp-field-label" style="color:var(--tf-danger, #ef4444);">Lý do:</span>
+                                                                        <span class="tf-emp-field-value" style="color:var(--tf-text-primary);">@emp.TerminationReason</span>
                                                                     </div>
                                                                 }
                                                             }
                                                         </div>
+                                                    </div>
+
+                                                    @* Hồ sơ cá nhân & Tài liệu đính kèm *@
+                                                    <div style="margin-top: 14px; padding: 12px 16px; border-radius: 8px; background: var(--tf-bg-surface, #1e2028); border: 1px solid var(--tf-border, #2e3542);">
+                                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                                            <div style="font-weight: 600; font-size: 13.5px; color: var(--tf-text-primary); display: flex; align-items: center; gap: 8px;">
+                                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--tf-primary);">
+                                                                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                                                                </svg>
+                                                                <span>Hồ sơ cá nhân &amp; Tài liệu đính kèm</span>
+                                                                <span class="tf-badge tf-badge-info" style="font-size: 11px;">@(_expandedAttachments.Count) tệp</span>
+                                                            </div>
+                                                        </div>
+
+                                                        @if (_expandedAttachments.Any())
+                                                        {
+                                                            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px;">
+                                                                @foreach (var doc in _expandedAttachments)
+                                                                {
+                                                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--tf-bg-card); border: 1px solid var(--tf-border); border-radius: 6px; font-size: 12.5px;">
+                                                                        <div style="min-width: 0; flex: 1; margin-right: 8px;">
+                                                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                                                <span class="tf-badge tf-badge-info" style="font-size: 10px; padding: 1px 5px;">
+                                                                                    @(doc.CategoryName ?? "Hồ sơ cá nhân")
+                                                                                </span>
+                                                                                <span style="font-weight: 600; color: var(--tf-text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                                                                                    @doc.FileName
+                                                                                </span>
+                                                                            </div>
+                                                                            <div style="font-size: 11px; color: var(--tf-text-muted); margin-top: 2px;">
+                                                                                @doc.FormattedFileSize • @doc.CreatedAt.ToString("dd/MM/yyyy")
+                                                                            </div>
+                                                                        </div>
+                                                                        <div style="display: flex; gap: 4px; flex-shrink: 0;">
+                                                                            <a href="/api/documents/@doc.Id/preview" target="_blank" class="tf-btn tf-btn-sm tf-btn-outline-primary" style="padding: 2px 8px; font-size: 11px;" title="Xem trước tài liệu">Xem</a>
+                                                                            <a href="/api/documents/@doc.Id/download" class="tf-btn tf-btn-sm tf-btn-outline-secondary" style="padding: 2px 8px; font-size: 11px;" title="Tải về" download>Tải</a>
+                                                                        </div>
+                                                                    </div>
+                                                                }
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <div style="font-size: 12px; color: var(--tf-text-muted); font-style: italic;">
+                                                                Chưa có hồ sơ tài liệu đính kèm nào được lưu trữ cho nhân viên này.
+                                                            </div>
+                                                        }
                                                     </div>
                                                 }
                                             </div>
@@ -613,11 +786,159 @@
 </div>
 
 @* Child Modals *@
-<EmployeeFormModal @bind-IsOpen="_showCreateModal" OnEmployeeSaved="HandleEmployeeSaved" />
-<EmployeeRequestModal IsOpen="_showRequestModal" IsOpenChanged="HandleRequestModalClosed" TargetRequestId="_targetRequestId" OnRequestsChanged="HandleRequestsChanged" />
+    <EmployeeFormModal @bind-IsOpen="_showCreateModal" OnEmployeeSaved="HandleEmployeeSaved" PreloadedRequest="_formPreloadedRequest" IsResubmitMode="_isFormResubmitMode" IsCloneMode="_isFormCloneMode" PreloadedDepartments="_departments" PreloadedPositions="_positions" />
+    <EmployeeRequestModal IsOpen="_showRequestModal" IsOpenChanged="HandleRequestModalClosed" TargetRequestId="_targetRequestId" OnRequestsChanged="HandleRequestsChanged" OnResubmitRequested="HandleResubmitRequested" OnCloneRequested="HandleCloneRequested" />
 <RetireEmployeeModal @bind-IsOpen="_showRetireModal" Employee="_selectedEmployeeForRetire" OnEmployeeRetired="HandleEmployeeRetired" />
-<QuickDepartmentModal @bind-IsOpen="_showQuickDeptModal" OnDepartmentCreated="HandleDepartmentCreated" />
-<QuickPositionModal @bind-IsOpen="_showQuickPosModal" OnPositionCreated="HandlePositionCreated" />
+<QuickDepartmentModal @bind-IsOpen="_showQuickDeptModal" DepartmentToEdit="_departmentToEdit" OnDepartmentSaved="HandleDepartmentSaved" />
+<QuickPositionModal @bind-IsOpen="_showQuickPosModal" PositionToEdit="_positionToEdit" OnPositionSaved="HandlePositionSaved" />
+
+@* Safe Deletion Confirmation Modal for Department *@
+@if (_showDeleteDeptModal && _departmentToDelete != null)
+{
+    <div class="tf-modal-overlay" @onclick="() => _showDeleteDeptModal = false">
+        <div class="tf-modal tf-modal-md" @onclick:stopPropagation="true">
+            <div class="tf-modal-header" style="background-color: @(_departmentToDelete.EmployeeCount > 0 ? "rgba(245, 158, 11, 0.1)" : "rgba(239, 68, 68, 0.1)"); border-bottom: 1px solid var(--tf-border);">
+                <h3 class="tf-modal-title" style="color: @(_departmentToDelete.EmployeeCount > 0 ? "var(--tf-warning, #d97706)" : "var(--tf-danger, #dc2626)"); display:flex; align-items:center; gap:8px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        @if (_departmentToDelete.EmployeeCount > 0)
+                        {
+                            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                        }
+                        else
+                        {
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        }
+                    </svg>
+                    @(_departmentToDelete.EmployeeCount > 0 ? "Không thể xóa phòng ban" : "Xác nhận xóa phòng ban")
+                </h3>
+                <button type="button" class="tf-modal-close-btn" @onclick="() => _showDeleteDeptModal = false" aria-label="Đóng" title="Đóng">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="tf-modal-body">
+                @if (_departmentToDelete.EmployeeCount > 0)
+                {
+                    <div style="padding: 12px 16px; background-color: var(--tf-bg-subtle); border-radius: 8px; border: 1px solid var(--tf-border); margin-bottom: 16px;">
+                        <p style="margin: 0; font-size: 14px; color: var(--tf-text-primary); line-height: 1.6;">
+                            Phòng ban <strong>@_departmentToDelete.Name</strong> hiện đang có <strong style="color:var(--tf-primary);">@_departmentToDelete.EmployeeCount nhân viên</strong> trực thuộc.
+                        </p>
+                    </div>
+                    <p style="font-size: 13px; color: var(--tf-text-secondary); line-height: 1.5; margin: 0 0 16px 0;">
+                        Để đảm bảo tính toàn vẹn dữ liệu hồ sơ nhân sự, hệ thống không cho phép xóa vĩnh viễn phòng ban đang được liên kết. Bạn có thể chọn <strong>Ngừng sử dụng</strong> để ẩn phòng ban này khỏi danh sách tạo mới nhân viên mà vẫn bảo lưu đầy đủ lịch sử dữ liệu.
+                    </p>
+                }
+                else
+                {
+                    <p style="font-size: 14px; color: var(--tf-text-primary); line-height: 1.6; margin: 0 0 16px 0;">
+                        Bạn có chắc chắn muốn xóa vĩnh viễn phòng ban <strong>@_departmentToDelete.Name</strong> (Mã: <code>@_departmentToDelete.Code</code>) không?
+                    </p>
+                    <p style="font-size: 12px; color: var(--tf-text-muted); margin: 0;">
+                        Hành động này không thể hoàn tác sau khi xác nhận.
+                    </p>
+                }
+            </div>
+            <div class="tf-modal-footer">
+                <button type="button" class="tf-btn tf-btn-ghost" @onclick="() => _showDeleteDeptModal = false">Đóng</button>
+                @if (_departmentToDelete.EmployeeCount > 0)
+                {
+                    <button type="button" class="tf-btn tf-btn-warning" @onclick="() => DeactivateDepartmentFromModal(_departmentToDelete)">
+                        Ngừng sử dụng phòng ban này
+                    </button>
+                }
+                else
+                {
+                    <button type="button" class="tf-btn tf-btn-danger" @onclick="ConfirmDeleteDepartmentAsync" disabled="@_isDeleting">
+                        @if (_isDeleting)
+                        {
+                            <span class="tf-spinner-sm tf-mr-2"></span>
+                            <span>Đang xóa...</span>
+                        }
+                        else
+                        {
+                            <span>Xác nhận xóa</span>
+                        }
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@* Safe Deletion Confirmation Modal for Position *@
+@if (_showDeletePosModal && _positionToDelete != null)
+{
+    <div class="tf-modal-overlay" @onclick="() => _showDeletePosModal = false">
+        <div class="tf-modal tf-modal-md" @onclick:stopPropagation="true">
+            <div class="tf-modal-header" style="background-color: @(_positionToDelete.EmployeeCount > 0 ? "rgba(245, 158, 11, 0.1)" : "rgba(239, 68, 68, 0.1)"); border-bottom: 1px solid var(--tf-border);">
+                <h3 class="tf-modal-title" style="color: @(_positionToDelete.EmployeeCount > 0 ? "var(--tf-warning, #d97706)" : "var(--tf-danger, #dc2626)"); display:flex; align-items:center; gap:8px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        @if (_positionToDelete.EmployeeCount > 0)
+                        {
+                            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                        }
+                        else
+                        {
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        }
+                    </svg>
+                    @(_positionToDelete.EmployeeCount > 0 ? "Không thể xóa chức danh" : "Xác nhận xóa chức danh")
+                </h3>
+                <button type="button" class="tf-modal-close-btn" @onclick="() => _showDeletePosModal = false" aria-label="Đóng" title="Đóng">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="tf-modal-body">
+                @if (_positionToDelete.EmployeeCount > 0)
+                {
+                    <div style="padding: 12px 16px; background-color: var(--tf-bg-subtle); border-radius: 8px; border: 1px solid var(--tf-border); margin-bottom: 16px;">
+                        <p style="margin: 0; font-size: 14px; color: var(--tf-text-primary); line-height: 1.6;">
+                            Chức danh <strong>@_positionToDelete.Name</strong> hiện đang có <strong style="color:var(--tf-primary);">@_positionToDelete.EmployeeCount nhân viên</strong> đảm nhiệm.
+                        </p>
+                    </div>
+                    <p style="font-size: 13px; color: var(--tf-text-secondary); line-height: 1.5; margin: 0 0 16px 0;">
+                        Để đảm bảo tính toàn vẹn dữ liệu hồ sơ nhân sự, hệ thống không cho phép xóa vĩnh viễn chức danh đang được liên kết. Bạn có thể chọn <strong>Ngừng sử dụng</strong> để ẩn chức danh này khỏi danh sách tạo mới nhân viên mà vẫn bảo lưu đầy đủ lịch sử dữ liệu.
+                    </p>
+                }
+                else
+                {
+                    <p style="font-size: 14px; color: var(--tf-text-primary); line-height: 1.6; margin: 0 0 16px 0;">
+                        Bạn có chắc chắn muốn xóa vĩnh viễn chức danh <strong>@_positionToDelete.Name</strong> (Mã: <code>@_positionToDelete.Code</code>) không?
+                    </p>
+                    <p style="font-size: 12px; color: var(--tf-text-muted); margin: 0;">
+                        Hành động này không thể hoàn tác sau khi xác nhận.
+                    </p>
+                }
+            </div>
+            <div class="tf-modal-footer">
+                <button type="button" class="tf-btn tf-btn-ghost" @onclick="() => _showDeletePosModal = false">Đóng</button>
+                @if (_positionToDelete.EmployeeCount > 0)
+                {
+                    <button type="button" class="tf-btn tf-btn-warning" @onclick="() => DeactivatePositionFromModal(_positionToDelete)">
+                        Ngừng sử dụng chức danh này
+                    </button>
+                }
+                else
+                {
+                    <button type="button" class="tf-btn tf-btn-danger" @onclick="ConfirmDeletePositionAsync" disabled="@_isDeleting">
+                        @if (_isDeleting)
+                        {
+                            <span class="tf-spinner-sm tf-mr-2"></span>
+                            <span>Đang xóa...</span>
+                        }
+                        else
+                        {
+                            <span>Xác nhận xóa</span>
+                        }
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     [SupplyParameterFromQuery(Name = "tab")]
@@ -645,13 +966,32 @@
 
     // Inline row expansion & edit states
     private int? _expandedEmployeeId;
+    private List<DocumentAttachmentDto> _expandedAttachments = new();
     private int? _editingEmployeeId;
     private UpdateEmployeeCommand? _inlineEditModel;
     private bool _isSavingInline;
 
+    // Kebab Action Menus
+    private int? _openDeptKebabId;
+    private int? _openPosKebabId;
+
+    // Department CRUD & Safe Deletion state
+    private DepartmentDto? _departmentToEdit;
+    private DepartmentDto? _departmentToDelete;
+    private bool _showDeleteDeptModal;
+
+    // Position CRUD & Safe Deletion state
+    private PositionDto? _positionToEdit;
+    private PositionDto? _positionToDelete;
+    private bool _showDeletePosModal;
+    private bool _isDeleting;
+
     // Modals
     private bool _showCreateModal;
     private bool _showRequestModal;
+    private EmployeeRequestDto? _formPreloadedRequest;
+    private bool _isFormResubmitMode;
+    private bool _isFormCloneMode;
     private bool _showRetireModal;
     private bool _showQuickDeptModal;
     private bool _showQuickPosModal;
@@ -678,6 +1018,30 @@
         }
     }
 
+    private void OpenCreateModal()
+    {
+        _formPreloadedRequest = null;
+        _isFormResubmitMode = false;
+        _isFormCloneMode = false;
+        _showCreateModal = true;
+    }
+
+    private void HandleResubmitRequested(EmployeeRequestDto req)
+    {
+        _formPreloadedRequest = req;
+        _isFormResubmitMode = true;
+        _isFormCloneMode = false;
+        _showCreateModal = true;
+    }
+
+    private void HandleCloneRequested(EmployeeRequestDto req)
+    {
+        _formPreloadedRequest = req;
+        _isFormResubmitMode = false;
+        _isFormCloneMode = true;
+        _showCreateModal = true;
+    }
+
     private void OpenRequestModal()
     {
         _targetRequestId = null;
@@ -701,8 +1065,8 @@
     {
         try
         {
-            _departments = await EmployeeService.GetDepartmentsAsync();
-            _positions = await EmployeeService.GetPositionsAsync();
+            _departments = await EmployeeService.GetDepartmentsAsync(includeInactive: true);
+            _positions = await EmployeeService.GetPositionsAsync(includeInactive: true);
         }
         catch (Exception ex)
         {
@@ -802,17 +1166,27 @@
         await LoadEmployeesAsync();
     }
 
-    private void ToggleExpand(int employeeId)
+    private async Task ToggleExpand(int employeeId)
     {
         if (_expandedEmployeeId == employeeId)
         {
             _expandedEmployeeId = null;
             _editingEmployeeId = null;
+            _expandedAttachments.Clear();
         }
         else
         {
             _expandedEmployeeId = employeeId;
             _editingEmployeeId = null;
+            _expandedAttachments.Clear();
+            try
+            {
+                _expandedAttachments = await EmployeeService.GetEmployeeAttachmentsAsync(employeeId);
+            }
+            catch
+            {
+                _expandedAttachments = new();
+            }
         }
     }
 
@@ -942,18 +1316,219 @@
         await LoadCountsAsync();
     }
 
-    private async Task HandleDepartmentCreated(DepartmentDto dept)
+    private void ToggleDeptKebab(int deptId)
+    {
+        _openPosKebabId = null;
+        _openDeptKebabId = _openDeptKebabId == deptId ? null : deptId;
+    }
+
+    private void TogglePosKebab(int posId)
+    {
+        _openDeptKebabId = null;
+        _openPosKebabId = _openPosKebabId == posId ? null : posId;
+    }
+
+    private void CloseAllKebabs()
+    {
+        _openDeptKebabId = null;
+        _openPosKebabId = null;
+    }
+
+    private void OpenCreateDepartmentModal()
+    {
+        _departmentToEdit = null;
+        _showQuickDeptModal = true;
+        CloseAllKebabs();
+    }
+
+    private void OpenEditDepartmentModal(DepartmentDto dept)
+    {
+        _departmentToEdit = dept;
+        _showQuickDeptModal = true;
+        CloseAllKebabs();
+    }
+
+    private async Task HandleDepartmentSaved(DepartmentDto dept)
     {
         await LoadMasterDataAsync();
-        _selectedDepartmentId = dept.Id;
+        _notificationMessage = $"Lưu thông tin phòng ban '{dept.Name}' thành công!";
+        _notificationIsSuccess = true;
         await LoadEmployeesAsync();
     }
 
-    private async Task HandlePositionCreated(PositionDto pos)
+    private async Task ToggleDepartmentActiveAsync(DepartmentDto dept)
+    {
+        CloseAllKebabs();
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var username = authState.User.Identity?.Name ?? "Admin";
+
+            if (dept.IsActive)
+            {
+                await EmployeeService.DeactivateDepartmentAsync(dept.Id, username);
+                _notificationMessage = $"Đã ngừng sử dụng phòng ban '{dept.Name}'.";
+            }
+            else
+            {
+                await EmployeeService.ReactivateDepartmentAsync(dept.Id, username);
+                _notificationMessage = $"Đã kích hoạt lại phòng ban '{dept.Name}'.";
+            }
+            _notificationIsSuccess = true;
+            await LoadMasterDataAsync();
+            await LoadEmployeesAsync();
+        }
+        catch (Exception ex)
+        {
+            _notificationMessage = $"Thao tác thất bại: {ex.Message}";
+            _notificationIsSuccess = false;
+        }
+    }
+
+    private void PromptDeleteDepartment(DepartmentDto dept)
+    {
+        _departmentToDelete = dept;
+        _showDeleteDeptModal = true;
+        CloseAllKebabs();
+    }
+
+    private async Task DeactivateDepartmentFromModal(DepartmentDto dept)
+    {
+        _showDeleteDeptModal = false;
+        await ToggleDepartmentActiveAsync(dept);
+    }
+
+    private async Task ConfirmDeleteDepartmentAsync()
+    {
+        if (_departmentToDelete == null) return;
+        _isDeleting = true;
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var username = authState.User.Identity?.Name ?? "Admin";
+
+            await EmployeeService.DeleteDepartmentAsync(_departmentToDelete.Id, username);
+            _notificationMessage = $"Đã xóa vĩnh viễn phòng ban '{_departmentToDelete.Name}'.";
+            _notificationIsSuccess = true;
+            _showDeleteDeptModal = false;
+            if (_selectedDepartmentId == _departmentToDelete.Id)
+            {
+                _selectedDepartmentId = null;
+            }
+            _departmentToDelete = null;
+
+            await LoadMasterDataAsync();
+            await LoadEmployeesAsync();
+        }
+        catch (Exception ex)
+        {
+            _notificationMessage = $"Không thể xóa phòng ban: {ex.Message}";
+            _notificationIsSuccess = false;
+            _showDeleteDeptModal = false;
+        }
+        finally
+        {
+            _isDeleting = false;
+        }
+    }
+
+    // === Position Management Methods ===
+    private void OpenCreatePositionModal()
+    {
+        _positionToEdit = null;
+        _showQuickPosModal = true;
+        CloseAllKebabs();
+    }
+
+    private void OpenEditPositionModal(PositionDto pos)
+    {
+        _positionToEdit = pos;
+        _showQuickPosModal = true;
+        CloseAllKebabs();
+    }
+
+    private async Task HandlePositionSaved(PositionDto pos)
     {
         await LoadMasterDataAsync();
-        _selectedPositionId = pos.Id;
+        _notificationMessage = $"Lưu thông tin chức danh '{pos.Name}' thành công!";
+        _notificationIsSuccess = true;
         await LoadEmployeesAsync();
+    }
+
+    private async Task TogglePositionActiveAsync(PositionDto pos)
+    {
+        CloseAllKebabs();
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var username = authState.User.Identity?.Name ?? "Admin";
+
+            if (pos.IsActive)
+            {
+                await EmployeeService.DeactivatePositionAsync(pos.Id, username);
+                _notificationMessage = $"Đã ngừng sử dụng chức danh '{pos.Name}'.";
+            }
+            else
+            {
+                await EmployeeService.ReactivatePositionAsync(pos.Id, username);
+                _notificationMessage = $"Đã kích hoạt lại chức danh '{pos.Name}'.";
+            }
+            _notificationIsSuccess = true;
+            await LoadMasterDataAsync();
+            await LoadEmployeesAsync();
+        }
+        catch (Exception ex)
+        {
+            _notificationMessage = $"Thao tác thất bại: {ex.Message}";
+            _notificationIsSuccess = false;
+        }
+    }
+
+    private void PromptDeletePosition(PositionDto pos)
+    {
+        _positionToDelete = pos;
+        _showDeletePosModal = true;
+        CloseAllKebabs();
+    }
+
+    private async Task DeactivatePositionFromModal(PositionDto pos)
+    {
+        _showDeletePosModal = false;
+        await TogglePositionActiveAsync(pos);
+    }
+
+    private async Task ConfirmDeletePositionAsync()
+    {
+        if (_positionToDelete == null) return;
+        _isDeleting = true;
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var username = authState.User.Identity?.Name ?? "Admin";
+
+            await EmployeeService.DeletePositionAsync(_positionToDelete.Id, username);
+            _notificationMessage = $"Đã xóa vĩnh viễn chức danh '{_positionToDelete.Name}'.";
+            _notificationIsSuccess = true;
+            _showDeletePosModal = false;
+            if (_selectedPositionId == _positionToDelete.Id)
+            {
+                _selectedPositionId = null;
+            }
+            _positionToDelete = null;
+
+            await LoadMasterDataAsync();
+            await LoadEmployeesAsync();
+        }
+        catch (Exception ex)
+        {
+            _notificationMessage = $"Không thể xóa chức danh: {ex.Message}";
+            _notificationIsSuccess = false;
+            _showDeletePosModal = false;
+        }
+        finally
+        {
+            _isDeleting = false;
+        }
     }
 
     private string GetInitials(string fullName)
@@ -970,4 +1545,30 @@
         public string UserName { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
     }
+
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        var uri = Navigation.ToAbsoluteUri(e.Location);
+        var query = uri.Query;
+        if (!string.IsNullOrEmpty(query))
+        {
+            bool hasTab = query.Contains("tab=requests", StringComparison.OrdinalIgnoreCase);
+            var reqMatch = System.Text.RegularExpressions.Regex.Match(query, @"requestId=(\d+)");
+            if (hasTab || reqMatch.Success)
+            {
+                if (reqMatch.Success && int.TryParse(reqMatch.Groups[1].Value, out var rId))
+                {
+                    _targetRequestId = rId;
+                }
+                _showRequestModal = true;
+                InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= HandleLocationChanged;
+    }
+
 }

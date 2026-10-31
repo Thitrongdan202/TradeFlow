@@ -304,7 +304,7 @@
     <link rel="stylesheet" href="@Assets["css/tailwind.min.css"]" />
     <ImportMap />
     <link rel="icon" type="image/png" href="favicon.png" />
-    <HeadOutlet />
+    <HeadOutlet @rendermode="@PageRenderMode" />
 </head>
 
 <body>
@@ -387,7 +387,7 @@
         </div>
     }
 
-    <Routes />
+    <Routes @rendermode="@PageRenderMode" />
     <ReconnectModal />
     <script src="@Assets["_framework/blazor.web.js"]"></script>
     <script src="@Assets["lib/gsap/gsap.min.js"]"></script>
@@ -842,6 +842,8 @@
 
     private string _serverTheme = "light";
     private bool _isEnhancedNav = false;
+    private IComponentRenderMode? PageRenderMode =>
+        (CascadedHttpContext ?? HttpContextAccessor?.HttpContext)?.AcceptsInteractiveRouting() == true ? InteractiveServer : null;
     private TradeFlow.Application.Common.Models.Settings.CompanyBrandingDto _branding = new()
     {
         CompanyName = "TỔNG KHO THIẾT BỊ VỆ SINH LACASA",

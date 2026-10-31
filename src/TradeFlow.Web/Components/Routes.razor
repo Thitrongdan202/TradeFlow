@@ -1,6 +1,6 @@
 @using TradeFlow.Web.Components.Account.Shared
 
-<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.Error)">
+<Router AppAssembly="typeof(Program).Assembly">
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
             <Authorizing>
@@ -15,4 +15,9 @@
         </AuthorizeRouteView>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
+    <NotFound>
+        <LayoutView Layout="typeof(Layout.MainLayout)">
+            <TradeFlow.Web.Components.Pages.Error StatusCode="404" />
+        </LayoutView>
+    </NotFound>
 </Router>

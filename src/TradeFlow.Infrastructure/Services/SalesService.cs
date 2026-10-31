@@ -354,6 +354,92 @@ public class SalesService : ISalesService
         return priceInfo.Price ?? 0m;
     }
 
+    public async Task<Dictionary<int, decimal>> GetProductPricesBatchAsync(IEnumerable<int> productIds, int? priceListId, DateTime targetDate, CancellationToken cancellationToken = default)
+    {
+        var pids = productIds.Distinct().ToList();
+        var result = new Dictionary<int, decimal>();
+        if (pids.Count == 0) return result;
+
+        var utcTarget = NormalizeToUtc(targetDate);
+
+        // 1. Specified priceListId
+        if (priceListId.HasValue)
+        {
+            var items = await _context.PriceListItems
+                .AsNoTracking()
+                .Where(x => x.ProductId.HasValue && pids.Contains(x.ProductId.Value) && x.PriceListId == priceListId.Value)
+                .ToListAsync(cancellationToken);
+            foreach (var item in items)
+            {
+                if (item.ProductId.HasValue)
+                {
+                    result[item.ProductId.Value] = item.UnitPrice;
+                }
+            }
+        }
+
+        // 2. Try active price list covering date
+        var remainingIds = pids.Where(id => !result.ContainsKey(id)).ToList();
+        if (remainingIds.Count > 0)
+        {
+            var activeItems = await _context.PriceListItems
+                .AsNoTracking()
+                .Include(x => x.PriceList)
+                .Where(x => x.ProductId.HasValue
+                         && remainingIds.Contains(x.ProductId.Value)
+                         && x.PriceList!.Status == TradeFlow.Domain.Enums.PriceListStatus.Active
+                         && (x.PriceList.EffectiveFrom == null || x.PriceList.EffectiveFrom <= utcTarget)
+                         && (x.PriceList.EffectiveTo == null || x.PriceList.EffectiveTo >= utcTarget))
+                .OrderByDescending(x => x.PriceList!.EffectiveFrom)
+                .ToListAsync(cancellationToken);
+
+            foreach (var item in activeItems)
+            {
+                if (item.ProductId.HasValue && !result.ContainsKey(item.ProductId.Value))
+                {
+                    result[item.ProductId.Value] = item.UnitPrice;
+                }
+            }
+        }
+
+        // 3. Fallback: latest Active PriceList item for this product
+        remainingIds = pids.Where(id => !result.ContainsKey(id)).ToList();
+        if (remainingIds.Count > 0)
+        {
+            var fallbackItems = await _context.PriceListItems
+                .AsNoTracking()
+                .Include(x => x.PriceList)
+                .Where(x => x.ProductId.HasValue
+                         && remainingIds.Contains(x.ProductId.Value)
+                         && x.PriceList!.Status == TradeFlow.Domain.Enums.PriceListStatus.Active)
+                .OrderByDescending(x => x.PriceList!.Year)
+                .ThenByDescending(x => x.PriceList!.Quarter)
+                .ThenByDescending(x => x.PriceList!.EffectiveFrom)
+                .ToListAsync(cancellationToken);
+
+            foreach (var item in fallbackItems)
+            {
+                if (item.ProductId.HasValue && !result.ContainsKey(item.ProductId.Value))
+                {
+                    result[item.ProductId.Value] = item.UnitPrice;
+                }
+            }
+        }
+
+        // 4. Fallback for any remainder
+        remainingIds = pids.Where(id => !result.ContainsKey(id)).ToList();
+        foreach (var rid in remainingIds)
+        {
+            var single = await GetProductPriceAsync(rid, priceListId, targetDate, cancellationToken);
+            if (single.Price.HasValue)
+            {
+                result[rid] = single.Price.Value;
+            }
+        }
+
+        return result;
+    }
+
     private static SalesOrderDto MapToDto(SalesOrder order)
     {
         return new SalesOrderDto

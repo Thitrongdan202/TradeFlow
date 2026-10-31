@@ -105,5 +105,12 @@ public class ReviewEmployeeRequestCommand
 {
     public int RequestId { get; set; }
     public bool Approve { get; set; }
+    public bool RequestAdditionalDocs { get; set; }
     public string? ReviewNotes { get; set; }
+}
+
+public class ResubmitEmployeeRequestCommand : CreateEmployeeRequestCommand
+{
+    public int RequestId { get; set; }
+    public string? ResubmitNotes { get; set; }
 }

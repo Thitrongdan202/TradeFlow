@@ -7,10 +7,11 @@ public class SystemNotificationDto
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Title { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
-    public string Type { get; set; } = "system"; // system, order, invoice, warning, info
+    public string Type { get; set; } = "system"; // system, order, invoice, warning, error, success, approval
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public bool IsRead { get; set; }
     public string? TargetUrl { get; set; }
+    public string? ActionButtonText { get; set; }
 
     // Approval Workflow Details
     public bool IsApprovalRequest { get; set; }

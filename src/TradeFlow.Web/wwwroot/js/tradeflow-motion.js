@@ -250,6 +250,84 @@
     }
 
     /**
+     * Animate Dashboard components entrance with staggered reveal
+     * @param {HTMLElement|string} containerEl 
+     */
+    function animateDashboardEntrance(containerEl) {
+        const el = typeof containerEl === 'string' ? document.querySelector(containerEl) : containerEl;
+        const gsap = getGsap();
+        if (isReducedMotion() || !gsap || !el) return null;
+
+        return gsap.context(() => {
+            // Stagger KPI Cards
+            gsap.fromTo('.tf-kpi-card',
+                { opacity: 0, y: 12 },
+                { opacity: 1, y: 0, duration: 0.38, stagger: 0.05, ease: 'power2.out', clearProps: 'transform' }
+            );
+
+            // Stagger Main Sections
+            gsap.fromTo('.tf-dash-section',
+                { opacity: 0, y: 15 },
+                { opacity: 1, y: 0, duration: 0.42, stagger: 0.08, delay: 0.12, ease: 'power2.out', clearProps: 'transform' }
+            );
+
+            // Animate SVG Chart Path if present
+            const linePath = el.querySelector('.tf-chart-line-path');
+            if (linePath && typeof linePath.getTotalLength === 'function') {
+                try {
+                    const len = linePath.getTotalLength();
+                    gsap.fromTo(linePath,
+                        { strokeDasharray: len, strokeDashoffset: len },
+                        { strokeDashoffset: 0, duration: 0.75, delay: 0.2, ease: 'power2.out' }
+                    );
+                } catch (e) {
+                    // Fallback
+                }
+            }
+        }, el);
+    }
+
+    /**
+     * Animate Toast notification entrance
+     * @param {HTMLElement|string} toastEl 
+     */
+    function animateToastEntrance(toastEl) {
+        const el = typeof toastEl === 'string' ? document.querySelector(toastEl) : toastEl;
+        const gsap = getGsap();
+        if (isReducedMotion() || !gsap || !el) return;
+
+        gsap.fromTo(el,
+            { opacity: 0, y: 20, scale: 0.95 },
+            { opacity: 1, y: 0, scale: 1, duration: 0.28, ease: 'power3.out', clearProps: 'transform' }
+        );
+    }
+
+    /**
+     * Animate Toast notification exit
+     * @param {HTMLElement|string} toastEl 
+     * @param {Function} [onComplete]
+     */
+    function animateToastExit(toastEl, onComplete) {
+        const el = typeof toastEl === 'string' ? document.querySelector(toastEl) : toastEl;
+        const gsap = getGsap();
+        if (isReducedMotion() || !gsap || !el) {
+            if (onComplete) onComplete();
+            return;
+        }
+
+        gsap.to(el, {
+            opacity: 0,
+            y: 12,
+            scale: 0.96,
+            duration: 0.2,
+            ease: 'power2.in',
+            onComplete: () => {
+                if (onComplete) onComplete();
+            }
+        });
+    }
+
+    /**
      * Safely cleanup all GSAP tweens on an element
      * @param {HTMLElement} el 
      */
@@ -306,6 +384,9 @@
         animateTabContent,
         animateCardHover,
         registerInteractiveCard,
+        animateDashboardEntrance,
+        animateToastEntrance,
+        animateToastExit,
         cleanupElement,
         initGlobalTransitions
     };

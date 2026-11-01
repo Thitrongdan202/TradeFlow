@@ -2,233 +2,670 @@
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.EntityFrameworkCore
+@using System.Globalization
 @using TradeFlow.Application.Common.Interfaces
-@using TradeFlow.Application.Common.Models.Notifications
-@using TradeFlow.Domain.Entities.Users
+@using TradeFlow.Application.Common.Models.Dashboard
 @using TradeFlow.Domain.Enums
-@using TradeFlow.Infrastructure.Persistence
-@using System.Text.Json
-@inject IDbContextFactory<TradeFlowDbContext> DbContextFactory
-@inject INotificationService NotificationService
+@using TradeFlow.Web.Services
+@implements IDisposable
+@inject IDashboardAnalyticsService AnalyticsService
+@inject IDashboardStateService DashboardState
+@inject IUserActivityBroadcaster ActivityBroadcaster
 @inject AuthenticationStateProvider AuthStateProvider
-@inject TradeFlow.Web.Services.IDashboardStateService DashboardState
+@inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <PageTitle>Tổng quan — TradeFlow</PageTitle>
 
 <AuthorizeView>
     <Authorized>
-        <div class="tf-page-header">
-            <div class="tf-page-header-left">
-                <h1 class="tf-page-title">Tổng quan</h1>
-                <p class="tf-page-subtitle">Chào mừng trở lại, <strong>@context.User.Identity?.Name</strong></p>
-            </div>
-            <div class="tf-page-actions">
-                <button class="tf-btn tf-btn-secondary" disabled title="Tính năng báo cáo phân tích theo ngày đang được hoàn thiện">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
-                        <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
-                        <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-                    </svg>
-                    <span>Báo cáo hôm nay</span>
-                    <span class="tf-badge-pill-dev">Đang phát triển</span>
-                </button>
-            </div>
-        </div>
-
-        @* Stats Grid *@
-        <div class="tf-stats-grid">
-            @if (_isLoading)
-            {
-                for (int i = 0; i < 4; i++)
-                {
-                    <Skeleton Type="stats" />
-                }
-            }
-            else
-            {
-                @foreach (var stat in _stats)
-                {
-                    <div class="tf-stat-card">
-                        <div class="tf-stat-label">@stat.Label</div>
-                        <div class="tf-stat-value tf-text-@stat.Color">@stat.Value</div>
-                        <div class="tf-stat-meta">@stat.Meta</div>
+        <div class="tf-dash-container" id="tf-dash-root">
+            @* Level 0: Dashboard Header *@
+            <div class="tf-dash-header">
+                <div class="tf-dash-header-left">
+                    <div class="tf-dash-badge">
+                        <span class="tf-dash-badge-dot"></span>
+                        <span>Hệ thống ERP trực tuyến</span>
                     </div>
-                }
-            }
-        </div>
-
-        @* Content Grid *@
-        <div class="tf-dashboard-grid">
-            @* Recent Activity *@
-            <div class="tf-card tf-dashboard-main">
-                <div class="tf-card-header">
-                    <h2 class="tf-card-title">Hoạt động gần đây</h2>
+                    <h1 class="tf-dash-title">Tổng quan</h1>
+                    <p class="tf-dash-subtitle">
+                        Chào mừng trở lại, <strong>@context.User.Identity?.Name</strong> • 
+                        <span>@DateTime.Now.ToString("dddd, dd/MM/yyyy", new CultureInfo("vi-VN"))</span>
+                    </p>
                 </div>
-                <div class="tf-card-body">
-                    @if (_isLoading)
+
+                <div class="tf-dash-header-actions">
+                    @* Period Switcher Pills *@
+                    <div class="tf-dash-period-pills" role="group" aria-label="Bộ lọc khoảng thời gian">
+                        <button type="button" 
+                                class="tf-dash-pill @(_selectedPeriod == "7d" ? "is-active" : "")" 
+                                @onclick="@(() => ChangePeriodAsync("7d"))"
+                                disabled="@_isLoadingChart">
+                            7 ngày qua
+                        </button>
+                        <button type="button" 
+                                class="tf-dash-pill @(_selectedPeriod == "30d" ? "is-active" : "")" 
+                                @onclick="@(() => ChangePeriodAsync("30d"))"
+                                disabled="@_isLoadingChart">
+                            30 ngày qua
+                        </button>
+                        <button type="button" 
+                                class="tf-dash-pill @(_selectedPeriod == "this_month" ? "is-active" : "")" 
+                                @onclick="@(() => ChangePeriodAsync("this_month"))"
+                                disabled="@_isLoadingChart">
+                            Tháng này
+                        </button>
+                    </div>
+
+                    @* Refresh Button *@
+                    <button type="button" 
+                            class="tf-btn tf-btn-secondary tf-dash-refresh-btn @(_isRefreshing ? "is-spinning" : "")" 
+                            @onclick="RefreshDataAsync" 
+                            title="Làm mới dữ liệu tổng quan"
+                            aria-label="Làm mới">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <polyline points="1 20 1 14 7 14"></polyline>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                        </svg>
+                        <span class="tf-dash-refresh-label">Làm mới</span>
+                    </button>
+                </div>
+            </div>
+
+            @* Level 1: Modern KPI Grid (4 Cards) *@
+            <div class="tf-dash-kpi-grid">
+                @if (_isLoadingKpis)
+                {
+                    for (int i = 0; i < 4; i++)
                     {
-                        <div style="padding: 12px 0;">
-                            <Skeleton Type="text" Rows="4" />
+                        <div class="tf-kpi-card is-loading">
+                            <Skeleton Type="stats" />
                         </div>
                     }
-                    else if (_recentActivities.Any())
-                    {
-                        <div class="tf-activity-list">
-                            @foreach (var act in _recentActivities)
-                            {
-                                <div class="tf-activity-item">
-                                    <div class="tf-activity-dot"></div>
-                                    <div class="tf-activity-content">
-                                        <div class="tf-activity-header">
-                                            <span class="tf-activity-title">@FormatAuditEventTitle(act)</span>
-                                            <span class="tf-activity-time">@act.OccurredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
-                                        </div>
-                                        @if (!string.IsNullOrEmpty(act.Details))
-                                        {
-                                            <div class="tf-activity-desc">@FormatAuditEventDescription(act)</div>
-                                        }
-                                        <div class="tf-activity-user">
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                                <circle cx="12" cy="7" r="4"></circle>
-                                            </svg>
-                                            <span>@(act.PerformedBy ?? "Hệ thống")</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="tf-empty">
-                            <div class="tf-empty-icon">
-                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                                    <polyline points="14 2 14 8 20 8"/>
-                                    <line x1="16" y1="13" x2="8" y2="13"/>
-                                    <line x1="16" y1="17" x2="8" y2="17"/>
-                                    <polyline points="10 9 9 9 8 9"/>
+                }
+                else
+                {
+                    @* Card 1: Doanh thu *@
+                    <div class="tf-kpi-card tf-kpi-revenue">
+                        <div class="tf-kpi-top">
+                            <span class="tf-kpi-label">Doanh thu tháng này</span>
+                            <div class="tf-kpi-icon tf-kpi-icon-emerald">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                                 </svg>
                             </div>
-                            <div class="tf-empty-title">Chưa có dữ liệu</div>
-                            <div class="tf-empty-desc">Các giao dịch sẽ xuất hiện ở đây sau khi hệ thống ghi nhận hoạt động.</div>
                         </div>
-                    }
-                </div>
-            </div>
-
-            @* Side: Quick Actions & Notifications *@
-            <div class="tf-dashboard-side">
-                @* Quick Actions *@
-                <div class="tf-card tf-mb-4">
-                    <div class="tf-card-header">
-                        <h2 class="tf-card-title">Thao tác nhanh</h2>
-                    </div>
-                    <div class="tf-card-body" style="padding:12px;">
-                        <div class="tf-quick-actions">
-                            @foreach (var action in _quickActions)
+                        <div class="tf-kpi-value">
+                            @(_kpis.MonthRevenue > 0 ? $"{_kpis.MonthRevenue:N0} ₫" : "0 ₫")
+                        </div>
+                        <div class="tf-kpi-bottom">
+                            @if (_kpis.RevenueGrowthPercent.HasValue)
                             {
-                                <a href="@action.Href" class="tf-quick-action" title="@action.Label">
-                                    <div class="tf-quick-action-icon">
-                                        @((MarkupString)action.Icon)
-                                    </div>
-                                    <span>@action.Label</span>
-                                </a>
+                                var isPositive = _kpis.RevenueGrowthPercent.Value >= 0;
+                                <span class="tf-kpi-trend @(isPositive ? "is-up" : "is-down")">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <polyline points="@(isPositive ? "18 15 12 9 6 15" : "6 9 12 15 18 9")"></polyline>
+                                    </svg>
+                                    @(isPositive ? "+" : "")@(_kpis.RevenueGrowthPercent.Value)%
+                                </span>
+                                <span class="tf-kpi-subtext">so với tháng trước</span>
+                            }
+                            else
+                            {
+                                <span class="tf-kpi-subtext">Hóa đơn phát hành trong tháng</span>
                             }
                         </div>
                     </div>
-                </div>
 
-                @* System Notifications *@
-                <div class="tf-card">
-                    <div class="tf-card-header">
-                        <h2 class="tf-card-title">Thông báo hệ thống</h2>
-                    </div>
-                    <div class="tf-card-body" style="padding:12px;">
-                        @if (_isLoadingNotifications)
-                        {
-                            <div style="padding: 8px 0;">
-                                <Skeleton Type="text" Rows="3" />
-                            </div>
-                        }
-                        else if (!string.IsNullOrEmpty(_notificationError))
-                        {
-                            <div class="tf-alert tf-alert-warning" style="font-size:12px;margin:0;">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    @* Card 2: Đơn bán hàng *@
+                    <div class="tf-kpi-card tf-kpi-orders">
+                        <div class="tf-kpi-top">
+                            <span class="tf-kpi-label">Tổng đơn bán hàng</span>
+                            <div class="tf-kpi-icon tf-kpi-icon-blue">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="9" cy="21" r="1"></circle>
+                                    <circle cx="20" cy="21" r="1"></circle>
+                                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
                                 </svg>
-                                <span>@_notificationError</span>
                             </div>
-                        }
-                        else if (_notifications.Any())
-                        {
-                            <div class="tf-notifications-list">
-                                @foreach (var n in _notifications)
+                        </div>
+                        <div class="tf-kpi-value">
+                            @_kpis.TotalOrdersCount.ToString("N0") <span class="tf-kpi-unit">đơn</span>
+                        </div>
+                        <div class="tf-kpi-bottom">
+                            <span class="tf-kpi-subtext">
+                                <strong>@_kpis.TodayOrdersCount</strong> đơn phát sinh hôm nay • <strong>@_kpis.MonthOrdersCount</strong> trong tháng
+                            </span>
+                        </div>
+                    </div>
+
+                    @* Card 3: Mặt hàng lưu kho *@
+                    <div class="tf-kpi-card tf-kpi-inventory">
+                        <div class="tf-kpi-top">
+                            <span class="tf-kpi-label">Mặt hàng lưu kho</span>
+                            <div class="tf-kpi-icon tf-kpi-icon-amber">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="tf-kpi-value">
+                            @_kpis.InStockItemsCount.ToString("N0") <span class="tf-kpi-unit">SKU khả dụng</span>
+                        </div>
+                        <div class="tf-kpi-bottom">
+                            @if (_kpis.LowStockItemsCount > 0)
+                            {
+                                <span class="tf-kpi-badge-warning">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                    </svg>
+                                    @_kpis.LowStockItemsCount mặt hàng tồn thấp
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="tf-kpi-subtext">Đủ số dư khả dụng</span>
+                            }
+                        </div>
+                    </div>
+
+                    @* Card 4: Khách hàng hoạt động *@
+                    <div class="tf-kpi-card tf-kpi-customers">
+                        <div class="tf-kpi-top">
+                            <span class="tf-kpi-label">Khách hàng hoạt động</span>
+                            <div class="tf-kpi-icon tf-kpi-icon-purple">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="tf-kpi-value">
+                            @_kpis.ActiveCustomersCount.ToString("N0") <span class="tf-kpi-unit">đối tác</span>
+                        </div>
+                        <div class="tf-kpi-bottom">
+                            <span class="tf-kpi-subtext">Đối tác thương mại & phân phối</span>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @* Level 2: Analytics Row (Revenue Chart + Best Selling Products) *@
+            <div class="tf-dash-analytics-grid">
+                @* Chart Column (65%) *@
+                <div class="tf-card tf-dash-section tf-dash-chart-card">
+                    <div class="tf-dash-card-header">
+                        <div>
+                            <h2 class="tf-dash-card-title">Biểu đồ doanh thu & bán hàng</h2>
+                            <p class="tf-dash-card-subtitle">
+                                Tổng hợp biến động doanh số theo thời gian thực (@GetPeriodLabel(_selectedPeriod))
+                            </p>
+                        </div>
+
+                        <div class="tf-dash-chart-controls">
+                            @* Metric switch: Revenue vs Orders *@
+                            <div class="tf-dash-metric-switch">
+                                <button type="button" 
+                                        class="tf-dash-switch-btn @(_chartMetric == "revenue" ? "is-active" : "")"
+                                        @onclick="@(() => _chartMetric = "revenue")">
+                                    Doanh thu (₫)
+                                </button>
+                                <button type="button" 
+                                        class="tf-dash-switch-btn @(_chartMetric == "orders" ? "is-active" : "")"
+                                        @onclick="@(() => _chartMetric = "orders")">
+                                    Số đơn hàng
+                                </button>
+                            </div>
+
+                            @* Summary badge *@
+                            <div class="tf-dash-chart-sum-badge">
+                                @if (_chartMetric == "revenue")
                                 {
-                                    <div class="tf-notification-item @(n.IsApprovalRequest ? "is-approval-card" : "")">
-                                        <div class="tf-notification-dot @(n.IsRead ? "read" : "")"></div>
-                                        <div class="tf-notification-content">
-                                            <div class="tf-notif-header">
-                                                <div class="tf-notification-title">@n.Title</div>
-                                                @if (n.IsApprovalRequest)
-                                                {
-                                                    <span class="tf-badge tf-badge-info tf-notif-badge">@n.RequestTypeName</span>
-                                                }
-                                            </div>
-                                            <div class="tf-notification-message">@n.Message</div>
-                                            @if (n.IsApprovalRequest)
-                                            {
-                                                <div style="font-size: 11px; color: var(--tf-text-muted, #64748b); margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px;">
-                                                    <span>Mã: <strong>@n.RequestCode</strong></span>
-                                                    <span>• Người gửi: <strong>@n.Requester</strong></span>
-                                                    <span class="tf-status-draft-pill" style="padding: 1px 6px; border-radius: 4px; font-weight: 600;">@n.Status</span>
-                                                </div>
-                                                <div style="display: flex; align-items: center; gap: 6px; margin-top: 6px;">
-                                                    @if (n.CanApprove)
-                                                    {
-                                                        <button type="button" class="tf-btn tf-btn-xs tf-btn-success" disabled="@(_dashboardActionLoadingId == n.Id)" @onclick="() => HandleDashboardApproveAsync(n)">
-                                                            @(_dashboardActionLoadingId == n.Id ? "Đang duyệt..." : "Phê duyệt")
-                                                        </button>
-                                                    }
-                                                    else if (n.IsSelfRequest)
-                                                    {
-                                                        <span style="font-size: 10.5px; color: #94a3b8; font-style: italic;">Đề xuất do bạn tạo</span>
-                                                    }
-                                                    @if (!string.IsNullOrEmpty(n.TargetUrl))
-                                                    {
-                                                        <a href="@n.TargetUrl" style="font-size: 11px; font-weight: 600; color: #3b82f6; text-decoration: none; margin-left: auto;">
-                                                            Xem chi tiết &rarr;
-                                                        </a>
-                                                    }
-                                                </div>
-                                            }
-                                            else
-                                            {
-                                                <div class="tf-notification-time">@n.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
-                                            }
+                                    <span>Tổng kỳ: <strong>@_chartData.TotalPeriodRevenue.ToString("N0") ₫</strong></span>
+                                }
+                                else
+                                {
+                                    <span>Tổng kỳ: <strong>@_chartData.TotalPeriodOrders đơn</strong></span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tf-dash-chart-body">
+                        @if (_isLoadingChart)
+                        {
+                            <div class="tf-chart-skeleton">
+                                <Skeleton Type="text" Rows="6" />
+                            </div>
+                        }
+                        else if (_chartData.Points.Count == 0)
+                        {
+                            <div class="tf-chart-empty">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                                </svg>
+                                <span>Chưa có dữ liệu giao dịch trong khoảng thời gian này</span>
+                            </div>
+                        }
+                        else
+                        {
+                            @* High-end SVG Area Chart with interactive Hover *@
+                            <div class="tf-chart-viewport-wrap" @onmouseleave="ClearChartHover">
+                                <svg class="tf-chart-svg" viewBox="0 0 800 240" preserveAspectRatio="none" aria-label="Biểu đồ bán hàng">
+                                    <defs>
+                                        <linearGradient id="tfRevGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                            <stop offset="0%" stop-color="var(--tf-primary, #2563eb)" stop-opacity="0.28" />
+                                            <stop offset="100%" stop-color="var(--tf-primary, #2563eb)" stop-opacity="0.0" />
+                                        </linearGradient>
+                                        <linearGradient id="tfOrdGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                            <stop offset="0%" stop-color="#10b981" stop-opacity="0.25" />
+                                            <stop offset="100%" stop-color="#10b981" stop-opacity="0.0" />
+                                        </linearGradient>
+                                    </defs>
+
+                                    @* Horizontal Grid Lines *@
+                                    @for (int gridStep = 0; gridStep <= 3; gridStep++)
+                                    {
+                                        var yPos = 20 + gridStep * 56;
+                                        <line x1="45" y1="@yPos" x2="790" y2="@yPos" class="tf-chart-gridline" />
+                                    }
+
+                                    @* Y-axis Reference Labels *@
+                                    @for (int gridStep = 0; gridStep <= 3; gridStep++)
+                                    {
+                                        var yPos = 24 + gridStep * 56;
+                                        var ratio = (3.0 - gridStep) / 3.0;
+                                        var labelText = _chartMetric == "revenue"
+                                            ? FormatShortMoney(_chartData.MaxDailyRevenue * (decimal)ratio)
+                                            : Math.Round(_chartData.MaxDailyOrders * ratio).ToString("N0");
+
+                                        @((MarkupString)$"<text x=\"40\" y=\"{yPos}\" text-anchor=\"end\" class=\"tf-chart-axis-text\">{labelText}</text>")
+                                    }
+
+                                    @* Render Area & Line Path *@
+                                    @{
+                                        var (areaD, lineD, pointCoords) = CalculateChartPaths();
+                                        var gradId = _chartMetric == "revenue" ? "url(#tfRevGrad)" : "url(#tfOrdGrad)";
+                                        var strokeColor = _chartMetric == "revenue" ? "var(--tf-primary, #2563eb)" : "#10b981";
+                                    }
+
+                                    @if (!string.IsNullOrEmpty(areaD))
+                                    {
+                                        <path d="@areaD" fill="@gradId" class="tf-chart-area-path" />
+                                    }
+
+                                    @if (!string.IsNullOrEmpty(lineD))
+                                    {
+                                        <path d="@lineD" fill="none" stroke="@strokeColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="tf-chart-line-path" />
+                                    }
+
+                                    @* Active Hover Indicator *@
+                                    @if (_hoveredPointIndex.HasValue && _hoveredPointIndex.Value < pointCoords.Count)
+                                    {
+                                        var hp = pointCoords[_hoveredPointIndex.Value];
+                                        var hpX = hp.X.ToString("F1", CultureInfo.InvariantCulture);
+                                        var hpY = hp.Y.ToString("F1", CultureInfo.InvariantCulture);
+                                        <line x1="@hpX" y1="20" x2="@hpX" y2="188" class="tf-chart-crosshair" />
+                                        <circle cx="@hpX" cy="@hpY" r="5" fill="@strokeColor" class="tf-chart-active-dot" />
+                                        <circle cx="@hpX" cy="@hpY" r="2" fill="#ffffff" />
+                                    }
+
+                                    @* Interactive Invisible Hit-Boxes for Hover *@
+                                    @for (int i = 0; i < pointCoords.Count; i++)
+                                    {
+                                        var pt = pointCoords[i];
+                                        var index = i;
+                                        var boxWidth = Math.Max(12, 745.0 / Math.Max(1, pointCoords.Count));
+                                        var boxX = Math.Max(0, pt.X - boxWidth / 2);
+
+                                        <rect x="@boxX.ToString("F1", CultureInfo.InvariantCulture)" 
+                                              y="0" 
+                                              width="@boxWidth.ToString("F1", CultureInfo.InvariantCulture)" 
+                                              height="200" 
+                                              fill="transparent" 
+                                              class="tf-chart-hitbox"
+                                              @onmouseover="@(() => SetChartHover(index))" />
+                                    }
+
+                                    @* X-axis Date Labels *@
+                                    @{
+                                        var step = Math.Max(1, (int)Math.Ceiling(pointCoords.Count / 7.0));
+                                    }
+                                    @for (int i = 0; i < pointCoords.Count; i += step)
+                                    {
+                                        var pt = pointCoords[i];
+                                        @((MarkupString)$"<text x=\"{pt.X.ToString("F1", CultureInfo.InvariantCulture)}\" y=\"215\" text-anchor=\"middle\" class=\"tf-chart-axis-text\">{_chartData.Points[i].DateLabel}</text>")
+                                    }
+                                </svg>
+
+                                @* Floating Rich HTML Tooltip *@
+                                @if (_hoveredPointIndex.HasValue && _hoveredPointIndex.Value < _chartData.Points.Count)
+                                {
+                                    var pt = _chartData.Points[_hoveredPointIndex.Value];
+                                    var coords = GetPointCoords(_hoveredPointIndex.Value);
+                                    var leftPercent = Math.Clamp((coords.X / 800.0) * 100.0, 8.0, 92.0);
+
+                                    <div class="tf-chart-tooltip" style="left: @(leftPercent.ToString("F1", CultureInfo.InvariantCulture))%;">
+                                        <div class="tf-chart-tooltip-header">
+                                            <span class="tf-chart-tooltip-date">@pt.Date.ToString("dddd, dd/MM/yyyy", new CultureInfo("vi-VN"))</span>
+                                        </div>
+                                        <div class="tf-chart-tooltip-metric">
+                                            <span class="tf-chart-tooltip-label">Doanh thu:</span>
+                                            <strong class="tf-chart-tooltip-val tf-text-emerald">@pt.Revenue.ToString("N0") ₫</strong>
+                                        </div>
+                                        <div class="tf-chart-tooltip-metric">
+                                            <span class="tf-chart-tooltip-label">Đơn hàng:</span>
+                                            <strong class="tf-chart-tooltip-val tf-text-blue">@pt.OrderCount đơn</strong>
                                         </div>
                                     </div>
                                 }
                             </div>
                         }
-                        else
+                    </div>
+                </div>
+
+                @* Best Selling Products Column (35%) *@
+                <div class="tf-card tf-dash-section tf-dash-top-products-card">
+                    <div class="tf-dash-card-header">
+                        <div>
+                            <h2 class="tf-dash-card-title">Sản phẩm bán chạy</h2>
+                            <p class="tf-dash-card-subtitle">Top mặt hàng có doanh thu cao nhất</p>
+                        </div>
+                        <a href="/danh-muc/san-pham" class="tf-dash-card-link" title="Xem danh mục sản phẩm">
+                            Xem tất cả &rarr;
+                        </a>
+                    </div>
+
+                    <div class="tf-dash-card-body">
+                        @if (_isLoadingBestSelling)
+                        {
+                            <Skeleton Type="text" Rows="5" />
+                        }
+                        else if (_bestSellingProducts.Count == 0)
                         {
                             <div class="tf-empty tf-empty-sm">
                                 <div class="tf-empty-icon">
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
                                     </svg>
                                 </div>
-                                <div class="tf-empty-title" style="font-size:13px;">Chưa có thông báo mới</div>
-                                <div class="tf-empty-desc" style="font-size:12px;">Hiện không có thông báo hay yêu cầu chờ duyệt nào.</div>
+                                <div class="tf-empty-title">Chưa có dữ liệu bán chạy</div>
+                                <div class="tf-empty-desc">Sản phẩm sẽ được xếp hạng khi phát sinh đơn hàng.</div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="tf-top-product-list">
+                                @foreach (var p in _bestSellingProducts)
+                                {
+                                    <div class="tf-top-product-item">
+                                        @* Rank Pill *@
+                                        <div class="tf-top-product-rank tf-rank-@p.Rank">
+                                            <span>#@p.Rank</span>
+                                        </div>
+
+                                        @* Thumbnail / Image *@
+                                        <div class="tf-top-product-thumb">
+                                            @if (!string.IsNullOrEmpty(p.ImageUrl))
+                                            {
+                                                <img src="@p.ImageUrl" alt="@p.ProductName" loading="lazy" />
+                                            }
+                                            else
+                                            {
+                                                <div class="tf-top-product-thumb-placeholder">
+                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                                    </svg>
+                                                </div>
+                                            }
+                                        </div>
+
+                                        @* Info *@
+                                        <div class="tf-top-product-info">
+                                            <div class="tf-top-product-title" title="@p.ProductName">
+                                                @p.ProductName
+                                            </div>
+                                            <div class="tf-top-product-meta">
+                                                <span class="tf-top-product-sku">@p.ProductCode</span>
+                                                <span class="tf-top-product-dot">•</span>
+                                                <span class="tf-top-product-qty">Đã bán: <strong>@p.QuantitySold.ToString("N0")</strong> @p.UnitName</span>
+                                            </div>
+
+                                            @* Relative Volume Bar *@
+                                            <div class="tf-top-product-bar-wrap">
+                                                <div class="tf-top-product-bar" style="width: @(p.PercentageOfTop.ToString("F1", CultureInfo.InvariantCulture))%;"></div>
+                                            </div>
+                                        </div>
+
+                                        @* Revenue *@
+                                        <div class="tf-top-product-revenue">
+                                            <span>@(p.TotalRevenue > 0 ? $"{p.TotalRevenue:N0} ₫" : "—")</span>
+                                        </div>
+                                    </div>
+                                }
                             </div>
                         }
                     </div>
                 </div>
             </div>
+
+            @* Level 3: Operational Section (Warehouse Overview + Recent Activity) *@
+            <div class="tf-dash-operations-grid">
+                @* Warehouse Overview Column (50%) *@
+                <div class="tf-card tf-dash-section tf-dash-warehouse-card">
+                    <div class="tf-dash-card-header">
+                        <div>
+                            <h2 class="tf-dash-card-title">Tình trạng kho bãi</h2>
+                            <p class="tf-dash-card-subtitle">
+                                Giám sát mức độ an toàn hàng tồn & các kho hoạt động
+                            </p>
+                        </div>
+                        <a href="/kho/ton-kho" class="tf-dash-card-link" title="Xem chi tiết báo cáo tồn kho">
+                            Báo cáo kho &rarr;
+                        </a>
+                    </div>
+
+                    <div class="tf-dash-card-body">
+                        @if (_isLoadingWarehouse)
+                        {
+                            <Skeleton Type="text" Rows="4" />
+                        }
+                        else
+                        {
+                            var totalItems = Math.Max(1, _warehouseSummary.InStockCount + _warehouseSummary.OutOfStockCount);
+                            var inStockPct = Math.Round((double)_warehouseSummary.InStockCount / totalItems * 100.0, 1);
+                            var lowStockPct = Math.Round((double)_warehouseSummary.LowStockCount / totalItems * 100.0, 1);
+                            var outStockPct = Math.Max(0.0, 100.0 - inStockPct);
+
+                            <div class="tf-warehouse-health-section">
+                                <div class="tf-warehouse-health-header">
+                                    <span class="tf-warehouse-health-label">Phân bổ trạng thái hàng tồn</span>
+                                    <span class="tf-warehouse-health-count">@_warehouseSummary.ActiveWarehouseCount kho hoạt động</span>
+                                </div>
+                                <div class="tf-warehouse-health-bar">
+                                    <div class="tf-bar-segment is-instock" style="width: @(inStockPct.ToString("F1", CultureInfo.InvariantCulture))%;" title="Đủ hàng: @_warehouseSummary.InStockCount SKU"></div>
+                                    <div class="tf-bar-segment is-lowstock" style="width: @(lowStockPct.ToString("F1", CultureInfo.InvariantCulture))%;" title="Tồn thấp: @_warehouseSummary.LowStockCount SKU"></div>
+                                    <div class="tf-bar-segment is-outstock" style="width: @(outStockPct.ToString("F1", CultureInfo.InvariantCulture))%;" title="Hết hàng: @_warehouseSummary.OutOfStockCount SKU"></div>
+                                </div>
+                                <div class="tf-warehouse-health-legend">
+                                    <span class="tf-legend-item is-instock">
+                                        <span class="tf-legend-dot"></span>
+                                        <span>Đủ hàng: <strong>@_warehouseSummary.InStockCount</strong> SKU</span>
+                                    </span>
+                                    <span class="tf-legend-item is-lowstock">
+                                        <span class="tf-legend-dot"></span>
+                                        <span>Tồn thấp (&lt;15): <strong>@_warehouseSummary.LowStockCount</strong> SKU</span>
+                                    </span>
+                                    <span class="tf-legend-item is-outstock">
+                                        <span class="tf-legend-dot"></span>
+                                        <span>Hết hàng: <strong>@_warehouseSummary.OutOfStockCount</strong> SKU</span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            @* Low Stock Alerts Table *@
+                            <div class="tf-warehouse-alerts-wrap">
+                                <div class="tf-warehouse-alerts-title">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                    </svg>
+                                    <span>Cảnh báo tồn kho cần lưu ý</span>
+                                </div>
+
+                                @if (_warehouseSummary.LowStockAlerts.Count > 0)
+                                {
+                                    <div class="tf-lowstock-list">
+                                        @foreach (var alert in _warehouseSummary.LowStockAlerts)
+                                        {
+                                            <div class="tf-lowstock-item">
+                                                <div class="tf-lowstock-info">
+                                                    <span class="tf-lowstock-code">@alert.ProductCode</span>
+                                                    <span class="tf-lowstock-name" title="@alert.ProductName">@alert.ProductName</span>
+                                                </div>
+                                                <div class="tf-lowstock-wh">
+                                                    @alert.WarehouseName
+                                                </div>
+                                                <div class="tf-lowstock-qty">
+                                                    <span class="tf-badge tf-badge-warning">
+                                                        Còn: <strong>@alert.CurrentQuantity.ToString("N0")</strong> @alert.UnitName
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="tf-warehouse-all-safe">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
+                                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                        </svg>
+                                        <span>Số dư kho hiện tại an toàn, không có mặt hàng dưới ngưỡng báo động.</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @* Recent Activities Column (50%) *@
+                <div class="tf-card tf-dash-section tf-dash-activity-card">
+                    <div class="tf-dash-card-header">
+                        <div>
+                            <h2 class="tf-dash-card-title">Hoạt động gần đây</h2>
+                            <p class="tf-dash-card-subtitle">Nhật ký kiểm toán & sự kiện nghiệp vụ hệ thống</p>
+                        </div>
+                        <a href="/cai-dat/nhat-ky-he-thong" class="tf-dash-card-link" title="Xem toàn bộ nhật ký hệ thống">
+                            Tất cả nhật ký &rarr;
+                        </a>
+                    </div>
+
+                    <div class="tf-dash-card-body">
+                        @if (_isLoadingActivities)
+                        {
+                            <Skeleton Type="text" Rows="6" />
+                        }
+                        else if (_recentActivities.Count == 0)
+                        {
+                            <div class="tf-empty tf-empty-sm">
+                                <div class="tf-empty-icon">
+                                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polyline points="12 6 12 12 16 14"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="tf-empty-title">Chưa có hoạt động</div>
+                                <div class="tf-empty-desc">Các giao dịch phát sinh sẽ xuất hiện theo thời gian thực.</div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="tf-activity-timeline">
+                                @foreach (var act in _recentActivities)
+                                {
+                                    <div class="tf-timeline-item">
+                                        @* Category Icon *@
+                                        <div class="tf-timeline-icon @GetActivityIconClass(act.EventType)">
+                                            @((MarkupString)GetActivityIconSvg(act.EventType))
+                                        </div>
+
+                                        @* Content *@
+                                        <div class="tf-timeline-content">
+                                            <div class="tf-timeline-header">
+                                                <span class="tf-timeline-title">@act.Title</span>
+                                                <span class="tf-timeline-time" title="@act.OccurredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")">
+                                                    @FormatRelativeTime(act.OccurredAt)
+                                                </span>
+                                            </div>
+
+                                            @if (!string.IsNullOrEmpty(act.Description))
+                                            {
+                                                <p class="tf-timeline-desc">@act.Description</p>
+                                            }
+
+                                            <div class="tf-timeline-footer">
+                                                <span class="tf-timeline-user">
+                                                    <span class="tf-user-avatar-tiny">@GetUserInitial(act.PerformedBy)</span>
+                                                    <span>@(act.PerformedBy ?? "Hệ thống")</span>
+                                                </span>
+
+                                                @if (!string.IsNullOrEmpty(act.TargetUrl))
+                                                {
+                                                    <a href="@act.TargetUrl" class="tf-timeline-action-link">
+                                                        Xem chi tiết &rarr;
+                                                    </a>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @* Level 4: Real-time Activity Toast Notifications (Bottom-Right) *@
+            @if (_activeToasts.Count > 0)
+            {
+                <div class="tf-activity-toast-stack" aria-live="polite">
+                    @foreach (var toast in _activeToasts)
+                    {
+                        <div class="tf-activity-toast" id="toast-@toast.EventId" role="status">
+                            <div class="tf-toast-icon @GetActivityIconClass(toast.EventType)">
+                                @((MarkupString)GetActivityIconSvg(toast.EventType))
+                            </div>
+                            <div class="tf-toast-body">
+                                <div class="tf-toast-title">
+                                    <strong>@toast.PerformedBy</strong> vừa phát sinh:
+                                </div>
+                                <div class="tf-toast-message">@toast.Title</div>
+                                @if (!string.IsNullOrEmpty(toast.TargetUrl))
+                                {
+                                    <a href="@toast.TargetUrl" class="tf-toast-link">Mở chứng từ</a>
+                                }
+                            </div>
+                            <button type="button" class="tf-toast-close" @onclick="@(() => DismissToast(toast.EventId))" aria-label="Đóng thông báo">
+                                &times;
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
         </div>
     </Authorized>
 
@@ -245,7 +682,7 @@
                 </div>
             </div>
             <h1 style="font-size:28px;margin-bottom:8px;">TradeFlow</h1>
-            <p style="color:var(--tf-text-muted);margin-bottom:32px;font-size:15px;">Hệ thống quản lý thương mại</p>
+            <p style="color:var(--tf-text-muted);margin-bottom:32px;font-size:15px;">Hệ thống quản lý thương mại & ERP chuyên nghiệp</p>
             <a href="/Account/Login" class="tf-btn tf-btn-primary tf-btn-xl" data-enhance="false">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/>
@@ -259,411 +696,328 @@
 </AuthorizeView>
 
 @code {
-    private bool _isLoading = true;
-    private bool _isLoadingNotifications = true;
-    private string? _notificationError;
+    private bool _isLoadingKpis = true;
+    private bool _isLoadingChart = true;
+    private bool _isLoadingBestSelling = true;
+    private bool _isLoadingWarehouse = true;
+    private bool _isLoadingActivities = true;
+    private bool _isRefreshing = false;
 
-    private record QuickAction(string Label, string Href, string Icon);
+    private string _selectedPeriod = "30d";
+    private string _chartMetric = "revenue"; // "revenue" or "orders"
+    private int? _hoveredPointIndex = null;
+    private string? _currentUserName;
 
-    private List<TradeFlow.Web.Services.DashboardStatItem> _stats = [];
-    private List<SystemNotificationDto> _notifications = [];
-    private List<AuditLog> _recentActivities = [];
+    private DashboardKpiModel _kpis = new();
+    private DashboardChartDataModel _chartData = new();
+    private List<DashboardBestSellingProductModel> _bestSellingProducts = [];
+    private DashboardWarehouseSummaryModel _warehouseSummary = new();
+    private List<DashboardRecentActivityModel> _recentActivities = [];
 
-    private static readonly QuickAction[] _quickActions =
-    [
-        new("Tạo báo giá", "/ban-hang/bao-gia/tao-moi",
-            """<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>"""),
-        new("Tạo đơn bán hàng", "/ban-hang/don-ban-hang/tao-moi",
-            """<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>"""),
-        new("Thêm khách hàng", "/doi-tac/khach-hang/them-moi",
-            """<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>"""),
-        new("Thêm sản phẩm", "/danh-muc/san-pham/them-moi",
-            """<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>""")
-    ];
-
-    protected override void OnInitialized()
-    {
-        // Immediately present cached data on return navigation to completely eliminate skeleton flashes
-        if (DashboardState.HasLoaded)
-        {
-            _stats = DashboardState.Stats.ToList();
-            _recentActivities = DashboardState.RecentActivities.ToList();
-            _notifications = DashboardState.Notifications.ToList();
-            _isLoading = false;
-            _isLoadingNotifications = false;
-        }
-        else
-        {
-            _isLoading = true;
-            _isLoadingNotifications = true;
-        }
-    }
+    // Real-Time Activity Toast Stack
+    private readonly List<ActivityToastNotification> _activeToasts = [];
+    private readonly HashSet<string> _seenToastIds = [];
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDashboardDataAsync();
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _currentUserName = authState.User.Identity?.Name;
+
+        // Instant render from session cache if available
+        if (DashboardState.HasLoaded && DashboardState.Kpis != null)
+        {
+            _kpis = DashboardState.Kpis;
+            _chartData = DashboardState.ChartData ?? new();
+            _bestSellingProducts = DashboardState.BestSellingProducts.ToList();
+            _warehouseSummary = DashboardState.WarehouseSummary ?? new();
+            _recentActivities = DashboardState.EnrichedActivities.ToList();
+
+            _isLoadingKpis = false;
+            _isLoadingChart = false;
+            _isLoadingBestSelling = false;
+            _isLoadingWarehouse = false;
+            _isLoadingActivities = false;
+        }
+
+        await LoadAllDashboardDataAsync();
     }
 
-    private async Task LoadDashboardDataAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        List<TradeFlow.Web.Services.DashboardStatItem> newStats;
-        List<AuditLog> newActivities;
-        List<SystemNotificationDto> newNotifications = [];
-        string? notifError = null;
-
-        try
+        if (firstRender)
         {
-            var today = DateTime.UtcNow.Date;
-            var startOfMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-
-            await using var db = await DbContextFactory.CreateDbContextAsync();
-
-            var todayOrdersCount = await db.SalesOrders
-                .CountAsync(o => o.OrderDate >= today);
-
-            var monthRevenue = await db.Invoices
-                .Where(i => i.InvoiceDate >= startOfMonth)
-                .SumAsync(i => (decimal?)i.GrandTotal) ?? 0m;
-
-            var customersCount = await db.Customers
-                .CountAsync(c => c.IsActive);
-
-            var productsCount = await db.Products
-                .CountAsync(p => p.IsActive);
-
-            newStats =
-            [
-                new("Đơn bán hàng hôm nay", todayOrdersCount.ToString("N0"), $"{todayOrdersCount} đơn phát sinh hôm nay", "primary"),
-                new("Doanh thu tháng này", monthRevenue > 0 ? $"{monthRevenue:N0} ₫" : "0 ₫", "Hóa đơn trong tháng", "success"),
-                new("Khách hàng hoạt động", customersCount.ToString("N0"), $"{customersCount} đối tác đang kết nối", "info"),
-                new("Sản phẩm đang bán", productsCount.ToString("N0"), $"{productsCount} mặt hàng trong danh mục", "warning")
-            ];
-
-            newActivities = await db.AuditLogs
-                .AsNoTracking()
-                .OrderByDescending(x => x.OccurredAt)
-                .Take(5)
-                .ToListAsync();
-        }
-        catch
-        {
-            newStats =
-            [
-                new("Đơn bán hàng hôm nay", "—", "Chưa có dữ liệu", "primary"),
-                new("Doanh thu tháng này", "—", "Chưa có dữ liệu", "success"),
-                new("Khách hàng hoạt động", "—", "Chưa có dữ liệu", "info"),
-                new("Sản phẩm đang bán", "—", "Chưa có dữ liệu", "warning")
-            ];
-            newActivities = [];
-        }
-
-        try
-        {
-            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            newNotifications = await NotificationService.GetNotificationsAsync(authState.User, 5);
-        }
-        catch
-        {
-            notifError = "Không thể tải thông báo.";
-        }
-
-        _stats = newStats;
-        _recentActivities = newActivities;
-        if (newNotifications.Count > 0 || notifError == null)
-        {
-            _notifications = newNotifications;
-        }
-        _notificationError = notifError;
-
-        _isLoading = false;
-        _isLoadingNotifications = false;
-
-        // Persist to scoped session cache so subsequent navigations are instant
-        DashboardState.SetState(_stats, _recentActivities, _notifications);
-
-        StateHasChanged();
-    }
-
-    private string? _dashboardActionLoadingId;
-
-    private async Task HandleDashboardApproveAsync(SystemNotificationDto n)
-    {
-        _dashboardActionLoadingId = n.Id;
-        try
-        {
-            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            var success = await NotificationService.ApproveNotificationAsync(n.Id, authState.User);
-            if (success)
-            {
-                _notifications = await NotificationService.GetNotificationsAsync(authState.User, 5);
-                DashboardState.SetState(_stats, _recentActivities, _notifications);
-            }
-        }
-        catch (Exception ex)
-        {
-            _notificationError = ex.Message;
-        }
-        finally
-        {
-            _dashboardActionLoadingId = null;
-        }
-    }
-
-    private static string FormatAuditEventTitle(AuditLog log)
-    {
-        return log.EventType switch
-        {
-            AuditEventType.Login => "Đăng nhập hệ thống",
-            AuditEventType.LoginFailed => "Đăng nhập thất bại",
-            AuditEventType.Logout => "Đăng xuất hệ thống",
-            AuditEventType.UserCreated => "Thêm người dùng mới",
-            AuditEventType.UserUpdated => "Cập nhật tài khoản",
-            AuditEventType.UserLocked => "Khóa tài khoản người dùng",
-            AuditEventType.UserUnlocked => "Mở khóa tài khoản",
-            AuditEventType.PasswordReset => "Đặt lại mật khẩu",
-            AuditEventType.PasswordChanged => "Đổi mật khẩu người dùng",
-            AuditEventType.PasswordViewed => "Xem mật khẩu tạm",
-            AuditEventType.RoleCreated => "Thêm vai trò mới",
-            AuditEventType.RoleUpdated => "Cập nhật vai trò",
-            AuditEventType.RoleDeleted => "Xóa vai trò",
-            AuditEventType.PermissionAssigned => "Cấp quyền truy cập",
-            AuditEventType.PermissionRevoked => "Thu hồi quyền truy cập",
-            AuditEventType.DataImported => "Nhập dữ liệu vào hệ thống",
-            AuditEventType.DataExported => "Xuất dữ liệu hệ thống",
-            AuditEventType.FileUploaded => "Tải tệp tin lên hệ thống",
-            AuditEventType.DatabaseBackupCreated => "Tạo bản sao lưu hệ thống",
-            AuditEventType.DatabaseBackupRestored => "Khôi phục dữ liệu hệ thống",
-            AuditEventType.CompanySettingsChanged => "Cập nhật thông tin công ty",
-            AuditEventType.SupportAccessEnabled => "Bật hỗ trợ kỹ thuật",
-            AuditEventType.SupportAccessRevoked => "Tắt hỗ trợ kỹ thuật",
-            AuditEventType.SupportActionPerformed => "Thao tác hỗ trợ kỹ thuật",
-            AuditEventType.ProductCreated => "Thêm sản phẩm mới",
-            AuditEventType.ProductUpdated => "Cập nhật thông tin sản phẩm",
-            AuditEventType.ProductDeleted => "Xóa sản phẩm",
-            AuditEventType.CategoryCreated => "Thêm danh mục sản phẩm",
-            AuditEventType.CategoryUpdated => "Cập nhật danh mục sản phẩm",
-            AuditEventType.CategoryDeleted => "Xóa danh mục sản phẩm",
-            AuditEventType.UnitCreated => "Thêm đơn vị tính mới",
-            AuditEventType.UnitUpdated => "Cập nhật đơn vị tính",
-            AuditEventType.UnitDeleted => "Xóa đơn vị tính",
-            AuditEventType.CurrencyCreated => "Thêm loại tiền tệ mới",
-            AuditEventType.CurrencyUpdated => "Cập nhật loại tiền tệ",
-            AuditEventType.CurrencyDeleted => "Xóa loại tiền tệ",
-            AuditEventType.CustomerCreated => "Thêm khách hàng mới",
-            AuditEventType.CustomerUpdated => "Cập nhật hồ sơ khách hàng",
-            AuditEventType.CustomerDeleted => "Xóa khách hàng",
-            AuditEventType.SupplierCreated => "Thêm nhà cung cấp mới",
-            AuditEventType.SupplierUpdated => "Cập nhật nhà cung cấp",
-            AuditEventType.SupplierDeleted => "Xóa nhà cung cấp",
-            AuditEventType.WarehouseCreated => "Thêm kho hàng mới",
-            AuditEventType.WarehouseUpdated => "Cập nhật thông tin kho",
-            AuditEventType.WarehouseDeleted => "Xóa kho hàng",
-            AuditEventType.PriceListCreated => "Tạo bảng giá mới",
-            AuditEventType.PriceListUpdated => "Cập nhật bảng giá",
-            AuditEventType.PriceListDeleted => "Xóa bảng giá",
-            AuditEventType.PriceListApproved => "Phê duyệt bảng giá",
-            AuditEventType.PriceListImported => "Nhập bảng giá từ Excel",
-            AuditEventType.PriceListExported => "Xuất bảng giá ra Excel",
-            AuditEventType.PriceListOriginalDownloaded => "Tải file bảng giá gốc",
-            AuditEventType.PriceChanged => "Điều chỉnh giá sản phẩm",
-            AuditEventType.ProductImageMapped => "Gán ảnh sản phẩm",
-            AuditEventType.SalesOrderCreated => "Tạo đơn bán hàng mới",
-            AuditEventType.SalesOrderUpdated => "Cập nhật đơn bán hàng",
-            AuditEventType.SalesOrderConfirmed => "Xác nhận đơn bán hàng",
-            AuditEventType.SalesOrderCancelled => "Hủy đơn bán hàng",
-            AuditEventType.SalesOrderDeleted => "Xóa đơn bán hàng",
-            AuditEventType.InvoiceCreated => "Tạo hóa đơn bán hàng",
-            AuditEventType.InvoiceUpdated => "Cập nhật hóa đơn bán hàng",
-            AuditEventType.InvoiceIssued => "Phát hành hóa đơn bán hàng",
-            AuditEventType.InvoiceAdjusted => "Điều chỉnh hóa đơn",
-            AuditEventType.InvoiceReplaced => "Thay thế hóa đơn",
-            AuditEventType.InvoiceCancelled => "Hủy hóa đơn bán hàng",
-            AuditEventType.InvoiceDeleted => "Xóa hóa đơn bán hàng",
-            AuditEventType.InvoiceExportedPdf => "Xuất PDF hóa đơn",
-            AuditEventType.QuotationCreated => "Tạo báo giá mới",
-            AuditEventType.QuotationUpdated => "Cập nhật báo giá",
-            AuditEventType.QuotationStatusChanged => "Cập nhật trạng thái báo giá",
-            AuditEventType.QuotationConverted => "Chuyển báo giá thành đơn hàng",
-            AuditEventType.QuotationDeleted => "Xóa báo giá",
-            AuditEventType.QuotationExportedPdf => "Xuất PDF báo giá",
-            AuditEventType.DocumentUploaded => "Tải chứng từ / tài liệu",
-            AuditEventType.DocumentDeleted => "Xóa chứng từ / tài liệu",
-            AuditEventType.DocumentDownloaded => "Tải chứng từ / tài liệu về",
-            AuditEventType.SignerEnrolled => "Đăng ký người ký số",
-            AuditEventType.SignerRevoked => "Thu hồi quyền ký số",
-            AuditEventType.SignerCodeIssued => "Cấp mã định danh ký",
-            AuditEventType.SignerCodeRevoked => "Thu hồi mã định danh ký",
-            AuditEventType.SignatureCreated => "Ký điện tử chứng từ",
-            AuditEventType.SignatureVerified => "Xác minh chữ ký điện tử",
-            AuditEventType.SignatureFailed => "Ký điện tử thất bại",
-            AuditEventType.DocumentTampered => "Cảnh báo toàn vẹn văn bản",
-            AuditEventType.UserOffboarded => "Thu hồi tài khoản nhân sự",
-            AuditEventType.SecuritySettingsUpdated => "Cập nhật cấu hình an ninh",
-            AuditEventType.SignerPinChanged => "Đổi mã PIN ký số",
-            AuditEventType.SignerPinReset => "Đặt lại mã PIN ký số",
-            AuditEventType.SignerLockedOut => "Khóa quyền ký số tạm thời",
-            AuditEventType.SignerProfileCreated => "Tạo hồ sơ ký số",
-            AuditEventType.SignerProfileUpdated => "Cập nhật hồ sơ ký số",
-            AuditEventType.EmployeeCreated => "Thêm nhân viên mới",
-            AuditEventType.EmployeeUpdated => "Cập nhật thông tin nhân viên",
-            AuditEventType.EmployeeStatusChanged => "Cập nhật trạng thái nhân sự",
-            AuditEventType.EmployeeRetired => "Xử lý nhân sự thôi việc",
-            AuditEventType.EmployeeRequestSubmitted => "Gửi đề xuất nhân sự",
-            AuditEventType.EmployeeRequestApproved => "Phê duyệt đề xuất nhân sự",
-            AuditEventType.EmployeeRequestRejected => "Từ chối đề xuất nhân sự",
-            AuditEventType.EmployeeLinkedToUser => "Liên kết tài khoản người dùng",
-            AuditEventType.EmployeeUnlinkedFromUser => "Hủy liên kết tài khoản",
-            AuditEventType.DepartmentCreated => "Thêm phòng ban mới",
-            AuditEventType.PositionCreated => "Thêm chức vụ mới",
-            AuditEventType.DebtPaymentRecorded => "Ghi nhận thanh toán công nợ",
-            AuditEventType.DebtAdjustmentRecorded => "Điều chỉnh công nợ",
-            AuditEventType.DebtDiscountRecorded => "Ghi nhận chiết khấu thanh toán",
-            AuditEventType.DebtExported => "Xuất báo cáo công nợ",
-            AuditEventType.ContractCreated => "Tạo hợp đồng kinh tế",
-            AuditEventType.ContractUpdated => "Cập nhật hợp đồng kinh tế",
-            AuditEventType.ContractFinalized => "Hoàn tất hợp đồng kinh tế",
-            AuditEventType.ContractSigned => "Ký điện tử hợp đồng",
-            AuditEventType.ContractPrinted => "In hợp đồng kinh tế",
-            AuditEventType.ContractCancelled => "Hủy hợp đồng kinh tế",
-            AuditEventType.ContractLiquidated => "Thanh lý hợp đồng kinh tế",
-            AuditEventType.ContractExportedPdf => "Xuất PDF hợp đồng",
-            AuditEventType.ContractSettingsUpdated => "Cập nhật cấu hình hợp đồng",
-            AuditEventType.ContractTemplateUpdated => "Cập nhật mẫu hợp đồng",
-            AuditEventType.ContractDeleted => "Xóa hợp đồng kinh tế",
-            _ => !string.IsNullOrEmpty(log.TargetEntity) ? $"{log.EventType} ({log.TargetEntity})" : log.EventType.ToString()
-        };
-    }
-
-    private static string FormatAuditEventDescription(AuditLog log)
-    {
-        if (string.IsNullOrWhiteSpace(log.Details))
-        {
-            return string.Empty;
-        }
-
-        var text = log.Details.Trim();
-
-        // Check if Details is a JSON string
-        if ((text.StartsWith("{") && text.EndsWith("}")) || (text.StartsWith("[") && text.EndsWith("]")))
-        {
+            ActivityBroadcaster.OnActivity += HandleActivityBroadcast;
             try
             {
-                using var doc = JsonDocument.Parse(text);
-                var root = doc.RootElement;
-
-                if (root.ValueKind == JsonValueKind.Object)
-                {
-                    // Special case: DatabaseBackupRestored
-                    if (log.EventType == AuditEventType.DatabaseBackupRestored || root.TryGetProperty("NewRecordsImported", out _))
-                    {
-                        int newRec = root.TryGetProperty("NewRecordsImported", out var np) && np.TryGetInt32(out var nv) ? nv : 0;
-                        int retRec = root.TryGetProperty("ExistingRecordsRetained", out var rp) && rp.TryGetInt32(out var rv) ? rv : 0;
-                        int overRec = root.TryGetProperty("RecordsOverwritten", out var op) && op.TryGetInt32(out var ov) ? ov : 0;
-                        int files = root.TryGetProperty("FilesImported", out var fp) && fp.TryGetInt32(out var fv) ? fv : 0;
-
-                        var parts = new List<string>
-                        {
-                            $"Khôi phục dữ liệu: {newRec:N0} bản ghi mới",
-                            $"{retRec:N0} bản ghi giữ nguyên",
-                            $"{overRec:N0} bản ghi ghi đè"
-                        };
-                        if (files > 0)
-                        {
-                            parts.Add($"{files} tệp đính kèm");
-                        }
-                        return string.Join(", ", parts);
-                    }
-
-                    // Special case: DatabaseBackupCreated
-                    if (log.EventType == AuditEventType.DatabaseBackupCreated || root.TryGetProperty("FileSizeBytes", out _) || root.TryGetProperty("FileName", out _))
-                    {
-                        string fileName = root.TryGetProperty("FileName", out var fn) ? fn.GetString() ?? "" : "";
-                        long size = root.TryGetProperty("FileSizeBytes", out var sz) && sz.TryGetInt64(out var sv) ? sv : 0;
-                        int tables = root.TryGetProperty("TablesCount", out var tb) && tb.TryGetInt32(out var tv) ? tv : 0;
-
-                        var result = "Tạo tệp sao lưu";
-                        if (!string.IsNullOrEmpty(fileName))
-                        {
-                            result += $": {fileName}";
-                        }
-                        if (size > 0)
-                        {
-                            result += $" ({FormatFileSize(size)})";
-                        }
-                        if (tables > 0)
-                        {
-                            result += $" • {tables} bảng dữ liệu";
-                        }
-                        return result;
-                    }
-
-                    // Check common descriptive fields in JSON
-                    if (root.TryGetProperty("Summary", out var sum) && sum.ValueKind == JsonValueKind.String)
-                        return sum.GetString()!;
-                    if (root.TryGetProperty("Message", out var msg) && msg.ValueKind == JsonValueKind.String)
-                        return msg.GetString()!;
-                    if (root.TryGetProperty("Note", out var note) && note.ValueKind == JsonValueKind.String)
-                        return note.GetString()!;
-                    if (root.TryGetProperty("Description", out var desc) && desc.ValueKind == JsonValueKind.String)
-                        return desc.GetString()!;
-
-                    // If object has other properties, create clean key-value summary without internal technical identifiers
-                    var summaries = new List<string>();
-                    foreach (var prop in root.EnumerateObject())
-                    {
-                        var propName = prop.Name;
-                        if (propName.EndsWith("Id", StringComparison.OrdinalIgnoreCase) ||
-                            propName.Equals("StagingId", StringComparison.OrdinalIgnoreCase) ||
-                            propName.Equals("DurationMs", StringComparison.OrdinalIgnoreCase) ||
-                            propName.Equals("Timestamp", StringComparison.OrdinalIgnoreCase) ||
-                            propName.Equals("Scope", StringComparison.OrdinalIgnoreCase))
-                        {
-                            continue;
-                        }
-
-                        if (prop.Value.ValueKind == JsonValueKind.String)
-                        {
-                            summaries.Add($"{propName}: {prop.Value.GetString()}");
-                        }
-                        else if (prop.Value.ValueKind == JsonValueKind.Number)
-                        {
-                            summaries.Add($"{propName}: {prop.Value}");
-                        }
-                    }
-
-                    if (summaries.Count > 0)
-                    {
-                        return string.Join(" • ", summaries);
-                    }
-                }
+                await JS.InvokeVoidAsync("TradeFlowMotion.animateDashboardEntrance", "#tf-dash-root");
             }
             catch
             {
-                // Fall through to text cleanup
+                // Animation fallback gracefully handled
             }
         }
-
-        // Clean up common English or raw technical phrases into natural Vietnamese
-        var cleaned = text;
-        cleaned = cleaned.Replace("Manual invoice created", "Tạo hóa đơn thủ công");
-        cleaned = cleaned.Replace("Invoice created from SO", "Tạo hóa đơn từ đơn bán hàng");
-        cleaned = cleaned.Replace("Draft invoice updated", "Cập nhật hóa đơn nháp");
-        cleaned = cleaned.Replace("Invoice issued", "Phát hành hóa đơn thành công");
-        cleaned = cleaned.Replace("Draft invoice deleted", "Xóa hóa đơn nháp");
-        cleaned = cleaned.Replace("PDF exported", "Xuất tệp PDF thành công");
-        cleaned = cleaned.Replace("Draft order created", "Tạo đơn hàng nháp mới");
-        cleaned = cleaned.Replace("Draft order updated", "Cập nhật đơn hàng nháp");
-        cleaned = cleaned.Replace("Order confirmed", "Xác nhận đơn hàng thành công");
-        cleaned = cleaned.Replace("Order cancelled", "Hủy đơn hàng");
-
-        return cleaned;
     }
 
-    private static string FormatFileSize(long bytes)
+    private async Task LoadAllDashboardDataAsync()
     {
-        if (bytes < 1024) return $"{bytes} B";
-        if (bytes < 1024 * 1024) return $"{(bytes / 1024.0):F1} KB";
-        if (bytes < 1024 * 1024 * 1024) return $"{(bytes / (1024.0 * 1024.0)):F1} MB";
-        return $"{(bytes / (1024.0 * 1024.0 * 1024.0)):F2} GB";
+        try
+        {
+            var kpisTask = AnalyticsService.GetKpisAsync();
+            var chartTask = AnalyticsService.GetSalesChartDataAsync(_selectedPeriod);
+            var bestSellingTask = AnalyticsService.GetBestSellingProductsAsync(_selectedPeriod, 5);
+            var warehouseTask = AnalyticsService.GetWarehouseOverviewAsync();
+            var activitiesTask = AnalyticsService.GetRecentActivitiesAsync(6);
+
+            await Task.WhenAll(kpisTask, chartTask, bestSellingTask, warehouseTask, activitiesTask);
+
+            _kpis = await kpisTask;
+            _chartData = await chartTask;
+            _bestSellingProducts = await bestSellingTask;
+            _warehouseSummary = await warehouseTask;
+            _recentActivities = await activitiesTask;
+
+            // Cache to state service
+            DashboardState.SetFullState(_kpis, _chartData, _bestSellingProducts, _warehouseSummary, _recentActivities);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Dashboard Error] {ex.Message}");
+        }
+        finally
+        {
+            _isLoadingKpis = false;
+            _isLoadingChart = false;
+            _isLoadingBestSelling = false;
+            _isLoadingWarehouse = false;
+            _isLoadingActivities = false;
+            _isRefreshing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ChangePeriodAsync(string period)
+    {
+        if (_selectedPeriod == period) return;
+
+        _selectedPeriod = period;
+        _isLoadingChart = true;
+        _hoveredPointIndex = null;
+        StateHasChanged();
+
+        try
+        {
+            _chartData = await AnalyticsService.GetSalesChartDataAsync(_selectedPeriod);
+            _bestSellingProducts = await AnalyticsService.GetBestSellingProductsAsync(_selectedPeriod, 5);
+            DashboardState.SetFullState(_kpis, _chartData, _bestSellingProducts, _warehouseSummary, _recentActivities);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Dashboard Period Error] {ex.Message}");
+        }
+        finally
+        {
+            _isLoadingChart = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshDataAsync()
+    {
+        _isRefreshing = true;
+        DashboardState.Invalidate();
+        await LoadAllDashboardDataAsync();
+    }
+
+    // Chart SVG Calculations
+    private record PointCoord(double X, double Y);
+
+    private (string areaD, string lineD, List<PointCoord> pointCoords) CalculateChartPaths()
+    {
+        var points = _chartData.Points;
+        if (points.Count == 0) return (string.Empty, string.Empty, []);
+
+        const double left = 55.0;
+        const double right = 785.0;
+        const double top = 20.0;
+        const double bottom = 188.0;
+        double usableWidth = right - left;
+        double usableHeight = bottom - top;
+
+        double maxValue = _chartMetric == "revenue" ? (double)_chartData.MaxDailyRevenue : (double)_chartData.MaxDailyOrders;
+        if (maxValue <= 0) maxValue = 1.0;
+
+        var coords = new List<PointCoord>();
+        for (int i = 0; i < points.Count; i++)
+        {
+            double x = points.Count == 1 ? (left + right) / 2 : left + (i * usableWidth / (points.Count - 1));
+            double val = _chartMetric == "revenue" ? (double)points[i].Revenue : (double)points[i].OrderCount;
+            double y = bottom - ((val / maxValue) * usableHeight);
+            coords.Add(new PointCoord(x, y));
+        }
+
+        static string Inv(double val) => val.ToString("F1", CultureInfo.InvariantCulture);
+
+        // Build smooth curved line path
+        if (coords.Count == 1)
+        {
+            var c = coords[0];
+            return ($"M {Inv(c.X - 20)} {Inv(bottom)} L {Inv(c.X - 20)} {Inv(c.Y)} L {Inv(c.X + 20)} {Inv(c.Y)} L {Inv(c.X + 20)} {Inv(bottom)} Z",
+                    $"M {Inv(c.X - 20)} {Inv(c.Y)} L {Inv(c.X + 20)} {Inv(c.Y)}",
+                    coords);
+        }
+
+        var lineSb = new System.Text.StringBuilder();
+        lineSb.Append($"M {Inv(coords[0].X)} {Inv(coords[0].Y)}");
+
+        for (int i = 0; i < coords.Count - 1; i++)
+        {
+            var p0 = coords[i];
+            var p1 = coords[i + 1];
+            double midX = (p0.X + p1.X) / 2.0;
+            lineSb.Append($" C {Inv(midX)} {Inv(p0.Y)}, {Inv(midX)} {Inv(p1.Y)}, {Inv(p1.X)} {Inv(p1.Y)}");
+        }
+
+        var lineD = lineSb.ToString();
+        var areaD = $"{lineD} L {Inv(coords[^1].X)} {Inv(bottom)} L {Inv(coords[0].X)} {Inv(bottom)} Z";
+
+        return (areaD, lineD, coords);
+    }
+
+    private PointCoord GetPointCoords(int index)
+    {
+        var (_, _, coords) = CalculateChartPaths();
+        if (index >= 0 && index < coords.Count) return coords[index];
+        return new PointCoord(400, 100);
+    }
+
+    private void SetChartHover(int index) => _hoveredPointIndex = index;
+    private void ClearChartHover() => _hoveredPointIndex = null;
+
+    private static string FormatShortMoney(decimal amount)
+    {
+        if (amount >= 1_000_000_000) return $"{amount / 1_000_000_000m:F1}B";
+        if (amount >= 1_000_000) return $"{amount / 1_000_000m:F1}M";
+        if (amount >= 1_000) return $"{amount / 1_000m:N0}k";
+        return amount.ToString("N0");
+    }
+
+    private static string GetPeriodLabel(string period) => period switch
+    {
+        "7d" => "7 ngày qua",
+        "this_month" => "Tháng này",
+        _ => "30 ngày qua"
+    };
+
+    private static string FormatRelativeTime(DateTime utcTime)
+    {
+        var span = DateTime.UtcNow - utcTime;
+        if (span.TotalMinutes < 2) return "Vừa xong";
+        if (span.TotalMinutes < 60) return $"{Math.Max(1, (int)span.TotalMinutes)} phút trước";
+        if (span.TotalHours < 24) return $"{(int)span.TotalHours} giờ trước";
+        if (span.TotalDays < 7) return $"{(int)span.TotalDays} ngày trước";
+        return utcTime.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+    }
+
+    private static string GetUserInitial(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "HT";
+        var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0][..Math.Min(2, parts[0].Length)].ToUpper();
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+    }
+
+    private static string GetActivityIconClass(AuditEventType type) => type switch
+    {
+        AuditEventType.SalesOrderCreated or AuditEventType.SalesOrderConfirmed or AuditEventType.SalesOrderUpdated => "is-blue",
+        AuditEventType.InvoiceCreated or AuditEventType.InvoiceIssued => "is-emerald",
+        AuditEventType.WarehouseCreated or AuditEventType.WarehouseUpdated => "is-amber",
+        AuditEventType.ContractCreated or AuditEventType.ContractSigned or AuditEventType.ContractFinalized => "is-purple",
+        AuditEventType.CustomerCreated or AuditEventType.CustomerUpdated or AuditEventType.SupplierCreated => "is-teal",
+        AuditEventType.EmployeeRequestSubmitted or AuditEventType.EmployeeRequestApproved or AuditEventType.EmployeeRequestRejected => "is-indigo",
+        _ => "is-slate"
+    };
+
+    private static string GetActivityIconSvg(AuditEventType type) => type switch
+    {
+        AuditEventType.SalesOrderCreated or AuditEventType.SalesOrderConfirmed =>
+            """<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>""",
+        AuditEventType.InvoiceCreated or AuditEventType.InvoiceIssued =>
+            """<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>""",
+        AuditEventType.WarehouseCreated or AuditEventType.WarehouseUpdated =>
+            """<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/></svg>""",
+        AuditEventType.ContractCreated or AuditEventType.ContractSigned or AuditEventType.ContractFinalized =>
+            """<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>""",
+        AuditEventType.EmployeeRequestSubmitted or AuditEventType.EmployeeRequestApproved or AuditEventType.EmployeeRequestRejected =>
+            """<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>""",
+        _ =>
+            """<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>"""
+    };
+
+    // Real-Time Activity Toast Notification Handlers
+    private void HandleActivityBroadcast(ActivityToastNotification notif)
+    {
+        // Never notify the user of their own actions
+        if (!string.IsNullOrEmpty(_currentUserName) && 
+            string.Equals(notif.PerformedBy, _currentUserName, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        // Deduplication
+        if (!_seenToastIds.Add(notif.EventId))
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                if (_activeToasts.Count >= 2)
+                {
+                    _activeToasts.RemoveAt(0);
+                }
+                _activeToasts.Add(notif);
+                StateHasChanged();
+
+                try
+                {
+                    await JS.InvokeVoidAsync("TradeFlowMotion.animateToastEntrance", $"#toast-{notif.EventId}");
+                }
+                catch { }
+
+                // Auto-dismiss after 6 seconds
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(6000);
+                    await InvokeAsync(() => DismissToast(notif.EventId));
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Toast Dispatch Error] {ex.Message}");
+            }
+        });
+    }
+
+    private async void DismissToast(string eventId)
+    {
+        var toast = _activeToasts.FirstOrDefault(t => t.EventId == eventId);
+        if (toast != null)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.animateToastExit", $"#toast-{eventId}");
+            }
+            catch { }
+
+            _activeToasts.Remove(toast);
+            StateHasChanged();
+        }
+    }
+
+    public void Dispose()
+    {
+        ActivityBroadcaster.OnActivity -= HandleActivityBroadcast;
     }
 }

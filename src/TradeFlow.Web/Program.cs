@@ -368,6 +368,24 @@ app.MapGet("/test-import", async (TradeFlow.Application.Common.Interfaces.IExcel
     } 
 });
 
+app.MapPost("/api/realtime/broadcast-activity", (
+    TradeFlow.Application.Common.Interfaces.IUserActivityBroadcaster broadcaster,
+    string? user,
+    string? title,
+    string? desc) =>
+{
+    broadcaster.Broadcast(new TradeFlow.Application.Common.Interfaces.ActivityToastNotification(
+        EventId: Guid.NewGuid().ToString("N"),
+        PerformedBy: user ?? "Nguyễn Văn A (Kinh Doanh)",
+        EventType: TradeFlow.Domain.Enums.AuditEventType.SalesOrderCreated,
+        Title: title ?? "Tạo đơn bán hàng",
+        Description: desc ?? "Đơn bán hàng #DH-00125 vừa được tạo thành công",
+        TargetUrl: "/ban-hang",
+        OccurredAt: DateTime.UtcNow
+    ));
+    return Results.Ok(new { success = true });
+}).AllowAnonymous();
+
 app.Run();
 
 namespace TradeFlow.Web

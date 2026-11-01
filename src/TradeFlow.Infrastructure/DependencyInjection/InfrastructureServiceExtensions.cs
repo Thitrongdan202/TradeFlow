@@ -76,8 +76,9 @@ public static class InfrastructureServiceExtensions
             .AddSignInManager()
             .AddDefaultTokenProviders();
 
-        // Register audit service
+        // Register audit and real-time activity services
         services.AddHttpContextAccessor();
+        services.AddSingleton<IUserActivityBroadcaster, Services.UserActivityBroadcaster>();
         services.AddScoped<ICurrentUserService, Services.CurrentUserService>();
         services.AddScoped<IAuditService, Services.AuditService>();
         
@@ -119,6 +120,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IPartnerDebtExportService, Services.PartnerDebtExportService>();
 
         // Register Data Backup & Notification services
+        services.AddScoped<IDashboardAnalyticsService, Services.DashboardAnalyticsService>();
         services.AddScoped<IDataBackupService, Services.DataBackupService>();
         services.AddScoped<INotificationService, Services.NotificationService>();
         services.AddScoped<IProductService, Services.ProductService>();

@@ -437,8 +437,8 @@ else
    ============================================================ *@
 @if (_showPreviewModal && _previewDoc != null)
 {
-    <div class="tf-modal-backdrop" @onclick="ClosePreviewModal" @onkeydown="HandleModalKeyDown" tabindex="-1">
-        <div class="tf-preview-modal-dialog" @onclick:stopPropagation="true">
+    <div class="tf-modal-backdrop @(_isClosingPreview ? "is-closing" : "")" @onclick="ClosePreviewModal" @onkeydown="HandleModalKeyDown" tabindex="-1">
+        <div class="tf-preview-modal-dialog @(_isClosingPreview ? "is-closing" : "")" @onclick:stopPropagation="true">
             @* Modal Header *@
             <div class="tf-preview-modal-header">
                 <div class="tf-preview-header-left">
@@ -856,6 +856,7 @@ else
 
     // Preview Modal State
     private bool _showPreviewModal = false;
+    private bool _isClosingPreview = false;
     private DocumentAttachmentDto? _previewDoc;
     private DocumentValidationDto? _validationResult;
 
@@ -999,7 +1000,20 @@ else
 
     private async Task ClosePreviewModal()
     {
+        if (_isClosingPreview) return;
+
+        bool reduced = false;
+        try { reduced = await JS.InvokeAsync<bool>("TradeFlowMotion.isReducedMotion"); } catch { }
+
+        if (!reduced)
+        {
+            _isClosingPreview = true;
+            StateHasChanged();
+            await Task.Delay(160);
+        }
+
         _showPreviewModal = false;
+        _isClosingPreview = false;
         _previewDoc = null;
         _validationResult = null;
 

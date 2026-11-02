@@ -11,8 +11,8 @@
 
 @if (IsOpen)
 {
-    <div class="tf-modal-backdrop" @onclick="AttemptClose" @onkeydown="HandleKeyDown" tabindex="-1" @ref="_backdropRef">
-        <div class="tf-modal-dialog voucher-dialog" @onclick:stopPropagation="true">
+    <div class="tf-modal-backdrop @(_isClosing ? "is-closing" : "")" @onclick="AttemptClose" @onkeydown="HandleKeyDown" tabindex="-1" @ref="_backdropRef">
+        <div class="tf-modal-dialog voucher-dialog @(_isClosing ? "is-closing" : "")" @onclick:stopPropagation="true">
             @* Modal Header *@
             <div class="tf-modal-header">
                 <div class="tf-header-left">
@@ -381,6 +381,7 @@
     private ElementReference _backdropRef;
     private bool _wasOpen = false;
     private bool _hasAnimatedOpen = false;
+    private bool _isClosing = false;
 
     // Baseline Tracking for Dirty State Detection
     private int _initialPartnerId;
@@ -644,15 +645,29 @@
 
     private async Task ForceClose()
     {
+        if (_isClosing) return;
         _showDiscardConfirm = false;
-        try
+
+        bool reduced = false;
+        try { reduced = await JS.InvokeAsync<bool>("TradeFlowMotion.isReducedMotion"); } catch { }
+
+        if (!reduced)
         {
-            await JS.InvokeVoidAsync("TradeFlowMotion.animateModalExit", ".voucher-dialog", ".tf-modal-backdrop");
+            _isClosing = true;
+            StateHasChanged();
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.animateModalExit", ".voucher-dialog", ".tf-modal-backdrop");
+            }
+            catch { }
+            await Task.Delay(160);
         }
-        catch { }
+
+        _isClosing = false;
         _wasOpen = false;
         _hasAnimatedOpen = false;
         IsOpen = false;
+        try { await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll"); } catch { }
         await IsOpenChanged.InvokeAsync(false);
     }
 }

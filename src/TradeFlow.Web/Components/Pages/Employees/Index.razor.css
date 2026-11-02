@@ -250,3 +250,50 @@
 [data-theme="dark"] .tf-table-act-divider {
     background-color: #2e3542;
 }
+
+/* ============================================================================
+   TradeFlow Employees Module — Premium Motion Polish & Transitions
+   ============================================================================ */
+.tf-employee-layout {
+    transition: opacity 160ms ease;
+}
+
+.tf-filter-card {
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tf-filter-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border-color: var(--tf-border-strong, #cbd5e1);
+}
+
+.tf-filter-option {
+    transition: all 0.15s ease;
+}
+
+.tf-filter-option:hover {
+    transform: translateX(2px);
+}
+
+.tf-filter-item-row {
+    transition: all 0.15s ease;
+}
+
+.tf-filter-item-row:hover {
+    transform: translateX(2px);
+}
+
+.tf-employee-table tbody tr {
+    transition: background-color 140ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tf-employee-layout,
+    .tf-filter-card,
+    .tf-filter-option,
+    .tf-filter-item-row,
+    .tf-employee-table tbody tr {
+        transition: none !important;
+        transform: none !important;
+    }
+}

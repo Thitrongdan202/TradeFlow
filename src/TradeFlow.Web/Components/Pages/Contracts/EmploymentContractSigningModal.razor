@@ -6,8 +6,8 @@
 
 @if (IsOpen)
 {
-    <div class="modal fade show d-block" style="background-color: rgba(15, 23, 42, 0.6); z-index: 1060;" tabindex="-1" role="dialog" aria-modal="true">
-        <div class="modal-dialog modal-md modal-dialog-centered">
+    <div class="modal fade show d-block" style="background-color: rgba(15, 23, 42, 0.6); z-index: 1060;" tabindex="-1" role="dialog" aria-modal="true" @onclick="CloseAsync" @onkeydown="HandleKeyDown">
+        <div class="modal-dialog modal-md modal-dialog-centered" @onclick:stopPropagation="true">
             <div class="modal-content shadow-lg border-0 rounded-3">
                 <div class="modal-header bg-white border-bottom px-4 py-3">
                     <div class="d-flex align-items-center gap-3">
@@ -213,6 +213,14 @@
         finally
         {
             isSubmitting = false;
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await CloseAsync();
         }
     }
 

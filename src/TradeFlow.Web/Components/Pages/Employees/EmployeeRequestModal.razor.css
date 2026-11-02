@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    EMPLOYEE REQUEST REVIEW MODAL — SCOPED STYLES
    Smooth Tab Transitions · Scroll Architecture · Dark/Light Mode
    ============================================================ */
@@ -7,15 +7,21 @@
     position: fixed !important;
     inset: 0 !important;
     background-color: rgba(15, 23, 42, 0.65) !important;
-    backdrop-filter: blur(6px) !important;
-    -webkit-backdrop-filter: blur(6px) !important;
+    /* Pure alpha overlay - zero expensive per-frame raster blur */
+    transform: translateZ(0);
+
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     z-index: 1050 !important;
     padding: 20px;
     overflow: hidden !important;
-    animation: tfBackdropFade 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: tfBackdropFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.tf-modal-overlay.is-closing {
+    animation: tfBackdropFadeOut 0.16s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+    pointer-events: none;
 }
 
 .tf-modal.tf-modal-lg {
@@ -32,7 +38,13 @@
     overflow: hidden !important;
     position: relative;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    animation: tfModalEnter 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    transform: translateZ(0);
+    animation: tfModalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.tf-modal.tf-modal-lg.is-closing {
+    animation: tfModalScaleOut 0.16s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+    pointer-events: none;
 }
 
 /* Fixed Header */
@@ -425,7 +437,54 @@
     background: var(--tf-bg-card, #ffffff);
 }
 
-/* Backdrop & Modal Animations */
+/* Card Cross-Fade on Tab Switch (140ms) */
+.tf-req-card {
+    animation: tfCardFadeIn 0.14s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes tfCardFadeIn {
+    from {
+        opacity: 0.6;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Backdrop & Modal Open/Close Animations */
+@keyframes tfBackdropFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes tfBackdropFadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+@keyframes tfModalScaleIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes tfModalScaleOut {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(8px) scale(0.97);
+    }
+}
 @keyframes tfBackdropFade {
     from { opacity: 0; }
     to { opacity: 1; }

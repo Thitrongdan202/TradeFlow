@@ -3,11 +3,12 @@
 @using TradeFlow.Application.Common.Models.Employees
 @inject IEmployeeService EmployeeService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
 
 @if (IsOpen && Employee != null)
 {
-    <div class="tf-modal-overlay" @onclick="HandleBackdropClick">
-        <div class="tf-modal tf-modal-md" @onclick:stopPropagation="true">
+    <div class="tf-modal-overlay @(_isClosing ? "is-closing" : "")" @onclick="HandleBackdropClick" @onkeydown="HandleKeyDown" tabindex="-1">
+        <div class="tf-modal tf-modal-md @(_isClosing ? "is-closing" : "")" @onclick:stopPropagation="true">
             <div class="tf-modal-header" style="background-color: var(--tf-warning-subtle, rgba(245, 158, 11, 0.1)); border-bottom: 1px solid var(--tf-border);">
                 <h3 class="tf-modal-title" style="color: var(--tf-warning, #d97706); display: flex; align-items: center; gap: 8px;">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tf-warning, #ea580c);">
@@ -105,6 +106,7 @@
 
     private RetireModel _model = new();
     private bool _isSubmitting;
+    private bool _isClosing;
     private string? _errorMessage;
 
     protected override void OnParametersSet()
@@ -119,12 +121,21 @@
             };
             _errorMessage = null;
             _isSubmitting = false;
+            _isClosing = false;
         }
     }
 
     private async Task HandleBackdropClick()
     {
-        if (!_isSubmitting)
+        if (!_isSubmitting && !_isClosing)
+        {
+            await Close();
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (!_isSubmitting && !_isClosing && e.Key == "Escape")
         {
             await Close();
         }
@@ -132,7 +143,24 @@
 
     private async Task Close()
     {
+        if (_isClosing) return;
+
+        bool reduced = false;
+        try
+        {
+            reduced = await JS.InvokeAsync<bool>("TradeFlowMotion.isReducedMotion");
+        }
+        catch { }
+
+        if (!reduced)
+        {
+            _isClosing = true;
+            StateHasChanged();
+            await Task.Delay(160);
+        }
+
         IsOpen = false;
+        _isClosing = false;
         await IsOpenChanged.InvokeAsync(false);
     }
 

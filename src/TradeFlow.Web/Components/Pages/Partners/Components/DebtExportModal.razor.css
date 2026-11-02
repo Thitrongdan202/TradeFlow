@@ -2,13 +2,18 @@
 .tf-modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.55);
-    backdrop-filter: blur(4px);
+    background: rgba(15, 23, 42, 0.65);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1050;
-    animation: tfFadeIn 0.2s ease-out;
+    animation: tfFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateZ(0);
+}
+
+.tf-modal-backdrop.is-closing {
+    pointer-events: none;
+    animation: tfFadeOut 0.16s cubic-bezier(0.4, 0, 1, 1) forwards !important;
 }
 
 .tf-modal-dialog {
@@ -21,7 +26,13 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    animation: tfSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: tfSlideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateZ(0);
+}
+
+.tf-modal-dialog.is-closing {
+    pointer-events: none;
+    animation: tfSlideDown 0.16s cubic-bezier(0.4, 0, 1, 1) forwards !important;
 }
 
 @keyframes tfFadeIn {
@@ -29,9 +40,19 @@
     to { opacity: 1; }
 }
 
+@keyframes tfFadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
 @keyframes tfSlideUp {
-    from { transform: translateY(16px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+    from { transform: translateY(16px) scale(0.97); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes tfSlideDown {
+    from { transform: translateY(0) scale(1); opacity: 1; }
+    to { transform: translateY(12px) scale(0.97); opacity: 0; }
 }
 
 /* Modal Header */

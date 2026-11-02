@@ -2,12 +2,17 @@
 .tf-drawer-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.45);
-    backdrop-filter: blur(2px);
+    background: rgba(15, 23, 42, 0.65);
     z-index: 1050;
     display: flex;
     justify-content: flex-end;
-    animation: fadeIn 0.2s ease-out;
+    animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateZ(0);
+}
+
+.tf-drawer-backdrop.is-closing {
+    pointer-events: none;
+    animation: fadeOut 0.16s cubic-bezier(0.4, 0, 1, 1) forwards !important;
 }
 
 .tf-drawer-panel {
@@ -18,8 +23,14 @@
     box-shadow: -4px 0 25px rgba(0, 0, 0, 0.15);
     display: flex;
     flex-direction: column;
-    animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: slideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1);
     overflow: hidden;
+    transform: translateZ(0);
+}
+
+.tf-drawer-panel.is-closing {
+    pointer-events: none;
+    animation: slideOutRight 0.18s cubic-bezier(0.4, 0, 1, 1) forwards !important;
 }
 
 @keyframes fadeIn {
@@ -27,9 +38,19 @@
     to { opacity: 1; }
 }
 
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
 @keyframes slideInRight {
     from { transform: translateX(100%); }
     to { transform: translateX(0); }
+}
+
+@keyframes slideOutRight {
+    from { transform: translateX(0); }
+    to { transform: translateX(100%); }
 }
 
 /* Header */

@@ -9,8 +9,8 @@
 
 @if (IsOpen)
 {
-    <div class="tf-modal-backdrop" @onclick="HandleCancel">
-        <div class="tf-modal-dialog" @onclick:stopPropagation="true">
+    <div class="tf-modal-backdrop @(_isClosing ? "is-closing" : "")" @onclick="HandleCancel">
+        <div class="tf-modal-dialog @(_isClosing ? "is-closing" : "")" @onclick:stopPropagation="true">
             @* Modal Header *@
             <div class="tf-modal-header">
                 <h3 class="tf-modal-title">@(IsManagementExport ? "Xuất file quản lý công nợ Excel" : "Xuất file công nợ")</h3>
@@ -208,13 +208,16 @@
 
     private bool _isExporting = false;
     private string? _errorMessage;
+    private bool _isClosing;
 
     private int SelectedPartnerCount => SelectedPartnerIds?.Count ?? 0;
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
         if (IsOpen)
         {
+            _isClosing = false;
+            try { await JS.InvokeVoidAsync("TradeFlowMotion.lockScroll"); } catch { }
             _errorMessage = null;
             if (SinglePartnerId.HasValue)
             {
@@ -395,7 +398,21 @@
 
     private async Task HandleCancel()
     {
+        if (_isClosing) return;
+
+        bool reduced = false;
+        try { reduced = await JS.InvokeAsync<bool>("TradeFlowMotion.isReducedMotion"); } catch { }
+
+        if (!reduced)
+        {
+            _isClosing = true;
+            StateHasChanged();
+            await Task.Delay(160);
+        }
+
+        _isClosing = false;
         IsOpen = false;
+        try { await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll"); } catch { }
         await IsOpenChanged.InvokeAsync(false);
     }
 }

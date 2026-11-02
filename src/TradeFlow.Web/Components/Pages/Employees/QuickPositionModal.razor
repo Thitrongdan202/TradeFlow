@@ -3,11 +3,12 @@
 @using TradeFlow.Application.Common.Models.Employees
 @inject IEmployeeService EmployeeService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
 
 @if (IsOpen)
 {
-    <div class="tf-modal-overlay" @onclick="HandleBackdropClick" @onkeydown="HandleKeyDown" tabindex="-1">
-        <div class="tf-modal tf-modal-md" @onclick:stopPropagation="true" style="position: relative;">
+    <div class="tf-modal-overlay @(_isClosing ? "is-closing" : "")" @onclick="HandleBackdropClick" @onkeydown="HandleKeyDown" tabindex="-1">
+        <div class="tf-modal tf-modal-md @(_isClosing ? "is-closing" : "")" @onclick:stopPropagation="true" style="position: relative;">
             <div class="tf-modal-header">
                 <h3 class="tf-modal-title">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;vertical-align:text-bottom;color:var(--tf-primary);">
@@ -115,6 +116,7 @@
     private bool _isSubmitting;
     private bool _showDirtyConfirm;
     private string? _errorMessage;
+    private bool _isClosing;
 
     private bool IsEditMode => PositionToEdit != null;
 
@@ -150,13 +152,14 @@
 
             _errorMessage = null;
             _isSubmitting = false;
+            _isClosing = false;
             _showDirtyConfirm = false;
         }
     }
 
     private async Task HandleBackdropClick()
     {
-        if (_isSubmitting) return;
+        if (_isSubmitting || _isClosing) return;
 
         if (IsDirty)
         {
@@ -169,7 +172,7 @@
 
     private async Task HandleKeyDown(KeyboardEventArgs e)
     {
-        if (_isSubmitting) return;
+        if (_isSubmitting || _isClosing) return;
 
         if (e.Key == "Escape")
         {
@@ -185,7 +188,7 @@
 
     public async Task RequestCloseAsync()
     {
-        if (_isSubmitting) return;
+        if (_isSubmitting || _isClosing) return;
 
         if (IsDirty)
         {
@@ -204,7 +207,24 @@
 
     private async Task Close()
     {
+        if (_isClosing) return;
+
+        bool reduced = false;
+        try
+        {
+            reduced = await JS.InvokeAsync<bool>("TradeFlowMotion.isReducedMotion");
+        }
+        catch { }
+
+        if (!reduced)
+        {
+            _isClosing = true;
+            StateHasChanged();
+            await Task.Delay(160);
+        }
+
         IsOpen = false;
+        _isClosing = false;
         await IsOpenChanged.InvokeAsync(false);
     }
 

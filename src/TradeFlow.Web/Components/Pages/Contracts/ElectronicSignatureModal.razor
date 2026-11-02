@@ -7,19 +7,19 @@
 
 @if (IsOpen)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.55); z-index: 1060;">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header bg-primary text-white py-3">
-                    <h5 class="modal-title fs-6 fw-bold d-flex align-items-center gap-2">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.6); z-index: 1060;" @onclick="CloseAsync" @onkeydown="HandleKeyDown">
+        <div class="modal-dialog modal-dialog-centered modal-lg" @onclick:stopPropagation="true">
+            <div class="modal-content border-0 shadow-lg rounded-3">
+                <div class="modal-header py-3" style="background-color: var(--tf-surface-card, #ffffff); border-bottom: 1px solid var(--tf-border, #e2e8f0);">
+                    <h5 class="modal-title fs-6 fw-bold d-flex align-items-center gap-2" style="color: var(--tf-text-primary, #0f172a);">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-primary">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                             <path d="M12 18v-6"/>
                             <path d="M9 15l3 3 3-3"/>
                         </svg>
                         Xác nhận Ký Điện Tử Hợp Đồng (@ContractNumber)
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="CloseAsync"></button>
+                    <button type="button" class="btn-close" @onclick="CloseAsync" aria-label="Đóng"></button>
                 </div>
                 <div class="modal-body p-4">
                     @if (!string.IsNullOrEmpty(errorMessage))
@@ -327,6 +327,14 @@
         finally
         {
             isSubmitting = false;
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await CloseAsync();
         }
     }
 

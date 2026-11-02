@@ -19,8 +19,8 @@
 
 @if (IsOpen)
 {
-    <div class="tf-modal-overlay" @onclick="HandleBackdropClick" @onkeydown="HandleKeyDown" tabindex="-1">
-        <div class="tf-modal tf-modal-lg employee-modal"
+    <div class="tf-modal-overlay @(_isClosing ? "is-closing" : "")" @onclick="HandleBackdropClick" @onkeydown="HandleKeyDown" tabindex="-1">
+        <div class="tf-modal tf-modal-lg employee-modal @(_isClosing ? "is-closing" : "")"
              style="max-width: 860px; max-height: calc(100dvh - 32px); min-height: 0; display: flex; flex-direction: column; overflow: hidden; position: relative;"
              @onclick:stopPropagation="true">
 
@@ -486,6 +486,7 @@
     private FormModel _model = new();
     private bool _isDirectCreate = true;
     private bool _isSubmitting;
+    private bool _isClosing;
     private bool _showDirtyConfirm;
     private string? _errorMessage;
 
@@ -543,6 +544,7 @@
 
             _errorMessage = null;
             _isSubmitting = false;
+            _isClosing = false;
             _showDirtyConfirm = false;
             _pendingAttachments.Clear();
             _attachmentDescription = null;
@@ -639,7 +641,7 @@
 
     private async Task HandleBackdropClick()
     {
-        if (_isSubmitting) return;
+        if (_isSubmitting || _isClosing) return;
 
         if (IsDirty)
         {
@@ -652,7 +654,7 @@
 
     private async Task HandleKeyDown(KeyboardEventArgs e)
     {
-        if (_isSubmitting) return;
+        if (_isSubmitting || _isClosing) return;
 
         if (e.Key == "Escape")
         {
@@ -668,7 +670,7 @@
 
     public async Task RequestCloseAsync()
     {
-        if (_isSubmitting) return;
+        if (_isSubmitting || _isClosing) return;
 
         if (IsDirty)
         {
@@ -687,7 +689,24 @@
 
     private async Task CloseAsync()
     {
+        if (_isClosing) return;
+
+        bool reduced = false;
+        try
+        {
+            reduced = await JS.InvokeAsync<bool>("TradeFlowMotion.isReducedMotion");
+        }
+        catch { }
+
+        if (!reduced)
+        {
+            _isClosing = true;
+            StateHasChanged();
+            await Task.Delay(160);
+        }
+
         IsOpen = false;
+        _isClosing = false;
         try
         {
             await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll");
@@ -962,6 +981,7 @@
         finally
         {
             _isSubmitting = false;
+            _isClosing = false;
         }
     }
 

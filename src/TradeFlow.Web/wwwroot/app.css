@@ -1959,8 +1959,8 @@ textarea.tf-form-control {
   position: fixed;
   inset: 0;
   background-color: var(--tf-surface-overlay);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  transform: translateZ(0);
+
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2023,6 +2023,32 @@ textarea.tf-form-control {
   to { opacity: 1; }
 }
 
+@keyframes tfBackdropFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes tfModalScaleOut {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.97) translateY(8px);
+  }
+}
+
+.tf-modal-overlay.is-closing {
+  pointer-events: none;
+  animation: tfBackdropFadeOut 0.16s cubic-bezier(0.4, 0, 1, 1) forwards !important;
+}
+
+.tf-modal.is-closing {
+  pointer-events: none;
+  animation: tfModalScaleOut 0.16s cubic-bezier(0.4, 0, 1, 1) forwards !important;
+}
+
 @keyframes tfModalScaleIn {
   from {
     opacity: 0;
@@ -2031,6 +2057,77 @@ textarea.tf-form-control {
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
+  }
+}
+
+/* --- Coordinated Bootstrap Modal Motion --- */
+.modal.fade.show.d-block {
+  animation: tfBackdropFadeIn var(--tf-motion-fast, 140ms) ease;
+}
+
+.modal.fade.show.d-block .modal-dialog {
+  animation: tfModalScaleIn var(--tf-motion-modal, 160ms) var(--tf-ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.modal.fade.show.d-block.is-closing {
+  pointer-events: none;
+  animation: tfBackdropFadeOut 0.16s cubic-bezier(0.4, 0, 1, 1) forwards !important;
+}
+
+.modal.fade.show.d-block.is-closing .modal-dialog {
+  pointer-events: none;
+  animation: tfModalScaleOut 0.16s cubic-bezier(0.4, 0, 1, 1) forwards !important;
+}
+
+/* --- Coordinated Drawer Motion (Global) --- */
+@keyframes tfDrawerSlideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes tfDrawerSlideOut {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.tf-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: var(--tf-surface-overlay, rgba(15, 23, 42, 0.65));
+  display: flex;
+  justify-content: flex-end;
+  z-index: var(--tf-z-modal, 1050);
+  animation: tfBackdropFadeIn var(--tf-motion-normal, 200ms) var(--tf-ease-out) forwards;
+  transform: translateZ(0);
+}
+
+.tf-drawer-backdrop.is-closing {
+  pointer-events: none;
+  animation: tfBackdropFadeOut 0.16s cubic-bezier(0.4, 0, 1, 1) forwards !important;
+}
+
+.tf-drawer-panel {
+  animation: tfDrawerSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform: translateZ(0);
+}
+
+.tf-drawer-panel.is-closing {
+  pointer-events: none;
+  animation: tfDrawerSlideOut 0.18s cubic-bezier(0.4, 0, 1, 1) forwards !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal.fade.show.d-block,
+  .modal.fade.show.d-block .modal-dialog {
+    animation: none !important;
   }
 }
 
@@ -2138,7 +2235,7 @@ textarea.tf-form-control {
   position: absolute;
   inset: 0;
   background-color: rgba(15, 23, 42, 0.55);
-  backdrop-filter: blur(2px);
+  transform: translateZ(0);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2760,8 +2857,8 @@ textarea.tf-form-control {
   position: fixed;
   inset: 0;
   background-color: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  transform: translateZ(0);
+
   z-index: 1040;
   cursor: pointer;
 }
@@ -3405,7 +3502,7 @@ textarea.tf-form-control {
   position: fixed;
   inset: 0;
   background-color: rgba(15, 23, 42, 0.55);
-  backdrop-filter: blur(2px);
+  transform: translateZ(0);
   z-index: 1060;
   display: flex;
   align-items: center;
@@ -3559,8 +3656,8 @@ textarea.tf-form-control {
   position: absolute;
   inset: 0;
   background-color: rgba(248, 250, 252, 0.72);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  transform: translateZ(0);
+
   pointer-events: none;
   transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
@@ -3938,8 +4035,8 @@ html.dark .tf-skeleton-table-row {
   position: absolute;
   inset: 0;
   background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(1px);
-  -webkit-backdrop-filter: blur(1px);
+  transform: translateZ(0);
+
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4117,7 +4214,7 @@ button.tf-search-spinner {
   border-radius: 7px;
   cursor: pointer;
   white-space: nowrap;
-  transition: background-color 0.08s ease, border-color 0.08s ease, color 0.08s ease, box-shadow 0.08s ease;
+  transition: all 0.15s ease;
   text-decoration: none;
 }
 

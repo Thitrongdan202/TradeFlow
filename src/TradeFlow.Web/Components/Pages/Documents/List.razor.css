@@ -672,8 +672,6 @@
     width: 100vw !important;
     height: 100vh !important;
     background: rgba(15, 23, 42, 0.65) !important;
-    backdrop-filter: blur(6px) !important;
-    -webkit-backdrop-filter: blur(6px) !important;
     z-index: 1050 !important;
     display: flex !important;
     align-items: center !important;
@@ -683,11 +681,22 @@
     overscroll-behavior: contain !important;
     outline: none !important;
     animation: tfFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    transform: translateZ(0) !important;
+}
+
+.tf-modal-backdrop.is-closing {
+    pointer-events: none !important;
+    animation: tfFadeOut 0.16s cubic-bezier(0.4, 0, 1, 1) forwards !important;
 }
 
 @keyframes tfFadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
+}
+
+@keyframes tfFadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
 }
 
 @keyframes tfSlideUp {
@@ -698,6 +707,17 @@
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes tfSlideDown {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(10px) scale(0.97);
     }
 }
 
@@ -715,7 +735,13 @@
     position: relative;
     z-index: 1051;
     margin: auto;
-    animation: tfSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: tfSlideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateZ(0);
+}
+
+.tf-preview-modal-dialog.is-closing {
+    pointer-events: none !important;
+    animation: tfSlideDown 0.16s cubic-bezier(0.4, 0, 1, 1) forwards !important;
 }
 
 @media (max-width: 768px) {

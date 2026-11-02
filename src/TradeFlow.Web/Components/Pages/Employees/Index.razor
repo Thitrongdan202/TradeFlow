@@ -15,6 +15,7 @@
 @inject TradeFlowDbContext DbContext
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 
 <PageTitle>Danh sách nhân viên — TradeFlow</PageTitle>
 
@@ -1064,6 +1065,22 @@
     private string? _notificationMessage;
     private bool _notificationIsSuccess = true;
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.animateModuleEntrance", ".tf-employee-layout", new
+                {
+                    kpiSelector = ".tf-filter-card",
+                    sectionSelector = ".tf-employee-sidebar, .tf-employee-main, .tf-card, .tf-employee-table"
+                });
+            }
+            catch { }
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await LoadMasterDataAsync();
@@ -1083,6 +1100,7 @@
 
     private void OpenCreateModal()
     {
+        if (_showCreateModal) return;
         _formPreloadedRequest = null;
         _isFormResubmitMode = false;
         _isFormCloneMode = false;
@@ -1107,6 +1125,7 @@
 
     private void OpenRequestModal()
     {
+        if (_showRequestModal) return;
         _targetRequestId = null;
         _showRequestModal = true;
     }
@@ -1116,7 +1135,7 @@
         _showRequestModal = isOpen;
         if (!isOpen)
         {
-            _targetRequestId = null;
+        _targetRequestId = null;
             if (!string.IsNullOrEmpty(TabParam) || RequestIdParam.HasValue)
             {
                 Navigation.NavigateTo("/nhan-vien", replace: true);
@@ -1379,6 +1398,7 @@
 
     private void OpenRetireModal(EmployeeDto emp)
     {
+        if (_showRetireModal) return;
         _selectedEmployeeForRetire = emp;
         _showRetireModal = true;
     }

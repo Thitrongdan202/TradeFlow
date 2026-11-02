@@ -1021,3 +1021,25 @@
     background-color: #1e2028 !important;
     color: #f1f5f9 !important;
 }
+
+/* --- Tab Content Transition --- */
+.tf-contracts-tab-content {
+    animation: tfTabFadeIn 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes tfTabFadeIn {
+    from {
+        opacity: 0.7;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tf-contracts-tab-content {
+        animation: none !important;
+    }
+}

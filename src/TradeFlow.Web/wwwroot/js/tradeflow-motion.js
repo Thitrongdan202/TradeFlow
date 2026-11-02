@@ -330,6 +330,60 @@
     }
 
     /**
+     * Generalized enterprise module entrance with coordinated stagger
+     * Mirrors the smooth Dashboard entrance experience across Contracts, Employees, etc.
+     * @param {HTMLElement|string} containerEl 
+     * @param {Object} [options]
+     */
+    function animateModuleEntrance(containerEl, options = {}) {
+        const el = typeof containerEl === 'string' ? document.querySelector(containerEl) : containerEl;
+        const gsap = getGsap();
+        if (isReducedMotion() || !gsap || !el) return null;
+
+        const kpiSelector = options.kpiSelector || '.tf-kpi-card';
+        const sectionSelector = options.sectionSelector || '.tf-card, .tf-filter-card, .tf-employee-sidebar, .tf-employee-main, .tf-table-container, .tf-segmented-tabs, .tf-contracts-tab-content';
+        const kpiDuration = options.kpiDuration || 0.36;
+        const sectionDuration = options.sectionDuration || 0.40;
+
+        return gsap.context(() => {
+            const kpiCards = el.querySelectorAll(kpiSelector);
+            if (kpiCards.length > 0) {
+                gsap.fromTo(kpiCards,
+                    { opacity: 0, y: 12 },
+                    { opacity: 1, y: 0, duration: kpiDuration, stagger: 0.05, ease: 'power2.out', clearProps: 'transform' }
+                );
+            }
+
+            const sections = el.querySelectorAll(sectionSelector);
+            if (sections.length > 0) {
+                gsap.fromTo(sections,
+                    { opacity: 0, y: 14 },
+                    { opacity: 1, y: 0, duration: sectionDuration, stagger: 0.07, delay: 0.08, ease: 'power2.out', clearProps: 'transform' }
+                );
+            }
+        }, el);
+    }
+
+    /**
+     * Cross-fade transition when toggling tabs or applying heavy view changes
+     * @param {HTMLElement|string} contentEl 
+     */
+    function animateSectionTransition(contentEl) {
+        const el = typeof contentEl === 'string' ? document.querySelector(contentEl) : contentEl;
+        const gsap = getGsap();
+        if (isReducedMotion() || !gsap || !el) {
+            if (el) el.style.opacity = '1';
+            return;
+        }
+
+        gsap.killTweensOf(el);
+        gsap.fromTo(el,
+            { opacity: 0.4, y: 6 },
+            { opacity: 1, y: 0, duration: 0.2, ease: 'power2.out', clearProps: 'transform' }
+        );
+    }
+
+    /**
      * Animate Toast notification entrance
      * @param {HTMLElement|string} toastEl 
      */
@@ -465,6 +519,8 @@
         animateCardHover,
         registerInteractiveCard,
         animateDashboardEntrance,
+        animateModuleEntrance,
+        animateSectionTransition,
         animateToastEntrance,
         animateToastExit,
         cleanupElement,

@@ -3,10 +3,11 @@
 @using TradeFlow.Domain.Enums
 @inject IContractService ContractService
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 @if (IsOpen)
 {
-    <div class="modal fade show d-block tf-gallery-modal-backdrop"
+    <div class="modal fade show d-block tf-gallery-modal-backdrop @(_isClosing ? "is-closing" : "")"
          tabindex="-1"
          role="dialog"
          aria-modal="true"
@@ -206,11 +207,18 @@
         }
     }
 
+    private bool _isClosing = false;
+
     protected override async Task OnParametersSetAsync()
     {
-        if (IsOpen && templates.Count == 0)
+        if (IsOpen)
         {
-            await LoadTemplatesAsync();
+            _isClosing = false;
+            try { await JS.InvokeVoidAsync("TradeFlowMotion.lockScroll"); } catch { }
+            if (templates.Count == 0)
+            {
+                await LoadTemplatesAsync();
+            }
         }
     }
 
@@ -238,7 +246,21 @@
 
     private async Task CloseAsync()
     {
+        if (_isClosing) return;
+
+        bool reduced = false;
+        try { reduced = await JS.InvokeAsync<bool>("TradeFlowMotion.isReducedMotion"); } catch { }
+
+        if (!reduced)
+        {
+            _isClosing = true;
+            StateHasChanged();
+            await Task.Delay(160);
+        }
+
         IsOpen = false;
+        _isClosing = false;
+        try { await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll"); } catch { }
         await IsOpenChanged.InvokeAsync(false);
     }
 }

@@ -1,0 +1,13 @@
+{
+  "phase": "Baseline",
+  "addModal": {
+    "openAvgMs": 71,
+    "closeAvgMs": 42,
+    "modeSwitchAvgMs": 218.3
+  },
+  "reqModal": {
+    "openAvgMs": 38.2,
+    "closeAvgMs": 18.8,
+    "tabSwitchAvgMs": 193.1
+  }
+}

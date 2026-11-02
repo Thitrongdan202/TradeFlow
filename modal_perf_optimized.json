@@ -1,0 +1,13 @@
+{
+  "phase": "Optimized",
+  "addModal": {
+    "openAvgMs": 77.8,
+    "closeAvgMs": 204.4,
+    "modeSwitchAvgMs": 220.8
+  },
+  "reqModal": {
+    "openAvgMs": 42.4,
+    "closeAvgMs": 192.4,
+    "tabSwitchAvgMs": 211.8
+  }
+}

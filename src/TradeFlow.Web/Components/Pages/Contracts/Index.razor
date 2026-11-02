@@ -12,6 +12,7 @@
 @inject IDbContextFactory<TradeFlowDbContext> DbContextFactory
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
 
 <PageTitle>Quản lý Hợp đồng &amp; Phụ lục — TradeFlow</PageTitle>
 
@@ -110,6 +111,7 @@
 
     @if (activeModuleTab == "commercial")
     {
+        <div class="tf-contracts-tab-content">
         <!-- ========================================== -->
         <!-- TAB 1: HỢP ĐỒNG KINH TẾ / THƯƠNG MẠI       -->
         <!-- ========================================== -->
@@ -424,9 +426,11 @@
                 </table>
             </div>
         </div>
+        </div>
     }
     else
     {
+        <div class="tf-contracts-tab-content">
         <!-- ========================================== -->
         <!-- TAB 2: HỢP ĐỒNG LAO ĐỘNG (BLLĐ 2026)      -->
         <!-- ========================================== -->
@@ -785,6 +789,7 @@
                 </table>
             </div>
         </div>
+        </div>
     }
 </div>
 
@@ -838,9 +843,27 @@
         await LoadEmploymentContractsAsync();
     }
 
-    private void SwitchModuleTab(string tab)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.animateModuleEntrance", ".tf-contracts-page");
+            }
+            catch { }
+        }
+    }
+
+    private async Task SwitchModuleTab(string tab)
+    {
+        if (activeModuleTab == tab) return;
         activeModuleTab = tab;
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.animateSectionTransition", ".tf-contracts-tab-content");
+        }
+        catch { }
     }
 
     private async Task LoadContractsAsync()

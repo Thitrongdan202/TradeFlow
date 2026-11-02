@@ -1,13 +1,15 @@
 @namespace TradeFlow.Web.Components.Shared.Forms
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 @if (IsOpen)
 {
-    <div class="tf-modal-overlay"
+    <div class="tf-modal-overlay @(_isClosing ? "is-closing" : "")"
          @onclick="HandleBackdropClick"
          @onkeydown="HandleKeyDown"
          tabindex="-1"
          role="presentation">
-        <div class="@ComputedModalClass"
+        <div class="@ComputedModalClass @(_isClosing ? "is-closing" : "")"
              style="position: relative;"
              role="dialog"
              aria-modal="true"
@@ -98,6 +100,32 @@
     [Parameter] public string? Class { get; set; }
 
     private bool _showDirtyConfirm = false;
+    private bool _isClosing = false;
+    private bool _wasOpen = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && !_wasOpen)
+        {
+            _wasOpen = true;
+            _isClosing = false;
+            _showDirtyConfirm = false;
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.lockScroll");
+            }
+            catch { }
+        }
+        else if (!IsOpen && _wasOpen)
+        {
+            _wasOpen = false;
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll");
+            }
+            catch { }
+        }
+    }
 
     private string ComputedModalClass
     {
@@ -118,7 +146,7 @@
 
     private async Task HandleBackdropClick()
     {
-        if (IsSubmitting) return;
+        if (IsSubmitting || _isClosing) return;
 
         // If form has unsaved changes, prevent accidental backdrop dismissal
         if (IsDirty)
@@ -135,7 +163,7 @@
 
     private async Task HandleKeyDown(KeyboardEventArgs e)
     {
-        if (IsSubmitting) return;
+        if (IsSubmitting || _isClosing) return;
 
         if (CloseOnEscape && e.Key == "Escape")
         {
@@ -151,7 +179,7 @@
 
     public async Task RequestCloseAsync()
     {
-        if (IsSubmitting) return;
+        if (IsSubmitting || _isClosing) return;
 
         if (IsDirty)
         {
@@ -170,9 +198,42 @@
 
     private async Task CloseAsync()
     {
+        if (_isClosing) return;
+
+        bool reduced = false;
+        try
+        {
+            reduced = await JS.InvokeAsync<bool>("TradeFlowMotion.isReducedMotion");
+        }
+        catch { }
+
+        if (!reduced)
+        {
+            _isClosing = true;
+            StateHasChanged();
+            await Task.Delay(160);
+        }
+
+        _isClosing = false;
+        _wasOpen = false;
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll");
+        }
+        catch { }
+
         if (OnClose.HasDelegate)
         {
             await OnClose.InvokeAsync();
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll");
+        }
+        catch { }
     }
 }

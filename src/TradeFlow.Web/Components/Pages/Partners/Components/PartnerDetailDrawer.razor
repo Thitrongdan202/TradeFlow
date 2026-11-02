@@ -11,8 +11,8 @@
 
 @if (IsOpen)
 {
-    <div class="tf-drawer-backdrop" @onclick="HandleClose">
-        <div class="tf-drawer-panel" @onclick:stopPropagation="true">
+    <div class="tf-drawer-backdrop @(_isClosing ? "is-closing" : "")" @onclick="HandleClose">
+        <div class="tf-drawer-panel @(_isClosing ? "is-closing" : "")" @onclick:stopPropagation="true">
             @* 1. Drawer Header *@
             <div class="tf-drawer-header">
                 <div class="tf-drawer-header-info">
@@ -799,6 +799,7 @@
     private DrawerTab _activeTab = DrawerTab.Overview;
 
     private bool _isLoading = false;
+    private bool _isClosing = false;
     private CustomerDetailDto? _customer;
     private SupplierDetailDto? _supplier;
     private int? _lastLoadedId;
@@ -899,9 +900,14 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (IsOpen && PartnerId.HasValue && (PartnerId != _lastLoadedId || PartnerType != _lastLoadedType))
+        if (IsOpen)
         {
-            await LoadPartnerDetailAsync();
+            _isClosing = false;
+            try { await JS.InvokeVoidAsync("TradeFlowMotion.lockScroll"); } catch { }
+            if (PartnerId.HasValue && (PartnerId != _lastLoadedId || PartnerType != _lastLoadedType))
+            {
+                await LoadPartnerDetailAsync();
+            }
         }
     }
 
@@ -939,7 +945,21 @@
 
     private async Task HandleClose()
     {
+        if (_isClosing) return;
+
+        bool reduced = false;
+        try { reduced = await JS.InvokeAsync<bool>("TradeFlowMotion.isReducedMotion"); } catch { }
+
+        if (!reduced)
+        {
+            _isClosing = true;
+            StateHasChanged();
+            await Task.Delay(180);
+        }
+
         IsOpen = false;
+        _isClosing = false;
+        try { await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll"); } catch { }
         await IsOpenChanged.InvokeAsync(false);
         await OnClose.InvokeAsync();
     }

@@ -4,6 +4,7 @@ namespace TradeFlow.Application.Common.Interfaces;
 
 public interface IDocumentService
 {
+    Task<DocumentSummaryKpiDto> GetDocumentSummaryKpiAsync(CancellationToken cancellationToken = default);
     Task<List<DocumentAttachmentDto>> GetDocumentsAsync(DocumentFilterDto? filter = null, CancellationToken cancellationToken = default);
     Task<List<DocumentAttachmentDto>> GetDocumentsByEntityAsync(string entityType, int entityId, CancellationToken cancellationToken = default);
     Task<DocumentAttachmentDto?> GetDocumentByIdAsync(int id, CancellationToken cancellationToken = default);
@@ -19,6 +20,7 @@ public interface IDocumentService
         CancellationToken cancellationToken = default);
     Task<bool> DeleteDocumentAsync(int id, CancellationToken cancellationToken = default);
     Task<(Stream? Stream, string ContentType, string FileName)> GetFileStreamAsync(int id, CancellationToken cancellationToken = default);
+    Task<DocumentValidationDto> ValidateDocumentForPreviewAsync(int id, CancellationToken cancellationToken = default);
 
     Task<List<DocumentCategoryDto>> GetCategoriesAsync(bool activeOnly = true, CancellationToken cancellationToken = default);
     Task<DocumentCategoryDto> CreateCategoryAsync(DocumentCategoryDto dto, CancellationToken cancellationToken = default);

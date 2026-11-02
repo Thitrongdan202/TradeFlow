@@ -54,10 +54,43 @@ public class DocumentFilterDto
     public string? SearchTerm { get; set; }
     public int? CategoryId { get; set; }
     public DocumentTypeCategory? Group { get; set; }
+    public string? BusinessCategory { get; set; }
+    public string? QuickPeriod { get; set; }
     public string? RelatedEntityType { get; set; }
     public int? RelatedEntityId { get; set; }
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }
     public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
+    public int PageSize { get; set; } = 50;
 }
+
+public class DocumentSummaryKpiDto
+{
+    public int TotalDocuments { get; set; }
+    public int LinkedDocuments { get; set; }
+    public int UnlinkedDocuments { get; set; }
+    public int RecentUploads { get; set; }
+    public Dictionary<string, int> CategoryCounts { get; set; } = new();
+    public Dictionary<string, int> BusinessGroupCounts { get; set; } = new();
+}
+
+public enum DocumentPreviewStatus
+{
+    Loading,
+    Valid,
+    InvalidPlaceholder, // File exists, but is a mock/placeholder without valid binary structure
+    FileNotFound,        // Physical file does not exist on storage
+    UnsupportedFormat    // Format not supported for in-line preview
+}
+
+public class DocumentValidationDto
+{
+    public DocumentPreviewStatus Status { get; set; } = DocumentPreviewStatus.Loading;
+    public string Message { get; set; } = string.Empty;
+    public string Details { get; set; } = string.Empty;
+    public long FileSizeBytes { get; set; }
+    public string FormattedFileSize { get; set; } = string.Empty;
+    public string DetectedFormat { get; set; } = string.Empty;
+    public bool CanDownload { get; set; } = true;
+}
+

@@ -202,10 +202,11 @@ app.MapGet("/api/documents/{id:int}/download", async (int id, IDocumentService d
     return Results.File(stream, contentType, fileName);
 }).RequireAuthorization("Permission:Documents:View");
 
-app.MapGet("/api/documents/{id:int}/preview", async (int id, IDocumentService documentService) =>
+app.MapGet("/api/documents/{id:int}/preview", async (int id, HttpContext httpContext, IDocumentService documentService) =>
 {
     var (stream, contentType, fileName) = await documentService.GetFileStreamAsync(id);
     if (stream == null) return Results.NotFound();
+    httpContext.Response.Headers["Content-Disposition"] = $"inline; filename=\"{System.Net.WebUtility.UrlEncode(fileName)}\"";
     return Results.File(stream, contentType, enableRangeProcessing: true);
 }).RequireAuthorization("Permission:Documents:View");
 

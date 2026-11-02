@@ -3227,112 +3227,257 @@
     box-shadow: 0 1px 3px rgba(2, 132, 199, 0.3);
 }
 
-/* QR Code Payment Display (Quick Mode) */
+/* QR Code Payment Display (Quick Mode & Checkout Modal) */
 .tf-qr-tender-box {
     margin-top: 10px;
-    background-color: #f8fafc;
-    border: 1px solid var(--tf-border, #cbd5e1);
-    border-radius: 8px;
-    padding: 12px;
+    background-color: var(--tf-qr-card-bg, #f8fafc);
+    border: 1px solid var(--tf-qr-card-border, #cbd5e1);
+    border-radius: 10px;
+    padding: 14px;
     display: flex;
-    gap: 12px;
+    gap: 14px;
     align-items: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: background-color 0.18s ease, border-color 0.18s ease;
 }
 
 .tf-qr-image-container {
-    width: 90px;
-    height: 90px;
-    background-color: #ffffff;
-    border: 1px solid var(--tf-border, #e2e8f0);
-    border-radius: 6px;
-    padding: 4px;
+    width: 96px;
+    height: 96px;
+    background-color: #ffffff !important; /* Pure white quiet zone for high contrast optical camera scanning */
+    border: 1px solid var(--tf-qr-quiet-zone-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .tf-qr-code-image {
     width: 100%;
     height: 100%;
     object-fit: contain;
+    display: block;
 }
 
 .tf-qr-info-details {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    font-size: 11px;
+    gap: 4px;
+    font-size: 11.5px;
+}
+
+.tf-qr-header-badge {
+    margin-bottom: 2px;
+}
+
+.tf-qr-badge-text {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    background-color: rgba(37, 99, 235, 0.1);
+    color: var(--tf-primary, #2563eb);
 }
 
 .tf-qr-bank-name {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
-    color: var(--tf-gray-900, #0f172a);
+    color: var(--tf-text-primary, #0f172a);
     margin-bottom: 2px;
 }
 
 .tf-qr-info-row {
     display: flex;
     justify-content: space-between;
-    color: var(--tf-gray-600, #475569);
+    align-items: baseline;
+    color: var(--tf-text-secondary, #475569);
+    gap: 8px;
+}
+
+.tf-qr-row-label {
+    color: var(--tf-text-secondary, #64748b);
+    white-space: nowrap;
+}
+
+.tf-qr-row-val {
+    color: var(--tf-text-primary, #0f172a);
+    text-align: right;
+}
+
+.tf-qr-amount {
+    color: var(--tf-primary, #2563eb) !important;
+    font-weight: 700;
+    font-size: 12.5px;
 }
 
 .tf-qr-ref {
     color: var(--tf-primary, #0284c7);
+    background-color: rgba(37, 99, 235, 0.08);
+    padding: 1px 6px;
+    border-radius: 4px;
 }
 
 /* QR Code Inside Checkout Confirmation Modal */
 .tf-checkout-qr-box {
     margin-top: 12px;
-    background-color: #f0fdf4;
-    border: 1px solid #bbf7d0;
-    border-radius: 8px;
-    padding: 12px;
+    background-color: var(--tf-qr-card-bg, #f8fafc);
+    border: 1px solid var(--tf-qr-card-border, #cbd5e1);
+    border-radius: 10px;
+    padding: 14px;
     display: flex;
-    gap: 12px;
+    gap: 14px;
     align-items: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: background-color 0.18s ease, border-color 0.18s ease;
 }
 
 .tf-checkout-qr-img-wrap {
-    width: 96px;
-    height: 96px;
-    background-color: #ffffff;
-    border: 1px solid #dcfce7;
-    border-radius: 6px;
-    padding: 4px;
+    width: 100px;
+    height: 100px;
+    background-color: #ffffff !important; /* Pure white quiet zone */
+    border: 1px solid var(--tf-qr-quiet-zone-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .tf-checkout-qr-img {
     width: 100%;
     height: 100%;
     object-fit: contain;
+    display: block;
 }
 
 .tf-checkout-qr-details {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
     font-size: 12px;
 }
 
 .tf-checkout-bank-name {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
-    color: #166534;
+    color: var(--tf-text-primary, #0f172a);
     margin-bottom: 2px;
 }
 
 .tf-checkout-qr-line {
     display: flex;
     justify-content: space-between;
-    color: #1e293b;
+    align-items: baseline;
+    color: var(--tf-text-secondary, #475569);
+    gap: 8px;
+}
+
+.tf-checkout-amount {
+    color: var(--tf-primary, #2563eb) !important;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+/* Dark Mode Adaptation for POS Bank Transfer QR Cards */
+[data-bs-theme="dark"] .tf-qr-tender-box,
+[data-theme="dark"] .tf-qr-tender-box,
+html.dark .tf-qr-tender-box {
+    background-color: #1E222D !important;
+    border-color: #2E3542 !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-bs-theme="dark"] .tf-qr-image-container,
+[data-theme="dark"] .tf-qr-image-container,
+html.dark .tf-qr-image-container {
+    background-color: #ffffff !important; /* Always white quiet zone */
+    border-color: #383E4B !important;
+}
+
+[data-bs-theme="dark"] .tf-qr-badge-text,
+[data-theme="dark"] .tf-qr-badge-text,
+html.dark .tf-qr-badge-text {
+    background-color: rgba(96, 165, 250, 0.15) !important;
+    color: #60A5FA !important;
+}
+
+[data-bs-theme="dark"] .tf-qr-bank-name,
+[data-theme="dark"] .tf-qr-bank-name,
+html.dark .tf-qr-bank-name {
+    color: #F0F2F6 !important;
+}
+
+[data-bs-theme="dark"] .tf-qr-row-label,
+[data-theme="dark"] .tf-qr-row-label,
+html.dark .tf-qr-row-label {
+    color: #94A3B8 !important;
+}
+
+[data-bs-theme="dark"] .tf-qr-row-val,
+[data-theme="dark"] .tf-qr-row-val,
+html.dark .tf-qr-row-val {
+    color: #F0F2F6 !important;
+}
+
+[data-bs-theme="dark"] .tf-qr-amount,
+[data-theme="dark"] .tf-qr-amount,
+html.dark .tf-qr-amount {
+    color: #60A5FA !important;
+}
+
+[data-bs-theme="dark"] .tf-qr-ref,
+[data-theme="dark"] .tf-qr-ref,
+html.dark .tf-qr-ref {
+    color: #60A5FA !important;
+    background-color: rgba(96, 165, 250, 0.15) !important;
+}
+
+[data-bs-theme="dark"] .tf-checkout-qr-box,
+[data-theme="dark"] .tf-checkout-qr-box,
+html.dark .tf-checkout-qr-box {
+    background-color: #1E222D !important;
+    border-color: #2E3542 !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-bs-theme="dark"] .tf-checkout-qr-img-wrap,
+[data-theme="dark"] .tf-checkout-qr-img-wrap,
+html.dark .tf-checkout-qr-img-wrap {
+    background-color: #ffffff !important; /* Always white quiet zone */
+    border-color: #383E4B !important;
+}
+
+[data-bs-theme="dark"] .tf-checkout-bank-name,
+[data-theme="dark"] .tf-checkout-bank-name,
+html.dark .tf-checkout-bank-name {
+    color: #F0F2F6 !important;
+}
+
+[data-bs-theme="dark"] .tf-checkout-qr-line,
+[data-theme="dark"] .tf-checkout-qr-line,
+html.dark .tf-checkout-qr-line {
+    color: #B4BBC8 !important;
+}
+
+[data-bs-theme="dark"] .tf-checkout-qr-line strong,
+[data-theme="dark"] .tf-checkout-qr-line strong,
+html.dark .tf-checkout-qr-line strong {
+    color: #F0F2F6 !important;
+}
+
+[data-bs-theme="dark"] .tf-checkout-amount,
+[data-theme="dark"] .tf-checkout-amount,
+html.dark .tf-checkout-amount {
+    color: #60A5FA !important;
 }
 
 /* Footer Status Indicator */

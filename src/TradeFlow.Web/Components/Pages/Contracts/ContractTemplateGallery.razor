@@ -207,9 +207,10 @@
                             </div>
                             <div class="tf-card-actions">
                                 <button type="button"
+                                        id="@($"btn-preview-{t.Code}")"
                                         class="tf-btn-preview"
                                         title="Xem chi tiết toàn văn mẫu A4"
-                                        @onclick="() => OpenPreviewModal(t)"
+                                        @onclick='() => OpenPreviewModal(t, "btn-preview-" + t.Code)'
                                         @onclick:stopPropagation="true">
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
@@ -249,9 +250,18 @@
     <!-- 3. Full-Scale A4 Inspection Modal ("Xem mẫu hợp đồng") -->
     @if (inspectTemplate != null)
     {
-        <div class="modal fade show d-block tf-inspect-modal-backdrop" tabindex="-1" role="dialog" aria-modal="true">
-            <div class="modal-dialog modal-dialog-centered modal-xl tf-inspect-modal-dialog">
-                <div class="modal-content tf-inspect-modal-content">
+        <div class="modal fade show d-block tf-inspect-modal-backdrop"
+             tabindex="-1"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="tf-inspect-title"
+             @onclick="HandleInspectBackdropClick"
+             @onkeydown="HandleInspectKeyDown"
+             @ref="_inspectBackdropRef">
+            <div class="modal-dialog modal-dialog-centered modal-xl tf-inspect-modal-dialog"
+                 @onclick:stopPropagation="true">
+                <div class="modal-content tf-inspect-modal-content"
+                     @onclick:stopPropagation="true">
                     <!-- Modal Header -->
                     <div class="modal-header tf-inspect-header">
                         <div class="d-flex align-items-center gap-2">
@@ -265,14 +275,14 @@
                             </div>
                             <div>
                                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                                    <h5 class="modal-title fw-bold text-dark mb-0">@inspectTemplate.Title</h5>
+                                    <h5 id="tf-inspect-title" class="modal-title fw-bold text-dark mb-0">@inspectTemplate.Title</h5>
                                     <span class="badge bg-primary-subtle text-primary border border-primary-subtle small">@inspectTemplate.Category</span>
                                     <span class="badge bg-secondary-subtle text-secondary border small">@GetPartyBBadgeText(inspectTemplate.TargetPartyType)</span>
                                 </div>
                                 <div class="text-muted small mt-1">@inspectTemplate.LegalBasis</div>
                             </div>
                         </div>
-                        <button type="button" class="btn-close" @onclick="CloseInspectModal" aria-label="Đóng"></button>
+                        <button type="button" class="btn-close" @onclick="CloseInspectModalAsync" aria-label="Đóng xem trước (Esc)" title="Đóng xem trước (Esc)"></button>
                     </div>
 
                     <!-- Modal Body: High-Resolution A4 Document Sheet -->
@@ -383,7 +393,7 @@
                         <div class="text-muted small me-auto d-none d-md-block">
                             <span>Văn bản mẫu chuẩn A4, phông Times New Roman theo thể thức NĐ 30/2020/NĐ-CP và BLDS 2015.</span>
                         </div>
-                        <button type="button" class="btn btn-sm btn-outline-secondary px-3" @onclick="CloseInspectModal">Đóng xem trước</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary px-3" @onclick="CloseInspectModalAsync">Đóng xem trước</button>
                         <button type="button" class="btn btn-sm btn-primary px-4 d-flex align-items-center gap-1" @onclick="() => HandleSelectTemplate(inspectTemplate)">
                             <span>Soạn hợp đồng từ mẫu này</span>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -510,21 +520,62 @@
         activeCardCode = null;
     }
 
-    private void OpenPreviewModal(ContractTemplateDto t)
+    private ElementReference _inspectBackdropRef;
+    private bool _wasInspectOpen;
+    private string? _lastInspectTriggerId;
+
+    private async Task OpenPreviewModal(ContractTemplateDto t, string? triggerId = null)
     {
+        _lastInspectTriggerId = triggerId;
         inspectTemplate = t;
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.lockScroll");
+        }
+        catch { }
     }
 
-    private void CloseInspectModal()
+    private async Task CloseInspectModalAsync()
     {
-        inspectTemplate = null;
+        if (inspectTemplate != null)
+        {
+            inspectTemplate = null;
+            _wasInspectOpen = false;
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll");
+            }
+            catch { }
+
+            if (!string.IsNullOrEmpty(_lastInspectTriggerId))
+            {
+                try
+                {
+                    await JS.InvokeVoidAsync("TradeFlowMotion.restoreFocus", $"#{_lastInspectTriggerId}");
+                }
+                catch { }
+            }
+        }
     }
 
-    private void OnCardClicked(ContractTemplateDto t)
+    private async Task HandleInspectBackdropClick()
+    {
+        await CloseInspectModalAsync();
+    }
+
+    private async Task HandleInspectKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await CloseInspectModalAsync();
+        }
+    }
+
+    private async Task OnCardClicked(ContractTemplateDto t)
     {
         if (activeCardCode == t.Code)
         {
-            OpenPreviewModal(t);
+            await OpenPreviewModal(t, $"btn-preview-{t.Code}");
         }
         else
         {
@@ -541,13 +592,13 @@
         else if (e.Key == "Escape")
         {
             activeCardCode = null;
-            inspectTemplate = null;
+            await CloseInspectModalAsync();
         }
     }
 
     private async Task HandleSelectTemplate(ContractTemplateDto t)
     {
-        inspectTemplate = null;
+        await CloseInspectModalAsync();
         activeCardCode = null;
         if (OnSelect.HasDelegate)
         {
@@ -860,6 +911,16 @@
                 motionModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/contract-gallery-motion.js");
                 await motionModule.InvokeVoidAsync("initGalleryMotion", galleryContainer);
             }
+
+            if (inspectTemplate != null && !_wasInspectOpen)
+            {
+                _wasInspectOpen = true;
+                try
+                {
+                    await _inspectBackdropRef.FocusAsync();
+                }
+                catch { }
+            }
         }
         catch (JSDisconnectedException) { }
         catch (ObjectDisposedException) { }
@@ -870,6 +931,15 @@
     {
         try
         {
+            if (_wasInspectOpen || inspectTemplate != null)
+            {
+                try
+                {
+                    await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll");
+                }
+                catch { }
+            }
+
             if (motionModule != null)
             {
                 await motionModule.InvokeVoidAsync("disposeGalleryMotion", galleryContainer);

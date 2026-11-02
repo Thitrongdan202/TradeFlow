@@ -1,0 +1,252 @@
+/* ============================================================================
+   TradeFlow Employees/Index.razor Scoped CSS
+   Action Menu Dropdown, Smooth Animation, Light & Dark Theme WCAG AAA
+   ============================================================================ */
+
+.tf-table-act-cell {
+    position: relative;
+    padding: 6px 12px !important;
+}
+
+.tf-table-act-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 32px Modern Action Button */
+.tf-table-act-btn {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    padding: 0;
+    margin: 0;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--tf-text-secondary, #64748b);
+    transition: all 150ms cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: none;
+    outline: none;
+}
+
+.tf-table-act-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: var(--tf-border, #e2e8f0);
+    color: var(--tf-text-primary, #0f172a);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.tf-table-act-btn:active,
+.tf-table-act-btn.is-active {
+    background: rgba(37, 99, 235, 0.1);
+    border-color: rgba(37, 99, 235, 0.25);
+    color: var(--tf-primary, #2563eb);
+    transform: translateY(0);
+}
+
+/* Outside Click Backdrop */
+.tf-table-act-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: transparent;
+    cursor: default;
+}
+
+/* Dropdown Menu Container */
+.tf-table-act-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    z-index: 101;
+    min-width: 210px;
+    padding: 6px;
+    background-color: var(--tf-bg-card, #ffffff);
+    border: 1px solid var(--tf-border, #e2e8f0);
+    border-radius: 10px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    transform-origin: top right;
+    animation: tfActMenuFade 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Auto Upward Flipping near Bottom */
+.tf-table-act-menu.menu-upwards {
+    top: auto;
+    bottom: calc(100% + 4px);
+    transform-origin: bottom right;
+}
+
+@keyframes tfActMenuFade {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.tf-table-act-menu.menu-upwards {
+    animation: tfActMenuFadeUp 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes tfActMenuFadeUp {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Dropdown Action Items */
+.tf-table-act-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    text-align: left;
+    cursor: pointer;
+    color: var(--tf-text-primary, #1e293b);
+    text-decoration: none;
+    transition: all 120ms ease;
+    box-shadow: none;
+    outline: none;
+    white-space: nowrap;
+}
+
+.tf-table-act-item svg {
+    flex-shrink: 0;
+    color: var(--tf-text-secondary, #64748b);
+    transition: color 120ms ease;
+}
+
+.tf-table-act-item:hover {
+    background-color: rgba(37, 99, 235, 0.08);
+    color: var(--tf-primary, #2563eb);
+}
+
+.tf-table-act-item:hover svg {
+    color: var(--tf-primary, #2563eb);
+}
+
+/* Danger Action (Retire) */
+.tf-table-act-item.is-danger {
+    color: #ef4444;
+}
+
+.tf-table-act-item.is-danger svg {
+    color: #ef4444;
+}
+
+.tf-table-act-item.is-danger:hover {
+    background-color: rgba(239, 68, 68, 0.08);
+    color: #dc2626;
+}
+
+.tf-table-act-item.is-danger:hover svg {
+    color: #dc2626;
+}
+
+/* Menu Divider */
+.tf-table-act-divider {
+    height: 1px;
+    margin: 4px 0;
+    background-color: var(--tf-border, #e2e8f0);
+}
+
+/* ============================================================================
+   Dark Mode Support (WCAG AAA)
+   ============================================================================ */
+[data-bs-theme="dark"] .tf-table-act-btn,
+[data-theme="dark"] .tf-table-act-btn {
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .tf-table-act-btn:hover,
+[data-theme="dark"] .tf-table-act-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: #334155;
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-table-act-btn.is-active,
+[data-theme="dark"] .tf-table-act-btn.is-active {
+    background: rgba(37, 99, 235, 0.2);
+    border-color: rgba(59, 130, 246, 0.4);
+    color: #60a5fa;
+}
+
+[data-bs-theme="dark"] .tf-table-act-menu,
+[data-theme="dark"] .tf-table-act-menu {
+    background-color: #1e222d;
+    border-color: #2e3542;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+}
+
+[data-bs-theme="dark"] .tf-table-act-item,
+[data-theme="dark"] .tf-table-act-item {
+    color: #e2e8f0;
+}
+
+[data-bs-theme="dark"] .tf-table-act-item svg,
+[data-theme="dark"] .tf-table-act-item svg {
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .tf-table-act-item:hover,
+[data-theme="dark"] .tf-table-act-item:hover {
+    background-color: rgba(37, 99, 235, 0.18);
+    color: #93c5fd;
+}
+
+[data-bs-theme="dark"] .tf-table-act-item:hover svg,
+[data-theme="dark"] .tf-table-act-item:hover svg {
+    color: #93c5fd;
+}
+
+[data-bs-theme="dark"] .tf-table-act-item.is-danger,
+[data-theme="dark"] .tf-table-act-item.is-danger {
+    color: #f87171;
+}
+
+[data-bs-theme="dark"] .tf-table-act-item.is-danger svg,
+[data-theme="dark"] .tf-table-act-item.is-danger svg {
+    color: #f87171;
+}
+
+[data-bs-theme="dark"] .tf-table-act-item.is-danger:hover,
+[data-theme="dark"] .tf-table-act-item.is-danger:hover {
+    background-color: rgba(239, 68, 68, 0.18);
+    color: #fca5a5;
+}
+
+[data-bs-theme="dark"] .tf-table-act-item.is-danger:hover svg,
+[data-theme="dark"] .tf-table-act-item.is-danger:hover svg {
+    color: #fca5a5;
+}
+
+[data-bs-theme="dark"] .tf-table-act-divider,
+[data-theme="dark"] .tf-table-act-divider {
+    background-color: #2e3542;
+}

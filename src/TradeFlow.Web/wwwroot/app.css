@@ -158,7 +158,10 @@
 :root[data-bs-theme="dark"],
 :root[data-theme="dark"],
 html[data-bs-theme="dark"],
-html[data-theme="dark"] {
+html[data-theme="dark"],
+html.dark,
+[data-bs-theme="dark"],
+[data-theme="dark"] {
   color-scheme: dark;
 
   /* --- Bootstrap 5.3 Core Integration --- */
@@ -2002,6 +2005,8 @@ textarea.tf-form-control {
   scroll-behavior: auto !important;
   flex: 1 1 auto;
   min-height: 0;
+  background-color: var(--tf-modal-body-bg, var(--tf-bg-subtle));
+  color: var(--tf-modal-text, var(--tf-text-primary));
 }
 
 .tf-modal-footer {
@@ -8364,4 +8369,112 @@ select:not(.tf-document-paper *),
   padding: 16px;
   contain: layout paint;
   isolation: isolate;
+}
+
+/* ============================================================
+   DEBT & PARTNER QR MODAL STYLES (Synchronized Light/Dark)
+   ============================================================ */
+.tf-modal-dialog.qr {
+    max-width: 440px !important;
+    width: 100% !important;
+    background: var(--tf-modal-bg, #ffffff) !important;
+    border: 1px solid var(--tf-modal-border, #e2e8f0) !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+}
+
+.tf-qr-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 999px;
+    background-color: rgba(37, 99, 235, 0.1);
+    color: var(--tf-primary, #2563eb);
+    margin-bottom: 12px;
+}
+
+.tf-qr-box {
+    background-color: #ffffff !important; /* Pure white quiet zone for flawless camera scanning */
+    padding: 14px !important;
+    border: 1px solid var(--tf-qr-card-border, #e2e8f0) !important;
+    border-radius: 12px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 auto 16px auto !important;
+    max-width: 260px !important;
+    width: 100% !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+.tf-qr-img {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    border-radius: 4px !important;
+}
+
+.tf-qr-placeholder {
+    padding: 24px 16px;
+    text-align: center;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.tf-qr-details {
+    text-align: left;
+    background-color: var(--tf-modal-section-bg, #f8fafc);
+    border: 1px solid var(--tf-modal-border, #e2e8f0);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 12.5px;
+}
+
+.tf-qr-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.tf-qr-label {
+    color: var(--tf-modal-text-secondary, #64748b);
+    white-space: nowrap;
+    font-size: 12px;
+}
+
+.tf-qr-val {
+    color: var(--tf-modal-text, #0f172a);
+    text-align: right;
+    word-break: break-all;
+}
+
+[data-bs-theme="dark"] .tf-qr-badge,
+[data-theme="dark"] .tf-qr-badge,
+html.dark .tf-qr-badge {
+    background-color: rgba(96, 165, 250, 0.15) !important;
+    color: #60a5fa !important;
+}
+
+[data-bs-theme="dark"] .tf-qr-details,
+[data-theme="dark"] .tf-qr-details,
+html.dark .tf-qr-details {
+    background-color: #1a1e27 !important;
+    border-color: #2e3542 !important;
+}
+
+[data-bs-theme="dark"] .tf-qr-label,
+[data-theme="dark"] .tf-qr-label,
+html.dark .tf-qr-label {
+    color: #94a3b8 !important;
+}
+
+[data-bs-theme="dark"] .tf-qr-val,
+[data-theme="dark"] .tf-qr-val,
+html.dark .tf-qr-val {
+    color: #f1f5f9 !important;
 }

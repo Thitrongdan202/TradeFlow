@@ -200,6 +200,48 @@
     }
 
     /**
+     * Animate animated form mode switching (e.g. Direct Create vs Request Approval)
+     * @param {HTMLElement|string} contentEl 
+     */
+    function animateFormSwitch(contentEl) {
+        const el = typeof contentEl === 'string' ? document.querySelector(contentEl) : contentEl;
+        const gsap = getGsap();
+        if (!el) return;
+        if (isReducedMotion() || !gsap) {
+            el.style.opacity = '1';
+            return;
+        }
+
+        gsap.killTweensOf(el);
+        gsap.fromTo(el,
+            { opacity: 0.4, y: 8 },
+            { opacity: 1, y: 0, duration: 0.2, ease: 'power2.out', clearProps: 'transform' }
+        );
+    }
+
+    /**
+     * Get scrollTop of a scroll container
+     * @param {HTMLElement|string} selector 
+     * @returns {number}
+     */
+    function getElementScrollTop(selector) {
+        const el = typeof selector === 'string' ? document.querySelector(selector) : selector;
+        return el ? el.scrollTop : 0;
+    }
+
+    /**
+     * Set scrollTop of a scroll container safely
+     * @param {HTMLElement|string} selector 
+     * @param {number} top 
+     */
+    function setElementScrollTop(selector, top) {
+        const el = typeof selector === 'string' ? document.querySelector(selector) : selector;
+        if (el) {
+            el.scrollTop = top;
+        }
+    }
+
+    /**
      * Programmatic or event-driven hover animation for cards
      * @param {HTMLElement|string} cardEl 
      * @param {boolean} isHover 
@@ -363,6 +405,26 @@
             initGlobalTransitions();
         }
 
+        // Global ESC handler for open modals & action menus
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' || e.key === 'Esc') {
+                const activeBackdrop = document.querySelector('.tf-table-act-backdrop, .tf-act-dropdown-backdrop');
+                if (activeBackdrop) {
+                    activeBackdrop.click();
+                    return;
+                }
+                const activeInspectClose = document.querySelector('.tf-inspect-modal-content .btn-close, .tf-inspect-modal-dialog .btn-close');
+                if (activeInspectClose) {
+                    activeInspectClose.click();
+                    return;
+                }
+                const activeModalClose = document.querySelector('.tf-preview-modal-dialog .tf-modal-close-btn, .tf-modal-backdrop .tf-modal-close-btn, .tf-modal-overlay .tf-modal-close-btn');
+                if (activeModalClose) {
+                    activeModalClose.click();
+                }
+            }
+        });
+
         if (window.Blazor && window.Blazor.addEventListener) {
             window.Blazor.addEventListener('enhancedload', function () {
                 const mainContent = document.querySelector('.tf-content');
@@ -373,15 +435,33 @@
         }
     }
 
+    /**
+     * Restore focus to an element by selector or reference
+     * @param {HTMLElement|string} selectorOrEl 
+     */
+    function restoreFocus(selectorOrEl) {
+        if (typeof document === 'undefined') return;
+        try {
+            const el = typeof selectorOrEl === 'string' ? document.querySelector(selectorOrEl) : selectorOrEl;
+            if (el && typeof el.focus === 'function') {
+                el.focus();
+            }
+        } catch (e) { }
+    }
+
     const api = {
         isReducedMotion,
         lockScroll,
         unlockScroll,
+        restoreFocus,
         animateModalEnter,
         animateModalExit,
         animateDropdown,
         animatePageContent,
         animateTabContent,
+        animateFormSwitch,
+        getElementScrollTop,
+        setElementScrollTop,
         animateCardHover,
         registerInteractiveCard,
         animateDashboardEntrance,

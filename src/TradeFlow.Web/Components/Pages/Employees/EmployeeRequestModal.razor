@@ -5,13 +5,15 @@
 @inject IEmployeeService EmployeeService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject Microsoft.AspNetCore.Authorization.IAuthorizationService AuthorizationService
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 @if (IsOpen)
 {
-    <div class="tf-modal-overlay" @onclick="HandleBackdropClick">
-        <div class="tf-modal tf-modal-lg" style="max-width: 920px; max-height: calc(100dvh - 32px); min-height: 0; display: flex; flex-direction: column; overflow: hidden; position: relative;" @onclick:stopPropagation="true">
+    <div class="tf-modal-overlay" @onclick="HandleBackdropClick" @onkeydown="HandleKeyDown" tabindex="-1">
+        <div class="tf-modal tf-modal-lg" @onclick:stopPropagation="true">
             @* Fixed Header *@
-            <div class="tf-modal-header" style="flex: 0 0 auto;">
+            <div class="tf-modal-header">
                 <div>
                     <h3 class="tf-modal-title" style="display:flex; align-items:center; gap:8px;">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tf-primary);">
@@ -31,7 +33,7 @@
                             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
                         </svg>
                     </button>
-                    <button type="button" class="tf-modal-close-btn" @onclick="Close" aria-label="Đóng" title="Đóng">
+                    <button type="button" class="tf-modal-close-btn" @onclick="Close" aria-label="Đóng (Esc)" title="Đóng (Esc)">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"/>
                             <line x1="6" y1="6" x2="18" y2="18"/>
@@ -68,19 +70,42 @@
                 </button>
             </div>
 
-            @* Scrollable Body *@
-            <div class="tf-modal-body tf-req-body" style="flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;">
+            @* Scrollable Body (The ONLY scroll container) *@
+            <div class="tf-modal-body tf-req-body">
                 @if (!string.IsNullOrEmpty(_alertMessage))
                 {
-                    <div class="tf-alert @(_alertIsSuccess ? "tf-alert-success" : "tf-alert-error") tf-mb-4">
+                    <div class="tf-alert @(_alertIsSuccess ? "tf-alert-success" : "tf-alert-error") tf-mb-4" style="margin-bottom: 14px;">
                         @_alertMessage
                     </div>
                 }
 
                 @if (_isLoading && _allRequests.Count == 0)
                 {
-                    <div style="padding:40px; text-align:center; color:var(--tf-text-muted);">
-                        <span class="tf-spinner-sm"></span> Đang tải danh sách yêu cầu...
+                    <div class="tf-req-skeleton-list" aria-busy="true" aria-label="Đang tải danh sách yêu cầu...">
+                        @for (int i = 0; i < 3; i++)
+                        {
+                            <div class="tf-req-card tf-req-card-skeleton">
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        <div class="tf-skeleton-avatar"></div>
+                                        <div style="display:flex; flex-direction:column; gap:6px;">
+                                            <div class="tf-skeleton-line" style="width:140px; height:16px;"></div>
+                                            <div class="tf-skeleton-line" style="width:90px; height:12px;"></div>
+                                        </div>
+                                    </div>
+                                    <div class="tf-skeleton-badge"></div>
+                                </div>
+                                <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
+                                    <div class="tf-skeleton-line" style="height:24px;"></div>
+                                    <div class="tf-skeleton-line" style="height:24px;"></div>
+                                    <div class="tf-skeleton-line" style="height:24px;"></div>
+                                </div>
+                                <div style="display:flex; justify-content:flex-end; gap:8px;">
+                                    <div class="tf-skeleton-btn"></div>
+                                    <div class="tf-skeleton-btn"></div>
+                                </div>
+                            </div>
+                        }
                     </div>
                 }
                 else if (!_filteredRequests.Any())
@@ -102,10 +127,12 @@
                 }
                 else
                 {
-                    <div style="display:flex; flex-direction:column; gap:16px;">
+                    <div class="tf-req-tab-content">
                         @foreach (var req in _filteredRequests)
                         {
-                            <div id="@($"req-item-{req.Id}")" class="tf-req-card @(req.Id == TargetRequestId ? "highlighted-target" : "")" @key="req.Id">
+                            <div id="@($"req-item-{req.Id}")"
+                                 class="tf-req-card @(req.Id == TargetRequestId ? "highlighted-target" : "") @(req.Id == _resolvingRequestId ? "tf-card-resolving" : "")"
+                                 @key="req.Id">
                                 @* Header of card *@
                                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
                                     <div style="display:flex; align-items:center; gap:12px;">
@@ -189,7 +216,7 @@
 
                                 @if (!string.IsNullOrEmpty(req.Notes))
                                 {
-                                    <div class="tf-req-notes" style="margin-top: 8px;">
+                                    <div class="tf-req-notes" style="margin-top: 8px; font-size: 12.5px; color: var(--tf-text-secondary);">
                                         <span class="tf-req-grid-label">Ghi chú đề xuất:</span> @req.Notes
                                     </div>
                                 }
@@ -296,21 +323,45 @@
                                 {
                                     @if (_canApprove)
                                     {
-                                        <div class="tf-req-actions" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--tf-border);">
+                                        <div class="tf-req-actions">
                                             @if (_processingRequestId == req.Id)
                                             {
                                                 <div style="display:flex; flex-direction:column; gap:8px; width:100%;">
-                                                    <input type="text" class="tf-input" placeholder="Nhập ghi chú phê duyệt hoặc nội dung yêu cầu bổ sung / lý do từ chối..." @bind="_reviewNotes" style="width:100%; height:34px; font-size:13px;" />
+                                                    <input type="text" class="tf-input" placeholder="Nhập ghi chú phê duyệt hoặc nội dung yêu cầu bổ sung / lý do từ chối..." @bind="_reviewNotes" style="width:100%; height:34px; font-size:13px;" disabled="@_isSubmittingAction" />
                                                     <div style="display:flex; justify-content:flex-end; gap:8px;">
-                                                        <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="CancelReview">Hủy</button>
+                                                        <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="CancelReview" disabled="@_isSubmittingAction">Hủy</button>
                                                         <button type="button" class="tf-btn tf-btn-danger tf-btn-sm" @onclick="() => ConfirmReview(req.Id, false)" disabled="@_isSubmittingAction">
-                                                            Xác nhận từ chối
+                                                            @if (_isSubmittingAction && _activeActionType == "reject")
+                                                            {
+                                                                <span class="tf-spinner-sm"></span>
+                                                                <span>Đang từ chối...</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span>Xác nhận từ chối</span>
+                                                            }
                                                         </button>
                                                         <button type="button" class="tf-btn tf-btn-outline-warning tf-btn-sm" @onclick="() => ConfirmRequestDocs(req.Id)" disabled="@_isSubmittingAction">
-                                                            Yêu cầu bổ sung hồ sơ
+                                                            @if (_isSubmittingAction && _activeActionType == "docs")
+                                                            {
+                                                                <span class="tf-spinner-sm"></span>
+                                                                <span>Đang gửi yêu cầu...</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span>Yêu cầu bổ sung hồ sơ</span>
+                                                            }
                                                         </button>
                                                         <button type="button" class="tf-btn tf-btn-primary tf-btn-sm" @onclick="() => ConfirmReview(req.Id, true)" disabled="@_isSubmittingAction">
-                                                            Phê duyệt &amp; Tạo hồ sơ
+                                                            @if (_isSubmittingAction && _activeActionType == "approve")
+                                                            {
+                                                                <span class="tf-spinner-sm"></span>
+                                                                <span>Đang phê duyệt...</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span>Phê duyệt &amp; Tạo hồ sơ</span>
+                                                            }
                                                         </button>
                                                     </div>
                                                 </div>
@@ -318,14 +369,14 @@
                                             else
                                             {
                                                 <div style="display:flex; justify-content:flex-end; gap:8px; width:100%;">
-                                                    <button type="button" class="tf-btn tf-btn-outline-danger tf-btn-sm" @onclick="() => StartReview(req.Id)">
+                                                    <button type="button" class="tf-btn tf-btn-outline-danger tf-btn-sm" @onclick="() => StartReview(req.Id)" disabled="@_isSubmittingAction">
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;">
                                                             <line x1="18" y1="6" x2="6" y2="18"/>
                                                             <line x1="6" y1="6" x2="18" y2="18"/>
                                                         </svg>
                                                         Từ chối
                                                     </button>
-                                                    <button type="button" class="tf-btn tf-btn-outline-warning tf-btn-sm" @onclick="() => StartReview(req.Id)">
+                                                    <button type="button" class="tf-btn tf-btn-outline-warning tf-btn-sm" @onclick="() => StartReview(req.Id)" disabled="@_isSubmittingAction">
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;">
                                                             <circle cx="12" cy="12" r="10"/>
                                                             <line x1="12" y1="8" x2="12" y2="12"/>
@@ -333,7 +384,7 @@
                                                         </svg>
                                                         Yêu cầu bổ sung
                                                     </button>
-                                                    <button type="button" class="tf-btn tf-btn-primary tf-btn-sm" @onclick="() => StartReview(req.Id)">
+                                                    <button type="button" class="tf-btn tf-btn-primary tf-btn-sm" @onclick="() => StartReview(req.Id)" disabled="@_isSubmittingAction">
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;">
                                                             <polyline points="20 6 9 17 4 12"/>
                                                         </svg>
@@ -351,8 +402,8 @@
             </div>
 
             @* Fixed Footer *@
-            <div class="tf-modal-footer" style="flex: 0 0 auto;">
-                <button type="button" class="tf-btn tf-btn-ghost" @onclick="Close">Đóng</button>
+            <div class="tf-modal-footer">
+                <button type="button" class="tf-btn tf-btn-ghost" @onclick="Close">Đóng (Esc)</button>
             </div>
         </div>
     </div>
@@ -377,6 +428,8 @@
     private int _needDocsCount;
     private bool _isLoading;
     private bool _isSubmittingAction;
+    private string? _activeActionType;
+    private int? _resolvingRequestId;
     private string? _alertMessage;
     private bool _alertIsSuccess;
 
@@ -384,6 +437,11 @@
     private string _reviewNotes = string.Empty;
     private bool _wasOpen;
     private int? _lastTargetRequestId;
+
+    // Tab animation, sequence counter & scroll management
+    private int _tabSequenceId;
+    private bool _shouldResetScroll;
+    private readonly Dictionary<string, double> _tabScrollPositions = new(StringComparer.OrdinalIgnoreCase);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -393,6 +451,15 @@
             bool targetChanged = TargetRequestId != _lastTargetRequestId;
             _wasOpen = true;
             _lastTargetRequestId = TargetRequestId;
+
+            if (justOpened)
+            {
+                try
+                {
+                    await JS.InvokeVoidAsync("TradeFlowMotion.lockScroll");
+                }
+                catch { }
+            }
 
             if (justOpened || targetChanged)
             {
@@ -419,9 +486,27 @@
                 }
             }
         }
-        else
+        else if (_wasOpen)
         {
             _wasOpen = false;
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll");
+            }
+            catch { }
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_shouldResetScroll)
+        {
+            _shouldResetScroll = false;
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.setElementScrollTop", ".tf-req-body", 0);
+            }
+            catch { }
         }
     }
 
@@ -433,10 +518,14 @@
             return;
         }
 
+        var currentSeq = ++_tabSequenceId;
         _isLoading = true;
         try
         {
-            _allRequests = await EmployeeService.GetEmployeeRequestsAsync();
+            var requests = await EmployeeService.GetEmployeeRequestsAsync();
+            if (currentSeq != _tabSequenceId) return;
+
+            _allRequests = requests;
             _pendingCount = _allRequests.Count(r => r.Status == EmployeeRequestStatus.Pending);
             _needDocsCount = _allRequests.Count(r => r.Status == EmployeeRequestStatus.NeedAdditionalDocs);
 
@@ -458,21 +547,32 @@
         }
         catch (Exception ex)
         {
-            _alertMessage = "Lỗi nạp yêu cầu: " + ex.Message;
-            _alertIsSuccess = false;
+            if (currentSeq == _tabSequenceId)
+            {
+                _alertMessage = "Lỗi nạp yêu cầu: " + ex.Message;
+                _alertIsSuccess = false;
+            }
         }
         finally
         {
-            _isLoading = false;
+            if (currentSeq == _tabSequenceId)
+            {
+                _isLoading = false;
+            }
         }
     }
 
     private void FilterByStatus(EmployeeRequestStatus? status)
     {
         if (_selectedStatus == status) return;
+
+        // Instant, synchronous tab switch (0ms latency)
+        _tabSequenceId++;
         _selectedStatus = status;
         _processingRequestId = null;
         ApplyFilter();
+
+        _shouldResetScroll = true;
     }
 
     private void ApplyFilter()
@@ -501,8 +601,20 @@
 
     private async Task ConfirmReview(int requestId, bool approve)
     {
+        if (_isSubmittingAction) return;
+
         _isSubmittingAction = true;
+        _activeActionType = approve ? "approve" : "reject";
+        _resolvingRequestId = requestId;
         _alertMessage = null;
+
+        // Save current scroll position to avoid jump
+        double currentScroll = 0;
+        try
+        {
+            currentScroll = await JS.InvokeAsync<double>("TradeFlowMotion.getElementScrollTop", ".tf-req-body");
+        }
+        catch { }
 
         try
         {
@@ -529,6 +641,13 @@
 
             await LoadRequestsAsync(true);
 
+            // Restore scroll position after data reload
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.setElementScrollTop", ".tf-req-body", currentScroll);
+            }
+            catch { }
+
             if (approve && OnApproved.HasDelegate)
             {
                 await OnApproved.InvokeAsync();
@@ -547,13 +666,26 @@
         finally
         {
             _isSubmittingAction = false;
+            _activeActionType = null;
+            _resolvingRequestId = null;
         }
     }
 
     private async Task ConfirmRequestDocs(int requestId)
     {
+        if (_isSubmittingAction) return;
+
         _isSubmittingAction = true;
+        _activeActionType = "docs";
+        _resolvingRequestId = requestId;
         _alertMessage = null;
+
+        double currentScroll = 0;
+        try
+        {
+            currentScroll = await JS.InvokeAsync<double>("TradeFlowMotion.getElementScrollTop", ".tf-req-body");
+        }
+        catch { }
 
         try
         {
@@ -576,7 +708,13 @@
             _processingRequestId = null;
             _reviewNotes = string.Empty;
 
-            await LoadRequestsAsync();
+            await LoadRequestsAsync(true);
+
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.setElementScrollTop", ".tf-req-body", currentScroll);
+            }
+            catch { }
         }
         catch (Exception ex)
         {
@@ -586,6 +724,8 @@
         finally
         {
             _isSubmittingAction = false;
+            _activeActionType = null;
+            _resolvingRequestId = null;
         }
     }
 
@@ -594,10 +734,32 @@
         await Close();
     }
 
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await Close();
+        }
+    }
+
     private async Task Close()
     {
         IsOpen = false;
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll");
+        }
+        catch { }
         await IsOpenChanged.InvokeAsync(false);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll");
+        }
+        catch { }
     }
 
     private string GetInitials(string fullName)

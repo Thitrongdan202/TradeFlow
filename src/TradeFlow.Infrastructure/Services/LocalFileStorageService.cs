@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting;
 using TradeFlow.Application.Common.Interfaces;
 
 namespace TradeFlow.Infrastructure.Services;
@@ -41,11 +41,24 @@ public class LocalFileStorageService : IFileStorageService
 
     public Task<Stream?> GetFileAsync(string storageReference, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(storageReference))
+            return Task.FromResult<Stream?>(null);
+
         var webRoot = _environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-        var fullPath = Path.Combine(webRoot, storageReference.Replace('/', Path.DirectorySeparatorChar));
+        var cleanRef = storageReference.TrimStart('/', '\\').Replace('/', Path.DirectorySeparatorChar);
+        var fullPath = Path.Combine(webRoot, cleanRef);
 
         if (!File.Exists(fullPath))
         {
+            if (!cleanRef.StartsWith("uploads", StringComparison.OrdinalIgnoreCase))
+            {
+                var underUploads = Path.Combine(webRoot, "uploads", cleanRef);
+                if (File.Exists(underUploads))
+                {
+                    Stream stream = File.OpenRead(underUploads);
+                    return Task.FromResult<Stream?>(stream);
+                }
+            }
             return Task.FromResult<Stream?>(null);
         }
 

@@ -12,17 +12,18 @@
 @inject IDbContextFactory<TradeFlowDbContext> DbContextFactory
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JS
+@implements IAsyncDisposable
 
 @if (IsOpen)
 {
-    <div class="modal fade show d-block"
+    <div class="modal fade show d-block @(_isClosing ? "is-closing" : "")"
          style="background-color: rgba(15, 23, 42, 0.65); z-index: 1055; backdrop-filter: blur(4px);"
          tabindex="-1"
          role="dialog"
          aria-modal="true"
          @onclick="HandleModalBackdropClick"
          @onkeydown="HandleModalKeyDown">
-        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-width: 1100px; max-height: 92vh;" @onclick:stopPropagation="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable @(_isClosing ? "is-closing" : "")" style="max-width: 1100px; max-height: 92vh;" @onclick:stopPropagation="true">
             <div class="modal-content shadow-2xl border-0 rounded-4 overflow-hidden" style="max-height: 92vh; display: flex; flex-direction: column; position: relative;">
                 <!-- Modal Header with Segmented Tabs -->
                 <div class="modal-header tf-contract-modal-header px-4 pt-3.5 pb-2.5 flex-column align-items-stretch gap-2.5 flex-shrink-0">
@@ -113,7 +114,7 @@
 
                     <div id="emp-modal-tab-content">
                         <!-- TAB 1: THÔNG TIN CHUNG & NHÂN SỰ -->
-                        <div id="emp-tab-info" style="display: @(activeTab == "info" ? "block" : "none");">
+                        <div id="emp-tab-info" class="tf-contract-tab-pane @(activeTab == "info" ? "is-active" : "")" style="display: @(activeTab == "info" ? "block" : "none");">
                             <!-- Section 1: Bên B - Nhân viên -->
                             <div class="tf-form-section">
                                 <div class="tf-form-section-header">
@@ -300,7 +301,7 @@
                         </div>
 
                         <!-- TAB 2: TIỀN LƯƠNG & CHẾ ĐỘ -->
-                        <div id="emp-tab-remuneration" style="display: @(activeTab == "remuneration" ? "block" : "none");">
+                        <div id="emp-tab-remuneration" class="tf-contract-tab-pane @(activeTab == "remuneration" ? "is-active" : "")" style="display: @(activeTab == "remuneration" ? "block" : "none");">
                             <div class="tf-form-section">
                                 <div class="tf-form-section-header">
                                     <h6 class="tf-form-section-title">
@@ -438,7 +439,7 @@
                         </div>
 
                         <!-- TAB 3: SOẠN THẢO ĐIỀU KHOẢN (CLAUSE EDITOR) -->
-                        <div id="emp-tab-clauses" style="display: @(activeTab == "clauses" ? "block" : "none");">
+                        <div id="emp-tab-clauses" class="tf-contract-tab-pane @(activeTab == "clauses" ? "is-active" : "")" style="display: @(activeTab == "clauses" ? "block" : "none");">
                             <div class="d-flex align-items-center justify-content-between mb-3">
                                 <div>
                                     <h6 class="fw-bold tf-contract-modal-title mb-0">Danh mục điều khoản văn bản hợp đồng</h6>
@@ -501,7 +502,7 @@
                         <!-- TAB 4: LIVE PREVIEW A4 -->
                         @if (activeTab == "preview")
                         {
-                        <div id="emp-tab-preview">
+                        <div id="emp-tab-preview" class="tf-contract-tab-pane is-active">
                             <div class="d-flex justify-content-center">
                                 <div class="tf-a4-preview-canvas">
                                     <!-- Header Preview -->
@@ -709,9 +710,32 @@
 
     private bool isSubmitting = false;
     private string errorMessage = string.Empty;
+    private bool _isClosing = false;
+    private bool _wasOpen = false;
 
     protected override async Task OnParametersSetAsync()
     {
+        if (IsOpen && !_wasOpen)
+        {
+            _wasOpen = true;
+            _isClosing = false;
+            _showDiscardConfirm = false;
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.lockScroll");
+            }
+            catch { }
+        }
+        else if (!IsOpen && _wasOpen)
+        {
+            _wasOpen = false;
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+            }
+            catch { }
+        }
+
         if (IsOpen && employees.Count == 0)
         {
             await LoadEmployeesAsync();
@@ -786,29 +810,35 @@
         _ => 0
     };
 
-    private void GoNextStep()
+    private async Task GoNextStep()
     {
         var idx = GetCurrentStepIndex();
         if (idx < WizardSteps.Length - 1)
         {
-            SwitchModalTab(WizardSteps[idx + 1]);
+            await SwitchModalTab(WizardSteps[idx + 1]);
         }
     }
 
-    private void GoPrevStep()
+    private async Task GoPrevStep()
     {
         var idx = GetCurrentStepIndex();
         if (idx > 0)
         {
-            SwitchModalTab(WizardSteps[idx - 1]);
+            await SwitchModalTab(WizardSteps[idx - 1]);
         }
     }
 
-    private void SwitchModalTab(string tab)
+    private async Task SwitchModalTab(string tab)
     {
         if (activeTab == tab) return;
         errorMessage = string.Empty;
         activeTab = tab;
+        StateHasChanged();
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.animateTabContent", $"#emp-tab-{tab}");
+        }
+        catch { }
     }
 
     public async Task OpenCreateAsync()
@@ -849,6 +879,8 @@
         RegenerateClauses(force: true);
 
         IsOpen = true;
+        _wasOpen = true;
+        _isClosing = false;
         await IsOpenChanged.InvokeAsync(true);
         StateHasChanged();
 
@@ -927,6 +959,8 @@
         }
 
         IsOpen = true;
+        _wasOpen = true;
+        _isClosing = false;
         await IsOpenChanged.InvokeAsync(true);
         StateHasChanged();
 
@@ -1243,8 +1277,15 @@
                 await EmploymentContractService.CreateContractAsync(model, userId, userName);
             }
 
+            _wasOpen = false;
+            _isClosing = false;
             IsOpen = false;
             await IsOpenChanged.InvokeAsync(false);
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+            }
+            catch { }
             StateHasChanged();
             await OnSaved.InvokeAsync();
         }
@@ -1315,9 +1356,48 @@
 
     private async Task CloseAsync()
     {
+        if (_isClosing) return;
+
+        bool reduced = false;
+        try
+        {
+            reduced = await JS.InvokeAsync<bool>("TradeFlowMotion.isReducedMotion");
+        }
+        catch { }
+
+        if (!reduced)
+        {
+            _isClosing = true;
+            StateHasChanged();
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.animateModalExit", ".modal-dialog", ".modal");
+            }
+            catch
+            {
+                await Task.Delay(160);
+            }
+        }
+
         _showDiscardConfirm = false;
+        _isClosing = false;
+        _wasOpen = false;
         IsOpen = false;
         await IsOpenChanged.InvokeAsync(false);
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
         StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
     }
 }

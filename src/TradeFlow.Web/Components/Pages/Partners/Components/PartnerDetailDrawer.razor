@@ -8,6 +8,7 @@
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthStateProvider
+@implements IAsyncDisposable
 
 @if (IsOpen)
 {
@@ -976,6 +977,15 @@
         PartnerType = PartnerType.Customer;
         PartnerId = customerId;
         await LoadPartnerDetailAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
     }
 }
 

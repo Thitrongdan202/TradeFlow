@@ -4,6 +4,7 @@
 @using TradeFlow.Application.Common.Interfaces
 @using TradeFlow.Application.Common.Models.Pricing
 @using TradeFlow.Domain.Enums
+@using TradeFlow.Web.Components.Pages.MasterData.Products
 @attribute [Authorize(Policy = "Permission:PriceLists:View")]
 
 @inject IPriceListService PriceListService
@@ -21,14 +22,14 @@
     </div>
     <div class="tf-page-actions" style="display:flex; gap:8px;">
         <AuthorizeView Policy="Permission:PriceLists:Create">
-            <a href="/bang-gia/nhap-excel" class="tf-btn tf-btn-primary">
+            <button type="button" class="tf-btn tf-btn-primary" @onclick="() => _showExcelImportModal = true">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                     <polyline points="17 8 12 3 7 8"/>
                     <line x1="12" y1="3" x2="12" y2="15"/>
                 </svg>
                 Nhập từ Excel
-            </a>
+            </button>
         </AuthorizeView>
         <a href="/bang-gia/so-sanh" class="tf-btn tf-btn-secondary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -36,12 +37,12 @@
             </svg>
             So sánh giá
         </a>
-        <a href="/bang-gia/lich-su" class="tf-btn tf-btn-secondary">
+        <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showHistoryLookupModal = true">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
             </svg>
             Tra cứu lịch sử
-        </a>
+        </button>
     </div>
 </div>
 
@@ -251,9 +252,9 @@
                             </td>
                             <td style="text-align: right;">
                                 <div class="tw-inline-flex tw-gap-1 tw-justify-end">
-                                    <a href="/bang-gia/chi-tiet/@item.Id" class="tf-btn tf-btn-ghost tf-btn-sm" title="Xem chi tiết">
+                                    <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" title="Xem nhanh bảng giá tại chỗ" @onclick="() => OpenQuickViewModal(item.Id)">
                                         Xem
-                                    </a>
+                                    </button>
                                     <a href="/api/pricing/@item.Id/export-excel" class="tf-btn tf-btn-ghost tf-btn-sm" title="Xuất file Excel chuẩn" target="_blank">
                                         Xuất
                                     </a>
@@ -356,7 +357,33 @@
     </FooterContent>
 </TfModal>
 
+<ProductExcelImportModal IsVisible="@_showExcelImportModal"
+                         OnClose="() => _showExcelImportModal = false"
+                         OnImportCompleted="HandleImportCompleted" />
+
+<PriceListQuickViewModal @bind-IsOpen="_showQuickViewModal"
+                         PriceListId="_selectedPriceListId" />
+
+<PriceHistoryLookupModal @bind-IsOpen="_showHistoryLookupModal" />
+
 @code {
+    private bool _showExcelImportModal = false;
+    private bool _showQuickViewModal = false;
+    private int? _selectedPriceListId;
+    private bool _showHistoryLookupModal = false;
+
+    private void OpenQuickViewModal(int id)
+    {
+        _selectedPriceListId = id;
+        _showQuickViewModal = true;
+    }
+
+    private async Task HandleImportCompleted()
+    {
+        _showExcelImportModal = false;
+        _toastMessage = "Đã nhập bảng giá từ Excel thành công!";
+        await LoadData();
+    }
 
     private List<PriceListDto> _priceLists = new();
     private bool _isLoading = true;

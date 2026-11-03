@@ -1,0 +1,341 @@
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Pricing
+@using TradeFlow.Domain.Enums
+@inject IPriceListService PriceListService
+@inject IFileStorageService FileStorage
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (IsOpen || _isClosing)
+{
+    <div class="tf-pq-modal-backdrop @(_isClosing ? "is-closing" : "")" @onclick="HandleBackdropClick">
+        <div class="tf-pq-modal-dialog @(_isClosing ? "is-closing" : "")" @onclick:stopPropagation="true" role="dialog" aria-modal="true">
+            @* Header *@
+            <div class="tf-pq-modal-header">
+                <div class="tf-pq-header-info">
+                    <div class="tf-pq-header-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="1" x2="12" y2="23"></line>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="tf-pq-modal-title">@(_priceList?.Name ?? "Xem nhanh bảng giá")</h2>
+                        <span class="tf-pq-modal-subtitle">
+                            Mã: <strong style="font-family:monospace; color:var(--tf-primary);">@(_priceList?.Code ?? "...")</strong>
+                            @if (_priceList != null)
+                            {
+                                <span> • Năm @_priceList.Year @(_priceList.Quarter.HasValue ? $"- Q{_priceList.Quarter}" : "") @(_priceList.Month.HasValue ? $"(T{_priceList.Month})" : "")</span>
+                            }
+                        </span>
+                    </div>
+                </div>
+                <button type="button" class="tf-pq-modal-close" @onclick="CloseModalAsync" title="Đóng (Esc)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            @* Body *@
+            <div class="tf-pq-modal-body">
+                @if (_isLoading)
+                {
+                    <div class="tf-pq-loading">
+                        <div class="tf-pq-spinner"></div>
+                        <span>Đang nạp dữ liệu chi tiết bảng giá...</span>
+                    </div>
+                }
+                else if (_priceList == null)
+                {
+                    <div class="tf-pq-empty">Không tìm thấy thông tin bảng giá yêu cầu.</div>
+                }
+                else
+                {
+                    @* Mini stats banner *@
+                    <div class="tf-pq-stats-grid">
+                        <div class="tf-pq-stat-box">
+                            <span class="tf-pq-stat-label">Tổng mặt hàng</span>
+                            <strong class="tf-pq-stat-val">@_priceList.TotalItems.ToString("N0")</strong>
+                        </div>
+                        <div class="tf-pq-stat-box">
+                            <span class="tf-pq-stat-label">Hàng mới</span>
+                            <strong class="tf-pq-stat-val" style="color: #2563eb;">@_priceList.NewProductsCount.ToString("N0")</strong>
+                        </div>
+                        <div class="tf-pq-stat-box">
+                            <span class="tf-pq-stat-label">Hàng cập nhật giá</span>
+                            <strong class="tf-pq-stat-val" style="color: #d97706;">@_priceList.ChangedProductsCount.ToString("N0")</strong>
+                        </div>
+                        <div class="tf-pq-stat-box">
+                            <span class="tf-pq-stat-label">Trạng thái</span>
+                            <div>
+                                @switch (_priceList.Status)
+                                {
+                                    case PriceListStatus.Active:
+                                        <span class="tf-pq-badge tf-pq-badge-success">Đang áp dụng</span>
+                                        break;
+                                    case PriceListStatus.Draft:
+                                        <span class="tf-pq-badge tf-pq-badge-warning">Bản nháp</span>
+                                        break;
+                                    case PriceListStatus.Expired:
+                                        <span class="tf-pq-badge tf-pq-badge-gray">Hết hiệu lực</span>
+                                        break;
+                                    case PriceListStatus.Cancelled:
+                                        <span class="tf-pq-badge tf-pq-badge-danger">Đã hủy</span>
+                                        break;
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Search & Table *@
+                    <div class="tf-pq-toolbar">
+                        <div class="tf-pq-search-box">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tf-pq-search-icon">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <input type="text" class="tf-pq-input tf-pq-search-input"
+                                   placeholder="Lọc nhanh theo mã hàng mới, mã cũ, tên sản phẩm..."
+                                   @bind="_searchTerm"
+                                   @bind:event="oninput" />
+                        </div>
+                        <div style="font-size:12.5px; color:var(--tf-text-secondary); white-space:nowrap;">
+                            Hiển thị: <strong>@FilteredItems.Count()</strong> / @_priceList.Items.Count mặt hàng
+                        </div>
+                    </div>
+
+                    <div class="tf-pq-table-wrap">
+                        <table class="tf-pq-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px; text-align: center;">STT</th>
+                                    <th style="width: 120px;">Mã mới</th>
+                                    <th style="width: 110px;">Mã cũ</th>
+                                    <th style="min-width: 240px;">Tên / Quy cách sản phẩm</th>
+                                    <th style="width: 140px; text-align: right;">Đơn giá trước VAT</th>
+                                    <th style="width: 80px; text-align: center;">VAT %</th>
+                                    <th style="width: 110px; text-align: center;">Đối soát</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!PagedItems.Any())
+                                {
+                                    <tr>
+                                        <td colspan="7" style="text-align:center; padding: 24px; color:var(--tf-text-muted);">
+                                            Không có mặt hàng nào phù hợp với từ khóa tìm kiếm.
+                                        </td>
+                                    </tr>
+                                }
+                                @foreach (var (item, idx) in PagedItems.Select((x, i) => (x, (_currentPage - 1) * _pageSize + i + 1)))
+                                {
+                                    <tr>
+                                        <td style="text-align: center; color: var(--tf-text-muted);">@idx</td>
+                                        <td>
+                                            <span style="font-family: monospace; font-weight: 700; color: #2563eb;">@item.NewCode</span>
+                                        </td>
+                                        <td>
+                                            <span style="font-family: monospace; color: var(--tf-text-secondary);">@(item.LegacyCode ?? "—")</span>
+                                        </td>
+                                        <td>
+                                            <div style="font-weight: 600; color: var(--tf-text-primary);">@item.ProductInfo</div>
+                                            @if (!string.IsNullOrEmpty(item.Note))
+                                            {
+                                                <div style="font-size: 11.5px; color: var(--tf-text-muted); margin-top: 2px;">@item.Note</div>
+                                            }
+                                        </td>
+                                        <td style="text-align: right; font-weight: 700; color: #047857;">
+                                            @item.UnitPrice.ToString("N0") ₫
+                                        </td>
+                                        <td style="text-align: center; color: var(--tf-text-secondary);">
+                                            @(item.VatRate.HasValue ? $"{item.VatRate}%" : "—")
+                                        </td>
+                                        <td style="text-align: center;">
+                                            @if (item.MatchStatus == PriceMatchStatus.Matched)
+                                            {
+                                                <span class="tf-pq-badge tf-pq-badge-success" style="font-size: 10px;">Khớp SP</span>
+                                            }
+                                            else if (item.MatchStatus == PriceMatchStatus.NewProduct)
+                                            {
+                                                <span class="tf-pq-badge tf-pq-badge-info" style="font-size: 10px;">Mới tạo</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="tf-pq-badge tf-pq-badge-gray" style="font-size: 10px;">Chưa khớp</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @* Pagination *@
+                    @if (TotalPages > 1)
+                    {
+                        <div class="tf-pq-pagination">
+                            <button type="button" class="tf-pq-page-btn" disabled="@(_currentPage <= 1)" @onclick="() => _currentPage--">
+                                ← Trước
+                            </button>
+                            <span class="tf-pq-page-info">Trang @_currentPage / @TotalPages</span>
+                            <button type="button" class="tf-pq-page-btn" disabled="@(_currentPage >= TotalPages)" @onclick="() => _currentPage++">
+                                Sau →
+                            </button>
+                        </div>
+                    }
+                }
+            </div>
+
+            @* Footer *@
+            <div class="tf-pq-modal-footer">
+                @if (_priceList != null)
+                {
+                    <a href="/bang-gia/chi-tiet/@_priceList.Id" class="tf-pq-btn tf-pq-btn-outline" target="_blank">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                        <span>Mở trang chi tiết đầy đủ</span>
+                    </a>
+                    <a href="/api/pricing/@_priceList.Id/export-excel" class="tf-pq-btn tf-pq-btn-outline" target="_blank">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        <span>Tải Excel</span>
+                    </a>
+                }
+                <button type="button" class="tf-pq-btn tf-pq-btn-secondary" @onclick="CloseModalAsync">
+                    Đóng
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public int? PriceListId { get; set; }
+
+    private PriceListDto? _priceList;
+    private bool _isLoading = false;
+    private bool _isClosing = false;
+    private bool _scrollLocked = false;
+    private int? _lastLoadedId = null;
+
+    private string _searchTerm = "";
+    private int _currentPage = 1;
+    private const int _pageSize = 15;
+
+    private IEnumerable<PriceListItemDto> FilteredItems
+    {
+        get
+        {
+            if (_priceList == null) return Enumerable.Empty<PriceListItemDto>();
+            if (string.IsNullOrWhiteSpace(_searchTerm)) return _priceList.Items;
+
+            var term = _searchTerm.Trim().ToLower();
+            return _priceList.Items.Where(i =>
+                (!string.IsNullOrEmpty(i.NewCode) && i.NewCode.ToLower().Contains(term)) ||
+                (!string.IsNullOrEmpty(i.LegacyCode) && i.LegacyCode.ToLower().Contains(term)) ||
+                (!string.IsNullOrEmpty(i.ProductInfo) && i.ProductInfo.ToLower().Contains(term))
+            );
+        }
+    }
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling((double)FilteredItems.Count() / _pageSize));
+
+    private IEnumerable<PriceListItemDto> PagedItems =>
+        FilteredItems.Skip((_currentPage - 1) * _pageSize).Take(_pageSize);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && !_isClosing)
+        {
+            if (!_scrollLocked)
+            {
+                await LockScrollAsync();
+                _scrollLocked = true;
+            }
+
+            if (_lastLoadedId != PriceListId && PriceListId.HasValue)
+            {
+                await LoadPriceListDataAsync(PriceListId.Value);
+            }
+        }
+        else if (!IsOpen && _scrollLocked)
+        {
+            await UnlockScrollAsync();
+            _scrollLocked = false;
+        }
+    }
+
+    private async Task LoadPriceListDataAsync(int id)
+    {
+        _isLoading = true;
+        _searchTerm = "";
+        _currentPage = 1;
+
+        try
+        {
+            _priceList = await PriceListService.GetPriceListDetailAsync(id);
+            _lastLoadedId = id;
+        }
+        catch
+        {
+            _priceList = null;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        await CloseModalAsync();
+    }
+
+    private async Task CloseModalAsync()
+    {
+        if (_isClosing) return;
+        _isClosing = true;
+        StateHasChanged();
+
+        await Task.Delay(160);
+
+        _isClosing = false;
+        _lastLoadedId = null;
+
+        if (_scrollLocked)
+        {
+            await UnlockScrollAsync();
+            _scrollLocked = false;
+        }
+
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private async Task LockScrollAsync()
+    {
+        try { await JS.InvokeVoidAsync("TradeFlowMotion.lockScroll"); } catch { }
+    }
+
+    private async Task UnlockScrollAsync()
+    {
+        try { await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll"); } catch { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_scrollLocked)
+        {
+            await UnlockScrollAsync();
+            _scrollLocked = false;
+        }
+    }
+}

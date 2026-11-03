@@ -1,15 +1,17 @@
 @using TradeFlow.Application.Common.Interfaces
 @using TradeFlow.Application.Common.Models.Contracts
 @using TradeFlow.Domain.Enums
+@inject IJSRuntime JS
 @inject IEmploymentContractService EmploymentContractService
 @inject AuthenticationStateProvider AuthStateProvider
+@implements IAsyncDisposable
 
 @if (IsOpen)
 {
     <div class="modal fade show d-block" style="background-color: rgba(15, 23, 42, 0.6); z-index: 1060;" tabindex="-1" role="dialog" aria-modal="true" @onclick="CloseAsync" @onkeydown="HandleKeyDown">
         <div class="modal-dialog modal-md modal-dialog-centered" @onclick:stopPropagation="true">
             <div class="modal-content shadow-lg border-0 rounded-3">
-                <div class="modal-header bg-white border-bottom px-4 py-3">
+                <div class="modal-header border-bottom px-4 py-3">
                     <div class="d-flex align-items-center gap-3">
                         <div class="d-flex align-items-center justify-content-center rounded-3 bg-success bg-opacity-10 text-success" style="width: 40px; height: 40px;">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -18,7 +20,7 @@
                             </svg>
                         </div>
                         <div>
-                            <h5 class="modal-title fw-bold text-dark mb-0">Ký kết &amp; Xác thực Hợp đồng</h5>
+                            <h5 class="modal-title fw-bold mb-0">Ký kết &amp; Xác thực Hợp đồng</h5>
                             <div class="text-muted small">Số HĐ: @ContractNumber</div>
                         </div>
                     </div>
@@ -119,7 +121,7 @@
                     }
                 </div>
 
-                <div class="modal-footer bg-white border-top px-4 py-3 d-flex justify-content-between">
+                <div class="modal-footer border-top px-4 py-3 d-flex justify-content-between">
                     <button type="button" class="btn btn-outline-secondary btn-sm px-3" @onclick="CloseAsync" disabled="@isSubmitting">
                         Hủy
                     </button>
@@ -228,5 +230,19 @@
     {
         IsOpen = false;
         await IsOpenChanged.InvokeAsync(false);
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
     }
 }

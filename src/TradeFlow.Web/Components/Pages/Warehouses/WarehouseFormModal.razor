@@ -1,0 +1,457 @@
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Constants
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Domain.Entities.MasterData
+@using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
+@inject IDbContextFactory<TradeFlowDbContext> DbContextFactory
+@inject ISystemCodeGenerator CodeGenerator
+@inject IAuditService AuditService
+@inject ICurrentUserService CurrentUser
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (IsOpen || _isClosing)
+{
+    <div class="tf-wh-modal-backdrop @(_isClosing ? "is-closing" : "")" @onclick="HandleBackdropClick">
+        <div class="tf-wh-modal-dialog @(_isClosing ? "is-closing" : "")" @onclick:stopPropagation="true" role="dialog" aria-modal="true">
+            @* Header *@
+            <div class="tf-wh-modal-header">
+                <div class="tf-wh-header-info">
+                    <div class="tf-wh-header-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="tf-wh-modal-title">@(IsEdit ? "Chỉnh sửa thông tin kho hàng" : "Thêm mới kho hàng")</h2>
+                        <span class="tf-wh-modal-subtitle">@(IsEdit ? $"Cập nhật địa điểm lưu kho #{_displaySystemCode}" : "Khai báo địa điểm lưu trữ, quản lý tồn kho và thông tin thủ kho")</span>
+                    </div>
+                </div>
+                <button type="button" class="tf-wh-modal-close" @onclick="HandleRequestClose" title="Đóng (Esc)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            @* Body *@
+            <div class="tf-wh-modal-body">
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="tf-wh-alert-error">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <span>@_errorMessage</span>
+                    </div>
+                }
+
+                @if (_isLoading && _model == null)
+                {
+                    <div class="tf-wh-loading" style="min-height: 380px;">
+                        <div class="tf-wh-spinner"></div>
+                        <span>Đang tải dữ liệu kho hàng...</span>
+                    </div>
+                }
+                else if (_model != null)
+                {
+                    <EditForm Model="_model" OnValidSubmit="HandleValidSubmit">
+                        <DataAnnotationsValidator />
+
+                        @* Group 1: Thông tin kho hàng *@
+                        <div class="tf-wh-section">
+                            <div class="tf-wh-section-header">
+                                <div class="tf-wh-section-icon">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                                    </svg>
+                                </div>
+                                <h3 class="tf-wh-section-title">Thông tin kho hàng</h3>
+                            </div>
+
+                            <div class="tf-wh-section-body">
+                                <div class="tf-wh-grid-2">
+                                    <div class="tf-wh-form-group">
+                                        <label class="tf-wh-label">
+                                            <span>Mã hệ thống</span>
+                                            <span class="tf-wh-badge-auto">Tự động</span>
+                                        </label>
+                                        <div class="tf-wh-input-lock-wrap">
+                                            <input type="text" class="tf-wh-input tf-wh-readonly" value="@_displaySystemCode" readonly disabled />
+                                            <svg class="tf-wh-lock-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div class="tf-wh-form-group">
+                                        <label class="tf-wh-label">Mã nội bộ <span class="tf-wh-subtext">(Tùy chọn)</span></label>
+                                        <InputText @bind-Value="_model.BusinessCode" class="tf-wh-input" placeholder="Ví dụ: KHO-HN-01" @oninput="MarkDirty" />
+                                    </div>
+                                </div>
+
+                                <div class="tf-wh-form-group">
+                                    <label class="tf-wh-label">Tên kho hàng <span class="tf-wh-req">*</span></label>
+                                    <InputText @bind-Value="_model.Name" class="tf-wh-input" placeholder="Ví dụ: Kho tổng Hà Nội, Kho trung chuyển..." @oninput="MarkDirty" />
+                                    <ValidationMessage For="@(() => _model.Name)" class="tf-wh-field-error" />
+                                </div>
+
+                                <div class="tf-wh-form-group" style="margin-bottom: 0;">
+                                    <label class="tf-wh-label">Địa chỉ kho hàng</label>
+                                    <InputText @bind-Value="_model.Address" class="tf-wh-input" placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành..." @oninput="MarkDirty" />
+                                </div>
+                            </div>
+                        </div>
+
+                        @* Group 2: Quản lý kho & Liên hệ *@
+                        <div class="tf-wh-section">
+                            <div class="tf-wh-section-header">
+                                <div class="tf-wh-section-icon">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="12" cy="7" r="4"></circle>
+                                    </svg>
+                                </div>
+                                <h3 class="tf-wh-section-title">Thủ kho & Liên hệ</h3>
+                            </div>
+
+                            <div class="tf-wh-section-body">
+                                <div class="tf-wh-grid-2">
+                                    <div class="tf-wh-form-group">
+                                        <label class="tf-wh-label">Người phụ trách / Thủ kho</label>
+                                        <InputText @bind-Value="_model.ManagerName" class="tf-wh-input" placeholder="Họ và tên thủ kho phụ trách" @oninput="MarkDirty" />
+                                    </div>
+                                    <div class="tf-wh-form-group">
+                                        <label class="tf-wh-label">Số điện thoại liên hệ</label>
+                                        <InputText @bind-Value="_model.Phone" class="tf-wh-input" placeholder="SĐT thủ kho / ban quản lý kho" @oninput="MarkDirty" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @* Group 3: Ghi chú & Trạng thái hoạt động *@
+                        <div class="tf-wh-section" style="margin-bottom: 0;">
+                            <div class="tf-wh-section-header">
+                                <div class="tf-wh-section-icon">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                                    </svg>
+                                </div>
+                                <h3 class="tf-wh-section-title">Ghi chú & Trạng thái hoạt động</h3>
+                            </div>
+
+                            <div class="tf-wh-section-body">
+                                <div class="tf-wh-form-group">
+                                    <label class="tf-wh-label">Ghi chú kho hàng</label>
+                                    <InputTextArea @bind-Value="_model.Notes" class="tf-wh-textarea" rows="2" placeholder="Diện tích kho, điều kiện bảo quản, tải trọng xe ra vào..." @oninput="MarkDirty" />
+                                </div>
+
+                                <div class="tf-wh-status-card">
+                                    <label class="tf-wh-toggle-wrap">
+                                        <InputCheckbox @bind-Value="_model.IsActive" @oninput="MarkDirty" class="tf-wh-toggle-input" />
+                                        <span class="tf-wh-toggle-slider"></span>
+                                    </label>
+                                    <div class="tf-wh-status-text">
+                                        <div class="tf-wh-status-label">@(_model.IsActive ? "Đang mở kho hoạt động" : "Tạm dừng hoạt động kho")</div>
+                                        <div class="tf-wh-status-desc">@(_model.IsActive ? "Cho phép nhập xuất chuyển kho và xuất hiện trong báo cáo tồn kho tức thời." : "Kho tạm khóa các giao dịch xuất nhập mới.")</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </EditForm>
+                }
+            </div>
+
+            @* Footer *@
+            <div class="tf-wh-modal-footer">
+                <button type="button" class="tf-wh-btn tf-wh-btn-secondary" @onclick="HandleRequestClose" disabled="@_isSubmitting">
+                    Hủy bỏ
+                </button>
+                <button type="button" class="tf-wh-btn tf-wh-btn-primary" @onclick="HandleValidSubmit" disabled="@(_isSubmitting || _isLoading)">
+                    @if (_isSubmitting)
+                    {
+                        <span class="tf-wh-btn-spinner"></span>
+                        <span>Đang lưu...</span>
+                    }
+                    else
+                    {
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <span>@(IsEdit ? "Lưu thay đổi" : "Tạo kho hàng")</span>
+                    }
+                </button>
+            </div>
+
+            @* Dirty confirmation *@
+            @if (_showDirtyConfirm)
+            {
+                <div class="tf-wh-confirm-overlay">
+                    <div class="tf-wh-confirm-box">
+                        <div class="tf-wh-confirm-title">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2">
+                                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                            <span>Dữ liệu chưa được lưu</span>
+                        </div>
+                        <p class="tf-wh-confirm-desc">Bạn có các thay đổi chưa được lưu trong thông tin kho hàng. Bạn có chắc muốn đóng và hủy thay đổi?</p>
+                        <div class="tf-wh-confirm-actions">
+                            <button type="button" class="tf-wh-btn tf-wh-btn-secondary" @onclick="() => _showDirtyConfirm = false">Tiếp tục nhập</button>
+                            <button type="button" class="tf-wh-btn tf-wh-btn-danger" @onclick="ConfirmDiscardAndClose">Bỏ thay đổi</button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public int? WarehouseId { get; set; }
+    [Parameter] public EventCallback<Warehouse> OnSaved { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private bool IsEdit => WarehouseId.HasValue && WarehouseId.Value > 0;
+    private Warehouse? _model;
+    private string _displaySystemCode = string.Empty;
+    private string? _errorMessage;
+    private bool _isLoading = false;
+    private bool _isSubmitting = false;
+    private bool _isClosing = false;
+    private bool _isDirty = false;
+    private bool _showDirtyConfirm = false;
+    private bool _scrollLocked = false;
+    private int? _lastLoadedId = null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && !_isClosing)
+        {
+            if (!_scrollLocked)
+            {
+                await LockScrollAsync();
+                _scrollLocked = true;
+            }
+
+            if (_model == null || _lastLoadedId != WarehouseId)
+            {
+                if (!IsEdit && _model == null)
+                {
+                    _model = new Warehouse { IsActive = true };
+                    _displaySystemCode = "KHO-TỰ ĐỘNG";
+                }
+                await LoadWarehouseDataAsync();
+            }
+        }
+        else if (!IsOpen && _scrollLocked)
+        {
+            await UnlockScrollAsync();
+            _scrollLocked = false;
+        }
+    }
+
+    private async Task LoadWarehouseDataAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        _isDirty = false;
+        _showDirtyConfirm = false;
+
+        try
+        {
+            await using var db = await DbContextFactory.CreateDbContextAsync();
+
+            if (IsEdit)
+            {
+                _model = await db.Warehouses.FirstOrDefaultAsync(w => w.Id == WarehouseId);
+                if (_model == null)
+                {
+                    _errorMessage = "Không tìm thấy kho hàng.";
+                    return;
+                }
+
+                _displaySystemCode = _model.Code;
+                _lastLoadedId = WarehouseId;
+            }
+            else
+            {
+                _model = new Warehouse
+                {
+                    IsActive = true
+                };
+                var nextCode = await CodeGenerator.PeekNextCodeAsync(SystemCodeConstants.Warehouse);
+                _displaySystemCode = nextCode + " (Tự sinh)";
+                _lastLoadedId = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi khi tải thông tin kho: " + ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void MarkDirty()
+    {
+        _isDirty = true;
+    }
+
+    private async Task HandleRequestClose()
+    {
+        if (_isDirty)
+        {
+            _showDirtyConfirm = true;
+            return;
+        }
+        await CloseModalAsync();
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        await HandleRequestClose();
+    }
+
+    private async Task ConfirmDiscardAndClose()
+    {
+        _showDirtyConfirm = false;
+        _isDirty = false;
+        await CloseModalAsync();
+    }
+
+    private async Task CloseModalAsync()
+    {
+        if (_isClosing) return;
+        _isClosing = true;
+        StateHasChanged();
+
+        await Task.Delay(150);
+
+        _isClosing = false;
+        _model = null;
+        _lastLoadedId = null;
+        _isDirty = false;
+        _showDirtyConfirm = false;
+
+        if (_scrollLocked)
+        {
+            await UnlockScrollAsync();
+            _scrollLocked = false;
+        }
+
+        await IsOpenChanged.InvokeAsync(false);
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync();
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (_model == null || _isSubmitting) return;
+
+        if (string.IsNullOrWhiteSpace(_model.Name))
+        {
+            _errorMessage = "Tên kho hàng là bắt buộc.";
+            return;
+        }
+
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            await using var db = await DbContextFactory.CreateDbContextAsync();
+
+            if (IsEdit)
+            {
+                var existing = await db.Warehouses.FirstOrDefaultAsync(w => w.Id == _model.Id);
+                if (existing == null)
+                {
+                    _errorMessage = "Không tìm thấy kho hàng để cập nhật.";
+                    return;
+                }
+
+                existing.Name = _model.Name.Trim();
+                existing.BusinessCode = _model.BusinessCode?.Trim();
+                existing.Address = _model.Address?.Trim();
+                existing.ManagerName = _model.ManagerName?.Trim();
+                existing.Phone = _model.Phone?.Trim();
+                existing.Notes = _model.Notes?.Trim();
+                existing.IsActive = _model.IsActive;
+                existing.UpdatedAt = DateTime.UtcNow;
+                existing.UpdatedBy = CurrentUser.UserName;
+
+                await db.SaveChangesAsync();
+                await AuditService.LogAsync(AuditEventType.WarehouseUpdated, CurrentUser.UserName, "Warehouse", existing.Id.ToString());
+
+                _isDirty = false;
+                await OnSaved.InvokeAsync(existing);
+            }
+            else
+            {
+                _model.Code = await CodeGenerator.GenerateCodeAsync(SystemCodeConstants.Warehouse);
+                _model.Name = _model.Name.Trim();
+                _model.BusinessCode = _model.BusinessCode?.Trim();
+                _model.Address = _model.Address?.Trim();
+                _model.ManagerName = _model.ManagerName?.Trim();
+                _model.Phone = _model.Phone?.Trim();
+                _model.Notes = _model.Notes?.Trim();
+                _model.CreatedAt = DateTime.UtcNow;
+                _model.CreatedBy = CurrentUser.UserName;
+
+                db.Warehouses.Add(_model);
+                await db.SaveChangesAsync();
+                await AuditService.LogAsync(AuditEventType.WarehouseCreated, CurrentUser.UserName, "Warehouse", _model.Code);
+
+                _isDirty = false;
+                await OnSaved.InvokeAsync(_model);
+            }
+
+            await CloseModalAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Đã xảy ra lỗi khi lưu kho hàng: " + ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task LockScrollAsync()
+    {
+        try { await JS.InvokeVoidAsync("TradeFlowMotion.lockScroll"); } catch { }
+    }
+
+    private async Task UnlockScrollAsync()
+    {
+        try { await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll"); } catch { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_scrollLocked)
+        {
+            await UnlockScrollAsync();
+            _scrollLocked = false;
+        }
+    }
+}

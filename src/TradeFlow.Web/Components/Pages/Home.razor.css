@@ -1248,3 +1248,166 @@
 [data-theme="dark"] .tf-toast-message {
     color: #f8fafc;
 }
+
+/* ==========================================================================
+   UNAUTHENTICATED WELCOME PORTAL (Centered Responsive ERP Hero)
+   ========================================================================== */
+.tf-welcome-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: clamp(480px, calc(100vh - var(--tf-topbar-height, 56px) - 64px), 820px);
+    width: 100%;
+    padding: clamp(24px, 4vh, 48px) 16px;
+    box-sizing: border-box;
+}
+
+.tf-welcome-card {
+    background: var(--tf-surface, #ffffff);
+    border: 1px solid var(--tf-border, #e2e8f0);
+    border-radius: 20px;
+    padding: clamp(32px, 5vh, 48px) clamp(24px, 4vw, 40px);
+    max-width: 540px;
+    width: 100%;
+    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.08), 0 0 1px 1px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin: auto;
+    position: relative;
+    backdrop-filter: blur(8px);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tf-welcome-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--tf-primary, #3b82f6);
+    background-color: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    padding: 3px 12px;
+    border-radius: 9999px;
+    margin-bottom: 20px;
+}
+
+.tf-welcome-badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--tf-primary, #3b82f6);
+    box-shadow: 0 0 8px var(--tf-primary, #3b82f6);
+}
+
+.tf-welcome-logo-wrap {
+    margin-bottom: 16px;
+}
+
+.tf-welcome-logo {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(99, 102, 241, 0.12) 100%);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    box-shadow: 0 8px 20px -6px rgba(59, 130, 246, 0.25);
+}
+
+.tf-welcome-title {
+    font-size: clamp(24px, 3vw, 30px);
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    color: var(--tf-text-primary, #0f172a);
+    margin: 0 0 8px 0;
+    line-height: 1.2;
+}
+
+.tf-welcome-desc {
+    font-size: 14.5px;
+    line-height: 1.55;
+    color: var(--tf-text-muted, #64748b);
+    margin: 0 0 24px 0;
+    max-width: 440px;
+}
+
+.tf-welcome-features {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 28px;
+    max-width: 480px;
+}
+
+.tf-welcome-feat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--tf-text-secondary, #475569);
+    background-color: var(--tf-surface-raised, #f8fafc);
+    border: 1px solid var(--tf-border, #e2e8f0);
+    padding: 6px 12px;
+    border-radius: 8px;
+}
+
+.tf-welcome-feat-pill svg {
+    color: var(--tf-primary, #3b82f6);
+}
+
+.tf-welcome-login-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    max-width: 320px;
+    padding: 14px 28px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 12px;
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tf-welcome-login-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.45);
+}
+
+.tf-welcome-footer-note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 20px;
+    font-size: 12px;
+    color: var(--tf-text-muted, #94a3b8);
+}
+
+[data-bs-theme="dark"] .tf-welcome-card,
+[data-theme="dark"] .tf-welcome-card {
+    background: #191c25;
+    border-color: #272c3a;
+    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5), 0 0 1px 1px rgba(255, 255, 255, 0.05);
+}
+
+[data-bs-theme="dark"] .tf-welcome-title,
+[data-theme="dark"] .tf-welcome-title {
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-welcome-feat-pill,
+[data-theme="dark"] .tf-welcome-feat-pill {
+    background-color: #141720;
+    border-color: #272c3a;
+    color: #cbd5e1;
+}

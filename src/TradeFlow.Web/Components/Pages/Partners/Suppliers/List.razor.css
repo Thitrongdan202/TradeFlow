@@ -218,6 +218,74 @@
     margin-top: 2px;
 }
 
+/* Filter Popover Anchor & Dropdown */
+.tf-filter-popover-anchor {
+    position: relative;
+    display: inline-block;
+}
+
+.tf-popover-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 998;
+    background: transparent;
+}
+
+.tf-filter-popover {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 999;
+    width: 320px;
+    max-height: min(80vh, 580px);
+    overflow-y: auto;
+    background: var(--tf-surface-card, #ffffff);
+    border: 1px solid var(--tf-border, #cbd5e1);
+    border-radius: 10px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    animation: tfPopoverDrop 160ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.tf-popover-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tf-popover-close-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--tf-text-muted, #64748b);
+    padding: 4px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    line-height: 1;
+}
+
+.tf-popover-close-btn:hover {
+    color: var(--tf-text-primary, #0f172a);
+    background: var(--tf-gray-100, #f1f5f9);
+}
+
+.tf-main-container {
+    width: 100%;
+}
+
+@keyframes tfPopoverDrop {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* Split Layout (Sidebar + Main) */
 .tf-split-layout {
     display: grid;
@@ -938,4 +1006,17 @@
 [data-bs-theme="dark"] .tf-empty-state h3,
 [data-theme="dark"] .tf-empty-state h3 {
     color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-filter-popover,
+[data-theme="dark"] .tf-filter-popover {
+    background: #1e222b !important;
+    border-color: #383e4b !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+[data-bs-theme="dark"] .tf-popover-close-btn:hover,
+[data-theme="dark"] .tf-popover-close-btn:hover {
+    background: #262b35 !important;
+    color: #f8fafc !important;
 }

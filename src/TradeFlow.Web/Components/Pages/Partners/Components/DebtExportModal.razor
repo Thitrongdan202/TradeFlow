@@ -6,6 +6,7 @@
 @inject IPartnerDebtService DebtService
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthStateProvider
+@implements IAsyncDisposable
 
 @if (IsOpen)
 {
@@ -414,5 +415,14 @@
         IsOpen = false;
         try { await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll"); } catch { }
         await IsOpenChanged.InvokeAsync(false);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
     }
 }

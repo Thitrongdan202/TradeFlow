@@ -1,0 +1,758 @@
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Constants
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Domain.Entities.MasterData
+@using TradeFlow.Domain.Entities.Pricing
+@using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
+@using TradeFlow.Web.Components.Pages.MasterData.Categories
+@inject IDbContextFactory<TradeFlowDbContext> DbContextFactory
+@inject ISystemCodeGenerator CodeGenerator
+@inject IAuditService AuditService
+@inject ICurrentUserService CurrentUser
+@inject IPriceListService PriceListService
+@inject IFileStorageService FileStorage
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (IsOpen || _isClosing)
+{
+    <div class="tf-prod-modal-backdrop @(_isClosing ? "is-closing" : "")" @onclick="HandleBackdropClick">
+        <div class="tf-prod-modal-dialog @(_isClosing ? "is-closing" : "")" @onclick:stopPropagation="true" role="dialog" aria-modal="true">
+            @* Header *@
+            <div class="tf-prod-modal-header">
+                <div class="tf-prod-header-info">
+                    <div class="tf-prod-header-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="tf-prod-modal-title">@(IsEdit ? "Chỉnh sửa sản phẩm" : "Thêm mới sản phẩm")</h2>
+                        <span class="tf-prod-modal-subtitle">@(IsEdit ? $"Cập nhật hàng hóa #{_displaySystemCode}" : "Khai báo thông số kỹ thuật, giá đại lý và ảnh sản phẩm")</span>
+                    </div>
+                </div>
+                <button type="button" class="tf-prod-modal-close" @onclick="HandleRequestClose" title="Đóng (Esc)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            @* Body *@
+            <div class="tf-prod-modal-body">
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="tf-prod-alert-error">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <span>@_errorMessage</span>
+                    </div>
+                }
+
+                @if (_isLoading && _model == null)
+                {
+                    <div class="tf-prod-loading" style="min-height: 420px;">
+                        <div class="tf-prod-spinner"></div>
+                        <span>Đang tải thông tin sản phẩm...</span>
+                    </div>
+                }
+                else if (_model != null)
+                {
+                    <EditForm Model="_model" OnValidSubmit="HandleValidSubmit">
+                        <DataAnnotationsValidator />
+
+                        @* 1. Nhóm định danh & mã hàng *@
+                        <div class="tf-prod-section">
+                            <div class="tf-prod-section-title">
+                                <span class="tf-prod-section-num">1</span>
+                                <span>Thông tin định danh sản phẩm</span>
+                            </div>
+
+                            <div class="tf-prod-grid-2">
+                                <div class="tf-prod-form-group">
+                                    <label class="tf-prod-label">Mã hệ thống <span class="tf-prod-subtext">(Tự sinh)</span></label>
+                                    <input type="text" class="tf-prod-input tf-prod-readonly" value="@_displaySystemCode" readonly disabled />
+                                </div>
+                                <div class="tf-prod-form-group">
+                                    <label class="tf-prod-label">Tên sản phẩm <span class="tf-prod-req">*</span></label>
+                                    <InputText @bind-Value="_model.Name" class="tf-prod-input" placeholder="Nhập tên sản phẩm đầy đủ..." @oninput="MarkDirty" />
+                                </div>
+                            </div>
+
+                            <div class="tf-prod-grid-2">
+                                <div class="tf-prod-form-group">
+                                    <label class="tf-prod-label">Mã hàng mới <span class="tf-prod-subtext">(vd: TL2138, K8012)</span></label>
+                                    <InputText @bind-Value="_model.NewCode" class="tf-prod-input" placeholder="Mã hàng kinh doanh / phân loại" @oninput="MarkDirty" />
+                                </div>
+                                <div class="tf-prod-form-group">
+                                    <label class="tf-prod-label">Mã hàng cũ <span class="tf-prod-subtext">(Tra cứu lịch sử)</span></label>
+                                    <InputText @bind-Value="_model.LegacyCode" class="tf-prod-input" placeholder="Mã quản lý hệ thống cũ nếu có" @oninput="MarkDirty" />
+                                </div>
+                            </div>
+
+                            <div class="tf-prod-grid-2">
+                                <div class="tf-prod-form-group">
+                                    <div class="tf-prod-label-row">
+                                        <label class="tf-prod-label">Danh mục sản phẩm <span class="tf-prod-req">*</span></label>
+                                        <button type="button" class="tf-prod-btn-link" @onclick="OpenAddCategoryModal" title="Thêm danh mục mới ngay tại đây">+ Thêm mới</button>
+                                    </div>
+                                    <InputSelect @bind-Value="_model.CategoryId" class="tf-prod-select" @oninput="MarkDirty">
+                                        <option value="">-- Chọn danh mục --</option>
+                                        @if (_categories != null)
+                                        {
+                                            @foreach (var c in _categories)
+                                            {
+                                                <option value="@c.Id">@c.Name (@c.Code)</option>
+                                            }
+                                        }
+                                    </InputSelect>
+                                </div>
+                                <div class="tf-prod-grid-2" style="gap:10px;">
+                                    <div class="tf-prod-form-group">
+                                        <label class="tf-prod-label">Đơn vị tính</label>
+                                        <InputSelect @bind-Value="_model.UnitId" class="tf-prod-select" @oninput="MarkDirty">
+                                            <option value="">-- (@(_defaultUnitName ?? "Cái")) --</option>
+                                            @if (_units != null)
+                                            {
+                                                @foreach (var u in _units)
+                                                {
+                                                    <option value="@u.Id">@u.Name (@u.Symbol)</option>
+                                                }
+                                            }
+                                        </InputSelect>
+                                    </div>
+                                    <div class="tf-prod-form-group">
+                                        <label class="tf-prod-label">Tên viết tắt</label>
+                                        <InputText @bind-Value="_model.ShortName" class="tf-prod-input" placeholder="Tên vắn tắt" @oninput="MarkDirty" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tf-prod-form-group" style="margin-top: 8px;">
+                                <label class="tf-prod-checkbox-label">
+                                    <InputCheckbox @bind-Value="_model.IsActive" @oninput="MarkDirty" />
+                                    <span>Đang áp dụng kinh doanh (Hoạt động)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        @* 2. Giá & Thuế GTGT *@
+                        <div class="tf-prod-section">
+                            <div class="tf-prod-section-title">
+                                <span class="tf-prod-section-num">2</span>
+                                <span>Chính sách thuế GTGT & Đơn giá đại lý</span>
+                            </div>
+
+                            <div class="tf-prod-grid-2">
+                                <div class="tf-prod-form-group">
+                                    <label class="tf-prod-label">Phân loại thuế GTGT</label>
+                                    <InputSelect @bind-Value="_model.TaxTreatment" class="tf-prod-select" @oninput="MarkDirty">
+                                        <option value="@TaxTreatment.Standard10">10% - Thuế suất chuẩn (giảm 8% nếu đủ ĐK)</option>
+                                        <option value="@TaxTreatment.Rate8">8% - Thuế suất 8% cố định</option>
+                                        <option value="@TaxTreatment.Rate5">5% - Thuế suất 5%</option>
+                                        <option value="@TaxTreatment.ZeroRate">0% - Thuế suất 0% (Xuất khẩu)</option>
+                                        <option value="@TaxTreatment.NonTaxable">Không chịu thuế / Miễn thuế</option>
+                                    </InputSelect>
+                                </div>
+                                <div class="tf-prod-form-group">
+                                    <label class="tf-prod-label">Đơn giá bán đại lý (Chưa VAT)</label>
+                                    <div class="tf-prod-price-input-wrap">
+                                        <input type="number" class="tf-prod-input tf-prod-price-input" @bind="_inputPrice" placeholder="0" min="0" step="1000" @oninput="MarkDirty" />
+                                        <span class="tf-prod-currency">VNĐ</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tf-prod-form-group" style="margin-top: 8px;">
+                                <label class="tf-prod-checkbox-label">
+                                    <InputCheckbox @bind-Value="_model.IsTaxReductionEligible" @oninput="MarkDirty" />
+                                    <span>Đủ điều kiện giảm thuế GTGT (10% ➔ 8% theo Nghị quyết Quốc hội đến 31/12/2026)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        @* 3. Quy cách kỹ thuật & Mô tả *@
+                        <div class="tf-prod-section">
+                            <div class="tf-prod-section-title">
+                                <span class="tf-prod-section-num">3</span>
+                                <span>Mô tả & Quy cách kỹ thuật</span>
+                            </div>
+
+                            <div class="tf-prod-grid-2">
+                                <div class="tf-prod-form-group">
+                                    <label class="tf-prod-label">Mô tả sản phẩm</label>
+                                    <InputTextArea @bind-Value="_model.Description" class="tf-prod-textarea" rows="2" placeholder="Ghi chú chi tiết về dòng sản phẩm..." @oninput="MarkDirty" />
+                                </div>
+                                <div class="tf-prod-form-group">
+                                    <label class="tf-prod-label">Thông số kỹ thuật / Quy cách</label>
+                                    <InputTextArea @bind-Value="_model.Specifications" class="tf-prod-textarea" rows="2" placeholder="Kích thước, trọng lượng, tiêu chuẩn..." @oninput="MarkDirty" />
+                                </div>
+                            </div>
+                        </div>
+
+                        @* 4. Hình ảnh sản phẩm *@
+                        <div class="tf-prod-section">
+                            <div class="tf-prod-section-title">
+                                <span class="tf-prod-section-num">4</span>
+                                <span>Hình ảnh sản phẩm</span>
+                            </div>
+
+                            @if (_model.Images != null && _model.Images.Any(img => img.IsActive))
+                            {
+                                <div class="tf-prod-image-gallery">
+                                    @foreach (var img in _model.Images.Where(i => i.IsActive).OrderByDescending(i => i.IsPrimary).ThenBy(i => i.SortOrder))
+                                    {
+                                        <div class="tf-prod-image-card @(img.IsPrimary ? "is-primary" : "")">
+                                            @if (img.IsPrimary)
+                                            {
+                                                <span class="tf-prod-primary-badge">Ảnh chính</span>
+                                            }
+                                            <img src="@FileStorage.GetPublicUrl(img.StorageReference)" alt="@img.FileName" class="tf-prod-image-thumb" />
+                                            <div class="tf-prod-image-name" title="@img.FileName">@img.FileName</div>
+                                            <div class="tf-prod-image-actions">
+                                                @if (!img.IsPrimary)
+                                                {
+                                                    <button type="button" class="tf-prod-img-btn" @onclick="() => SetPrimaryImage(img)" title="Đặt làm ảnh chính">
+                                                        ⭐ Chính
+                                                    </button>
+                                                }
+                                                <button type="button" class="tf-prod-img-btn tf-prod-img-btn-del" @onclick="() => RemoveImage(img)" title="Xóa ảnh">
+                                                    ✕ Xóa
+                                                </button>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="tf-prod-no-image">
+                                    Chưa có hình ảnh đại diện cho sản phẩm này.
+                                </div>
+                            }
+
+                            <div class="tf-prod-upload-row">
+                                <label class="tf-prod-upload-btn">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                                    </svg>
+                                    <span>Tải ảnh lên...</span>
+                                    <InputFile OnChange="HandleImageUpload" accept="image/*" style="display:none;" />
+                                </label>
+                                @if (_isUploadingImage)
+                                {
+                                    <span class="tf-prod-uploading-text">Đang tải ảnh lên...</span>
+                                }
+                                @if (!string.IsNullOrEmpty(_imageUploadError))
+                                {
+                                    <span class="tf-prod-upload-err">@_imageUploadError</span>
+                                }
+                            </div>
+                        </div>
+                    </EditForm>
+                }
+            </div>
+
+            @* Footer *@
+            <div class="tf-prod-modal-footer">
+                <button type="button" class="tf-prod-btn tf-prod-btn-secondary" @onclick="HandleRequestClose" disabled="@_isSubmitting">
+                    Hủy bỏ
+                </button>
+                <button type="button" class="tf-prod-btn tf-prod-btn-primary" @onclick="HandleValidSubmit" disabled="@(_isSubmitting || _isLoading)">
+                    @if (_isSubmitting)
+                    {
+                        <span class="tf-prod-btn-spinner"></span>
+                        <span>Đang lưu...</span>
+                    }
+                    else
+                    {
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <span>@(IsEdit ? "Lưu thay đổi" : "Tạo sản phẩm")</span>
+                    }
+                </button>
+            </div>
+
+            @* Dirty confirmation *@
+            @if (_showDirtyConfirm)
+            {
+                <div class="tf-prod-confirm-overlay">
+                    <div class="tf-prod-confirm-box">
+                        <div class="tf-prod-confirm-title">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2">
+                                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                            <span>Dữ liệu chưa được lưu</span>
+                        </div>
+                        <p class="tf-prod-confirm-desc">Bạn có các thay đổi chưa được lưu trong form sản phẩm này. Bạn có chắc muốn đóng và hủy thay đổi?</p>
+                        <div class="tf-prod-confirm-actions">
+                            <button type="button" class="tf-prod-btn tf-prod-btn-secondary" @onclick="() => _showDirtyConfirm = false">Tiếp tục nhập</button>
+                            <button type="button" class="tf-prod-btn tf-prod-btn-danger" @onclick="ConfirmDiscardAndClose">Bỏ thay đổi</button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@* Quick Category Add Modal Embedded *@
+<CategoryFormModal @bind-IsOpen="_showAddCategoryModal" OnSaved="HandleQuickCategorySaved" />
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public int? ProductId { get; set; }
+    [Parameter] public EventCallback<Product> OnSaved { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private bool IsEdit => ProductId.HasValue && ProductId.Value > 0;
+    private Product? _model;
+    private List<ProductCategory>? _categories;
+    private List<UnitOfMeasure>? _units;
+    private string _displaySystemCode = string.Empty;
+    private string? _errorMessage;
+    private decimal? _inputPrice;
+    private string? _defaultUnitName;
+    private bool _isLoading = false;
+    private bool _isSubmitting = false;
+    private bool _isClosing = false;
+    private bool _isDirty = false;
+    private bool _showDirtyConfirm = false;
+    private bool _scrollLocked = false;
+    private int? _lastLoadedId = null;
+
+    private bool _isUploadingImage = false;
+    private string? _imageUploadError;
+    private bool _showAddCategoryModal = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && !_isClosing)
+        {
+            if (!_scrollLocked)
+            {
+                await LockScrollAsync();
+                _scrollLocked = true;
+            }
+
+            if (_model == null || _lastLoadedId != ProductId)
+            {
+                if (!IsEdit && _model == null)
+                {
+                    _model = new Product
+                    {
+                        IsActive = true,
+                        TaxTreatment = TaxTreatment.Standard10,
+                        IsTaxReductionEligible = true,
+                        Images = new List<ProductImage>()
+                    };
+                    _displaySystemCode = "SP-TỰ ĐỘNG";
+                }
+                await LoadProductDataAsync();
+            }
+        }
+        else if (!IsOpen && _scrollLocked)
+        {
+            await UnlockScrollAsync();
+            _scrollLocked = false;
+        }
+    }
+
+    private async Task LoadProductDataAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        _imageUploadError = null;
+        _isDirty = false;
+        _showDirtyConfirm = false;
+
+        try
+        {
+            await using var db = await DbContextFactory.CreateDbContextAsync();
+            _categories = await db.ProductCategories.Where(c => c.IsActive).OrderBy(c => c.Name).ToListAsync();
+            _units = await db.UnitOfMeasures.Where(u => u.IsActive).OrderBy(u => u.Name).ToListAsync();
+            var defaultUnit = _units?.FirstOrDefault(u => u.Code == "CAI") ?? _units?.FirstOrDefault();
+            _defaultUnitName = defaultUnit?.Name ?? "Cái";
+
+            if (IsEdit)
+            {
+                _model = await db.Products
+                    .Include(p => p.Images)
+                    .FirstOrDefaultAsync(p => p.Id == ProductId);
+
+                if (_model == null)
+                {
+                    _errorMessage = "Không tìm thấy thông tin sản phẩm.";
+                    return;
+                }
+
+                _displaySystemCode = _model.Code;
+                _inputPrice = await PriceListService.GetProductCurrentPriceAsync(_model.Id, DateTime.UtcNow);
+                _lastLoadedId = ProductId;
+            }
+            else
+            {
+                _model = new Product
+                {
+                    IsActive = true,
+                    UnitId = defaultUnit?.Id,
+                    TaxTreatment = TaxTreatment.Standard10,
+                    IsTaxReductionEligible = true,
+                    Images = new List<ProductImage>()
+                };
+                var nextCode = await CodeGenerator.PeekNextCodeAsync(SystemCodeConstants.Product);
+                _displaySystemCode = nextCode + " (Tự sinh)";
+                _inputPrice = null;
+                _lastLoadedId = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi khi tải thông tin sản phẩm: " + ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void MarkDirty()
+    {
+        _isDirty = true;
+    }
+
+    private void OpenAddCategoryModal()
+    {
+        _showAddCategoryModal = true;
+    }
+
+    private async Task HandleQuickCategorySaved(ProductCategory newCategory)
+    {
+        _categories ??= new List<ProductCategory>();
+        if (!_categories.Any(c => c.Id == newCategory.Id))
+        {
+            _categories.Add(newCategory);
+            _categories = _categories.OrderBy(c => c.Name).ToList();
+        }
+        if (_model != null)
+        {
+            _model.CategoryId = newCategory.Id;
+            _isDirty = true;
+        }
+        await Task.CompletedTask;
+    }
+
+    private async Task HandleImageUpload(InputFileChangeEventArgs e)
+    {
+        _imageUploadError = null;
+        try
+        {
+            var file = e.File;
+            if (file == null) return;
+
+            if (file.Size > 10 * 1024 * 1024)
+            {
+                _imageUploadError = "Dung lượng ảnh không được vượt quá 10MB.";
+                return;
+            }
+
+            _isUploadingImage = true;
+            using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            var storageRef = await FileStorage.SaveFileAsync(stream, file.Name, file.ContentType ?? "image/jpeg", "products");
+
+            var newImage = new ProductImage
+            {
+                ProductId = _model?.Id ?? 0,
+                FileName = file.Name,
+                StorageReference = storageRef,
+                ContentType = file.ContentType,
+                FileSizeBytes = file.Size,
+                IsPrimary = !(_model?.Images?.Any(i => i.IsActive && i.IsPrimary) ?? false),
+                SortOrder = (_model?.Images?.Count ?? 0) + 1,
+                IsActive = true
+            };
+
+            if (_model != null)
+            {
+                _model.Images ??= new List<ProductImage>();
+                _model.Images.Add(newImage);
+
+                if (IsEdit)
+                {
+                    await using var db = await DbContextFactory.CreateDbContextAsync();
+                    db.ProductImages.Add(newImage);
+                    await db.SaveChangesAsync();
+                }
+                _isDirty = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _imageUploadError = "Lỗi khi tải ảnh: " + ex.Message;
+        }
+        finally
+        {
+            _isUploadingImage = false;
+        }
+    }
+
+    private async Task SetPrimaryImage(ProductImage selectedImg)
+    {
+        if (_model?.Images == null) return;
+        foreach (var img in _model.Images)
+        {
+            img.IsPrimary = (img == selectedImg);
+        }
+        if (IsEdit)
+        {
+            await using var db = await DbContextFactory.CreateDbContextAsync();
+            var images = await db.ProductImages.Where(i => i.ProductId == _model.Id).ToListAsync();
+            foreach (var img in images)
+            {
+                img.IsPrimary = (img.Id == selectedImg.Id);
+            }
+            await db.SaveChangesAsync();
+        }
+        _isDirty = true;
+    }
+
+    private async Task RemoveImage(ProductImage img)
+    {
+        if (_model?.Images == null) return;
+        img.IsActive = false;
+        if (IsEdit)
+        {
+            await using var db = await DbContextFactory.CreateDbContextAsync();
+            var target = await db.ProductImages.FirstOrDefaultAsync(i => i.Id == img.Id);
+            if (target != null)
+            {
+                db.ProductImages.Remove(target);
+                await db.SaveChangesAsync();
+            }
+        }
+        else
+        {
+            _model.Images.Remove(img);
+        }
+        _isDirty = true;
+    }
+
+    private async Task HandleRequestClose()
+    {
+        if (_isDirty)
+        {
+            _showDirtyConfirm = true;
+            return;
+        }
+        await CloseModalAsync();
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        await HandleRequestClose();
+    }
+
+    private async Task ConfirmDiscardAndClose()
+    {
+        _showDirtyConfirm = false;
+        _isDirty = false;
+        await CloseModalAsync();
+    }
+
+    private async Task CloseModalAsync()
+    {
+        if (_isClosing) return;
+        _isClosing = true;
+        StateHasChanged();
+
+        await Task.Delay(150);
+
+        _isClosing = false;
+        _model = null;
+        _lastLoadedId = null;
+        _isDirty = false;
+        _showDirtyConfirm = false;
+
+        if (_scrollLocked)
+        {
+            await UnlockScrollAsync();
+            _scrollLocked = false;
+        }
+
+        await IsOpenChanged.InvokeAsync(false);
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync();
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (_model == null || _isSubmitting) return;
+
+        if (string.IsNullOrWhiteSpace(_model.Name))
+        {
+            _errorMessage = "Tên sản phẩm là bắt buộc.";
+            return;
+        }
+
+        if (!_model.CategoryId.HasValue || _model.CategoryId.Value <= 0)
+        {
+            _errorMessage = "Vui lòng chọn danh mục sản phẩm.";
+            return;
+        }
+
+        if (!_model.UnitId.HasValue || _model.UnitId.Value <= 0)
+        {
+            _model.UnitId = _units?.FirstOrDefault(u => u.Code == "CAI")?.Id ?? _units?.FirstOrDefault()?.Id;
+        }
+
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            await using var db = await DbContextFactory.CreateDbContextAsync();
+
+            if (IsEdit)
+            {
+                var existing = await db.Products.FirstOrDefaultAsync(p => p.Id == _model.Id);
+                if (existing == null)
+                {
+                    _errorMessage = "Không tìm thấy sản phẩm để cập nhật.";
+                    return;
+                }
+
+                existing.Name = _model.Name.Trim();
+                existing.NewCode = _model.NewCode?.Trim();
+                existing.LegacyCode = _model.LegacyCode?.Trim();
+                existing.CategoryId = _model.CategoryId;
+                existing.UnitId = _model.UnitId;
+                existing.ShortName = _model.ShortName?.Trim();
+                existing.IsActive = _model.IsActive;
+                existing.Description = _model.Description?.Trim();
+                existing.Specifications = _model.Specifications?.Trim();
+                existing.TaxTreatment = _model.TaxTreatment;
+                existing.IsTaxReductionEligible = _model.IsTaxReductionEligible;
+                existing.UpdatedAt = DateTime.UtcNow;
+                existing.UpdatedBy = CurrentUser.UserName;
+
+                await db.SaveChangesAsync();
+                await AuditService.LogAsync(AuditEventType.ProductUpdated, CurrentUser.UserName, "Product", existing.Id.ToString());
+            }
+            else
+            {
+                _model.Code = await CodeGenerator.GenerateCodeAsync(SystemCodeConstants.Product);
+                _model.Name = _model.Name.Trim();
+                _model.NewCode = _model.NewCode?.Trim();
+                _model.LegacyCode = _model.LegacyCode?.Trim();
+                _model.ShortName = _model.ShortName?.Trim();
+                _model.Description = _model.Description?.Trim();
+                _model.Specifications = _model.Specifications?.Trim();
+                _model.CreatedAt = DateTime.UtcNow;
+                _model.CreatedBy = CurrentUser.UserName;
+
+                db.Products.Add(_model);
+                await db.SaveChangesAsync();
+                await AuditService.LogAsync(AuditEventType.ProductCreated, CurrentUser.UserName, "Product", _model.Code);
+            }
+
+            // Lưu hoặc cập nhật đơn giá vào Bảng giá hiện hành
+            if (_inputPrice.HasValue && _inputPrice.Value > 0)
+            {
+                var activePriceList = await db.PriceLists
+                    .OrderByDescending(p => p.Year)
+                    .ThenByDescending(p => p.CreatedAt)
+                    .FirstOrDefaultAsync(p => p.Status == PriceListStatus.Active);
+
+                if (activePriceList == null)
+                {
+                    activePriceList = new PriceList
+                    {
+                        Code = await CodeGenerator.GenerateCodeAsync("PL"),
+                        Name = $"BẢNG GIÁ HIỆN HÀNH {DateTime.UtcNow.Year}",
+                        Year = DateTime.UtcNow.Year,
+                        Status = PriceListStatus.Active,
+                        CreatedAt = DateTime.UtcNow,
+                        CreatedBy = CurrentUser.UserName
+                    };
+                    db.PriceLists.Add(activePriceList);
+                    await db.SaveChangesAsync();
+                }
+
+                var priceItem = await db.PriceListItems.FirstOrDefaultAsync(i => i.PriceListId == activePriceList.Id && i.ProductId == _model.Id);
+                if (priceItem == null)
+                {
+                    priceItem = new PriceListItem
+                    {
+                        PriceListId = activePriceList.Id,
+                        ProductId = _model.Id,
+                        NewCode = !string.IsNullOrWhiteSpace(_model.NewCode) ? _model.NewCode : _model.Code,
+                        LegacyCode = _model.LegacyCode,
+                        ProductInfo = _model.Name,
+                        UnitPrice = _inputPrice.Value,
+                        VatRate = _model.TaxTreatment == TaxTreatment.Standard10 ? (_model.IsTaxReductionEligible ? 8 : 10) : 0,
+                        MatchStatus = PriceMatchStatus.Matched,
+                        CreatedAt = DateTime.UtcNow,
+                        CreatedBy = CurrentUser.UserName
+                    };
+                    db.PriceListItems.Add(priceItem);
+                }
+                else
+                {
+                    priceItem.UnitPrice = _inputPrice.Value;
+                    priceItem.NewCode = !string.IsNullOrWhiteSpace(_model.NewCode) ? _model.NewCode : _model.Code;
+                    priceItem.LegacyCode = _model.LegacyCode;
+                    priceItem.ProductInfo = _model.Name;
+                    priceItem.UpdatedAt = DateTime.UtcNow;
+                    priceItem.UpdatedBy = CurrentUser.UserName;
+                }
+                await db.SaveChangesAsync();
+            }
+
+            _isDirty = false;
+            await OnSaved.InvokeAsync(_model);
+            await CloseModalAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Đã xảy ra lỗi khi lưu sản phẩm: " + ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task LockScrollAsync()
+    {
+        try { await JS.InvokeVoidAsync("TradeFlowMotion.lockScroll"); } catch { }
+    }
+
+    private async Task UnlockScrollAsync()
+    {
+        try { await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll"); } catch { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_scrollLocked)
+        {
+            await UnlockScrollAsync();
+            _scrollLocked = false;
+        }
+    }
+}

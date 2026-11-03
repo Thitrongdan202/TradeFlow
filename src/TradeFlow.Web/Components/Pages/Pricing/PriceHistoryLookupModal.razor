@@ -1,0 +1,270 @@
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Pricing
+@using TradeFlow.Domain.Enums
+@inject IPriceListService PriceListService
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (IsOpen || _isClosing)
+{
+    <div class="tf-ph-modal-backdrop @(_isClosing ? "is-closing" : "")" @onclick="HandleBackdropClick">
+        <div class="tf-ph-modal-dialog @(_isClosing ? "is-closing" : "")" @onclick:stopPropagation="true" role="dialog" aria-modal="true">
+            @* Header *@
+            <div class="tf-ph-modal-header">
+                <div class="tf-ph-header-info">
+                    <div class="tf-ph-header-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="tf-ph-modal-title">Tra cứu lịch sử biến động giá</h2>
+                        <span class="tf-ph-modal-subtitle">Xem lại lịch sử giá đại lý qua các kỳ ban hành bảng giá của sản phẩm</span>
+                    </div>
+                </div>
+                <button type="button" class="tf-ph-modal-close" @onclick="CloseModalAsync" title="Đóng (Esc)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            @* Body *@
+            <div class="tf-ph-modal-body">
+                <div class="tf-ph-search-bar">
+                    <input type="text"
+                           class="tf-ph-input"
+                           placeholder="Nhập mã hàng mới (vd: TL2138, K8012), mã cũ hoặc mã SP..."
+                           @bind="_searchQuery"
+                           @bind:event="oninput"
+                           @onkeydown="HandleKeyDown" />
+                    <button type="button" class="tf-ph-btn tf-ph-btn-primary" @onclick="ExecuteSearchAsync" disabled="@_isSearching">
+                        @if (_isSearching)
+                        {
+                            <span class="tf-ph-spinner-sm"></span>
+                            <span>Đang tìm...</span>
+                        }
+                        else
+                        {
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <span>Tra cứu giá</span>
+                        }
+                    </button>
+                </div>
+
+                @if (_isSearching)
+                {
+                    <div class="tf-ph-loading">
+                        <div class="tf-ph-spinner"></div>
+                        <span>Đang truy vấn lịch sử qua các đợt bảng giá...</span>
+                    </div>
+                }
+                else if (_hasSearched)
+                {
+                    @if (!_historyItems.Any())
+                    {
+                        <div class="tf-ph-empty">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.8">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <p style="margin:8px 0 0; font-size:13.5px;">Không tìm thấy lịch sử giá cho mã "@_lastSearchedQuery".</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="tf-ph-result-header">
+                            Tìm thấy <strong>@_historyItems.Count</strong> đợt định giá cho mã <code>@_lastSearchedQuery</code>:
+                        </div>
+
+                        <div class="tf-ph-table-wrap">
+                            <table class="tf-ph-table">
+                                <thead>
+                                    <tr>
+                                        <th>Mã mới</th>
+                                        <th>Mã cũ</th>
+                                        <th>Tên / Quy cách sản phẩm</th>
+                                        <th style="text-align: right;">Đơn giá trước VAT</th>
+                                        <th style="text-align: center;">VAT %</th>
+                                        <th style="text-align: center;">Kỳ bảng giá</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in _historyItems)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <span style="font-family: monospace; font-weight: 700; color: #2563eb;">@item.NewCode</span>
+                                            </td>
+                                            <td>
+                                                <span style="font-family: monospace; color: var(--tf-text-secondary);">@(item.LegacyCode ?? "—")</span>
+                                            </td>
+                                            <td>
+                                                <div style="font-weight: 600; color: var(--tf-text-primary);">@item.ProductInfo</div>
+                                                @if (!string.IsNullOrEmpty(item.Note))
+                                                {
+                                                    <div style="font-size: 11px; color: var(--tf-text-muted);">@item.Note</div>
+                                                }
+                                            </td>
+                                            <td style="text-align: right; font-weight: 700; color: #047857; font-size: 14px;">
+                                                @item.UnitPrice.ToString("N0") ₫
+                                            </td>
+                                            <td style="text-align: center; color: var(--tf-text-secondary);">
+                                                @(item.VatRate.HasValue ? $"{item.VatRate}%" : "—")
+                                            </td>
+                                            <td style="text-align: center;">
+                                                <span class="tf-ph-badge tf-ph-badge-info">#@item.PriceListId</span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="tf-ph-guide">
+                        <div style="font-size: 13.5px; font-weight: 600; color: var(--tf-text-primary); margin-bottom: 4px;">Hướng dẫn tra cứu nhanh</div>
+                        <p style="margin: 0; font-size: 12.5px; color: var(--tf-text-muted); line-height: 1.5;">
+                            Nhập mã hàng mới (ví dụ: TL2138, K8012), mã quản lý cũ hoặc mã sản phẩm để hệ thống tự động lọc toàn bộ các kỳ ban hành bảng giá có chứa mặt hàng này.
+                        </p>
+                    </div>
+                }
+            </div>
+
+            @* Footer *@
+            <div class="tf-ph-modal-footer">
+                <a href="/bang-gia/lich-su" class="tf-ph-btn tf-ph-btn-outline" target="_blank">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                    <span>Mở trang phân tích lịch sử</span>
+                </a>
+                <button type="button" class="tf-ph-btn tf-ph-btn-secondary" @onclick="CloseModalAsync">
+                    Đóng
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public string? InitialQuery { get; set; }
+
+    private string _searchQuery = "";
+    private string _lastSearchedQuery = "";
+    private List<PriceListItemDto> _historyItems = new();
+    private bool _isSearching = false;
+    private bool _hasSearched = false;
+    private bool _isClosing = false;
+    private bool _scrollLocked = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && !_isClosing)
+        {
+            if (!_scrollLocked)
+            {
+                await LockScrollAsync();
+                _scrollLocked = true;
+            }
+
+            if (!string.IsNullOrEmpty(InitialQuery) && _searchQuery != InitialQuery)
+            {
+                _searchQuery = InitialQuery;
+                await ExecuteSearchAsync();
+            }
+        }
+        else if (!IsOpen && _scrollLocked)
+        {
+            await UnlockScrollAsync();
+            _scrollLocked = false;
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await ExecuteSearchAsync();
+        }
+    }
+
+    private async Task ExecuteSearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_searchQuery)) return;
+
+        _isSearching = true;
+        _lastSearchedQuery = _searchQuery.Trim();
+
+        try
+        {
+            _historyItems = await PriceListService.GetProductPriceHistoryAsync(_lastSearchedQuery);
+            _hasSearched = true;
+        }
+        catch
+        {
+            _historyItems.Clear();
+            _hasSearched = true;
+        }
+        finally
+        {
+            _isSearching = false;
+        }
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        await CloseModalAsync();
+    }
+
+    private async Task CloseModalAsync()
+    {
+        if (_isClosing) return;
+        _isClosing = true;
+        StateHasChanged();
+
+        await Task.Delay(160);
+
+        _isClosing = false;
+
+        if (_scrollLocked)
+        {
+            await UnlockScrollAsync();
+            _scrollLocked = false;
+        }
+
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private async Task LockScrollAsync()
+    {
+        try { await JS.InvokeVoidAsync("TradeFlowMotion.lockScroll"); } catch { }
+    }
+
+    private async Task UnlockScrollAsync()
+    {
+        try { await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll"); } catch { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_scrollLocked)
+        {
+            await UnlockScrollAsync();
+            _scrollLocked = false;
+        }
+    }
+}

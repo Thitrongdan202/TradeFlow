@@ -1,4 +1,4 @@
-/* Customer Form Modal Styles */
+﻿/* Customer Form Modal Styles */
 .tf-modal-overlay {
     position: fixed;
     top: 0;
@@ -7,32 +7,37 @@
     bottom: 0;
     background-color: rgba(15, 23, 42, 0.65);
     display: flex;
-    align-items: center;
+    align-items: safe center;
     justify-content: center;
     z-index: 1050;
-    padding: 16px;
-    animation: tfBackdropFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    transform: translateZ(0);
+    padding: clamp(16px, 3vh, 32px) 16px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    animation: tfBackdropFadeIn 160ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .tf-modal-overlay.is-closing {
     pointer-events: none;
-    animation: tfBackdropFadeOut 0.16s cubic-bezier(0.4, 0, 1, 1) forwards !important;
+    animation: tfBackdropFadeOut 150ms cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
 }
 
-.customer-modal {
+.customer-modal {position: relative !important;
+    z-index: 1060 !important;
+
     background-color: var(--tf-surface-card, #ffffff);
     color: var(--tf-text-primary, #0f172a);
     border: 1px solid var(--tf-border, #e2e8f0);
     border-radius: 14px;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    animation: tfModalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: transform, opacity;
     transform: translateZ(0);
+    backface-visibility: hidden;
+    animation: tfModalScaleIn 190ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .customer-modal.is-closing {
     pointer-events: none;
-    animation: tfModalScaleOut 0.16s cubic-bezier(0.4, 0, 1, 1) forwards !important;
+    animation: tfModalScaleOut 150ms cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
 }
 
 @keyframes tfBackdropFadeIn {
@@ -46,25 +51,13 @@
 }
 
 @keyframes tfModalScaleIn {
-    from {
-        opacity: 0;
-        transform: scale(0.97) translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
+    from { opacity: 0; transform: translateY(8px) scale(0.975); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes tfModalScaleOut {
-    from {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
-    to {
-        opacity: 0;
-        transform: scale(0.97) translateY(8px);
-    }
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to { opacity: 0; transform: translateY(6px) scale(0.975); }
 }
 
 /* Header */
@@ -107,7 +100,7 @@
     background-color: var(--tf-surface-subtle, #f8fafc);
     border: 1px solid var(--tf-border, #e2e8f0);
     border-radius: 10px;
-    padding: 16px;
+    padding: clamp(24px, 4vh, 44px) 16px;
 }
 
 .tf-form-section-title {
@@ -235,46 +228,62 @@
 
 /* Dark Mode Overrides */
 [data-theme="dark"] .customer-modal,
-:root[data-theme="dark"] .customer-modal {
+[data-bs-theme="dark"] .customer-modal,
+:root[data-theme="dark"] .customer-modal,
+:root[data-bs-theme="dark"] .customer-modal {
     background-color: #1e293b !important;
     border-color: #334155 !important;
     color: #f1f5f9 !important;
 }
 
 [data-theme="dark"] .customer-modal-header,
+[data-bs-theme="dark"] .customer-modal-header,
 [data-theme="dark"] .customer-modal-footer,
+[data-bs-theme="dark"] .customer-modal-footer,
 :root[data-theme="dark"] .customer-modal-header,
-:root[data-theme="dark"] .customer-modal-footer {
+:root[data-bs-theme="dark"] .customer-modal-header,
+:root[data-theme="dark"] .customer-modal-footer,
+:root[data-bs-theme="dark"] .customer-modal-footer {
     background-color: #1e293b !important;
     border-color: #334155 !important;
 }
 
 [data-theme="dark"] .tf-form-section,
-:root[data-theme="dark"] .tf-form-section {
+[data-bs-theme="dark"] .tf-form-section,
+:root[data-theme="dark"] .tf-form-section,
+:root[data-bs-theme="dark"] .tf-form-section {
     background-color: #0f172a !important;
     border-color: #334155 !important;
 }
 
 [data-theme="dark"] .tf-form-section-title,
-:root[data-theme="dark"] .tf-form-section-title {
+[data-bs-theme="dark"] .tf-form-section-title,
+:root[data-theme="dark"] .tf-form-section-title,
+:root[data-bs-theme="dark"] .tf-form-section-title {
     color: #f1f5f9 !important;
     border-color: #334155 !important;
 }
 
 [data-theme="dark"] .tf-input-readonly-wrap .tf-input,
-:root[data-theme="dark"] .tf-input-readonly-wrap .tf-input {
+[data-bs-theme="dark"] .tf-input-readonly-wrap .tf-input,
+:root[data-theme="dark"] .tf-input-readonly-wrap .tf-input,
+:root[data-bs-theme="dark"] .tf-input-readonly-wrap .tf-input {
     background-color: #1e293b !important;
     border-color: #334155 !important;
     color: #94a3b8 !important;
 }
 
 [data-theme="dark"] .tf-readonly-badge,
-:root[data-theme="dark"] .tf-readonly-badge {
+[data-bs-theme="dark"] .tf-readonly-badge,
+:root[data-theme="dark"] .tf-readonly-badge,
+:root[data-bs-theme="dark"] .tf-readonly-badge {
     background-color: #334155 !important;
     color: #cbd5e1 !important;
 }
 
 [data-theme="dark"] .tf-checkbox-text,
-:root[data-theme="dark"] .tf-checkbox-text {
+[data-bs-theme="dark"] .tf-checkbox-text,
+:root[data-theme="dark"] .tf-checkbox-text,
+:root[data-bs-theme="dark"] .tf-checkbox-text {
     color: #e2e8f0 !important;
 }

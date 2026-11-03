@@ -1,0 +1,569 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Constants
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Domain.Entities.MasterData
+@using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
+@inject TradeFlowDbContext DbContext
+@inject ISystemCodeGenerator CodeGenerator
+@inject IAuditService AuditService
+@inject ICurrentUserService CurrentUser
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (IsOpen)
+{
+    <div class="tf-modal-overlay @(_isClosing ? "is-closing" : "")" @onclick="HandleBackdropClick" @onkeydown="HandleKeyDown" tabindex="-1">
+        <div class="tf-modal tf-modal-lg supplier-modal @(_isClosing ? "is-closing" : "")"
+             style="width: min(720px, calc(100vw - 32px)); max-width: 720px; max-height: min(86vh, 740px); min-height: 0; display: flex; flex-direction: column; overflow: hidden; position: relative; margin: auto;"
+             @onclick:stopPropagation="true">
+
+            @* Fixed Header *@
+            <div class="tf-modal-header supplier-modal-header" style="flex: 0 0 auto;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div class="tf-supplier-header-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="tf-modal-title" style="margin: 0; font-size: 17px; font-weight: 700; color: var(--tf-text-primary);">
+                            @(IsEditMode ? "Chỉnh sửa thông tin nhà cung cấp" : "Thêm nhà cung cấp mới")
+                        </h3>
+                        <p style="margin: 2px 0 0 0; font-size: 13px; color: var(--tf-text-muted);">
+                            @(IsEditMode ? "Cập nhật hồ sơ nhà cung ứng, thông tin liên lạc và điều khoản giao dịch" : "Đăng ký nhà cung cấp mới phục vụ quy trình nhập kho và quản lý công nợ")
+                        </p>
+                    </div>
+                </div>
+                <button type="button" class="tf-modal-close-btn" @onclick="RequestCloseAsync" aria-label="Đóng" title="Đóng (Esc)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="tf-modal-alert-error" style="flex: 0 0 auto; margin: 12px 24px 0;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span>@_errorMessage</span>
+                </div>
+            }
+
+            @* Scrollable Form Body *@
+            <div class="tf-modal-body supplier-modal-body" style="flex: 1 1 auto; overflow-y: auto; padding: 20px 24px;">
+                <EditForm Model="_model" OnValidSubmit="HandleSubmit" id="supplierForm">
+                    <DataAnnotationsValidator />
+
+                    @* Section 1: Định danh *@
+                    <div class="tf-form-section">
+                        <div class="tf-form-section-title">
+                            <span class="tf-section-step">1</span>
+                            <span>Mã định danh hệ thống</span>
+                        </div>
+                        <div class="tf-form-grid-2">
+                            <div class="tf-form-group">
+                                <label class="tf-label">
+                                    Mã nhà cung cấp
+                                    <span class="tf-label-hint">(Hệ thống tự sinh)</span>
+                                </label>
+                                <div class="tf-input-readonly-wrap">
+                                    <input type="text" class="tf-input" value="@_displayCode" readonly disabled />
+                                    <span class="tf-readonly-badge">Tự động</span>
+                                </div>
+                            </div>
+                            <div class="tf-form-group">
+                                <label class="tf-label">
+                                    Mã quản lý nội bộ
+                                    <span class="tf-label-hint">(Tùy chọn)</span>
+                                </label>
+                                <InputText @bind-Value="_model.BusinessCode" class="tf-input" placeholder="Ví dụ: NCC-BOT-01, NCC-NGUYENLIEU..." maxlength="50" />
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Section 2: Pháp nhân & Đại diện *@
+                    <div class="tf-form-section tf-mt-4">
+                        <div class="tf-form-section-title">
+                            <span class="tf-section-step">2</span>
+                            <span>Hồ sơ nhà cung cấp &amp; Pháp nhân</span>
+                        </div>
+                        <div class="tf-form-grid-2">
+                            <div class="tf-form-group">
+                                <label class="tf-label">
+                                    Tên nhà cung cấp <span class="tf-text-danger">*</span>
+                                </label>
+                                <InputText @bind-Value="_model.Name" class="tf-input" placeholder="Tên đối tác hoặc thương hiệu nhà cung cấp" maxlength="200" />
+                                <ValidationMessage For="@(() => _model.Name)" class="tf-field-error" />
+                            </div>
+                            <div class="tf-form-group">
+                                <label class="tf-label">
+                                    Tên công ty / Doanh nghiệp
+                                </label>
+                                <InputText @bind-Value="_model.CompanyName" class="tf-input" placeholder="Tên pháp nhân trên giấy phép ĐKKD" maxlength="250" />
+                            </div>
+                        </div>
+
+                        <div class="tf-form-grid-2 tf-mt-3">
+                            <div class="tf-form-group">
+                                <label class="tf-label">
+                                    Mã số thuế (MST)
+                                </label>
+                                <InputText @bind-Value="_model.TaxCode" class="tf-input font-mono" placeholder="Mã số thuế doanh nghiệp (10 hoặc 13 số)" maxlength="30" />
+                            </div>
+                            <div class="tf-form-group">
+                                <label class="tf-label">
+                                    Người đại diện / Đầu mối kinh doanh
+                                </label>
+                                <InputText @bind-Value="_model.ContactPerson" class="tf-input" placeholder="Họ và tên người phụ trách bán hàng / kế toán" maxlength="100" />
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Section 3: Liên lạc & Trụ sở *@
+                    <div class="tf-form-section tf-mt-4">
+                        <div class="tf-form-section-title">
+                            <span class="tf-section-step">3</span>
+                            <span>Thông tin liên lạc &amp; Trụ sở / Kho</span>
+                        </div>
+                        <div class="tf-form-grid-2">
+                            <div class="tf-form-group">
+                                <label class="tf-label">
+                                    Số điện thoại
+                                </label>
+                                <InputText @bind-Value="_model.Phone" class="tf-input" placeholder="Số điện thoại di động hoặc hotline nhà cung cấp" maxlength="30" />
+                            </div>
+                            <div class="tf-form-group">
+                                <label class="tf-label">
+                                    Địa chỉ Email
+                                </label>
+                                <InputText @bind-Value="_model.Email" class="tf-input" placeholder="email@nhacungcap.com" maxlength="100" />
+                            </div>
+                        </div>
+
+                        <div class="tf-form-group tf-mt-3">
+                            <label class="tf-label">
+                                Địa chỉ trụ sở / Kho xuất hàng
+                            </label>
+                            <InputText @bind-Value="_model.Address" class="tf-input" placeholder="Số nhà, đường phố, phường/xã, quận/huyện, tỉnh/thành phố" maxlength="300" />
+                        </div>
+                    </div>
+
+                    @* Section 4: Ghi chú & Trạng thái *@
+                    <div class="tf-form-section tf-mt-4">
+                        <div class="tf-form-section-title">
+                            <span class="tf-section-step">4</span>
+                            <span>Ghi chú quản lý &amp; Trạng thái</span>
+                        </div>
+                        <div class="tf-form-group">
+                            <label class="tf-label">Ghi chú về nhà cung cấp</label>
+                            <InputTextArea @bind-Value="_model.Notes" class="tf-input" rows="2" placeholder="Ghi chú về điều khoản công nợ, thời hạn thanh toán, chiết khấu nguồn hàng..." maxlength="500" />
+                        </div>
+
+                        <div class="tf-form-group tf-mt-3">
+                            <label class="tf-checkbox-custom-label">
+                                <InputCheckbox @bind-Value="_model.IsActive" class="tf-checkbox-input" />
+                                <span class="tf-checkbox-text">
+                                    <strong>Đang hoạt động</strong> — Nhà cung cấp được phép tạo đơn mua hàng, nhập kho và hạch toán công nợ
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+
+            @* Fixed Footer *@
+            <div class="tf-modal-footer supplier-modal-footer" style="flex: 0 0 auto;">
+                <button type="button" class="tf-btn tf-btn-ghost" @onclick="RequestCloseAsync" disabled="@_isSubmitting">
+                    Hủy bỏ
+                </button>
+                <button type="submit" form="supplierForm" class="tf-btn tf-btn-primary" disabled="@_isSubmitting" style="min-width: 140px;">
+                    @if (_isSubmitting)
+                    {
+                        <span class="tf-spinner-sm" style="margin-right: 6px;"></span>
+                        <span>Đang lưu...</span>
+                    }
+                    else
+                    {
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                            <polyline points="17 21 17 13 7 13 7 21"/>
+                            <polyline points="7 3 7 8 15 8"/>
+                        </svg>
+                        <span>@(IsEditMode ? "Lưu thay đổi" : "Lưu nhà cung cấp")</span>
+                    }
+                </button>
+            </div>
+
+            @* Unsaved Changes Confirmation Dialog *@
+            @if (_showDirtyConfirm)
+            {
+                <div class="tf-modal-confirm-overlay" @onclick:stopPropagation="true">
+                    <div class="tf-modal-confirm-box text-center">
+                        <div style="width: 46px; height: 46px; border-radius: 50%; background: rgba(245, 158, 11, 0.15); color: #d97706; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px auto;">
+                            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <h4 style="font-size: 16px; font-weight: 700; color: var(--tf-text-primary); margin: 0 0 6px 0;">Bạn có thay đổi chưa lưu</h4>
+                        <p style="font-size: 13px; color: var(--tf-text-muted); margin: 0 0 20px 0; line-height: 1.5;">
+                            Thông tin nhà cung cấp bạn vừa nhập sẽ bị mất nếu đóng cửa sổ này. Bạn có chắc chắn muốn hủy?
+                        </p>
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                            <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showDirtyConfirm = false">
+                                Tiếp tục nhập
+                            </button>
+                            <button type="button" class="tf-btn tf-btn-danger" @onclick="ConfirmDiscardAsync">
+                                Hủy thay đổi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public int? SupplierId { get; set; }
+    [Parameter] public EventCallback<Supplier> OnSaved { get; set; }
+
+    private SupplierFormModel _model = new();
+    private SupplierFormModel _initialSnapshot = new();
+    private string _displayCode = "NCC------";
+    private bool _isSubmitting = false;
+    private bool _isClosing = false;
+    private bool _wasOpen = false;
+    private bool _showDirtyConfirm = false;
+    private string? _errorMessage;
+
+    private bool IsEditMode => SupplierId.HasValue && SupplierId.Value > 0;
+
+    private bool IsDirty =>
+        _model.Name != _initialSnapshot.Name ||
+        _model.BusinessCode != _initialSnapshot.BusinessCode ||
+        _model.CompanyName != _initialSnapshot.CompanyName ||
+        _model.TaxCode != _initialSnapshot.TaxCode ||
+        _model.ContactPerson != _initialSnapshot.ContactPerson ||
+        _model.Phone != _initialSnapshot.Phone ||
+        _model.Email != _initialSnapshot.Email ||
+        _model.Address != _initialSnapshot.Address ||
+        _model.Notes != _initialSnapshot.Notes ||
+        _model.IsActive != _initialSnapshot.IsActive;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && !_wasOpen)
+        {
+            _wasOpen = true;
+            _isClosing = false;
+            _errorMessage = null;
+            _isSubmitting = false;
+            _showDirtyConfirm = false;
+
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.lockScroll");
+            }
+            catch { }
+
+            await InitializeFormAsync();
+        }
+        else if (!IsOpen && _wasOpen)
+        {
+            _wasOpen = false;
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll");
+            }
+            catch { }
+        }
+    }
+
+    private async Task InitializeFormAsync()
+    {
+        try
+        {
+            if (IsEditMode)
+            {
+                var entity = await DbContext.Suppliers.FindAsync(SupplierId!.Value);
+                if (entity != null)
+                {
+                    _displayCode = entity.Code;
+                    _model = new SupplierFormModel
+                    {
+                        Id = entity.Id,
+                        Code = entity.Code,
+                        BusinessCode = entity.BusinessCode,
+                        Name = entity.Name,
+                        CompanyName = entity.CompanyName,
+                        TaxCode = entity.TaxCode,
+                        ContactPerson = entity.ContactPerson,
+                        Phone = entity.Phone,
+                        Email = entity.Email,
+                        Address = entity.Address,
+                        Notes = entity.Notes,
+                        IsActive = entity.IsActive
+                    };
+                    _initialSnapshot = _model.Clone();
+                }
+                else
+                {
+                    _errorMessage = "Không tìm thấy nhà cung cấp cần chỉnh sửa.";
+                }
+            }
+            else
+            {
+                string nextCode = await CodeGenerator.PeekNextCodeAsync(SystemCodeConstants.Supplier);
+                _displayCode = $"{nextCode} (Tự sinh)";
+                _model = new SupplierFormModel { IsActive = true };
+                _initialSnapshot = _model.Clone();
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Lỗi chuẩn bị dữ liệu: {ex.Message}";
+        }
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        if (_isSubmitting || _isClosing) return;
+
+        if (IsDirty)
+        {
+            _showDirtyConfirm = true;
+            return;
+        }
+
+        await CloseAsync();
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (_isSubmitting || _isClosing) return;
+
+        if (e.Key == "Escape")
+        {
+            if (_showDirtyConfirm)
+            {
+                _showDirtyConfirm = false;
+                return;
+            }
+
+            await RequestCloseAsync();
+        }
+    }
+
+    public async Task RequestCloseAsync()
+    {
+        if (_isSubmitting || _isClosing) return;
+
+        if (IsDirty)
+        {
+            _showDirtyConfirm = true;
+            return;
+        }
+
+        await CloseAsync();
+    }
+
+    private async Task ConfirmDiscardAsync()
+    {
+        _showDirtyConfirm = false;
+        await CloseAsync();
+    }
+
+    private async Task CloseAsync()
+    {
+        if (_isClosing) return;
+
+        bool reduced = false;
+        try
+        {
+            reduced = await JS.InvokeAsync<bool>("TradeFlowMotion.isReducedMotion");
+        }
+        catch { }
+
+        if (!reduced)
+        {
+            _isClosing = true;
+            StateHasChanged();
+            await Task.Delay(150);
+        }
+
+        IsOpen = false;
+        _isClosing = false;
+        _wasOpen = false;
+
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll");
+        }
+        catch { }
+
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (_isSubmitting) return;
+
+        if (string.IsNullOrWhiteSpace(_model.Name))
+        {
+            _errorMessage = "Vui lòng nhập tên nhà cung cấp.";
+            return;
+        }
+
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var username = authState.User.Identity?.Name ?? CurrentUser.UserName ?? "Admin";
+
+            Supplier savedSupplier;
+
+            if (IsEditMode)
+            {
+                var entity = await DbContext.Suppliers.FindAsync(SupplierId!.Value);
+                if (entity == null)
+                {
+                    _errorMessage = "Không tìm thấy nhà cung cấp để cập nhật.";
+                    return;
+                }
+
+                entity.BusinessCode = _model.BusinessCode?.Trim();
+                entity.Name = _model.Name.Trim();
+                entity.CompanyName = _model.CompanyName?.Trim();
+                entity.TaxCode = _model.TaxCode?.Trim();
+                entity.ContactPerson = _model.ContactPerson?.Trim();
+                entity.Phone = _model.Phone?.Trim();
+                entity.Email = _model.Email?.Trim();
+                entity.Address = _model.Address?.Trim();
+                entity.Notes = _model.Notes?.Trim();
+                entity.IsActive = _model.IsActive;
+                entity.UpdatedAt = DateTime.UtcNow;
+                entity.UpdatedBy = username;
+
+                DbContext.Suppliers.Update(entity);
+                await DbContext.SaveChangesAsync();
+
+                await AuditService.LogAsync(
+                    AuditEventType.SupplierUpdated,
+                    username,
+                    "Supplier",
+                    entity.Id.ToString(),
+                    $"Cập nhật thông tin NCC {entity.Name} ({entity.Code})",
+                    username);
+
+                savedSupplier = entity;
+            }
+            else
+            {
+                string newCode = await CodeGenerator.GenerateCodeAsync(SystemCodeConstants.Supplier);
+
+                savedSupplier = new Supplier
+                {
+                    Code = newCode,
+                    BusinessCode = _model.BusinessCode?.Trim(),
+                    Name = _model.Name.Trim(),
+                    CompanyName = _model.CompanyName?.Trim(),
+                    TaxCode = _model.TaxCode?.Trim(),
+                    ContactPerson = _model.ContactPerson?.Trim(),
+                    Phone = _model.Phone?.Trim(),
+                    Email = _model.Email?.Trim(),
+                    Address = _model.Address?.Trim(),
+                    Notes = _model.Notes?.Trim(),
+                    IsActive = _model.IsActive,
+                    CreatedAt = DateTime.UtcNow,
+                    CreatedBy = username
+                };
+
+                DbContext.Suppliers.Add(savedSupplier);
+                await DbContext.SaveChangesAsync();
+
+                await AuditService.LogAsync(
+                    AuditEventType.SupplierCreated,
+                    username,
+                    "Supplier",
+                    savedSupplier.Code,
+                    $"Thêm mới NCC {savedSupplier.Name} ({savedSupplier.Code})",
+                    username);
+            }
+
+            await CloseAsync();
+            await OnSaved.InvokeAsync(savedSupplier);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Không thể lưu nhà cung cấp: {ex.Message}";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_wasOpen)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll");
+            }
+            catch { }
+        }
+    }
+
+    public class SupplierFormModel
+    {
+        public int Id { get; set; }
+        public string Code { get; set; } = string.Empty;
+        public string? BusinessCode { get; set; }
+
+        [Required(ErrorMessage = "Tên nhà cung cấp là bắt buộc.")]
+        [StringLength(200, ErrorMessage = "Tên nhà cung cấp không vượt quá 200 ký tự.")]
+        public string Name { get; set; } = string.Empty;
+
+        [StringLength(250, ErrorMessage = "Tên công ty không vượt quá 250 ký tự.")]
+        public string? CompanyName { get; set; }
+
+        [StringLength(30, ErrorMessage = "Mã số thuế không vượt quá 30 ký tự.")]
+        public string? TaxCode { get; set; }
+
+        [StringLength(100, ErrorMessage = "Người liên hệ không vượt quá 100 ký tự.")]
+        public string? ContactPerson { get; set; }
+
+        [StringLength(30, ErrorMessage = "Số điện thoại không vượt quá 30 ký tự.")]
+        public string? Phone { get; set; }
+
+        [EmailAddress(ErrorMessage = "Email không đúng định dạng.")]
+        [StringLength(100, ErrorMessage = "Email không vượt quá 100 ký tự.")]
+        public string? Email { get; set; }
+
+        [StringLength(300, ErrorMessage = "Địa chỉ không vượt quá 300 ký tự.")]
+        public string? Address { get; set; }
+
+        [StringLength(500, ErrorMessage = "Ghi chú không vượt quá 500 ký tự.")]
+        public string? Notes { get; set; }
+
+        public bool IsActive { get; set; } = true;
+
+        public SupplierFormModel Clone() => (SupplierFormModel)MemberwiseClone();
+    }
+}

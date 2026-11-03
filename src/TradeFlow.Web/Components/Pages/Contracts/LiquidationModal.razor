@@ -1,5 +1,7 @@
 @using TradeFlow.Application.Common.Interfaces
+@inject IJSRuntime JS
 @inject IContractService ContractService
+@implements IAsyncDisposable
 
 @if (IsOpen)
 {
@@ -31,7 +33,7 @@
                         <textarea class="form-control form-control-sm" rows="3" @bind="reason" placeholder="Ví dụ: Hai bên đã hoàn thành 100% công tác giao nhận, nghiệm thu và đối trừ công nợ dứt điểm..."></textarea>
                     </div>
                 </div>
-                <div class="modal-footer py-2" style="background-color: var(--tf-surface-subtle, #f8fafc); border-top: 1px solid var(--tf-border, #e2e8f0);">
+                <div class="modal-footer py-2">
                     <button type="button" class="btn btn-sm btn-secondary" @onclick="CloseAsync">Hủy</button>
                     <button type="button" class="btn btn-sm btn-success px-3" @onclick="ExecuteLiquidateAsync" disabled="@isSubmitting">
                         @if (isSubmitting)
@@ -100,5 +102,19 @@
     {
         IsOpen = false;
         await IsOpenChanged.InvokeAsync(false);
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
     }
 }

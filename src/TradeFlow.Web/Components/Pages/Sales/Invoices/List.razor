@@ -20,10 +20,18 @@
     </div>
     <div class="tf-page-header-actions">
         <AuthorizeView Policy="Permission:Invoices:Create">
-            <a href="/hoa-don/tao-moi" class="tf-btn tf-btn-primary">+ Tạo hóa đơn</a>
+            <button type="button" class="tf-btn tf-btn-primary" @onclick="OpenCreateInvoiceModal">+ Tạo hóa đơn</button>
         </AuthorizeView>
     </div>
 </div>
+
+@if (!string.IsNullOrEmpty(_toastMessage))
+{
+    <div class="tf-alert tf-alert-success tf-mb-4" style="background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-radius:6px;">
+        <span>@_toastMessage</span>
+        <button type="button" style="background:none; border:none; color:#065f46; cursor:pointer; font-weight:bold;" @onclick="() => _toastMessage = null">✕</button>
+    </div>
+}
 
 @if (_isLoading && _invoices.Count == 0)
 {
@@ -48,7 +56,7 @@ else if (!_invoices.Any())
         <h3>Chưa có hóa đơn nào</h3>
         <p>Hóa đơn sẽ tự động sinh ra khi bạn xác nhận Đơn bán hàng, hoặc bạn có thể tạo thủ công.</p>
         <AuthorizeView Policy="Permission:Invoices:Create">
-            <a href="/hoa-don/tao-moi" class="tf-btn tf-btn-primary" style="margin-top:16px;">+ Tạo hóa đơn</a>
+            <button type="button" class="tf-btn tf-btn-primary" style="margin-top:16px;" @onclick="OpenCreateInvoiceModal">+ Tạo hóa đơn</button>
         </AuthorizeView>
     </div>
 }
@@ -98,7 +106,7 @@ else
                                 <div class="tw-inline-flex tw-gap-1">
                                     @if (inv.Status == InvoiceStatus.Draft)
                                     {
-                                        <a href="/hoa-don/sua/@inv.Id" class="tf-btn tf-btn-ghost tf-btn-sm">Sửa</a>
+                                        <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => OpenEditInvoiceModal(inv.Id)">Sửa</button>
                                     }
                                     <a href="/hoa-don/chi-tiet/@inv.Id" class="tf-btn tf-btn-ghost tf-btn-sm">Chi tiết</a>
                                 </div>
@@ -123,7 +131,33 @@ else
     </div>
 }
 
+<InvoiceFormModal @bind-IsOpen="_showInvoiceModal"
+                  InvoiceId="_selectedInvoiceEditId"
+                  OnSaved="HandleInvoiceSaved" />
+
 @code {
+    private bool _showInvoiceModal = false;
+    private int? _selectedInvoiceEditId;
+    private string? _toastMessage;
+
+    private void OpenCreateInvoiceModal()
+    {
+        _selectedInvoiceEditId = null;
+        _showInvoiceModal = true;
+    }
+
+    private void OpenEditInvoiceModal(int id)
+    {
+        _selectedInvoiceEditId = id;
+        _showInvoiceModal = true;
+    }
+
+    private async Task HandleInvoiceSaved(InvoiceDto inv)
+    {
+        _toastMessage = $"Đã lưu hóa đơn {inv.InvoiceNumber} thành công!";
+        await LoadDataAsync();
+    }
+
     private List<InvoiceDto> _invoices = new();
     private bool _isLoading = true;
     private int _currentPage = 1;

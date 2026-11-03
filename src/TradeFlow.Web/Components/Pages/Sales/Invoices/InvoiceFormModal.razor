@@ -1,0 +1,739 @@
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Sales
+@using TradeFlow.Domain.Entities.MasterData
+@using TradeFlow.Domain.Enums
+@inject IInvoiceService InvoiceService
+@inject ISalesService SalesService
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (IsOpen || _isClosing)
+{
+    <div class="tf-inv-modal-backdrop @(_isClosing ? "is-closing" : "")" @onclick="HandleBackdropClick">
+        <div class="tf-inv-modal-dialog @(_isClosing ? "is-closing" : "")" @onclick:stopPropagation="true" role="dialog" aria-modal="true">
+            @* Modal Header *@
+            <div class="tf-inv-modal-header">
+                <div class="tf-inv-header-info">
+                    <div class="tf-inv-header-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="tf-inv-modal-title">@(IsEdit ? $"Cập nhật hóa đơn #{_dto.InvoiceNumber}" : "Tạo mới chứng từ hóa đơn")</h2>
+                        <span class="tf-inv-modal-subtitle">@(IsEdit ? "Chỉnh sửa nội dung hóa đơn trạng thái Nháp" : "Khai báo thông tin bên mua và danh mục hàng hóa phát sinh xuất hóa đơn")</span>
+                    </div>
+                </div>
+                <div class="tf-inv-header-actions">
+                    <button type="button" class="tf-inv-modal-close" @onclick="HandleRequestClose" title="Đóng (Esc)">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            @* Modal Body *@
+            <div class="tf-inv-modal-body">
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="tf-inv-alert-error">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <span>@_errorMessage</span>
+                    </div>
+                }
+
+                @if (_isLoading)
+                {
+                    <div class="tf-inv-loading">
+                        <div class="tf-inv-spinner"></div>
+                        <span>Đang nạp dữ liệu hóa đơn...</span>
+                    </div>
+                }
+                else
+                {
+                    @* 1. Cấu hình chứng từ *@
+                    <div class="tf-inv-section">
+                        <div class="tf-inv-section-title">
+                            <span class="tf-inv-section-num">1</span>
+                            <span>Cấu hình chứng từ</span>
+                        </div>
+                        <div class="tf-inv-grid-3">
+                            <div class="tf-inv-form-group">
+                                <label class="tf-inv-label">Loại hóa đơn <span class="tf-inv-req">*</span></label>
+                                <select class="tf-inv-select" @bind="_dto.Type" @bind:after="CalculateTotals" @oninput="MarkDirty">
+                                    <option value="@InvoiceType.SalesInvoice">Hóa đơn bán hàng (02/BH)</option>
+                                    <option value="@InvoiceType.VatInvoice">Hóa đơn GTGT (01/GTGT)</option>
+                                </select>
+                            </div>
+                            <div class="tf-inv-form-group">
+                                <label class="tf-inv-label">Ngày lập hóa đơn</label>
+                                <input type="date" class="tf-inv-input" @bind="_dto.InvoiceDate" @oninput="MarkDirty" />
+                            </div>
+                            <div class="tf-inv-form-group">
+                                <label class="tf-inv-label">Hình thức thanh toán</label>
+                                <input type="text" class="tf-inv-input" @bind="_dto.PaymentMethod" placeholder="TM/CK, Chuyển khoản..." @oninput="MarkDirty" />
+                            </div>
+                        </div>
+                    </div>
+
+                    @* 2. Thông tin bên mua *@
+                    <div class="tf-inv-section">
+                        <div class="tf-inv-section-title">
+                            <span class="tf-inv-section-num">2</span>
+                            <span>Thông tin người mua</span>
+                        </div>
+
+                        <div class="tf-inv-customer-search-wrap">
+                            <div class="tf-inv-search-box">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tf-inv-search-icon">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                                <input type="text" class="tf-inv-input tf-inv-search-input"
+                                       @bind="_customerSearch"
+                                       @bind:event="oninput"
+                                       @onkeyup="SearchCustomers"
+                                       placeholder="Tìm kiếm khách hàng theo tên, mã hoặc SĐT để điền nhanh..." />
+                                @if (!string.IsNullOrEmpty(_customerSearch))
+                                {
+                                    <button type="button" class="tf-inv-search-clear" @onclick="ClearCustomerSearch">✕</button>
+                                }
+                            </div>
+                            @if (_customers.Any())
+                            {
+                                <ul class="tf-inv-dropdown-list">
+                                    @foreach (var c in _customers)
+                                    {
+                                        <li class="tf-inv-dropdown-item" @onclick="() => SelectCustomer(c)">
+                                            <div class="tf-inv-dd-title"><strong>@c.Name</strong> - @c.Phone</div>
+                                            <div class="tf-inv-dd-sub">@c.CompanyName @(!string.IsNullOrEmpty(c.TaxCode) ? $"| MST: {c.TaxCode}" : "")</div>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                        </div>
+
+                        <div class="tf-inv-grid-2">
+                            <div class="tf-inv-form-group">
+                                <label class="tf-inv-label">Họ tên người mua <span class="tf-inv-req">*</span></label>
+                                <input type="text" class="tf-inv-input" @bind="_dto.CustomerName" placeholder="Tên cá nhân đại diện..." @oninput="MarkDirty" />
+                            </div>
+                            <div class="tf-inv-form-group">
+                                <label class="tf-inv-label">Tên đơn vị / Doanh nghiệp</label>
+                                <input type="text" class="tf-inv-input" @bind="_dto.CustomerCompanyName" placeholder="Công ty TNHH / Cổ phần..." @oninput="MarkDirty" />
+                            </div>
+                        </div>
+
+                        <div class="tf-inv-grid-3">
+                            <div class="tf-inv-form-group">
+                                <label class="tf-inv-label">MST / CCCD</label>
+                                <input type="text" class="tf-inv-input" @bind="_dto.CustomerTaxCode" placeholder="Mã số thuế..." @oninput="MarkDirty" />
+                            </div>
+                            <div class="tf-inv-form-group">
+                                <label class="tf-inv-label">Điện thoại / Email</label>
+                                <input type="text" class="tf-inv-input" @bind="_dto.CustomerEmail" placeholder="Số điện thoại hoặc email..." @oninput="MarkDirty" />
+                            </div>
+                            <div class="tf-inv-form-group">
+                                <label class="tf-inv-label">Số TK ngân hàng</label>
+                                <input type="text" class="tf-inv-input" @bind="_dto.CustomerBankAccount" placeholder="Số tài khoản..." @oninput="MarkDirty" />
+                            </div>
+                        </div>
+
+                        <div class="tf-inv-grid-2">
+                            <div class="tf-inv-form-group">
+                                <label class="tf-inv-label">Địa chỉ</label>
+                                <input type="text" class="tf-inv-input" @bind="_dto.CustomerAddress" placeholder="Địa chỉ giao dịch hoặc xuất hóa đơn..." @oninput="MarkDirty" />
+                            </div>
+                            <div class="tf-inv-form-group">
+                                <label class="tf-inv-label">Tên ngân hàng / Chi nhánh</label>
+                                <input type="text" class="tf-inv-input" @bind="_dto.CustomerBankName" placeholder="Tên ngân hàng thụ hưởng..." @oninput="MarkDirty" />
+                            </div>
+                        </div>
+                    </div>
+
+                    @* 3. Hàng hóa, dịch vụ *@
+                    <div class="tf-inv-section">
+                        <div class="tf-inv-section-title tf-inv-between">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span class="tf-inv-section-num">3</span>
+                                <span>Hàng hóa, dịch vụ</span>
+                                @if (_dto.Items.Any())
+                                {
+                                    <span class="tf-inv-badge-count">@_dto.Items.Count dòng</span>
+                                }
+                            </div>
+                            <button type="button" class="tf-inv-btn-add" @onclick="AddManualItem">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                                <span>+ Thêm dòng thủ công</span>
+                            </button>
+                        </div>
+
+                        <div class="tf-inv-product-search-wrap">
+                            <div class="tf-inv-search-box">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tf-inv-search-icon">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                                <input type="text" class="tf-inv-input tf-inv-search-input"
+                                       @bind="_productSearch"
+                                       @bind:event="oninput"
+                                       @onkeyup="SearchProducts"
+                                       placeholder="Nhập tên hoặc mã sản phẩm để tìm kiếm và chèn vào bảng..." />
+                                @if (!string.IsNullOrEmpty(_productSearch))
+                                {
+                                    <button type="button" class="tf-inv-search-clear" @onclick="ClearProductSearch">✕</button>
+                                }
+                            </div>
+                            @if (_products.Any())
+                            {
+                                <ul class="tf-inv-dropdown-list">
+                                    @foreach (var p in _products)
+                                    {
+                                        <li class="tf-inv-dropdown-item" @onclick="() => SelectProduct(p)">
+                                            <div class="tf-inv-dd-title"><strong>@p.Name</strong> <span style="font-family:monospace; color:#2563eb;">(@p.Code)</span></div>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                        </div>
+
+                        <div class="tf-inv-table-wrap">
+                            <table class="tf-inv-table">
+                                <thead>
+                                    <tr>
+                                        <th style="min-width: 220px;">Tên hàng hóa, dịch vụ</th>
+                                        <th style="width: 80px; text-align: center;">ĐVT</th>
+                                        <th style="width: 90px; text-align: right;">Số lượng</th>
+                                        <th style="width: 140px; text-align: right;">Đơn giá</th>
+                                        <th style="width: 120px; text-align: right;">Chiết khấu</th>
+                                        @if (_dto.Type == InvoiceType.VatInvoice)
+                                        {
+                                            <th style="width: 95px; text-align: center;">Thuế %</th>
+                                        }
+                                        <th style="width: 140px; text-align: right;">Thành tiền</th>
+                                        <th style="width: 44px; text-align: center;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (!_dto.Items.Any())
+                                    {
+                                        <tr>
+                                            <td colspan="@(_dto.Type == InvoiceType.VatInvoice ? 8 : 7)" class="tf-inv-table-empty">
+                                                <div class="tf-inv-empty-wrap">
+                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                                    </svg>
+                                                    <span>Chưa có mặt hàng nào. Nhấn <strong>"+ Thêm dòng thủ công"</strong> hoặc tìm kiếm sản phẩm phía trên.</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                    @foreach (var item in _dto.Items)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <input type="text" class="tf-inv-table-input" @bind="item.ProductName" placeholder="Tên hàng hóa..." @oninput="MarkDirty" />
+                                            </td>
+                                            <td>
+                                                <input type="text" class="tf-inv-table-input tf-inv-center" @bind="item.UnitName" placeholder="Cái..." @oninput="MarkDirty" />
+                                            </td>
+                                            <td>
+                                                <input type="number" class="tf-inv-table-input tf-inv-right" @bind="item.Quantity" @bind:after="CalculateTotals" min="1" @oninput="MarkDirty" />
+                                            </td>
+                                            <td>
+                                                <input type="number" class="tf-inv-table-input tf-inv-right" @bind="item.UnitPrice" @bind:after="CalculateTotals" min="0" step="any" @oninput="MarkDirty" />
+                                            </td>
+                                            <td>
+                                                <input type="number" class="tf-inv-table-input tf-inv-right" @bind="item.DiscountAmount" @bind:after="CalculateTotals" min="0" step="any" @oninput="MarkDirty" />
+                                            </td>
+                                            @if (_dto.Type == InvoiceType.VatInvoice)
+                                            {
+                                                <td>
+                                                    <select class="tf-inv-table-select tf-inv-center" @bind="item.TaxRate" @bind:after="CalculateTotals" @oninput="MarkDirty">
+                                                        <option value="0">0%</option>
+                                                        <option value="5">5%</option>
+                                                        <option value="8">8%</option>
+                                                        <option value="10">10%</option>
+                                                    </select>
+                                                </td>
+                                            }
+                                            <td class="tf-inv-right" style="font-weight: 700; color: var(--tf-text-primary);">
+                                                @item.LineTotal.ToString("N0") đ
+                                            </td>
+                                            <td class="tf-inv-center">
+                                                <button type="button" class="tf-inv-btn-del" @onclick="() => RemoveItem(item)" title="Xóa dòng">
+                                                    ✕
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    @* 4. Ghi chú & Tổng kết thanh toán *@
+                    <div class="tf-inv-bottom-grid">
+                        <div class="tf-inv-section">
+                            <div class="tf-inv-section-title">
+                                <span class="tf-inv-section-num">4</span>
+                                <span>Ghi chú chứng từ</span>
+                            </div>
+                            <textarea class="tf-inv-textarea" rows="4" @bind="_dto.Notes" placeholder="Ghi chú điều khoản thanh toán, giao nhận hoặc lưu ý đối soát..." @oninput="MarkDirty"></textarea>
+                        </div>
+
+                        <div class="tf-inv-summary-card">
+                            <div class="tf-inv-summary-header">Tổng cộng thanh toán</div>
+                            <div class="tf-inv-summary-body">
+                                <div class="tf-inv-sum-row">
+                                    <span class="tf-inv-sum-label">Cộng tiền hàng:</span>
+                                    <strong class="tf-inv-sum-val">@_dto.SubTotal.ToString("N0") đ</strong>
+                                </div>
+                                @if (_dto.TotalDiscount > 0)
+                                {
+                                    <div class="tf-inv-sum-row">
+                                        <span class="tf-inv-sum-label">Tiền chiết khấu:</span>
+                                        <strong class="tf-inv-sum-val" style="color: #059669;">-@_dto.TotalDiscount.ToString("N0") đ</strong>
+                                    </div>
+                                }
+                                @if (_dto.Type == InvoiceType.VatInvoice)
+                                {
+                                    <div class="tf-inv-sum-row">
+                                        <span class="tf-inv-sum-label">Tiền thuế GTGT:</span>
+                                        <strong class="tf-inv-sum-val">@_dto.TotalTax.ToString("N0") đ</strong>
+                                    </div>
+                                }
+                                <div class="tf-inv-sum-divider"></div>
+                                <div class="tf-inv-sum-total-row">
+                                    <span class="tf-inv-sum-total-label">Tổng thanh toán:</span>
+                                    <strong class="tf-inv-sum-total-val">@_dto.GrandTotal.ToString("N0") đ</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @* Modal Footer *@
+            <div class="tf-inv-modal-footer">
+                <button type="button" class="tf-inv-btn tf-inv-btn-secondary" @onclick="HandleRequestClose" disabled="@_isProcessing">
+                    Hủy bỏ
+                </button>
+                <button type="button" class="tf-inv-btn tf-inv-btn-primary" @onclick="SaveInvoiceAsync" disabled="@(_isProcessing || _isLoading)">
+                    @if (_isProcessing)
+                    {
+                        <span class="tf-inv-btn-spinner"></span>
+                        <span>Đang lưu...</span>
+                    }
+                    else
+                    {
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        </svg>
+                        <span>@(IsEdit ? "Cập nhật hóa đơn" : "Lưu hóa đơn")</span>
+                    }
+                </button>
+            </div>
+
+            @* Dirty confirmation *@
+            @if (_showDirtyConfirm)
+            {
+                <div class="tf-inv-confirm-overlay">
+                    <div class="tf-inv-confirm-box">
+                        <div class="tf-inv-confirm-title">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2">
+                                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                            <span>Dữ liệu hóa đơn chưa lưu</span>
+                        </div>
+                        <p class="tf-inv-confirm-desc">Bạn đang có các dòng mặt hàng hoặc thông tin hóa đơn chưa lưu. Bạn có chắc muốn đóng và hủy bỏ?</p>
+                        <div class="tf-inv-confirm-actions">
+                            <button type="button" class="tf-inv-btn tf-inv-btn-secondary" @onclick="() => _showDirtyConfirm = false">Tiếp tục nhập</button>
+                            <button type="button" class="tf-inv-btn tf-inv-btn-danger" @onclick="ConfirmDiscardAndClose">Bỏ thay đổi</button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public int? InvoiceId { get; set; }
+    [Parameter] public EventCallback<InvoiceDto> OnSaved { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private bool IsEdit => InvoiceId.HasValue && InvoiceId.Value > 0;
+    private InvoiceDto _dto = new() { InvoiceDate = DateTime.Now, Type = InvoiceType.VatInvoice, PaymentMethod = "TM/CK" };
+    private bool _isLoading = false;
+    private bool _isProcessing = false;
+    private bool _isClosing = false;
+    private bool _isDirty = false;
+    private bool _showDirtyConfirm = false;
+    private bool _scrollLocked = false;
+    private int? _lastLoadedId = null;
+    private string? _errorMessage;
+
+    private string _customerSearch = "";
+    private List<Customer> _customers = new();
+    private string _productSearch = "";
+    private List<Product> _products = new();
+
+    private CancellationTokenSource? _customerSearchCts;
+    private CancellationTokenSource? _productSearchCts;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && !_isClosing)
+        {
+            if (!_scrollLocked)
+            {
+                await LockScrollAsync();
+                _scrollLocked = true;
+            }
+
+            if (_lastLoadedId != InvoiceId)
+            {
+                await LoadInvoiceDataAsync();
+            }
+        }
+        else if (!IsOpen && _scrollLocked)
+        {
+            await UnlockScrollAsync();
+            _scrollLocked = false;
+        }
+    }
+
+    private async Task LoadInvoiceDataAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        _isDirty = false;
+        _showDirtyConfirm = false;
+
+        try
+        {
+            if (IsEdit)
+            {
+                var existing = await InvoiceService.GetInvoiceByIdAsync(InvoiceId!.Value);
+                if (existing == null)
+                {
+                    _errorMessage = "Không tìm thấy hóa đơn.";
+                    return;
+                }
+                _dto = existing;
+                _lastLoadedId = InvoiceId;
+            }
+            else
+            {
+                _dto = new InvoiceDto
+                {
+                    InvoiceDate = DateTime.Now,
+                    Type = InvoiceType.VatInvoice,
+                    PaymentMethod = "TM/CK",
+                    Items = new List<InvoiceItemDto>()
+                };
+                _lastLoadedId = null;
+            }
+            CalculateTotals();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi nạp dữ liệu: " + ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void MarkDirty()
+    {
+        _isDirty = true;
+    }
+
+    private void CalculateTotals()
+    {
+        decimal subTotal = 0;
+        decimal totalDiscount = 0;
+        decimal totalTax = 0;
+
+        foreach (var item in _dto.Items)
+        {
+            var lineTotalWithoutDiscount = item.Quantity * item.UnitPrice;
+            var lineNet = Math.Max(0, lineTotalWithoutDiscount - item.DiscountAmount);
+            decimal lineTax = 0;
+            if (_dto.Type == InvoiceType.VatInvoice)
+            {
+                lineTax = Math.Round(lineNet * (item.TaxRate / 100m), 0);
+            }
+            item.LineTotal = lineNet + lineTax;
+
+            subTotal += lineTotalWithoutDiscount;
+            totalDiscount += item.DiscountAmount;
+            totalTax += lineTax;
+        }
+
+        _dto.SubTotal = subTotal;
+        _dto.TotalDiscount = totalDiscount;
+        _dto.TotalTax = totalTax;
+        _dto.GrandTotal = Math.Max(0, subTotal - totalDiscount + totalTax);
+    }
+
+    private void AddManualItem()
+    {
+        _dto.Items.Add(new InvoiceItemDto
+        {
+            ProductName = "",
+            UnitName = "Cái",
+            Quantity = 1,
+            UnitPrice = 0,
+            DiscountAmount = 0,
+            TaxRate = _dto.Type == InvoiceType.VatInvoice ? 10 : 0
+        });
+        CalculateTotals();
+        _isDirty = true;
+    }
+
+    private void RemoveItem(InvoiceItemDto item)
+    {
+        _dto.Items.Remove(item);
+        CalculateTotals();
+        _isDirty = true;
+    }
+
+    private void ClearCustomerSearch()
+    {
+        _customerSearch = "";
+        _customers.Clear();
+    }
+
+    private void ClearProductSearch()
+    {
+        _productSearch = "";
+        _products.Clear();
+    }
+
+    private async Task SearchCustomers(KeyboardEventArgs e)
+    {
+        _customerSearchCts?.Cancel();
+        _customerSearchCts = new CancellationTokenSource();
+        var token = _customerSearchCts.Token;
+
+        if (_customerSearch.Length >= 2)
+        {
+            try
+            {
+                await Task.Delay(300, token);
+                if (!token.IsCancellationRequested)
+                {
+                    _customers = await SalesService.SearchCustomersAsync(_customerSearch, token);
+                    StateHasChanged();
+                }
+            }
+            catch (TaskCanceledException) { }
+        }
+        else
+        {
+            _customers.Clear();
+        }
+    }
+
+    private void SelectCustomer(Customer c)
+    {
+        _dto.CustomerId = c.Id;
+        _dto.CustomerName = c.Name;
+        _dto.CustomerCompanyName = c.CompanyName;
+        _dto.CustomerTaxCode = c.TaxCode;
+        _dto.CustomerAddress = c.Address;
+        _dto.CustomerEmail = c.Phone;
+        _customers.Clear();
+        _customerSearch = "";
+        _isDirty = true;
+    }
+
+    private async Task SearchProducts(KeyboardEventArgs e)
+    {
+        _productSearchCts?.Cancel();
+        _productSearchCts = new CancellationTokenSource();
+        var token = _productSearchCts.Token;
+
+        if (_productSearch.Length >= 2)
+        {
+            try
+            {
+                await Task.Delay(300, token);
+                if (!token.IsCancellationRequested)
+                {
+                    _products = await SalesService.SearchProductsAsync(_productSearch, token);
+                    StateHasChanged();
+                }
+            }
+            catch (TaskCanceledException) { }
+        }
+        else
+        {
+            _products.Clear();
+        }
+    }
+
+    private async Task SelectProduct(Product p)
+    {
+        var price = await SalesService.GetProductPriceAsync(p.Id, null, DateTime.Now);
+        _dto.Items.Add(new InvoiceItemDto
+        {
+            ProductId = p.Id,
+            ProductName = p.Name,
+            UnitName = p.Unit?.Name ?? "Cái",
+            Quantity = 1,
+            UnitPrice = price.Price ?? 0,
+            DiscountAmount = 0,
+            TaxRate = _dto.Type == InvoiceType.VatInvoice ? (p.TaxTreatment == TaxTreatment.Standard10 ? (p.IsTaxReductionEligible ? 8 : 10) : 0) : 0
+        });
+
+        _products.Clear();
+        _productSearch = "";
+        CalculateTotals();
+        _isDirty = true;
+    }
+
+    private async Task HandleRequestClose()
+    {
+        if (_isDirty)
+        {
+            _showDirtyConfirm = true;
+            return;
+        }
+        await CloseModalAsync();
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        await HandleRequestClose();
+    }
+
+    private async Task ConfirmDiscardAndClose()
+    {
+        _showDirtyConfirm = false;
+        _isDirty = false;
+        await CloseModalAsync();
+    }
+
+    private async Task CloseModalAsync()
+    {
+        if (_isClosing) return;
+        _isClosing = true;
+        StateHasChanged();
+
+        await Task.Delay(150);
+
+        _isClosing = false;
+        _lastLoadedId = null;
+        _isDirty = false;
+        _showDirtyConfirm = false;
+
+        if (_scrollLocked)
+        {
+            await UnlockScrollAsync();
+            _scrollLocked = false;
+        }
+
+        await IsOpenChanged.InvokeAsync(false);
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync();
+        }
+    }
+
+    private async Task SaveInvoiceAsync()
+    {
+        if (_isProcessing) return;
+
+        CalculateTotals();
+
+        if (string.IsNullOrWhiteSpace(_dto.CustomerName))
+        {
+            _errorMessage = "Vui lòng nhập họ tên người mua.";
+            return;
+        }
+
+        if (!_dto.Items.Any())
+        {
+            _errorMessage = "Vui lòng nhập ít nhất một mặt hàng hoặc dịch vụ.";
+            return;
+        }
+
+        _isProcessing = true;
+        _errorMessage = null;
+
+        try
+        {
+            if (IsEdit)
+            {
+                var success = await InvoiceService.UpdateInvoiceAsync(_dto);
+                if (!success)
+                {
+                    _errorMessage = "Không thể cập nhật hóa đơn này (có thể đã phát hành hoặc hủy).";
+                    return;
+                }
+                _isDirty = false;
+                await OnSaved.InvokeAsync(_dto);
+            }
+            else
+            {
+                var created = await InvoiceService.CreateInvoiceAsync(_dto);
+                _isDirty = false;
+                await OnSaved.InvokeAsync(created);
+            }
+
+            await CloseModalAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi khi lưu hóa đơn: " + ex.Message;
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+
+    private async Task LockScrollAsync()
+    {
+        try { await JS.InvokeVoidAsync("TradeFlowMotion.lockScroll"); } catch { }
+    }
+
+    private async Task UnlockScrollAsync()
+    {
+        try { await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll"); } catch { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_scrollLocked)
+        {
+            await UnlockScrollAsync();
+            _scrollLocked = false;
+        }
+    }
+}

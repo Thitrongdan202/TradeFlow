@@ -1,0 +1,86 @@
+/* StocktakeDetail.razor.css - Audit & Dark Mode Theming */
+
+.tf-alert-close-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: inherit;
+    opacity: 0.7;
+    transition: opacity 120ms ease, background 120ms ease;
+}
+
+.tf-alert-close-btn:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.08);
+}
+
+/* Separation of Duties Banner */
+.tf-sod-banner {
+    transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+/* Dark Mode Styles */
+[data-theme="dark"] .tf-sod-banner,
+[data-bs-theme="dark"] .tf-sod-banner {
+    background-color: #1e222b !important;
+    border-color: #383e4b !important;
+    color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .tf-sod-banner strong,
+[data-bs-theme="dark"] .tf-sod-banner strong {
+    color: #93c5fd !important;
+}
+
+[data-theme="dark"] .tf-sod-banner svg,
+[data-bs-theme="dark"] .tf-sod-banner svg {
+    color: #60a5fa !important;
+}
+
+[data-theme="dark"] .tf-alert-success,
+[data-bs-theme="dark"] .tf-alert-success {
+    background-color: #064e3b !important;
+    border-color: #047857 !important;
+    color: #a7f3d0 !important;
+}
+
+[data-theme="dark"] .tf-alert-error,
+[data-bs-theme="dark"] .tf-alert-error {
+    background-color: #450a0a !important;
+    border-color: #991b1b !important;
+    color: #fca5a5 !important;
+}
+
+[data-theme="dark"] .tf-alert-close-btn:hover,
+[data-bs-theme="dark"] .tf-alert-close-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .tw-bg-white,
+[data-bs-theme="dark"] .tw-bg-white {
+    background-color: #1e222b !important;
+    border-color: #383e4b !important;
+    color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .tw-text-slate-900,
+[data-bs-theme="dark"] .tw-text-slate-900 {
+    color: #f8fafc !important;
+}
+
+[data-theme="dark"] .tw-text-slate-500,
+[data-bs-theme="dark"] .tw-text-slate-500,
+[data-theme="dark"] .tw-text-slate-600,
+[data-bs-theme="dark"] .tw-text-slate-600 {
+    color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .tw-border-slate-200,
+[data-bs-theme="dark"] .tw-border-slate-200 {
+    border-color: #383e4b !important;
+}

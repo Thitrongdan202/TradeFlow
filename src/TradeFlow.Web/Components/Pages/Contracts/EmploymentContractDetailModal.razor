@@ -5,6 +5,7 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@implements IAsyncDisposable
 
 @if (IsOpen && contract != null)
 {
@@ -12,12 +13,12 @@
         <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" @onclick:stopPropagation="true">
             <div class="modal-content shadow-lg border-0 rounded-3">
                 <!-- Modal Action Header -->
-                <div class="modal-header bg-white border-bottom px-4 py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div class="modal-header border-bottom px-4 py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
                     <div class="d-flex align-items-center gap-2 flex-wrap">
                         <span class="badge @GetStatusBadgeClass(contract.Status) px-2.5 py-1.5 fw-semibold fs-7">
                             @contract.StatusName
                         </span>
-                        <span class="fw-bold fs-5 text-dark">@contract.ContractNumber</span>
+                        <span class="fw-bold fs-5" style="color: var(--tf-text-primary);">@contract.ContractNumber</span>
                         <span class="text-secondary small">(@contract.ContractTypeName)</span>
                     </div>
 
@@ -356,7 +357,7 @@
                 </div>
 
                 <!-- Footer -->
-                <div class="modal-footer bg-white border-top px-4 py-2.5">
+                <div class="modal-footer border-top px-4 py-2.5">
                     <button type="button" class="btn btn-outline-secondary btn-sm px-3" @onclick="CloseAsync">
                         Đóng
                     </button>
@@ -466,6 +467,11 @@
     {
         IsOpen = false;
         await IsOpenChanged.InvokeAsync(false);
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
     }
 
     private static string GetStatusBadgeClass(EmploymentContractStatus status) => status switch
@@ -479,4 +485,13 @@
         EmploymentContractStatus.Cancelled => "bg-light text-muted border",
         _ => "bg-light text-dark"
     };
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
+    }
 }

@@ -4,6 +4,7 @@
 @using TradeFlow.Infrastructure.Persistence
 @inject TradeFlowDbContext DbContext
 @inject IJSRuntime JS
+@implements IAsyncDisposable
 
 @if (IsOpen)
 {
@@ -99,5 +100,14 @@
     {
         IsOpen = false;
         await IsOpenChanged.InvokeAsync(false);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
     }
 }

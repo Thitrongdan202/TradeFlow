@@ -11,7 +11,7 @@
 @if (IsOpen)
 {
     <div class="tf-modal-overlay @(_isClosing ? "is-closing" : "")" @onclick="HandleBackdropClick" @onkeydown="HandleKeyDown" tabindex="-1">
-        <div class="tf-modal tf-modal-lg @(_isClosing ? "is-closing" : "")" @onclick:stopPropagation="true">
+        <div class="tf-modal tf-modal-lg employee-request-modal @(_isClosing ? "is-closing" : "")" @onclick:stopPropagation="true">
             @* Fixed Header *@
             <div class="tf-modal-header">
                 <div>
@@ -760,7 +760,7 @@
         {
             _isClosing = true;
             StateHasChanged();
-            await Task.Delay(160);
+            await Task.Delay(150);
         }
 
         IsOpen = false;

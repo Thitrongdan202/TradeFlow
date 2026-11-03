@@ -55,12 +55,12 @@
         </AuthorizeView>
 
         <AuthorizeView Policy="Permission:Products:Create">
-            <a href="/danh-muc/san-pham/them-moi" class="tf-btn tf-btn-primary" style="display: inline-flex; align-items: center; gap: 6px; height: 36px; white-space: nowrap;">
+            <button type="button" class="tf-btn tf-btn-primary" @onclick="OpenCreateProductModal" style="display: inline-flex; align-items: center; gap: 6px; height: 36px; white-space: nowrap;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                 </svg>
                 <span>Thêm mới</span>
-            </a>
+            </button>
         </AuthorizeView>
     </div>
 </div>
@@ -210,7 +210,7 @@
                                                 @* Product Thumbnail *@
                                                 <td style="text-align: center; padding: 6px 8px;">
                                                     <div class="tf-product-thumb">
-                                                        @if (primaryImg != null && !string.IsNullOrEmpty(primaryImg.StorageReference))
+                                                        @if (primaryImg != null && !string.IsNullOrEmpty(primaryImg.StorageReference) && !primaryImg.StorageReference.Contains("dummy_ref"))
                                                         {
                                                             <img src="@FileStorage.GetPublicUrl(primaryImg.StorageReference)" alt="@item.Name" loading="lazy" />
                                                         }
@@ -321,7 +321,7 @@
                                                             <div class="tf-product-expanded-header">
                                                                 <div style="display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1;">
                                                                     <div style="width: 48px; height: 48px; border-radius: 8px; border: 1px solid var(--tf-border, #e2e8f0); background: var(--tf-bg-card, #ffffff); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
-                                                                        @if (primaryImg != null && !string.IsNullOrEmpty(primaryImg.StorageReference))
+                                                                        @if (primaryImg != null && !string.IsNullOrEmpty(primaryImg.StorageReference) && !primaryImg.StorageReference.Contains("dummy_ref"))
                                                                         {
                                                                             <img src="@FileStorage.GetPublicUrl(primaryImg.StorageReference)" alt="" style="width: 100%; height: 100%; object-fit: contain;" />
                                                                         }
@@ -524,7 +524,7 @@
                                                                     @* Col 1: High-Res Image Gallery *@
                                                                     <div class="tf-product-img-box">
                                                                         <div class="tf-product-img-main">
-                                                                            @if (primaryImg != null && !string.IsNullOrEmpty(primaryImg.StorageReference))
+                                                                            @if (primaryImg != null && !string.IsNullOrEmpty(primaryImg.StorageReference) && !primaryImg.StorageReference.Contains("dummy_ref"))
                                                                             {
                                                                                 <img src="@FileStorage.GetPublicUrl(primaryImg.StorageReference)" alt="@item.Name" />
                                                                             }
@@ -665,6 +665,11 @@
                          OnClose="() => _showExcelImportModal = false"
                          OnImportCompleted="HandleImportCompleted" />
 
+@* Modal: Product Create / Edit Modal *@
+<ProductFormModal @bind-IsOpen="_showProductModal"
+                  ProductId="_selectedProductEditId"
+                  OnSaved="HandleProductSaved" />
+
 @* Modal: Bulk Delete Confirmation *@
 @if (_showBulkDeleteModal)
 {
@@ -760,6 +765,28 @@
 
     // Excel import modal state
     private bool _showExcelImportModal;
+
+    // In-place Product Modal state
+    private bool _showProductModal;
+    private int? _selectedProductEditId;
+
+    private void OpenCreateProductModal()
+    {
+        _selectedProductEditId = null;
+        _showProductModal = true;
+    }
+
+    private void OpenEditProductModal(int id)
+    {
+        _selectedProductEditId = id;
+        _showProductModal = true;
+    }
+
+    private async Task HandleProductSaved(Product p)
+    {
+        _toastMessage = $"Đã lưu sản phẩm '{p.Name}' ({p.Code}) thành công!";
+        await LoadProductsAsync();
+    }
 
     // Bulk selection
     private HashSet<int> _selectedItems = new();

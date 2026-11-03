@@ -4,6 +4,7 @@
 @inject IEmployeeService EmployeeService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JS
+@implements IAsyncDisposable
 
 @if (IsOpen)
 {
@@ -225,6 +226,11 @@
 
         IsOpen = false;
         _isClosing = false;
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
         await IsOpenChanged.InvokeAsync(false);
     }
 
@@ -299,5 +305,14 @@
         public string Name { get; set; } = string.Empty;
 
         public string? Description { get; set; }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
     }
 }

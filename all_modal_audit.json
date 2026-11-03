@@ -1,0 +1,380 @@
+[
+  {
+    "file": "Common/DocumentAttachmentSection.razor",
+    "hasLockScroll": false,
+    "hasUnlockScroll": false,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": false,
+    "isFullyManaged": false
+  },
+  {
+    "file": "Layout/ReconnectModal.razor",
+    "hasLockScroll": false,
+    "hasUnlockScroll": false,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": false,
+    "isFullyManaged": false
+  },
+  {
+    "file": "Pages/Contracts/ContractTemplateGallery.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Contracts/ElectronicSignatureModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Contracts/EmploymentContractDetailModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Contracts/EmploymentContractFormModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": true,
+    "hasAnimateExit": true,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Contracts/EmploymentContractRenewModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Contracts/EmploymentContractSigningModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Contracts/LiquidationModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Contracts/PartyASettingsModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Contracts/TemplateSelectorModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Documents/List.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": false,
+    "isFullyManaged": false
+  },
+  {
+    "file": "Pages/Employees/EmployeeFormModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Employees/EmployeeRequestModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Employees/Index.razor",
+    "hasLockScroll": false,
+    "hasUnlockScroll": false,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": false
+  },
+  {
+    "file": "Pages/Employees/QuickDepartmentModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Employees/QuickPositionModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Employees/RetireEmployeeModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/MasterData/Categories/CategoryFormModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/MasterData/Products/ProductExcelImportModal.razor",
+    "hasLockScroll": false,
+    "hasUnlockScroll": false,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": false,
+    "isFullyManaged": false
+  },
+  {
+    "file": "Pages/MasterData/Products/ProductFormModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Partners/Components/DebtExportModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Partners/Components/DebtPaymentModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": true,
+    "hasAnimateExit": true,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Partners/Components/DebtQrModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Partners/Customers/CustomerFormModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Partners/Customers/List.razor",
+    "hasLockScroll": false,
+    "hasUnlockScroll": false,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": false,
+    "isFullyManaged": false
+  },
+  {
+    "file": "Pages/Partners/Debt/List.razor",
+    "hasLockScroll": false,
+    "hasUnlockScroll": false,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": false,
+    "isFullyManaged": false
+  },
+  {
+    "file": "Pages/Partners/Suppliers/List.razor",
+    "hasLockScroll": false,
+    "hasUnlockScroll": false,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": false,
+    "isFullyManaged": false
+  },
+  {
+    "file": "Pages/Partners/Suppliers/SupplierFormModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Pricing/PriceHistoryLookupModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Pricing/PriceListQuickViewModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Sales/Invoices/InvoiceFormModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Sales/Orders/SalesOrderFormModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Sales/Pos/PosIndex.razor",
+    "hasLockScroll": false,
+    "hasUnlockScroll": false,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": false
+  },
+  {
+    "file": "Pages/Sales/Quotations/QuotationFormModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Pages/Warehouses/List.razor",
+    "hasLockScroll": false,
+    "hasUnlockScroll": false,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": false,
+    "isFullyManaged": false
+  },
+  {
+    "file": "Pages/Warehouses/QuarantineList.razor",
+    "hasLockScroll": false,
+    "hasUnlockScroll": false,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": false,
+    "isFullyManaged": false
+  },
+  {
+    "file": "Pages/Warehouses/ReturnOrderList.razor",
+    "hasLockScroll": false,
+    "hasUnlockScroll": false,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": false,
+    "isFullyManaged": false
+  },
+  {
+    "file": "Pages/Warehouses/StocktakeList.razor",
+    "hasLockScroll": false,
+    "hasUnlockScroll": false,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": false,
+    "isFullyManaged": false
+  },
+  {
+    "file": "Pages/Warehouses/VoucherList.razor",
+    "hasLockScroll": false,
+    "hasUnlockScroll": false,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": false,
+    "isFullyManaged": false
+  },
+  {
+    "file": "Pages/Warehouses/WarehouseFormModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  },
+  {
+    "file": "Shared/Forms/TfModal.razor",
+    "hasLockScroll": true,
+    "hasUnlockScroll": true,
+    "hasAnimateEnter": false,
+    "hasAnimateExit": false,
+    "implementsDisposable": true,
+    "isFullyManaged": true
+  }
+]

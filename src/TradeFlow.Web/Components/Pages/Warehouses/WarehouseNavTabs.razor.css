@@ -1,106 +1,35 @@
-/* Warehouse Navigation Tabs - Clear State Hierarchy & Dark Mode Contrast */
+/* WarehouseNavTabs.razor.css */
 
 .tf-warehouse-nav-container {
-    background-color: #ffffff;
-    border: 1px solid #e2e8f0;
-    padding: 6px 10px;
-    margin-bottom: 16px;
-    border-radius: 12px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    background-color: var(--tf-surface-card, #ffffff);
+    border: 1px solid var(--tf-border, #e2e8f0);
 }
 
-.tf-warehouse-nav-container .tf-nav-tab {
-    color: #475569;
-    font-weight: 600;
-    font-size: 13.5px;
-    border-radius: 8px;
-    padding: 8px 14px;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-    transition: all 0.15s ease;
-    border: 1px solid transparent;
-}
-
-.tf-warehouse-nav-container .tf-nav-tab svg {
-    color: #64748b;
-    transition: color 0.15s ease;
-}
-
-.tf-warehouse-nav-container .tf-nav-tab:hover {
-    color: #0f172a;
-    background-color: #f1f5f9;
-}
-
-.tf-warehouse-nav-container .tf-nav-tab:hover svg {
-    color: #2563eb;
-}
-
-.tf-warehouse-nav-container .tf-nav-tab:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px #3b82f6;
-}
-
-.tf-warehouse-nav-container .tf-nav-tab.is-active {
-    background-color: #eff6ff !important;
-    border-color: #bfdbfe !important;
-    color: #1d4ed8 !important;
-    box-shadow: 0 1px 2px rgba(37, 99, 235, 0.08);
-}
-
-.tf-warehouse-nav-container .tf-nav-tab.is-active svg {
-    color: #2563eb !important;
-}
-
-/* ==========================================================================
-   Dark Theme System — Warehouse Navigation Tabs
-   ========================================================================== */
-[data-bs-theme="dark"] .tf-warehouse-nav-container,
-[data-theme="dark"] .tf-warehouse-nav-container {
-    background-color: #1a1d24 !important;
-    border-color: #2e3542 !important;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
-}
-
-[data-bs-theme="dark"] .tf-warehouse-nav-container .tf-nav-tab,
-[data-theme="dark"] .tf-warehouse-nav-container .tf-nav-tab {
-    color: #cbd5e1 !important;
-    border-color: transparent !important;
-}
-
-[data-bs-theme="dark"] .tf-warehouse-nav-container .tf-nav-tab svg,
-[data-theme="dark"] .tf-warehouse-nav-container .tf-nav-tab svg {
-    color: #94a3b8 !important;
-}
-
-[data-bs-theme="dark"] .tf-warehouse-nav-container .tf-nav-tab:hover,
-[data-theme="dark"] .tf-warehouse-nav-container .tf-nav-tab:hover {
-    color: #ffffff !important;
-    background-color: #282d37 !important;
+[data-theme="dark"] .tf-warehouse-nav-container,
+[data-bs-theme="dark"] .tf-warehouse-nav-container {
+    background-color: #1e222b !important;
     border-color: #383e4b !important;
 }
 
-[data-bs-theme="dark"] .tf-warehouse-nav-container .tf-nav-tab:hover svg,
-[data-theme="dark"] .tf-warehouse-nav-container .tf-nav-tab:hover svg {
+[data-theme="dark"] .tf-nav-tab:not(.is-active),
+[data-bs-theme="dark"] .tf-nav-tab:not(.is-active) {
+    color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .tf-nav-tab:not(.is-active):hover,
+[data-bs-theme="dark"] .tf-nav-tab:not(.is-active):hover {
+    background-color: #262b35 !important;
+    color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .tf-nav-tab.is-active,
+[data-bs-theme="dark"] .tf-nav-tab.is-active {
+    background-color: rgba(37, 99, 235, 0.2) !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
     color: #60a5fa !important;
 }
 
-[data-bs-theme="dark"] .tf-warehouse-nav-container .tf-nav-tab:focus-visible,
-[data-theme="dark"] .tf-warehouse-nav-container .tf-nav-tab:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px #60a5fa !important;
-}
-
-[data-bs-theme="dark"] .tf-warehouse-nav-container .tf-nav-tab.is-active,
-[data-theme="dark"] .tf-warehouse-nav-container .tf-nav-tab.is-active {
-    background-color: rgba(59, 130, 246, 0.22) !important;
-    border-color: #3b82f6 !important;
-    color: #93c5fd !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important;
-}
-
-[data-bs-theme="dark"] .tf-warehouse-nav-container .tf-nav-tab.is-active svg,
-[data-theme="dark"] .tf-warehouse-nav-container .tf-nav-tab.is-active svg {
+[data-theme="dark"] .tf-nav-tab.is-active svg,
+[data-bs-theme="dark"] .tf-nav-tab.is-active svg {
     color: #60a5fa !important;
 }

@@ -68,7 +68,9 @@
         <main class="tf-content">
             <ErrorBoundary @ref="_contentErrorBoundary">
                 <ChildContent>
-                    @Body
+                    <div class="tf-page-transition-wrap" @key="@Nav.Uri">
+                        @Body
+                    </div>
                 </ChildContent>
                 <ErrorContent Context="ex">
                     <div class="tf-page-error-container" style="display: flex; justify-content: center; align-items: center; min-height: 400px; padding: 2rem;">
@@ -121,9 +123,14 @@
         Nav.LocationChanged += OnLocationChanged;
     }
 
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         _contentErrorBoundary?.Recover();
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
     }
 
     private async Task HandleToggleClick()

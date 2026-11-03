@@ -19,64 +19,82 @@
 <WarehouseNavTabs ActiveTab="warehouses" />
 
 <div class="tf-page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
-    <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
         <div>
             <h1 class="tf-page-title" style="margin: 0; font-size: 20px;">Kho hàng</h1>
             <p class="tf-page-subtitle" style="margin: 2px 0 0; font-size: 12px;">Danh sách kho bãi, địa điểm lưu trữ và thủ kho quản lý</p>
         </div>
-        <div style="width: 340px; max-width: 100%;">
+        <div style="width: 320px; max-width: 100%;">
             <DebouncedSearchInput Placeholder="Tìm theo tên kho, mã kho, người phụ trách..."
                                   Value="@_searchTerm"
                                   ValueChanged="OnSearchChanged" />
         </div>
+        <div class="tf-filter-popover-anchor" style="position: relative; display: inline-block;">
+            <button type="button" class="tf-btn tf-btn-secondary @(_showFilterPopover ? "active" : "")" @onclick="ToggleFilterPopover" title="Bộ lọc trạng thái">
+                <span>Bộ lọc</span>
+                @if (HasActiveFilters)
+                {
+                    <span class="tf-filter-active-count" style="margin-left: 6px; padding: 1px 6px; border-radius: 10px; background: #2563eb; color: #fff; font-size: 11px; font-weight: 700;">1</span>
+                }
+            </button>
+            @if (_showFilterPopover)
+            {
+                <div class="tf-popover-backdrop" style="position: fixed; inset: 0; z-index: 998; background: transparent;" @onclick="CloseFilterPopover"></div>
+                <div class="tf-filter-popover" style="position: absolute; top: calc(100% + 6px); left: 0; z-index: 999; width: 280px; background: var(--tf-surface-card, #ffffff); border: 1px solid var(--tf-border, #cbd5e1); border-radius: 10px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15); padding: 14px;" role="dialog" aria-modal="false" @onkeydown="HandleFilterKeyDown" tabindex="0">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--tf-border, #e2e8f0);">
+                        <span style="font-size: 13px; font-weight: 700; text-transform: uppercase; color: var(--tf-text-primary, #1e293b);">Bộ lọc kho hàng</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            @if (HasActiveFilters)
+                            {
+                                <button type="button" style="background: none; border: none; color: #ef4444; font-size: 12px; font-weight: 600; cursor: pointer; padding: 2px 4px;" @onclick="ClearAllFilters">Xóa lọc</button>
+                            }
+                            <button type="button" style="background: none; border: none; color: var(--tf-text-muted, #64748b); cursor: pointer; padding: 2px 4px; font-size: 14px;" @onclick="CloseFilterPopover" title="Đóng">✕</button>
+                        </div>
+                    </div>
+                    <div class="tf-filter-card">
+                        <div class="tf-filter-header" style="font-weight: 600; font-size: 12.5px; margin-bottom: 8px; color: var(--tf-text-primary, #1e293b);">
+                            <span class="tf-filter-title">Trạng thái</span>
+                        </div>
+                        <div class="tf-filter-body" style="display: flex; flex-direction: column; gap: 8px;">
+                            <label class="tf-filter-option @(_statusFilter == null ? "selected" : "")" @onclick="() => SetStatusFilter(null)" style="cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--tf-text-primary, #1e293b);">
+                                <input type="radio" name="whStatus" checked="@(_statusFilter == null)" />
+                                <span>Tất cả</span>
+                                <span class="tf-filter-count" style="margin-left: auto; color: var(--tf-text-muted, #64748b); font-size: 12px;">@(_items?.Count ?? 0)</span>
+                            </label>
+                            <label class="tf-filter-option @(_statusFilter == true ? "selected" : "")" @onclick="() => SetStatusFilter(true)" style="cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--tf-text-primary, #1e293b);">
+                                <input type="radio" name="whStatus" checked="@(_statusFilter == true)" />
+                                <span>Đang hoạt động</span>
+                                <span class="tf-filter-count" style="margin-left: auto; color: var(--tf-text-muted, #64748b); font-size: 12px;">@(_items?.Count(p => p.IsActive) ?? 0)</span>
+                            </label>
+                            <label class="tf-filter-option @(_statusFilter == false ? "selected" : "")" @onclick="() => SetStatusFilter(false)" style="cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--tf-text-primary, #1e293b);">
+                                <input type="radio" name="whStatus" checked="@(_statusFilter == false)" />
+                                <span>Ngừng hoạt động</span>
+                                <span class="tf-filter-count" style="margin-left: auto; color: var(--tf-text-muted, #64748b); font-size: 12px;">@(_items?.Count(p => !p.IsActive) ?? 0)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
     </div>
     <div class="tf-page-actions">
         <AuthorizeView Policy="Permission:Warehouses:Create">
-            <a href="/kho/kho-hang/them-moi" class="tf-btn tf-btn-primary" style="display: inline-flex; align-items: center; gap: 6px; height: 36px; white-space: nowrap;">
+            <button type="button" class="tf-btn tf-btn-primary" @onclick="OpenCreateWarehouseModal" style="display: inline-flex; align-items: center; gap: 6px; height: 36px; white-space: nowrap;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                 </svg>
                 <span>Thêm kho hàng</span>
-            </a>
+            </button>
         </AuthorizeView>
     </div>
 </div>
 
-<TfMasterDetailLayout SidebarWidth="260px">
-    <SidebarContent>
-        <FilterSidebar Title="Bộ lọc kho hàng" HasActiveFilters="@HasActiveFilters" OnClearFilters="ClearAllFilters">
-            <div class="tf-filter-card tf-mb-3">
-                <div class="tf-filter-header">
-                    <span class="tf-filter-title">Trạng thái</span>
-                </div>
-                <div class="tf-filter-body">
-                    <label class="tf-filter-option @(_statusFilter == null ? "selected" : "")" @onclick="() => SetStatusFilter(null)">
-                        <input type="radio" name="whStatus" checked="@(_statusFilter == null)" />
-                        <span>Tất cả</span>
-                        <span class="tf-filter-count">@(_items?.Count ?? 0)</span>
-                    </label>
-                    <label class="tf-filter-option @(_statusFilter == true ? "selected" : "")" @onclick="() => SetStatusFilter(true)">
-                        <input type="radio" name="whStatus" checked="@(_statusFilter == true)" />
-                        <span>Đang hoạt động</span>
-                        <span class="tf-filter-count">@(_items?.Count(p => p.IsActive) ?? 0)</span>
-                    </label>
-                    <label class="tf-filter-option @(_statusFilter == false ? "selected" : "")" @onclick="() => SetStatusFilter(false)">
-                        <input type="radio" name="whStatus" checked="@(_statusFilter == false)" />
-                        <span>Ngừng hoạt động</span>
-                        <span class="tf-filter-count">@(_items?.Count(p => !p.IsActive) ?? 0)</span>
-                    </label>
-                </div>
-            </div>
-        </FilterSidebar>
-    </SidebarContent>
-
-    <MainContent>
-        <div class="tf-card">
-            <div class="tf-card-body" style="padding:0; overflow-x: auto;">
+<div class="tf-card">
+    <div class="tf-card-body" style="padding:0; overflow-x: auto;">
         
 @if (_selectedItems.Count > 0)
 {
-    <div class="tw-bg-blue-50/80 tw-border tw-border-blue-200 tw-p-3.5 tw-rounded-lg tw-mb-4 tw-flex tw-justify-between tw-items-center tw-shadow-xs">
+    <div class="tf-bulk-actions-bar tw-bg-blue-50/80 tw-border tw-border-blue-200 tw-p-3.5 tw-rounded-lg tw-mb-4 tw-flex tw-justify-between tw-items-center tw-shadow-xs">
         <span class="tw-text-blue-900 tw-font-medium tw-text-sm">Đã chọn @_selectedItems.Count bản ghi</span>
         <AuthorizeView Policy="Permission:Warehouses:Delete">
             <button type="button" class="tf-btn tf-btn-sm tf-btn-danger" @onclick="ConfirmBulkDelete">Xóa đã chọn</button>
@@ -170,7 +188,7 @@ else
                             <td style="text-align:right;">
                                 <div class="tw-inline-flex tw-gap-1">
                                     <AuthorizeView Policy="Permission:Warehouses:Edit">
-                                        <a href="/kho/kho-hang/sua/@item.Id" class="tf-btn tf-btn-ghost tf-btn-sm">Sửa</a>
+                                        <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => OpenEditWarehouseModal(item.Id)">Sửa</button>
                                     </AuthorizeView>
                                     <AuthorizeView Policy="Permission:Warehouses:Delete">
                                         <button class="tf-btn tf-btn-ghost tf-btn-sm tw-text-red-600 hover:tw-bg-red-50" @onclick="() => ConfirmDelete(item.Id, item.Name ?? string.Empty)">Xóa</button>
@@ -197,8 +215,6 @@ else
 }
             </div>
         </div>
-    </MainContent>
-</TfMasterDetailLayout>
 
 <TfModal IsOpen="@(_itemToDeleteId != null)"
          Title="Xóa dữ liệu?"
@@ -223,7 +239,31 @@ else
     </FooterContent>
 </TfModal>
 
+<WarehouseFormModal @bind-IsOpen="_showWarehouseModal"
+                    WarehouseId="_selectedWarehouseEditId"
+                    OnSaved="HandleWarehouseSaved" />
+
 @code {
+    private bool _showWarehouseModal = false;
+    private int? _selectedWarehouseEditId;
+
+    private void OpenCreateWarehouseModal()
+    {
+        _selectedWarehouseEditId = null;
+        _showWarehouseModal = true;
+    }
+
+    private void OpenEditWarehouseModal(int id)
+    {
+        _selectedWarehouseEditId = id;
+        _showWarehouseModal = true;
+    }
+
+    private async Task HandleWarehouseSaved(Warehouse wh)
+    {
+        await LoadWarehousesAsync();
+    }
+
     private int? _itemToDeleteId;
     private string _itemToDeleteName = "";
     private string? _deleteError;
@@ -231,8 +271,13 @@ else
     private List<Warehouse>? _items;
     private string _searchTerm = string.Empty;
     private bool? _statusFilter;
+    private bool _showFilterPopover = false;
     private bool _isRefreshing = false;
     private bool _isDeleting = false;
+
+    private void ToggleFilterPopover() => _showFilterPopover = !_showFilterPopover;
+    private void CloseFilterPopover() => _showFilterPopover = false;
+    private void HandleFilterKeyDown(KeyboardEventArgs e) { if (e.Key == "Escape") _showFilterPopover = false; }
 
     private bool HasActiveFilters => !string.IsNullOrEmpty(_searchTerm) || _statusFilter.HasValue;
 
@@ -279,6 +324,7 @@ else
         _searchTerm = string.Empty;
         _statusFilter = null;
         _currentPage = 1;
+        _showFilterPopover = false;
     }
 
     private IEnumerable<Warehouse> FilteredItems

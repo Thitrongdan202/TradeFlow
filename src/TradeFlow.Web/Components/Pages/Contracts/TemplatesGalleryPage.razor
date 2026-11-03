@@ -11,17 +11,17 @@
 
 <PageTitle>Thư viện Mẫu Hợp đồng — TradeFlow</PageTitle>
 
-<div class="container-fluid p-2 p-sm-4">
+<div class="container-fluid p-2 p-sm-4 tf-contract-templates-page">
     <!-- Header Section -->
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3 mb-sm-4">
         <div>
             <div class="d-flex align-items-center gap-2 flex-wrap">
-                <a href="/hop-dong" class="btn btn-sm btn-outline-secondary" title="Quay lại danh sách hợp đồng">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <a href="/hop-dong" class="tf-btn tf-btn-secondary tf-btn-icon" title="Quay lại danh sách hợp đồng" aria-label="Quay lại">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="15 18 9 12 15 6"/>
                     </svg>
                 </a>
-                <h1 class="h4 mb-0 fw-bold text-dark">Thư viện Mẫu Hợp đồng Thương mại &amp; Dân sự</h1>
+                <h1 class="h4 mb-0 fw-bold tf-page-title-text">Thư viện Mẫu Hợp đồng Thương mại &amp; Dân sự</h1>
                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 small">
                     BLDS 2015 &amp; Luật GDĐT 2023
                 </span>
@@ -30,21 +30,28 @@
                 Tuyển tập 7 mẫu văn bản chuẩn hóa ngành thiết bị vệ sinh LACASA. Di chuột lên thẻ bài để xem chi tiết điều khoản, đối tượng và phạm vi áp dụng.
             </p>
         </div>
-        <div class="d-flex gap-2">
-            <a href="/hop-dong" class="btn btn-sm btn-outline-secondary">
-                Quản lý Hợp đồng
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <a href="/hop-dong" class="tf-btn tf-btn-secondary tf-header-action-btn">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                </svg>
+                <span>Quản lý Hợp đồng</span>
             </a>
             <AuthorizeView Policy="Permission:Contracts:Create">
-                <a href="/hop-dong/tao-moi" class="btn btn-sm btn-primary">
-                    + Tạo Hợp đồng mới
+                <a href="/hop-dong/tao-moi" class="tf-btn tf-btn-primary tf-header-action-btn">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    <span>Tạo Hợp đồng mới</span>
                 </a>
             </AuthorizeView>
         </div>
     </div>
 
-    <!-- Gallery Container (Light Theme) -->
-    <div class="card border shadow-sm bg-white rounded-3">
-        <div class="card-body p-2 p-sm-4 bg-light bg-opacity-25">
+    <!-- Gallery Container -->
+    <div class="card border shadow-sm rounded-3 tf-gallery-container-card">
+        <div class="card-body p-2 p-sm-4">
             @if (isLoading)
             {
                 <div class="text-center py-5">

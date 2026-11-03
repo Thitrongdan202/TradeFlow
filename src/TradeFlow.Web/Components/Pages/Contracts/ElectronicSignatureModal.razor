@@ -4,6 +4,7 @@
 @using TradeFlow.Application.Common.Models.Contracts
 @inject IContractService ContractService
 @inject IJSRuntime JS
+@implements IAsyncDisposable
 
 @if (IsOpen)
 {
@@ -102,7 +103,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer bg-light py-2">
+                <div class="modal-footer py-2">
                     <button type="button" class="btn btn-sm btn-secondary" @onclick="CloseAsync">Hủy bỏ</button>
                     <button type="button" class="btn btn-sm btn-primary px-3 fw-semibold" @onclick="ExecuteSignAsync" disabled="@isSubmitting">
                         @if (isSubmitting)
@@ -342,5 +343,19 @@
     {
         IsOpen = false;
         await IsOpenChanged.InvokeAsync(false);
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
     }
 }

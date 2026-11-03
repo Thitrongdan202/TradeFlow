@@ -1,0 +1,54 @@
+/* StocktakeList.razor.css - Stocktake List Theming */
+
+[data-theme="dark"] .tw-bg-white,
+[data-bs-theme="dark"] .tw-bg-white {
+    background-color: #1e222b !important;
+    border-color: #383e4b !important;
+    color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .tw-text-slate-900,
+[data-bs-theme="dark"] .tw-text-slate-900 {
+    color: #f8fafc !important;
+}
+
+[data-theme="dark"] .tw-text-slate-500,
+[data-bs-theme="dark"] .tw-text-slate-500,
+[data-theme="dark"] .tw-text-slate-600,
+[data-bs-theme="dark"] .tw-text-slate-600,
+[data-theme="dark"] .tw-text-slate-700,
+[data-bs-theme="dark"] .tw-text-slate-700 {
+    color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .tw-bg-slate-50,
+[data-bs-theme="dark"] .tw-bg-slate-50 {
+    background-color: #17191f !important;
+    color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .tw-border-slate-200,
+[data-bs-theme="dark"] .tw-border-slate-200,
+[data-theme="dark"] .tw-border-slate-300,
+[data-bs-theme="dark"] .tw-border-slate-300 {
+    border-color: #383e4b !important;
+}
+
+[data-theme="dark"] .tw-divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+[data-bs-theme="dark"] .tw-divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+    border-color: #2b313e !important;
+}
+
+[data-theme="dark"] .tf-form-control,
+[data-bs-theme="dark"] .tf-form-control {
+    background-color: #17191f !important;
+    border-color: #383e4b !important;
+    color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .tf-modal-confirm-box,
+[data-bs-theme="dark"] .tf-modal-confirm-box {
+    background-color: #1e222b !important;
+    border-color: #383e4b !important;
+    color: #f1f5f9 !important;
+}

@@ -1,8 +1,10 @@
 @using TradeFlow.Application.Common.Interfaces
 @using TradeFlow.Application.Common.Models.Contracts
 @using TradeFlow.Domain.Enums
+@inject IJSRuntime JS
 @inject IEmploymentContractService EmploymentContractService
 @inject AuthenticationStateProvider AuthStateProvider
+@implements IAsyncDisposable
 
 @if (IsOpen)
 {
@@ -17,14 +19,14 @@
                             </svg>
                         </div>
                         <div>
-                            <h5 class="modal-title fw-bold text-dark mb-0">Gia hạn / Tái ký Hợp đồng lao động</h5>
+                            <h5 class="modal-title fw-bold mb-0">Gia hạn / Tái ký Hợp đồng lao động</h5>
                             <div class="text-muted small">Từ hợp đồng gốc: @parentContract?.ContractNumber — @parentContract?.EmployeeFullName</div>
                         </div>
                     </div>
                     <button type="button" class="btn-close" @onclick="CloseAsync" aria-label="Đóng"></button>
                 </div>
 
-                <div class="modal-body p-4 bg-light bg-opacity-50">
+                <div class="modal-body p-4">
                     @if (!string.IsNullOrEmpty(errorMessage))
                     {
                         <div class="alert alert-danger py-2 px-3 small mb-3">@errorMessage</div>
@@ -97,7 +99,7 @@
                     </div>
                 </div>
 
-                <div class="modal-footer bg-white border-top px-4 py-3 d-flex justify-content-between">
+                <div class="modal-footer border-top px-4 py-3 d-flex justify-content-between">
                     <button type="button" class="btn btn-outline-secondary btn-sm px-3" @onclick="CloseAsync" disabled="@isSubmitting">
                         Hủy
                     </button>
@@ -197,5 +199,19 @@
     {
         IsOpen = false;
         await IsOpenChanged.InvokeAsync(false);
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
     }
 }

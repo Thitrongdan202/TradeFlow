@@ -89,23 +89,33 @@
 
 @if (_errorMessage != null)
 {
-    <div class="tw-bg-red-50 tw-border tw-border-red-200 tw-rounded-lg tw-p-4 tw-mb-4 tw-text-red-700 tw-text-sm tw-flex tw-justify-between tw-items-center">
+    <div class="tf-alert tf-alert-error tw-bg-red-50 tw-border tw-border-red-200 tw-rounded-lg tw-p-3.5 tw-mb-4 tw-text-red-700 tw-text-sm tw-flex tw-justify-between tw-items-center">
         <span>@_errorMessage</span>
-        <button type="button" class="tw-font-bold" @onclick="() => _errorMessage = null">&times;</button>
+        <button type="button" class="tf-alert-close-btn" @onclick="() => _errorMessage = null" aria-label="Đóng" title="Đóng">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
     </div>
 }
 
 @if (_successMessage != null)
 {
-    <div class="tw-bg-emerald-50 tw-border tw-border-emerald-200 tw-rounded-lg tw-p-4 tw-mb-4 tw-text-emerald-700 tw-text-sm tw-flex tw-justify-between tw-items-center">
+    <div class="tf-alert tf-alert-success tw-bg-emerald-50 tw-border tw-border-emerald-200 tw-rounded-lg tw-p-3.5 tw-mb-4 tw-text-emerald-700 tw-text-sm tw-flex tw-justify-between tw-items-center">
         <span>@_successMessage</span>
-        <button type="button" class="tw-font-bold" @onclick="() => _successMessage = null">&times;</button>
+        <button type="button" class="tf-alert-close-btn" @onclick="() => _successMessage = null" aria-label="Đóng" title="Đóng">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
     </div>
 }
 
 @if (_session == null)
 {
-    <div class="tw-bg-white tw-p-12 tw-text-center tw-rounded-lg tw-border tw-border-slate-200">
+    <div class="tw-bg-white tw-p-12 tw-text-center tw-rounded-lg tw-border tw-border-slate-200 tf-loading-box">
         <div class="tw-animate-spin tw-inline-block tw-w-8 tw-h-8 tw-border-4 tw-border-emerald-500 tw-border-t-transparent tw-rounded-full tw-mb-2"></div>
         <div class="tw-text-slate-600">Đang tải chi tiết đợt kiểm kê...</div>
     </div>
@@ -113,7 +123,7 @@
 else
 {
     <!-- Separation of Duties Callout -->
-    <div class="tw-bg-indigo-50/70 tw-border tw-border-indigo-100 tw-rounded-lg tw-p-4 tw-mb-4 tw-text-sm tw-text-indigo-950 no-print">
+    <div class="tf-sod-banner tw-bg-indigo-50/70 tw-border tw-border-indigo-100 tw-rounded-lg tw-p-4 tw-mb-4 tw-text-sm tw-text-indigo-950 no-print">
         <div class="tw-flex tw-items-start tw-gap-3">
             <svg class="tw-w-5 tw-h-5 tw-text-indigo-600 tw-shrink-0 tw-mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />

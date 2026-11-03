@@ -21,7 +21,7 @@
 {
     <div class="tf-modal-overlay @(_isClosing ? "is-closing" : "")" @onclick="HandleBackdropClick" @onkeydown="HandleKeyDown" tabindex="-1">
         <div class="tf-modal tf-modal-lg employee-modal @(_isClosing ? "is-closing" : "")"
-             style="max-width: 860px; max-height: calc(100dvh - 32px); min-height: 0; display: flex; flex-direction: column; overflow: hidden; position: relative;"
+             style="width: min(840px, calc(100vw - 32px)); max-width: 840px; max-height: min(88vh, 760px); min-height: 0; display: flex; flex-direction: column; overflow: hidden; position: relative; margin: auto;"
              @onclick:stopPropagation="true">
 
             @* Fixed Header *@
@@ -82,7 +82,7 @@
                 <Authorized>
                     <div class="tf-mode-selector-bar">
                         <span class="tf-mode-selector-label">Phương thức thực hiện:</span>
-                        <div class="tf-mode-segmented-control">
+                        <div class="tf-mode-segmented-control" role="group" aria-label="Phương thức thực hiện">
                             <button type="button" class="tf-mode-tab @(_isDirectCreate ? "active" : "")" @onclick="() => SwitchMode(true)">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -90,7 +90,7 @@
                                     <line x1="20" y1="8" x2="20" y2="14"/>
                                     <line x1="23" y1="11" x2="17" y2="11"/>
                                 </svg>
-                                <span>Tạo hồ sơ trực tiếp</span>
+                                <span class="tf-mode-text">Tạo hồ sơ trực tiếp</span>
                             </button>
                             <button type="button" class="tf-mode-tab @(!_isDirectCreate ? "active" : "")" @onclick="() => SwitchMode(false)">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -100,8 +100,8 @@
                                     <line x1="16" y1="17" x2="8" y2="17"/>
                                     <polyline points="10 9 9 9 8 9"/>
                                 </svg>
-                                <span>Gửi yêu cầu phê duyệt</span>
-                                <span class="tf-badge tf-badge-info" style="font-size: 10px; padding: 1px 6px; margin-left: 4px;">Kèm hồ sơ</span>
+                                <span class="tf-mode-text">Gửi yêu cầu phê duyệt</span>
+                                <span class="tf-mode-badge">Kèm hồ sơ</span>
                             </button>
                         </div>
                     </div>
@@ -127,7 +127,7 @@
                             Thông tin cơ bản
                         </div>
 
-                        <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 16px;">
+                        <div class="tf-emp-grid-basic">
                             <div class="tf-form-group">
                                 <label class="tf-label">Mã nhân viên</label>
                                 <InputText class="tf-input" @bind-Value="_model.Code" placeholder="NV00001" />
@@ -150,7 +150,7 @@
                             </div>
                         </div>
 
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 14px;">
+                        <div class="tf-emp-grid-3 tf-emp-row-gap">
                             <div class="tf-form-group">
                                 <label class="tf-label">Ngày sinh (dd/MM/yyyy)</label>
                                 <TfDateInput @bind-Value="_model.DateOfBirth" Placeholder="dd/MM/yyyy" />
@@ -175,7 +175,7 @@
                             Vị trí &amp; Bộ phận làm việc
                         </div>
 
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="tf-emp-grid-2">
                             <div class="tf-form-group">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                                     <label class="tf-label" style="margin: 0;">Phòng ban</label>
@@ -209,7 +209,7 @@
                             </div>
                         </div>
 
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 14px;">
+                        <div class="tf-emp-grid-3 tf-emp-row-gap">
                             <div class="tf-form-group">
                                 <label class="tf-label">Chi nhánh làm việc</label>
                                 <InputText class="tf-input" @bind-Value="_model.WorkingBranch" placeholder="Chi nhánh trung tâm" />
@@ -234,7 +234,7 @@
                             Liên hệ &amp; Tài khoản TradeFlow
                         </div>
 
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+                        <div class="tf-emp-grid-3">
                             <div class="tf-form-group">
                                 <label class="tf-label">Số điện thoại</label>
                                 <InputText class="tf-input" @bind-Value="_model.Phone" placeholder="0901 234 567" />
@@ -257,7 +257,7 @@
                             </div>
                         </div>
 
-                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-top: 14px;">
+                        <div class="tf-emp-grid-2-1 tf-emp-row-gap">
                             <div class="tf-form-group">
                                 <label class="tf-label">Địa chỉ</label>
                                 <InputText class="tf-input" @bind-Value="_model.Address" placeholder="Địa chỉ thường trú hoặc tạm trú..." />
@@ -277,7 +277,7 @@
                             Ngân hàng &amp; Ghi chú
                         </div>
 
-                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px;">
+                        <div class="tf-emp-grid-2-1">
                             <div class="tf-form-group">
                                 <label class="tf-label">Thông tin tài khoản ngân hàng</label>
                                 <InputText class="tf-input" @bind-Value="_model.BankInformation" placeholder="Số TK, Tên Ngân hàng (VD: 1903... - Techcombank CN Hà Nội)" />
@@ -702,7 +702,7 @@
         {
             _isClosing = true;
             StateHasChanged();
-            await Task.Delay(160);
+            await Task.Delay(150);
         }
 
         IsOpen = false;

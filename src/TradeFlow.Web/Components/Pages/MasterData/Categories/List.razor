@@ -25,12 +25,12 @@
     </div>
     <div class="tf-page-actions">
         <AuthorizeView Policy="Permission:ProductCategories:Create">
-            <a href="/danh-muc/danh-muc-san-pham/them-moi" class="tf-btn tf-btn-primary">
+            <button type="button" class="tf-btn tf-btn-primary" @onclick="OpenCreateCategoryModal">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                 </svg>
                 Thêm danh mục
-            </a>
+            </button>
         </AuthorizeView>
     </div>
 </div>
@@ -135,7 +135,7 @@ else
                             <td style="text-align:right;">
                                 <div class="tw-inline-flex tw-gap-1">
                                     <AuthorizeView Policy="Permission:ProductCategories:Edit">
-                                        <a href="/danh-muc/danh-muc-san-pham/sua/@item.Id" class="tf-btn tf-btn-ghost tf-btn-sm">Sửa</a>
+                                        <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="() => OpenEditCategoryModal(item.Id)">Sửa</button>
                                     </AuthorizeView>
                                     <AuthorizeView Policy="Permission:ProductCategories:Delete">
                                         <button class="tf-btn tf-btn-ghost tf-btn-sm tw-text-red-600 hover:tw-bg-red-50" @onclick="() => ConfirmDelete(item.Id, item.Name ?? string.Empty)">Xóa</button>
@@ -186,7 +186,49 @@ else
     </FooterContent>
 </TfModal>
 
+<CategoryFormModal @bind-IsOpen="_showCategoryModal"
+                   CategoryId="_selectedEditCategoryId"
+                   OnSaved="HandleCategorySaved" />
+
 @code {
+    private bool _showCategoryModal = false;
+    private int? _selectedEditCategoryId;
+
+    private void OpenCreateCategoryModal()
+    {
+        _selectedEditCategoryId = null;
+        _showCategoryModal = true;
+    }
+
+    private void OpenEditCategoryModal(int id)
+    {
+        _selectedEditCategoryId = id;
+        _showCategoryModal = true;
+    }
+
+    private async Task HandleCategorySaved(ProductCategory category)
+    {
+        _toastMessage = $"Đã lưu danh mục '{category.Name}' ({category.Code}) thành công!";
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isRefreshing = true;
+        try
+        {
+            _items = await DbContext.ProductCategories
+                .Include(c => c.ParentCategory)
+                .OrderBy(x => x.DisplayOrder)
+                .ThenBy(x => x.Code)
+                .ToListAsync();
+        }
+        finally
+        {
+            _isRefreshing = false;
+        }
+    }
+
     private int? _itemToDeleteId;
     private string _itemToDeleteName = "";
     private string? _deleteError;
@@ -199,11 +241,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _items = await DbContext.ProductCategories
-            .Include(c => c.ParentCategory)
-            .OrderBy(x => x.DisplayOrder)
-            .ThenBy(x => x.Code)
-            .ToListAsync();
+        await LoadDataAsync();
     }
 
     private int _currentPage = 1;

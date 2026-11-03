@@ -1,0 +1,735 @@
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Sales
+@using TradeFlow.Domain.Entities.MasterData
+@using TradeFlow.Domain.Entities.Pricing
+@using TradeFlow.Domain.Enums
+@inject IQuotationService QuotationService
+@inject ISalesService SalesService
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (IsOpen || _isClosing)
+{
+    <div class="tf-q-modal-backdrop @(_isClosing ? "is-closing" : "")" @onclick="HandleBackdropClick">
+        <div class="tf-q-modal-dialog @(_isClosing ? "is-closing" : "")" @onclick:stopPropagation="true" role="dialog" aria-modal="true">
+            @* Header *@
+            <div class="tf-q-modal-header">
+                <div class="tf-q-header-info">
+                    <div class="tf-q-header-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="tf-q-modal-title">Tạo báo giá thương mại mới</h2>
+                        <span class="tf-q-modal-subtitle">Soạn thảo báo giá gửi khách hàng với chính sách chiết khấu và đơn giá chuẩn</span>
+                    </div>
+                </div>
+                <button type="button" class="tf-q-modal-close" @onclick="HandleRequestClose" title="Đóng (Esc)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            @* Body *@
+            <div class="tf-q-modal-body">
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="tf-q-alert-error">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <span>@_errorMessage</span>
+                    </div>
+                }
+
+                @if (_isLoading)
+                {
+                    <div class="tf-q-loading">
+                        <div class="tf-q-spinner"></div>
+                        <span>Đang khởi tạo dữ liệu báo giá...</span>
+                    </div>
+                }
+                else
+                {
+                    @* 1. Khách hàng & Ngày hiệu lực *@
+                    <div class="tf-q-section">
+                        <div class="tf-q-section-title">
+                            <span class="tf-q-section-num">1</span>
+                            <span>Khách hàng & Thời hạn báo giá</span>
+                        </div>
+
+                        <div class="tf-q-customer-search-wrap">
+                            <label class="tf-q-label">Khách hàng nhận báo giá <span class="tf-q-req">*</span></label>
+                            <div class="tf-q-search-box">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tf-q-search-icon">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                                <input type="text" class="tf-q-input tf-q-search-input"
+                                       placeholder="Tìm kiếm khách hàng theo tên, mã, SĐT hoặc MST..."
+                                       @bind="_customerSearch"
+                                       @bind:event="oninput"
+                                       @onkeyup="SearchCustomers" />
+                                @if (_selectedCustomer != null)
+                                {
+                                    <div class="tf-q-customer-selected-tag">
+                                        <span class="tf-q-cust-name">@_selectedCustomer.Name</span>
+                                        <button type="button" class="tf-q-cust-clear" @onclick="ClearCustomer">✕</button>
+                                    </div>
+                                }
+                            </div>
+
+                            @if (_isCustomerSearched)
+                            {
+                                <ul class="tf-q-dropdown-list">
+                                    @if (!_customerSearchResults.Any())
+                                    {
+                                        <li class="tf-q-dropdown-empty">Không tìm thấy khách hàng phù hợp.</li>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var c in _customerSearchResults)
+                                        {
+                                            <li class="tf-q-dropdown-item" @onclick="() => SelectCustomer(c)">
+                                                <div class="tf-q-dd-title"><strong>@c.Name</strong> - @c.Phone</div>
+                                                <div class="tf-q-dd-sub">@c.CompanyName @(!string.IsNullOrEmpty(c.Address) ? $"| ĐC: {c.Address}" : "")</div>
+                                            </li>
+                                        }
+                                    }
+                                </ul>
+                            }
+                        </div>
+
+                        <div class="tf-q-grid-3">
+                            <div class="tf-q-form-group">
+                                <label class="tf-q-label">Ngày báo giá</label>
+                                <input type="date" class="tf-q-input" @bind="_quotation.QuotationDate" @bind:after="OnQuotationDateChanged" @oninput="MarkDirty" />
+                            </div>
+                            <div class="tf-q-form-group">
+                                <label class="tf-q-label">Hạn hiệu lực báo giá</label>
+                                <input type="date" class="tf-q-input" @bind="_quotation.ExpiryDate" @oninput="MarkDirty" />
+                            </div>
+                            <div class="tf-q-form-group">
+                                <label class="tf-q-label">Bảng giá áp dụng</label>
+                                <select class="tf-q-select" @bind="_selectedPriceListId" @bind:after="OnPriceListChanged" @oninput="MarkDirty">
+                                    <option value="">-- Mặc định (Hiện hành) --</option>
+                                    @foreach (var pl in _availablePriceLists)
+                                    {
+                                        <option value="@pl.Id">@pl.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="tf-q-grid-2">
+                            <div class="tf-q-form-group">
+                                <label class="tf-q-label">Điều khoản thương mại &amp; Thanh toán</label>
+                                <input type="text" class="tf-q-input" @bind="_quotation.Terms" placeholder="Ví dụ: Thanh toán 100% trước khi giao hàng..." @oninput="MarkDirty" />
+                            </div>
+                            <div class="tf-q-form-group">
+                                <label class="tf-q-label">Ghi chú báo giá</label>
+                                <input type="text" class="tf-q-input" @bind="_quotation.Notes" placeholder="Ví dụ: Giao tại kho bên mua..." @oninput="MarkDirty" />
+                            </div>
+                        </div>
+                    </div>
+
+                    @* 2. Danh mục sản phẩm *@
+                    <div class="tf-q-section">
+                        <div class="tf-q-section-title tf-q-between">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span class="tf-q-section-num">2</span>
+                                <span>Danh sách sản phẩm định giá</span>
+                                @if (_quotation.Items.Any())
+                                {
+                                    <span class="tf-q-badge-count">@_quotation.Items.Count dòng</span>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="tf-q-product-search-wrap">
+                            <div class="tf-q-search-box">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tf-q-search-icon">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                                <input type="text" class="tf-q-input tf-q-search-input"
+                                       placeholder="Tìm kiếm sản phẩm theo tên hoặc mã SP để thêm vào báo giá..."
+                                       @bind="_productSearch"
+                                       @bind:event="oninput"
+                                       @onkeyup="SearchProducts" />
+                                @if (!string.IsNullOrEmpty(_productSearch))
+                                {
+                                    <button type="button" class="tf-q-search-clear" @onclick="ClearProductSearch">✕</button>
+                                }
+                            </div>
+
+                            @if (_isProductSearched)
+                            {
+                                <ul class="tf-q-dropdown-list">
+                                    @if (!_productSearchResults.Any())
+                                    {
+                                        <li class="tf-q-dropdown-empty">Không tìm thấy sản phẩm.</li>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var p in _productSearchResults)
+                                        {
+                                            <li class="tf-q-dropdown-item" @onclick="() => SelectProduct(p)">
+                                                <div class="tf-q-dd-title">
+                                                    <span style="font-family:monospace; color:#2563eb; font-weight:700;">@p.Code</span> - <strong>@p.Name</strong>
+                                                    @if (p.Unit != null)
+                                                    {
+                                                        <span style="color:var(--tf-text-muted); font-size:11.5px;">(@p.Unit.Name)</span>
+                                                    }
+                                                </div>
+                                            </li>
+                                        }
+                                    }
+                                </ul>
+                            }
+                        </div>
+
+                        <div class="tf-q-table-wrap">
+                            <table class="tf-q-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 100px;">Mã SP</th>
+                                        <th style="min-width: 200px;">Tên sản phẩm</th>
+                                        <th style="width: 75px; text-align: center;">ĐVT</th>
+                                        <th style="width: 85px; text-align: right;">SL</th>
+                                        <th style="width: 140px; text-align: right;">Đơn giá</th>
+                                        <th style="width: 90px; text-align: right;">CK (%)</th>
+                                        <th style="width: 120px; text-align: right;">Tiền CK</th>
+                                        <th style="width: 140px; text-align: right;">Thành tiền</th>
+                                        <th style="width: 44px; text-align: center;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (!_quotation.Items.Any())
+                                    {
+                                        <tr>
+                                            <td colspan="9" class="tf-q-table-empty">
+                                                <span>Chưa có sản phẩm nào trong báo giá. Tìm kiếm sản phẩm phía trên để đưa vào báo giá.</span>
+                                            </td>
+                                        </tr>
+                                    }
+                                    @foreach (var item in _quotation.Items)
+                                    {
+                                        <tr>
+                                            <td style="font-family: monospace; font-weight: 600; color: #2563eb;">@item.ProductCode</td>
+                                            <td style="font-weight: 600;">@item.ProductName</td>
+                                            <td class="tf-q-center">@item.UnitName</td>
+                                            <td>
+                                                <input type="number" class="tf-q-table-input tf-q-right" @bind="item.Quantity" @bind:after="() => OnQuantityChanged(item)" min="1" step="any" @oninput="MarkDirty" />
+                                            </td>
+                                            <td>
+                                                <input type="number" class="tf-q-table-input tf-q-right" @bind="item.UnitPrice" @bind:after="() => OnManualPriceChanged(item)" min="0" step="any" @oninput="MarkDirty" />
+                                            </td>
+                                            <td>
+                                                <input type="number" class="tf-q-table-input tf-q-right" @bind="item.DiscountRate" @bind:after="() => OnDiscountRateChanged(item)" min="0" max="100" step="any" @oninput="MarkDirty" />
+                                            </td>
+                                            <td>
+                                                <input type="number" class="tf-q-table-input tf-q-right" @bind="item.DiscountAmount" @bind:after="() => OnDiscountAmountChanged(item)" min="0" step="any" @oninput="MarkDirty" />
+                                            </td>
+                                            <td class="tf-q-right" style="font-weight: 700; color: var(--tf-text-primary);">
+                                                @item.LineTotal.ToString("N0") đ
+                                            </td>
+                                            <td class="tf-q-center">
+                                                <button type="button" class="tf-q-btn-del" @onclick="() => RemoveItem(item)" title="Xóa dòng">
+                                                    ✕
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="tf-q-bottom-grid">
+                            <div class="tf-q-form-group">
+                                <label class="tf-q-label">Ghi chú báo giá</label>
+                                <textarea class="tf-q-textarea" rows="3" @bind="_quotation.Notes" placeholder="Ghi chú thêm về giá đã bao gồm/chưa bao gồm VAT, phương thức thanh toán..." @oninput="MarkDirty"></textarea>
+                            </div>
+
+                            <div class="tf-q-summary-card">
+                                <div class="tf-q-sum-row">
+                                    <span class="tf-q-sum-label">Cộng tiền hàng:</span>
+                                    <strong class="tf-q-sum-val">@_quotation.SubTotal.ToString("N0") đ</strong>
+                                </div>
+                                @if (_quotation.TotalDiscount > 0)
+                                {
+                                    <div class="tf-q-sum-row">
+                                        <span class="tf-q-sum-label">Tiền chiết khấu:</span>
+                                        <strong class="tf-q-sum-val" style="color: #059669;">-@_quotation.TotalDiscount.ToString("N0") đ</strong>
+                                    </div>
+                                }
+                                <div class="tf-q-sum-divider"></div>
+                                <div class="tf-q-sum-total-row">
+                                    <span class="tf-q-sum-total-label">Tổng giá trị báo giá:</span>
+                                    <strong class="tf-q-sum-total-val">@_quotation.GrandTotal.ToString("N0") đ</strong>
+                                </div>
+                                <div style="font-size:11px; color:var(--tf-text-muted); text-align:right; margin-top:2px;">(Giá chưa bao gồm thuế GTGT)</div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @* Footer *@
+            <div class="tf-q-modal-footer">
+                <button type="button" class="tf-q-btn tf-q-btn-secondary" @onclick="HandleRequestClose" disabled="@_isSaving">
+                    Hủy bỏ
+                </button>
+                <button type="button" class="tf-q-btn tf-q-btn-primary" @onclick="SaveDraftAsync" disabled="@(_isSaving || _isLoading)">
+                    @if (_isSaving)
+                    {
+                        <span class="tf-q-btn-spinner"></span>
+                        <span>Đang lưu...</span>
+                    }
+                    else
+                    {
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        </svg>
+                        <span>Lưu nháp báo giá</span>
+                    }
+                </button>
+            </div>
+
+            @* Dirty confirmation *@
+            @if (_showDirtyConfirm)
+            {
+                <div class="tf-q-confirm-overlay">
+                    <div class="tf-q-confirm-box">
+                        <div class="tf-q-confirm-title">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2">
+                                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                            <span>Dữ liệu báo giá chưa lưu</span>
+                        </div>
+                        <p class="tf-q-confirm-desc">Bạn đang có thông tin báo giá chưa được lưu. Bạn có chắc muốn đóng và hủy bỏ?</p>
+                        <div class="tf-q-confirm-actions">
+                            <button type="button" class="tf-q-btn tf-q-btn-secondary" @onclick="() => _showDirtyConfirm = false">Tiếp tục nhập</button>
+                            <button type="button" class="tf-q-btn tf-q-btn-danger" @onclick="ConfirmDiscardAndClose">Bỏ thay đổi</button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public EventCallback<QuotationDto> OnSaved { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private QuotationDto _quotation = new()
+    {
+        QuotationDate = DateTime.Now,
+        ExpiryDate = DateTime.Now.AddDays(30),
+        Status = QuotationStatus.Draft,
+        Items = new List<QuotationItemDto>()
+    };
+
+    private Customer? _selectedCustomer;
+    private string _customerSearch = "";
+    private string _productSearch = "";
+    private List<Customer> _customerSearchResults = new();
+    private List<Product> _productSearchResults = new();
+    private bool _isCustomerSearched = false;
+    private bool _isProductSearched = false;
+    private int? _selectedPriceListId;
+    private List<TradeFlow.Domain.Entities.Pricing.PriceList> _availablePriceLists = new();
+
+    private bool _isLoading = false;
+    private bool _isSaving = false;
+    private bool _isClosing = false;
+    private bool _isDirty = false;
+    private bool _showDirtyConfirm = false;
+    private bool _scrollLocked = false;
+    private string? _errorMessage;
+
+    private CancellationTokenSource? _customerSearchCts;
+    private CancellationTokenSource? _productSearchCts;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && !_isClosing)
+        {
+            if (!_scrollLocked)
+            {
+                await LockScrollAsync();
+                _scrollLocked = true;
+            }
+
+            if (_availablePriceLists.Count == 0)
+            {
+                await LoadInitialDataAsync();
+            }
+        }
+        else if (!IsOpen && _scrollLocked)
+        {
+            await UnlockScrollAsync();
+            _scrollLocked = false;
+        }
+    }
+
+    private async Task LoadInitialDataAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        _isDirty = false;
+        _showDirtyConfirm = false;
+
+        try
+        {
+            _quotation = new QuotationDto
+            {
+                QuotationDate = DateTime.Now,
+                ExpiryDate = DateTime.Now.AddDays(30),
+                Status = QuotationStatus.Draft,
+                Items = new List<QuotationItemDto>()
+            };
+            _selectedCustomer = null;
+            _customerSearch = "";
+            _productSearch = "";
+
+            _availablePriceLists = await SalesService.GetApplicablePriceListsAsync(_quotation.QuotationDate);
+            if (_selectedPriceListId == null && _availablePriceLists.Any())
+            {
+                _selectedPriceListId = _availablePriceLists.First().Id;
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi nạp dữ liệu: " + ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void MarkDirty()
+    {
+        _isDirty = true;
+    }
+
+    private async Task OnQuotationDateChanged()
+    {
+        _availablePriceLists = await SalesService.GetApplicablePriceListsAsync(_quotation.QuotationDate);
+        if (_selectedPriceListId.HasValue && !_availablePriceLists.Any(p => p.Id == _selectedPriceListId.Value))
+        {
+            _selectedPriceListId = _availablePriceLists.FirstOrDefault()?.Id;
+        }
+        await OnPriceListChanged();
+    }
+
+    private async Task OnPriceListChanged()
+    {
+        foreach (var item in _quotation.Items)
+        {
+            var res = await SalesService.GetProductPriceAsync(item.ProductId, _selectedPriceListId, _quotation.QuotationDate);
+            item.UnitPrice = res.Price ?? 0;
+            item.PriceSource = res.SourceName;
+            RecalculateItem(item);
+        }
+        CalculateTotals();
+        _isDirty = true;
+    }
+
+    private void OnQuantityChanged(QuotationItemDto item)
+    {
+        RecalculateItem(item);
+        CalculateTotals();
+        _isDirty = true;
+    }
+
+    private void OnManualPriceChanged(QuotationItemDto item)
+    {
+        item.PriceSource = "Thủ công";
+        RecalculateItem(item);
+        CalculateTotals();
+        _isDirty = true;
+    }
+
+    private void OnDiscountRateChanged(QuotationItemDto item)
+    {
+        var baseAmount = item.Quantity * item.UnitPrice;
+        item.DiscountAmount = Math.Round(baseAmount * (item.DiscountRate / 100m), 0);
+        RecalculateItem(item);
+        CalculateTotals();
+        _isDirty = true;
+    }
+
+    private void OnDiscountAmountChanged(QuotationItemDto item)
+    {
+        var baseAmount = item.Quantity * item.UnitPrice;
+        if (baseAmount > 0)
+        {
+            item.DiscountRate = Math.Round((item.DiscountAmount / baseAmount) * 100m, 2);
+        }
+        RecalculateItem(item);
+        CalculateTotals();
+        _isDirty = true;
+    }
+
+    private void RecalculateItem(QuotationItemDto item)
+    {
+        var baseAmount = item.Quantity * item.UnitPrice;
+        if (item.DiscountAmount > baseAmount)
+        {
+            item.DiscountAmount = baseAmount;
+        }
+        item.LineTotal = baseAmount - item.DiscountAmount;
+        if (item.LineTotal < 0) item.LineTotal = 0;
+    }
+
+    private void CalculateTotals()
+    {
+        _quotation.SubTotal = _quotation.Items.Sum(x => x.Quantity * x.UnitPrice);
+        _quotation.TotalDiscount = _quotation.Items.Sum(x => x.DiscountAmount);
+        _quotation.GrandTotal = _quotation.SubTotal - _quotation.TotalDiscount;
+    }
+
+    private void RemoveItem(QuotationItemDto item)
+    {
+        _quotation.Items.Remove(item);
+        CalculateTotals();
+        _isDirty = true;
+    }
+
+    private void ClearCustomer()
+    {
+        _selectedCustomer = null;
+        _quotation.CustomerId = 0;
+        _quotation.CustomerName = "";
+        _customerSearch = "";
+        _isDirty = true;
+    }
+
+    private void ClearProductSearch()
+    {
+        _productSearch = "";
+        _productSearchResults.Clear();
+        _isProductSearched = false;
+    }
+
+    private async Task SearchCustomers(KeyboardEventArgs e)
+    {
+        _customerSearchCts?.Cancel();
+        _customerSearchCts = new CancellationTokenSource();
+        var token = _customerSearchCts.Token;
+
+        if (_customerSearch.Length >= 2)
+        {
+            try
+            {
+                await Task.Delay(300, token);
+                if (!token.IsCancellationRequested)
+                {
+                    _customerSearchResults = await SalesService.SearchCustomersAsync(_customerSearch, token);
+                    _isCustomerSearched = true;
+                    StateHasChanged();
+                }
+            }
+            catch (TaskCanceledException) { }
+        }
+        else
+        {
+            _customerSearchResults.Clear();
+            _isCustomerSearched = false;
+        }
+    }
+
+    private void SelectCustomer(Customer c)
+    {
+        _selectedCustomer = c;
+        _quotation.CustomerId = c.Id;
+        _quotation.CustomerName = c.Name;
+        _quotation.CustomerPhone = c.Phone;
+        _quotation.CustomerAddress = c.Address;
+        _isCustomerSearched = false;
+        _customerSearch = "";
+        _isDirty = true;
+    }
+
+    private async Task SearchProducts(KeyboardEventArgs e)
+    {
+        _productSearchCts?.Cancel();
+        _productSearchCts = new CancellationTokenSource();
+        var token = _productSearchCts.Token;
+
+        if (_productSearch.Length >= 2)
+        {
+            try
+            {
+                await Task.Delay(300, token);
+                if (!token.IsCancellationRequested)
+                {
+                    _productSearchResults = await SalesService.SearchProductsAsync(_productSearch, token);
+                    _isProductSearched = true;
+                    StateHasChanged();
+                }
+            }
+            catch (TaskCanceledException) { }
+        }
+        else
+        {
+            _productSearchResults.Clear();
+            _isProductSearched = false;
+        }
+    }
+
+    private async Task SelectProduct(Product p)
+    {
+        var existing = _quotation.Items.FirstOrDefault(x => x.ProductId == p.Id);
+        if (existing != null)
+        {
+            existing.Quantity += 1;
+            RecalculateItem(existing);
+        }
+        else
+        {
+            var priceRes = await SalesService.GetProductPriceAsync(p.Id, _selectedPriceListId, _quotation.QuotationDate);
+            var item = new QuotationItemDto
+            {
+                ProductId = p.Id,
+                ProductCode = p.Code,
+                ProductName = p.Name,
+                UnitName = p.Unit?.Name ?? "Cái",
+                Quantity = 1,
+                UnitPrice = priceRes.Price ?? 0,
+                PriceSource = priceRes.SourceName,
+                DiscountRate = 0,
+                DiscountAmount = 0,
+                LineTotal = priceRes.Price ?? 0
+            };
+            _quotation.Items.Add(item);
+        }
+
+        _productSearch = "";
+        _productSearchResults.Clear();
+        _isProductSearched = false;
+        CalculateTotals();
+        _isDirty = true;
+    }
+
+    private async Task HandleRequestClose()
+    {
+        if (_isDirty)
+        {
+            _showDirtyConfirm = true;
+            return;
+        }
+        await CloseModalAsync();
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        await HandleRequestClose();
+    }
+
+    private async Task ConfirmDiscardAndClose()
+    {
+        _showDirtyConfirm = false;
+        _isDirty = false;
+        await CloseModalAsync();
+    }
+
+    private async Task CloseModalAsync()
+    {
+        if (_isClosing) return;
+        _isClosing = true;
+        StateHasChanged();
+
+        await Task.Delay(150);
+
+        _isClosing = false;
+        _isDirty = false;
+        _showDirtyConfirm = false;
+
+        if (_scrollLocked)
+        {
+            await UnlockScrollAsync();
+            _scrollLocked = false;
+        }
+
+        await IsOpenChanged.InvokeAsync(false);
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync();
+        }
+    }
+
+    private async Task SaveDraftAsync()
+    {
+        if (_isSaving) return;
+
+        if (_quotation.CustomerId <= 0)
+        {
+            _errorMessage = "Vui lòng chọn khách hàng nhận báo giá.";
+            return;
+        }
+
+        if (!_quotation.Items.Any())
+        {
+            _errorMessage = "Vui lòng chọn ít nhất một sản phẩm vào báo giá.";
+            return;
+        }
+
+        _isSaving = true;
+        _errorMessage = null;
+
+        try
+        {
+            _quotation.Status = QuotationStatus.Draft;
+            var created = await QuotationService.CreateQuotationAsync(_quotation);
+            _isDirty = false;
+            await OnSaved.InvokeAsync(created);
+            await CloseModalAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi khi lưu báo giá: " + ex.Message;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task LockScrollAsync()
+    {
+        try { await JS.InvokeVoidAsync("TradeFlowMotion.lockScroll"); } catch { }
+    }
+
+    private async Task UnlockScrollAsync()
+    {
+        try { await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll"); } catch { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_scrollLocked)
+        {
+            await UnlockScrollAsync();
+            _scrollLocked = false;
+        }
+    }
+}

@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    EMPLOYEE REQUEST REVIEW MODAL — SCOPED STYLES
    Smooth Tab Transitions · Scroll Architecture · Dark/Light Mode
    ============================================================ */
@@ -7,29 +7,28 @@
     position: fixed !important;
     inset: 0 !important;
     background-color: rgba(15, 23, 42, 0.65) !important;
-    /* Pure alpha overlay - zero expensive per-frame raster blur */
-    transform: translateZ(0);
-
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     z-index: 1050 !important;
-    padding: 20px;
-    overflow: hidden !important;
-    animation: tfBackdropFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    padding: clamp(24px, 4vh, 44px) 16px !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    animation: tfBackdropFadeIn 160ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .tf-modal-overlay.is-closing {
-    animation: tfBackdropFadeOut 0.16s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+    animation: tfBackdropFadeOut 150ms cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
     pointer-events: none;
 }
 
 .tf-modal.tf-modal-lg {
-    width: 100%;
-    max-width: 920px;
-    max-height: min(90dvh, 880px);
-    height: 85vh;
-    min-height: 0;
+    width: min(960px, calc(100vw - 32px)) !important;
+    max-width: 960px !important;
+    max-height: min(88vh, 800px) !important;
+    height: auto;
+    min-height: 380px;
+    margin: auto;
     display: flex !important;
     flex-direction: column !important;
     background: var(--tf-bg-card, #ffffff);
@@ -38,12 +37,14 @@
     overflow: hidden !important;
     position: relative;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    will-change: transform, opacity;
     transform: translateZ(0);
-    animation: tfModalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    backface-visibility: hidden;
+    animation: tfModalScaleIn 190ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .tf-modal.tf-modal-lg.is-closing {
-    animation: tfModalScaleOut 0.16s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+    animation: tfModalScaleOut 150ms cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
     pointer-events: none;
 }
 
@@ -90,6 +91,7 @@
 
 /* Filter Tabs Bar (Fixed below header) */
 .tf-req-filter-bar {
+    flex: 0 0 auto;
     flex: 0 0 auto;
     padding: 10px 20px;
     border-bottom: 1px solid var(--tf-border, #e2e8f0);

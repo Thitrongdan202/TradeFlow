@@ -130,26 +130,35 @@
   --tf-transition:        150ms ease;
   --tf-transition-slow:   250ms ease;
 
-  /* --- Motion Design System Tokens (GSAP & CSS Coordinated) --- */
-  --tf-motion-instant:     90ms; /* Button press, toggle switch, micro-icon feedback (90-120ms) */
-  --tf-motion-fast:        120ms; /* Dropdown appearance, card elevation, badge, tab switch (90-140ms) */
-  --tf-motion-normal:      140ms; /* Modal backdrop fade, page enter, subtle cross-fades (120-160ms) */
-  --tf-motion-modal:       150ms; /* Modal & drawer dialog entrance (120-170ms) */
-  --tf-motion-modal-exit:  110ms; /* Modal & drawer dialog exit (100-140ms) */
-  --tf-motion-content:     140ms; /* Content container entrance */
+  /* --- Standardized Motion Design System Tokens --- */
+  --tf-motion-btn:         120ms; /* Button tactile feedback (100-140ms) */
+  --tf-motion-icon:        120ms; /* Icon hover & rotation (100-140ms) */
+  --tf-motion-dropdown:    140ms; /* Dropdown & popover reveal (120-160ms) */
+  --tf-motion-tab:         140ms; /* Tab pane switch (120-160ms) */
+  --tf-motion-accordion:   180ms; /* Accordion expansion (160-200ms) */
+  --tf-motion-card:        160ms; /* Card elevation & hover lift (140-180ms) */
+  --tf-motion-page:        160ms; /* Page transition entrance (140-180ms) */
+  --tf-motion-content:     150ms; /* Dynamic content cross-fade (120-180ms) */
+  --tf-motion-toast:       190ms; /* Toast notification entrance (160-220ms) */
+  --tf-motion-modal:       180ms; /* Modal dialog entrance (150-200ms) */
+  --tf-motion-modal-exit:  140ms; /* Modal dialog exit (100-140ms) */
+  --tf-motion-instant:     100ms; /* Micro-interactions, toggle switch (90-120ms) */
+  --tf-motion-fast:        130ms; /* Badges, subtle state changes (100-140ms) */
+  --tf-motion-normal:      160ms; /* Backdrop fades, general state changes (140-180ms) */
+  --tf-motion-slow:        220ms; /* Large drawer or expander transitions (180-240ms) */
 
   /* Easing Curves */
-  --tf-ease-out:           cubic-bezier(0.16, 1, 0.3, 1);  /* Responsive decelerate (natural enter) */
-  --tf-ease-in:            cubic-bezier(0.4, 0, 1, 1);     /* Restrained accelerate (natural exit) */
+  --tf-ease-out:           cubic-bezier(0.16, 1, 0.3, 1);  /* Natural responsive decelerate */
+  --tf-ease-in:            cubic-bezier(0.4, 0, 1, 1);     /* Restrained accelerate exit */
   --tf-ease-in-out:        cubic-bezier(0.4, 0, 0.2, 1);   /* Smooth symmetric transition */
-  --tf-ease-spring:        cubic-bezier(0.175, 0.885, 0.32, 1.1); /* Subtle, restrained tactile response */
+  --tf-ease-spring:        cubic-bezier(0.175, 0.885, 0.32, 1.1); /* Tactile elastic response */
 
   /* --- Z-Index Scale --- */
   --tf-z-dropdown:  100;
   --tf-z-sticky:    200;
-  --tf-z-overlay:   300;
-  --tf-z-modal:     400;
-  --tf-z-toast:     500;
+  --tf-z-overlay:   1040;
+  --tf-z-modal:     1050;
+  --tf-z-toast:     1100;
 }
 
 /* ============================================================
@@ -384,6 +393,51 @@ h1:focus { outline: none; }
   margin-left: var(--tf-sidebar-collapsed-width);
 }
 
+/* ==========================================================================
+   GLOBAL APPLICATION SHELL & MODAL STACKING CONTEXT ARCHITECTURE
+   Enforces strict 3-tier layering hierarchy:
+   Tier 1 (Base): Application Shell (Sidebar, Topbar, Main Content)
+   Tier 2 (Overlay): Modal Backdrop (Full Viewport, Dimmed, Blurs & Blocks Shell)
+   Tier 3 (Surface): Modal Dialog & Popups (Topmost, Fully Interactive)
+   ========================================================================== */
+
+/* 1. Lift Main Wrapper & Main Content above Shell ONLY when a modal is active */
+body.tf-modal-open .tf-main-wrapper,
+:root:has(.tf-modal-overlay, .modal.show, [class*="-modal-backdrop"], .tf-gallery-modal-backdrop, .voucher-overlay) .tf-main-wrapper {
+  position: relative !important;
+  z-index: var(--tf-z-modal, 1050) !important;
+}
+
+body.tf-modal-open .tf-content,
+:root:has(.tf-modal-overlay, .modal.show, [class*="-modal-backdrop"], .tf-gallery-modal-backdrop, .voucher-overlay) .tf-content {
+  position: relative !important;
+  z-index: var(--tf-z-modal, 1050) !important;
+}
+
+/* 2. Neutralize page-transition-wrap stacking trap during modal display */
+body.tf-modal-open .tf-page-transition-wrap,
+:root:has(.tf-modal-overlay, .modal.show, [class*="-modal-backdrop"], .tf-gallery-modal-backdrop, .voucher-overlay) .tf-page-transition-wrap {
+  position: static !important;
+  will-change: auto !important;
+  transform: none !important;
+}
+
+/* 3. Demote Topbar below Modal Backdrop & Disable Pointer Events ONLY while Modal is Open */
+body.tf-modal-open .tf-topbar,
+:root:has(.tf-modal-overlay, .modal.show, [class*="-modal-backdrop"], .tf-gallery-modal-backdrop, .voucher-overlay) .tf-topbar {
+  z-index: 1 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+/* 4. Demote Sidebar below Modal Backdrop & Disable Pointer Events ONLY while Modal is Open */
+body.tf-modal-open .tf-sidebar,
+:root:has(.tf-modal-overlay, .modal.show, [class*="-modal-backdrop"], .tf-gallery-modal-backdrop, .voucher-overlay) .tf-sidebar {
+  z-index: 1 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
 /* --- Top Bar --- */
 .tf-topbar {
   height: var(--tf-topbar-height);
@@ -398,14 +452,31 @@ h1:focus { outline: none; }
   gap: var(--tf-space-4);
 }
 
-/* --- Page Content --- */
+/* --- Page Content & Route Transitions --- */
 .tf-content {
   flex: 1;
   padding: var(--tf-space-6);
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  animation: tfPageEnter var(--tf-motion-content) var(--tf-ease-out);
+}
+
+.tf-page-transition-wrap {
+  width: 100%;
+  min-width: 0;
+  animation: tfPageTransitionEnter var(--tf-motion-page) var(--tf-ease-out);
+  will-change: opacity;
+}
+
+@keyframes tfPageTransitionEnter {
+  0% {
+    opacity: 0.65;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes tfPageEnter {
@@ -1335,8 +1406,15 @@ textarea.tf-form-control {
   line-height: 1;
 }
 
-.tf-btn:active:not(:disabled) {
-  transform: translateY(1px) scale(0.99);
+.tf-btn:active:not(:disabled),
+.btn:active:not(:disabled),
+.tf-btn-action-stack:active,
+.tf-table-code-btn:active,
+.tf-topbar-btn:active,
+.tf-topbar-warehouse-pill:active,
+.tf-icon-btn:active {
+  transform: translateY(1px) scale(0.985) !important;
+  transition: transform var(--tf-motion-btn) var(--tf-ease-out) !important;
 }
 
 .tf-btn:focus-visible {
@@ -1566,11 +1644,34 @@ textarea.tf-form-control {
   color: var(--tf-text-primary);
   vertical-align: middle;
   line-height: 1.4;
+  transition: background-color var(--tf-motion-fast) var(--tf-ease-out), color var(--tf-motion-fast) var(--tf-ease-out);
+}
+
+.tf-table tr {
+  transition: background-color var(--tf-motion-fast) var(--tf-ease-out);
 }
 
 .tf-table tr:last-child td { border-bottom: none; }
 
-.tf-table tr:hover td { background-color: var(--tf-gray-50); }
+.tf-table tr:hover td { background-color: var(--tf-table-row-hover, var(--tf-gray-50)); }
+
+.tf-table tr.row-selected td,
+.tf-table tr.selected td {
+  background-color: var(--tf-table-row-selected, #eff6ff) !important;
+}
+
+/* Checkbox Micro-Interactions */
+.tf-table input[type="checkbox"],
+input[type="checkbox"].tf-checkbox {
+  cursor: pointer;
+  border-radius: 4px;
+  transition: transform var(--tf-motion-instant) var(--tf-ease-spring), border-color var(--tf-motion-fast) ease, background-color var(--tf-motion-fast) ease;
+}
+
+.tf-table input[type="checkbox"]:active,
+input[type="checkbox"].tf-checkbox:active {
+  transform: scale(0.85);
+}
 
 /* Sticky Right Action Column */
 .tf-table th.tf-col-actions,
@@ -1942,7 +2043,7 @@ textarea.tf-form-control {
   cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -2px;
-  transition: color var(--tf-transition), border-color var(--tf-transition);
+  transition: color var(--tf-motion-tab) var(--tf-ease-out), border-color var(--tf-motion-tab) var(--tf-ease-out);
 }
 
 .tf-tab:hover { color: var(--tf-gray-700); }
@@ -1952,39 +2053,75 @@ textarea.tf-form-control {
   border-bottom-color: var(--tf-primary);
 }
 
+/* Tab Pane Transition */
+.tf-tab-content > .tf-tab-pane,
+.tab-content > .tab-pane.active,
+.tf-tab-pane.active {
+  animation: tfTabPaneEnter var(--tf-motion-tab) var(--tf-ease-out);
+}
+
+@keyframes tfTabPaneEnter {
+  from {
+    opacity: 0.6;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* ============================================================
-   MODAL
+   MODAL DESIGN SYSTEM & VIEWPORT CENTERING (GLOBAL POLICY)
    ============================================================ */
 .tf-modal-overlay {
   position: fixed;
   inset: 0;
-  background-color: var(--tf-surface-overlay);
-  transform: translateZ(0);
-
+  background-color: var(--tf-surface-overlay, rgba(15, 23, 42, 0.65));
   display: flex;
-  align-items: center;
+  align-items: safe center;
   justify-content: center;
-  z-index: var(--tf-z-modal);
-  padding: var(--tf-space-4);
-  animation: tfBackdropFadeIn var(--tf-motion-normal) var(--tf-ease-out) forwards;
+  z-index: var(--tf-z-modal, 1050);
+  padding: clamp(16px, 3vh, 32px) 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  animation: tfBackdropFadeIn 160ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .tf-modal {
   background: var(--tf-surface);
-  border-radius: var(--tf-radius-lg);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.06);
+  border-radius: var(--tf-radius-lg, 14px);
+  border: 1px solid var(--tf-border);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   width: 100%;
-  max-height: calc(100dvh - 32px);
+  max-height: min(88vh, 800px);
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  animation: tfModalScaleIn var(--tf-motion-modal) var(--tf-ease-out) forwards;
+  margin: auto;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  animation: tfModalScaleIn 190ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .tf-modal-header {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--tf-border);
+  background: var(--tf-surface);
+}
+
+.tf-modal-title {
+  font-size: var(--tf-text-base, 16px);
+  font-weight: var(--tf-font-semibold, 600);
+  color: var(--tf-text-primary);
+  margin: 0;
 }
 
 .tf-modal form,
@@ -1997,11 +2134,9 @@ textarea.tf-form-control {
 }
 
 .tf-modal-body {
-  padding: var(--tf-space-5);
+  padding: var(--tf-space-5, 20px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  contain: layout paint;
-  transform: translateZ(0);
   scroll-behavior: auto !important;
   flex: 1 1 auto;
   min-height: 0;
@@ -2011,11 +2146,13 @@ textarea.tf-form-control {
 
 .tf-modal-footer {
   flex: 0 0 auto;
-  padding: var(--tf-space-3) var(--tf-space-5);
+  padding: 14px 20px;
   border-top: 1px solid var(--tf-border);
   display: flex;
+  align-items: center;
   justify-content: flex-end;
-  gap: var(--tf-space-2);
+  gap: var(--tf-space-2, 8px);
+  background: var(--tf-surface);
 }
 
 @keyframes tfBackdropFadeIn {
@@ -2028,55 +2165,98 @@ textarea.tf-form-control {
   to { opacity: 0; }
 }
 
+@keyframes tfModalScaleIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @keyframes tfModalScaleOut {
   from {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translateY(0) scale(1);
   }
   to {
     opacity: 0;
-    transform: scale(0.97) translateY(8px);
+    transform: translateY(6px) scale(0.975);
   }
 }
 
 .tf-modal-overlay.is-closing {
   pointer-events: none;
-  animation: tfBackdropFadeOut 0.16s cubic-bezier(0.4, 0, 1, 1) forwards !important;
+  animation: tfBackdropFadeOut 150ms cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
 }
 
 .tf-modal.is-closing {
   pointer-events: none;
-  animation: tfModalScaleOut 0.16s cubic-bezier(0.4, 0, 1, 1) forwards !important;
+  animation: tfModalScaleOut 150ms cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
 }
 
-@keyframes tfModalScaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.98) translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-/* --- Coordinated Bootstrap Modal Motion --- */
+/* --- Coordinated Bootstrap Modal Centering & Viewport Hierarchy --- */
 .modal.fade.show.d-block {
-  animation: tfBackdropFadeIn var(--tf-motion-fast, 140ms) ease;
+  position: fixed !important;
+  inset: 0 !important;
+  background-color: var(--tf-surface-overlay, rgba(15, 23, 42, 0.65)) !important;
+  display: flex !important;
+  align-items: safe center !important;
+  justify-content: center !important;
+  padding: clamp(16px, 3vh, 32px) 16px !important;
+  z-index: 1055 !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  animation: tfBackdropFadeIn 160ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .modal.fade.show.d-block .modal-dialog {
-  animation: tfModalScaleIn var(--tf-motion-modal, 160ms) var(--tf-ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+  margin: auto !important;
+  width: 100% !important;
+  max-width: min(1180px, calc(100vw - 32px)) !important;
+  max-height: min(90vh, 860px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  animation: tfModalScaleIn 190ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.modal.fade.show.d-block .modal-dialog .modal-content {
+  max-height: min(90vh, 860px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  border-radius: var(--tf-radius-lg, 14px) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+}
+
+.modal.fade.show.d-block .modal-dialog .modal-header {
+  flex: 0 0 auto !important;
+}
+
+.modal.fade.show.d-block .modal-dialog .modal-body {
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  min-height: 0 !important;
+  overscroll-behavior: contain !important;
+}
+
+.modal.fade.show.d-block .modal-dialog .modal-footer {
+  flex: 0 0 auto !important;
 }
 
 .modal.fade.show.d-block.is-closing {
   pointer-events: none;
-  animation: tfBackdropFadeOut 0.16s cubic-bezier(0.4, 0, 1, 1) forwards !important;
+  animation: tfBackdropFadeOut 150ms cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
 }
 
 .modal.fade.show.d-block.is-closing .modal-dialog {
   pointer-events: none;
-  animation: tfModalScaleOut 0.16s cubic-bezier(0.4, 0, 1, 1) forwards !important;
+  animation: tfModalScaleOut 150ms cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
 }
 
 /* --- Coordinated Drawer Motion (Global) --- */
@@ -2106,7 +2286,6 @@ textarea.tf-form-control {
   justify-content: flex-end;
   z-index: var(--tf-z-modal, 1050);
   animation: tfBackdropFadeIn var(--tf-motion-normal, 200ms) var(--tf-ease-out) forwards;
-  transform: translateZ(0);
 }
 
 .tf-drawer-backdrop.is-closing {
@@ -2116,7 +2295,6 @@ textarea.tf-form-control {
 
 .tf-drawer-panel {
   animation: tfDrawerSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  transform: translateZ(0);
 }
 
 .tf-drawer-panel.is-closing {
@@ -2131,36 +2309,12 @@ textarea.tf-form-control {
   }
 }
 
-.tf-modal-sm { max-width: 400px; }
-.tf-modal-md { max-width: 560px; }
-.tf-modal-lg { max-width: 720px; }
-
-.tf-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--tf-space-4) var(--tf-space-5);
-  border-bottom: 1px solid var(--tf-border);
-}
-
-.tf-modal-title {
-  font-size: var(--tf-text-base);
-  font-weight: var(--tf-font-semibold);
-}
-
-.tf-modal-body {
-  padding: var(--tf-space-5);
-  overflow-y: auto;
-  flex: 1;
-}
-
-.tf-modal-footer {
-  padding: var(--tf-space-3) var(--tf-space-5);
-  border-top: 1px solid var(--tf-border);
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--tf-space-2);
-}
+/* Standardized Modal Size Variants (Fluid Viewport Clamped) */
+.tf-modal-sm, .modal-dialog--compact { width: min(500px, calc(100vw - 32px)) !important; max-height: min(80vh, 560px) !important; }
+.tf-modal-md, .modal-dialog--standard { width: min(700px, calc(100vw - 32px)) !important; max-height: min(86vh, 740px) !important; }
+.tf-modal-lg, .modal-dialog--large { width: min(940px, calc(100vw - 32px)) !important; max-height: min(88vh, 820px) !important; }
+.tf-modal-xl, .modal-dialog--extra-large { width: min(1180px, calc(100vw - 32px)) !important; max-height: min(90vh, 860px) !important; }
+.tf-modal-fullscreen, .modal-dialog--fullscreen { width: min(1360px, calc(100vw - 24px)) !important; height: calc(100dvh - 32px) !important; max-height: 94vh !important; }
 
 /* Standardized Modal Close Button (Global Policy) */
 .tf-modal-close-btn,
@@ -2264,6 +2418,14 @@ textarea.tf-form-control {
   display: inline-block;
 }
 
+.tf-dropdown-menu,
+.dropdown-menu,
+.tf-select-dropdown,
+.tf-act-dropdown-menu {
+  animation: tfDropdownReveal var(--tf-motion-dropdown) var(--tf-ease-out) forwards;
+  transform-origin: top;
+}
+
 .tf-dropdown-menu {
   position: absolute;
   top: calc(100% + 4px);
@@ -2276,8 +2438,6 @@ textarea.tf-form-control {
   z-index: var(--tf-z-dropdown);
   overflow: hidden;
   padding: var(--tf-space-1) 0;
-  animation: tfDropdownReveal var(--tf-motion-fast) var(--tf-ease-out) forwards;
-  transform-origin: top right;
 }
 
 @keyframes tfDropdownReveal {
@@ -2741,6 +2901,24 @@ textarea.tf-form-control {
   display: flex;
   flex-direction: column;
   gap: var(--tf-space-3);
+  transition: transform var(--tf-motion-card) var(--tf-ease-out),
+              box-shadow var(--tf-motion-card) var(--tf-ease-out),
+              border-color var(--tf-motion-card) var(--tf-ease-out);
+}
+
+.tf-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--tf-shadow-md);
+}
+
+.tf-stat-card .tf-stat-icon,
+.tf-card-interactive .tf-card-icon {
+  transition: transform var(--tf-motion-card) var(--tf-ease-out);
+}
+
+.tf-stat-card:hover .tf-stat-icon,
+.tf-card-interactive:hover .tf-card-icon {
+  transform: scale(1.06);
 }
 
 .tf-stat-label {
@@ -3884,7 +4062,7 @@ textarea.tf-form-control {
     var(--tf-surface-subtle, #f1f5f9) 100%
   );
   background-size: 300% 100%;
-  animation: tf-shimmer 1.8s ease-in-out infinite;
+  animation: tf-shimmer 1.4s ease-in-out infinite;
   border-radius: var(--tf-radius);
   display: block;
 }
@@ -4154,15 +4332,33 @@ button.tf-search-spinner {
   transition: opacity var(--tf-motion-normal) ease !important;
 }
 
-/* Accessibility: reduce motion */
+/* Accessibility: Comprehensive reduce motion */
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .tf-page-transition-wrap,
   .tf-content,
   .tf-modal,
   .tf-modal-overlay,
   .tf-dropdown-menu,
+  .dropdown-menu,
+  .tf-select-dropdown,
   .modal-dialog,
   .tf-card,
-  .tf-btn {
+  .tf-stat-card,
+  .tf-card-interactive,
+  .tf-btn,
+  .btn,
+  .tf-bulk-actions-bar,
+  .tf-tab-pane,
+  .tf-toast,
+  .tf-empty-state {
     animation: none !important;
     transform: none !important;
     transition: none !important;
@@ -7480,14 +7676,41 @@ select:not(.tf-document-paper *),
 
 
 /* ============================================================
-   UNIVERSAL MODAL FLEX CHAIN & THREE-PART SCROLLING
+   UNIVERSAL MODAL FLEX CHAIN & THREE-PART SCROLLING (GLOBAL VARIANT ENFORCEMENT)
    ============================================================ */
 .tf-modal {
-  max-height: calc(100dvh - 32px) !important;
+  max-height: min(88vh, 800px) !important;
   min-height: 0 !important;
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
+  margin: auto !important;
+}
+
+.tf-modal.tf-modal-sm {
+  max-width: 480px !important;
+  max-height: min(80vh, 560px) !important;
+}
+
+.tf-modal.tf-modal-md {
+  max-width: 640px !important;
+  max-height: min(85vh, 700px) !important;
+}
+
+.tf-modal.tf-modal-lg {
+  max-width: 880px !important;
+  max-height: min(86vh, 800px) !important;
+}
+
+.tf-modal.tf-modal-xl {
+  max-width: 1020px !important;
+  max-height: min(90vh, 840px) !important;
+}
+
+.tf-modal.tf-modal-fullscreen {
+  width: 95vw !important;
+  max-width: 1200px !important;
+  max-height: 92vh !important;
 }
 
 .tf-modal-header {
@@ -7857,19 +8080,62 @@ select:not(.tf-document-paper *),
   border-color: #383e4b !important;
 }
 
-/* Universal Dark Mode for modal-header / modal-footer with bg-white */
-[data-bs-theme="dark"] .modal-header.bg-white,
-[data-theme="dark"] .modal-header.bg-white,
-[data-bs-theme="dark"] .modal-footer.bg-white,
-[data-theme="dark"] .modal-footer.bg-white {
-  background-color: #1e2028 !important;
-  border-color: #383e4b !important;
+/* Universal Dark Mode for modal-content / modal-header / modal-footer / modal-body (System-wide Protection) */
+[data-bs-theme="dark"] .modal-content,
+[data-theme="dark"] .modal-content,
+:root[data-theme="dark"] .modal-content {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
   color: #f1f5f9 !important;
 }
 
+[data-bs-theme="dark"] .modal-header,
+[data-theme="dark"] .modal-header,
+[data-bs-theme="dark"] .modal-header.bg-white,
+[data-theme="dark"] .modal-header.bg-white,
+[data-bs-theme="dark"] .modal-header.bg-light,
+[data-theme="dark"] .modal-header.bg-light,
+:root[data-theme="dark"] .modal-header {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f1f5f9 !important;
+}
+
+[data-bs-theme="dark"] .modal-body,
+[data-theme="dark"] .modal-body,
 [data-bs-theme="dark"] .modal-body.bg-light,
-[data-theme="dark"] .modal-body.bg-light {
-  background-color: #14161d !important;
+[data-theme="dark"] .modal-body.bg-light,
+[data-bs-theme="dark"] .modal-body.bg-light.bg-opacity-50,
+[data-theme="dark"] .modal-body.bg-light.bg-opacity-50,
+:root[data-theme="dark"] .modal-body {
+  background-color: #0f172a !important;
+  color: #f1f5f9 !important;
+}
+
+[data-bs-theme="dark"] .modal-footer,
+[data-theme="dark"] .modal-footer,
+[data-bs-theme="dark"] .modal-footer.bg-white,
+[data-theme="dark"] .modal-footer.bg-white,
+[data-bs-theme="dark"] .modal-footer.bg-light,
+[data-theme="dark"] .modal-footer.bg-light,
+:root[data-theme="dark"] .modal-footer {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f1f5f9 !important;
+}
+
+[data-bs-theme="dark"] .modal-title.text-dark,
+[data-theme="dark"] .modal-title.text-dark,
+:root[data-theme="dark"] .modal-title.text-dark {
+  color: #f1f5f9 !important;
+}
+
+/* Global fallback for Excel Import modal footer */
+[data-bs-theme="dark"] .tf-excel-modal-footer,
+[data-theme="dark"] .tf-excel-modal-footer,
+:root[data-theme="dark"] .tf-excel-modal-footer {
+  background-color: #1e293b !important;
+  border-top-color: #334155 !important;
   color: #f1f5f9 !important;
 }
 
@@ -8574,4 +8840,216 @@ html.dark .tf-qr-label {
 [data-theme="dark"] .tf-qr-val,
 html.dark .tf-qr-val {
     color: #f1f5f9 !important;
+}
+
+/* ============================================================
+   BULK ACTIONS BAR & GLOBAL MOTION MICRO-INTERACTIONS
+   ============================================================ */
+.tf-bulk-actions-bar,
+div[class*="tw-bg-blue-50"] {
+  animation: tfBulkBarEnter var(--tf-motion-fast) var(--tf-ease-out);
+  will-change: transform, opacity;
+}
+
+@keyframes tfBulkBarEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tf-toast,
+.toast {
+  animation: tfToastEnter var(--tf-motion-toast) var(--tf-ease-out);
+}
+
+@keyframes tfToastEnter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tf-empty-state {
+  animation: tfEmptyStateEnter var(--tf-motion-normal) var(--tf-ease-out);
+}
+
+@keyframes tfEmptyStateEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Validation Message Slide Down */
+.tf-validation-message,
+.validation-message,
+.invalid-feedback {
+  animation: tfValMsgEnter var(--tf-motion-fast) var(--tf-ease-out);
+}
+
+@keyframes tfValMsgEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+/* ============================================================
+   GLOBAL MODAL SAFE CENTERING & VIEWPORT OVERFLOW ARCHITECTURE
+   Guarantees that dialog headers are NEVER clipped off into negative y-space!
+   Maintains full responsiveness across all resolutions, zooms (100%-200%), & devices.
+   ============================================================ */
+.tf-modal-overlay,
+.modal.fade.show.d-block,
+.tf-modal-backdrop,
+.tf-cat-modal-backdrop,
+.tf-prod-modal-backdrop,
+.tf-wh-modal-backdrop,
+.tf-inv-modal-backdrop,
+.tf-quot-modal-backdrop,
+.tf-q-modal-backdrop,
+.tf-so-modal-backdrop,
+.tf-excel-modal,
+.tf-gallery-modal-backdrop {
+  display: flex !important;
+  align-items: safe center !important;
+  justify-content: center !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  padding: clamp(16px, 3vh, 32px) 16px !important;
+}
+
+.tf-modal,
+.modal-dialog,
+.tf-modal-dialog,
+.tf-cat-modal-dialog,
+.tf-prod-modal-dialog,
+.tf-wh-modal-dialog,
+.tf-inv-modal-dialog,
+.tf-quot-modal-dialog,
+.tf-q-modal-dialog,
+.tf-so-modal-dialog,
+.tf-excel-modal-card,
+.tf-gallery-modal-dialog {
+  margin: auto !important;
+  position: relative;
+}
+
+
+/* ============================================================
+   GLOBAL MODAL BACKDROP, DIALOG & NESTED STACKING POLICIES
+   ============================================================ */
+.tf-modal-overlay,
+.modal.fade.show.d-block,
+.tf-modal-backdrop,
+.tf-cat-modal-backdrop,
+.tf-prod-modal-backdrop,
+.tf-wh-modal-backdrop,
+.tf-inv-modal-backdrop,
+.tf-quot-modal-backdrop,
+.tf-q-modal-backdrop,
+.tf-so-modal-backdrop,
+.tf-excel-modal,
+.tf-gallery-modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  z-index: var(--tf-z-modal, 1050) !important;
+  background-color: var(--tf-surface-overlay, rgba(15, 23, 42, 0.65)) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  pointer-events: auto !important;
+}
+
+[data-bs-theme="dark"] .tf-modal-overlay,
+[data-bs-theme="dark"] .modal.fade.show.d-block,
+[data-bs-theme="dark"] .tf-modal-backdrop,
+[data-theme="dark"] .tf-modal-overlay,
+[data-theme="dark"] .modal.fade.show.d-block,
+[data-theme="dark"] .tf-modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.75) !important;
+  backdrop-filter: blur(5px) !important;
+  -webkit-backdrop-filter: blur(5px) !important;
+}
+
+.tf-modal,
+.modal-dialog,
+.tf-modal-dialog,
+.tf-cat-modal-dialog,
+.tf-prod-modal-dialog,
+.tf-wh-modal-dialog,
+.tf-inv-modal-dialog,
+.tf-quot-modal-dialog,
+.tf-q-modal-dialog,
+.tf-so-modal-dialog,
+.tf-excel-modal-card,
+.tf-gallery-modal-dialog {
+  position: relative !important;
+  z-index: calc(var(--tf-z-modal, 1050) + 10) !important;
+  pointer-events: auto !important;
+}
+
+/* Nested Modals (e.g. Quick Department / Position inside Employee Form) */
+.tf-modal-overlay .tf-modal-overlay,
+.tf-modal .tf-modal-overlay,
+.modal .modal,
+[class*="-modal"] [class*="-modal-overlay"],
+[class*="-modal"] [class*="-modal-backdrop"] {
+  z-index: calc(var(--tf-z-modal, 1050) + 50) !important;
+}
+
+.tf-modal-overlay .tf-modal-overlay .tf-modal,
+.tf-modal .tf-modal-overlay .tf-modal,
+.modal .modal .modal-dialog,
+[class*="-modal"] [class*="-modal-overlay"] [class*="-modal"],
+[class*="-modal"] [class*="-modal-backdrop"] [class*="-modal"] {
+  z-index: calc(var(--tf-z-modal, 1050) + 60) !important;
+}
+
+/* Dropdowns & Select Menus inside Modal Dialogs */
+.tf-modal select,
+.tf-modal .tf-select,
+.tf-modal .tf-dropdown-menu,
+.modal-dialog select,
+.modal-dialog .dropdown-menu {
+  position: relative;
+  z-index: calc(var(--tf-z-modal, 1050) + 20) !important;
+}
+
+/* ============================================================
+   CONTRACT WIZARD TAB TRANSITIONS (120-180ms Standard)
+   ============================================================ */
+.tf-contract-tab-pane.is-active {
+  animation: tfTabPaneFadeIn 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes tfTabPaneFadeIn {
+  from {
+    opacity: 0.2;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

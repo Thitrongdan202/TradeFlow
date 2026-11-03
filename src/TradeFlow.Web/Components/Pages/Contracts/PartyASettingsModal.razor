@@ -1,7 +1,9 @@
 @using TradeFlow.Application.Common.Interfaces
 @using TradeFlow.Application.Common.Models.Contracts
+@inject IJSRuntime JS
 @inject IContractService ContractService
 @inject AuthenticationStateProvider AuthStateProvider
+@implements IAsyncDisposable
 
 @if (IsOpen)
 {
@@ -213,89 +215,136 @@
 }
 
 <style>
-    .tf-party-a-modal-backdrop {
-        background-color: rgba(15, 23, 42, 0.55);
-        backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
-        z-index: 1060;
-    }
+      .tf-party-a-modal-backdrop {
+          position: fixed !important;
+          inset: 0 !important;
+          background-color: rgba(15, 23, 42, 0.65) !important;
+          backdrop-filter: blur(4px);
+          -webkit-backdrop-filter: blur(4px);
+          z-index: 1060 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: clamp(24px, 4vh, 44px) 16px !important;
+          overflow: hidden !important;
+      }
 
-    .tf-party-a-modal-dialog {
-        max-width: 860px;
-        margin: 1.5rem auto;
-    }
+      .tf-party-a-modal-dialog {
+          width: min(840px, calc(100vw - 32px)) !important;
+          max-width: 840px !important;
+          max-height: min(88vh, 760px) !important;
+          margin: auto !important;
+          display: flex !important;
+          flex-direction: column !important;
+      }
 
-    .tf-party-a-modal-content {
-        background: var(--tf-surface-card, #ffffff);
-        color: var(--tf-text-primary, #0f172a);
-        border: 1px solid var(--tf-border, #e2e8f0);
-        border-radius: 14px;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        overflow: hidden;
-    }
+      .tf-party-a-modal-content {
+          background: var(--tf-surface-card, #ffffff);
+          color: var(--tf-text-primary, #0f172a);
+          border: 1px solid var(--tf-border, #e2e8f0);
+          border-radius: 14px;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+          max-height: min(88vh, 760px) !important;
+          display: flex !important;
+          flex-direction: column !important;
+          overflow: hidden !important;
+      }
 
-    .tf-party-a-modal-header {
-        background: var(--tf-surface-card, #ffffff);
-        border-bottom: 1px solid var(--tf-border, #e2e8f0);
-        padding: 16px 24px;
-    }
+      .tf-party-a-modal-header {
+          flex: 0 0 auto !important;
+          background: var(--tf-surface-card, #ffffff);
+          border-bottom: 1px solid var(--tf-border, #e2e8f0);
+          padding: 16px 24px;
+      }
 
-    .tf-party-a-modal-footer {
-        background: var(--tf-surface-subtle, #f8fafc);
-        border-top: 1px solid var(--tf-border, #e2e8f0);
-        padding: 14px 24px;
-    }
+      .tf-party-a-modal-backdrop .modal-body {
+          flex: 1 1 auto !important;
+          overflow-y: auto !important;
+          min-height: 0 !important;
+          overscroll-behavior: contain !important;
+          padding: 20px 24px !important;
+      }
 
-    .tf-modal-icon-badge {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        background: rgba(37, 99, 235, 0.12);
-        border: 1px solid rgba(37, 99, 235, 0.25);
-        color: #2563eb;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
+      .tf-party-a-modal-footer {
+          flex: 0 0 auto !important;
+          background: var(--tf-surface-subtle, #f8fafc);
+          border-top: 1px solid var(--tf-border, #e2e8f0);
+          padding: 14px 24px;
+      }
 
-    .tf-form-section-title {
-        font-size: 0.875rem;
-        font-weight: 700;
-        color: var(--tf-text-primary, #0f172a);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding-bottom: 6px;
-        border-bottom: 1px solid var(--tf-border, #e2e8f0);
-    }
+      .tf-modal-icon-badge {
+          width: 40px;
+          height: 40px;
+          border-radius: 10px;
+          background: rgba(37, 99, 235, 0.12);
+          border: 1px solid rgba(37, 99, 235, 0.25);
+          color: #2563eb;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+      }
 
-    .tf-section-pill {
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        background: #2563eb;
-        color: #ffffff;
-        font-size: 0.72rem;
-        font-weight: 700;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
+      .tf-form-section-title {
+          font-size: 0.875rem;
+          font-weight: 700;
+          color: var(--tf-text-primary, #0f172a);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding-bottom: 6px;
+          border-bottom: 1px solid var(--tf-border, #e2e8f0);
+      }
 
-    .tf-input {
-        border: 1px solid #cbd5e1;
-        border-radius: 8px;
-        padding: 6px 12px;
-        font-size: 0.84rem;
-        transition: border-color var(--tf-motion-instant, 120ms) ease, box-shadow var(--tf-motion-instant, 120ms) ease;
-    }
+      .tf-section-pill {
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: #2563eb;
+          color: #ffffff;
+          font-size: 0.72rem;
+          font-weight: 700;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+      }
 
-    .tf-input:focus {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-        outline: none;
-    }
+      .tf-input {
+          border: 1px solid #cbd5e1;
+          border-radius: 8px;
+          padding: 6px 12px;
+          font-size: 0.84rem;
+          transition: border-color var(--tf-motion-instant, 120ms) ease, box-shadow var(--tf-motion-instant, 120ms) ease;
+      }
+
+      .tf-input:focus {
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+          outline: none;
+      }
+
+      /* Dark mode support */
+      [data-bs-theme="dark"] .tf-party-a-modal-content,
+      [data-theme="dark"] .tf-party-a-modal-content,
+      html.dark .tf-party-a-modal-content {
+          background: var(--tf-modal-bg, #1e222b) !important;
+          border-color: var(--tf-border, #383e4b) !important;
+          color: #f1f5f9 !important;
+      }
+
+      [data-bs-theme="dark"] .tf-party-a-modal-header,
+      [data-theme="dark"] .tf-party-a-modal-header,
+      html.dark .tf-party-a-modal-header {
+          background: var(--tf-modal-bg, #1e222b) !important;
+          border-color: var(--tf-border, #383e4b) !important;
+      }
+
+      [data-bs-theme="dark"] .tf-party-a-modal-footer,
+      [data-theme="dark"] .tf-party-a-modal-footer,
+      html.dark .tf-party-a-modal-footer {
+          background: var(--tf-modal-bg, #181b22) !important;
+          border-color: var(--tf-border, #383e4b) !important;
+      }
 </style>
 
 @code {
@@ -382,5 +431,19 @@
     {
         IsOpen = false;
         await IsOpenChanged.InvokeAsync(false);
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
     }
 }

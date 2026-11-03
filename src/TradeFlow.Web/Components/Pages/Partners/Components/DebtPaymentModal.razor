@@ -8,6 +8,7 @@
 @inject IPartnerDebtService DebtService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JS
+@implements IAsyncDisposable
 
 @if (IsOpen)
 {
@@ -660,7 +661,7 @@
                 await JS.InvokeVoidAsync("TradeFlowMotion.animateModalExit", ".voucher-dialog", ".tf-modal-backdrop");
             }
             catch { }
-            await Task.Delay(160);
+            await Task.Delay(150);
         }
 
         _isClosing = false;
@@ -669,5 +670,14 @@
         IsOpen = false;
         try { await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll"); } catch { }
         await IsOpenChanged.InvokeAsync(false);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
     }
 }

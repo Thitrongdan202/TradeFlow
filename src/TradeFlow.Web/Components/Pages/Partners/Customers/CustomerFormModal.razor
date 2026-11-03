@@ -1,4 +1,4 @@
-@using System.ComponentModel.DataAnnotations
+﻿@using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.EntityFrameworkCore
 @using TradeFlow.Application.Common.Constants
@@ -18,7 +18,7 @@
 {
     <div class="tf-modal-overlay @(_isClosing ? "is-closing" : "")" @onclick="HandleBackdropClick" @onkeydown="HandleKeyDown" tabindex="-1">
         <div class="tf-modal tf-modal-lg customer-modal @(_isClosing ? "is-closing" : "")"
-             style="max-width: 760px; max-height: calc(100dvh - 36px); min-height: 0; display: flex; flex-direction: column; overflow: hidden; position: relative;"
+             style="width: min(720px, calc(100vw - 32px)); max-width: 720px; max-height: min(86vh, 740px); min-height: 0; display: flex; flex-direction: column; overflow: hidden; position: relative; margin: auto;"
              @onclick:stopPropagation="true">
 
             @* Fixed Header *@
@@ -402,7 +402,7 @@
         {
             _isClosing = true;
             StateHasChanged();
-            await Task.Delay(160);
+            await Task.Delay(150);
         }
 
         IsOpen = false;

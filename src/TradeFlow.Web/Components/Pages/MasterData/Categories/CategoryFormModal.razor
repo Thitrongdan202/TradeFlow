@@ -1,0 +1,486 @@
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Constants
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Domain.Entities.MasterData
+@using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
+@inject IDbContextFactory<TradeFlowDbContext> DbContextFactory
+@inject ISystemCodeGenerator CodeGenerator
+@inject IAuditService AuditService
+@inject ICurrentUserService CurrentUser
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (IsOpen || _isClosing)
+{
+    <div class="tf-cat-modal-backdrop @(_isClosing ? "is-closing" : "")" @onclick="HandleBackdropClick">
+        <div class="tf-cat-modal-dialog @(_isClosing ? "is-closing" : "")" @onclick:stopPropagation="true" role="dialog" aria-modal="true">
+            @* Modal Header *@
+            <div class="tf-cat-modal-header">
+                <div class="tf-cat-header-info">
+                    <div class="tf-cat-header-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="tf-cat-modal-title">@(IsEdit ? "Chỉnh sửa danh mục sản phẩm" : "Thêm mới danh mục sản phẩm")</h2>
+                        <span class="tf-cat-modal-subtitle">@(IsEdit ? $"Cập nhật phân loại #{_displaySystemCode}" : "Khai báo nhóm phân loại hàng hóa và cấu trúc phân cấp cây danh mục")</span>
+                    </div>
+                </div>
+                <button type="button" class="tf-cat-modal-close" @onclick="HandleRequestClose" title="Đóng (Esc)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            @* Modal Body *@
+            <div class="tf-cat-modal-body">
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="tf-cat-alert-error">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <span>@_errorMessage</span>
+                    </div>
+                }
+
+                @if (_isLoading)
+                {
+                    <div class="tf-cat-loading">
+                        <div class="tf-cat-spinner"></div>
+                        <span>Đang nạp thông tin danh mục...</span>
+                    </div>
+                }
+                else if (_model != null)
+                {
+                    <EditForm Model="_model" OnValidSubmit="HandleValidSubmit" id="categoryForm">
+                        <DataAnnotationsValidator />
+
+                        @* NHÓM 1: THÔNG TIN DANH MỤC *@
+                        <div class="tf-cat-section">
+                            <div class="tf-cat-section-header">
+                                <span class="tf-cat-section-badge">1</span>
+                                <span class="tf-cat-section-title">Thông tin danh mục &amp; Phân cấp</span>
+                            </div>
+                            <div class="tf-cat-grid-2">
+                                <div class="tf-cat-form-group">
+                                    <label class="tf-cat-label">
+                                        Mã danh mục
+                                        <span class="tf-cat-subtext">(Hệ thống tự sinh)</span>
+                                    </label>
+                                    <div class="tf-cat-readonly-wrap">
+                                        <input type="text" class="tf-cat-input tf-cat-readonly" value="@_displaySystemCode" readonly disabled />
+                                        <span class="tf-cat-readonly-tag">Tự động</span>
+                                    </div>
+                                </div>
+                                <div class="tf-cat-form-group">
+                                    <label class="tf-cat-label">
+                                        Tên danh mục sản phẩm <span class="tf-cat-req">*</span>
+                                    </label>
+                                    <InputText @bind-Value="_model.Name" class="tf-cat-input" placeholder="Ví dụ: Thiết bị vệ sinh, Gạch men..." @oninput="MarkDirty" maxlength="150" />
+                                    <ValidationMessage For="@(() => _model.Name)" class="tf-cat-field-error" />
+                                </div>
+                            </div>
+
+                            <div class="tf-cat-form-group tf-mt-3">
+                                <label class="tf-cat-label">
+                                    Danh mục cha
+                                    <span class="tf-cat-subtext">(Phân cấp bậc trong cây phân loại sản phẩm)</span>
+                                </label>
+                                <InputSelect @bind-Value="_model.ParentCategoryId" class="tf-cat-select" @oninput="MarkDirty">
+                                    <option value="">-- Danh mục gốc (Cấp cao nhất, không có cha) --</option>
+                                    @if (_parents != null)
+                                    {
+                                        @foreach (var p in _parents)
+                                        {
+                                            if (!IsEdit || p.Id != CategoryId)
+                                            {
+                                                <option value="@p.Id">📁 @p.Name (@p.Code)</option>
+                                            }
+                                        }
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+
+                        @* NHÓM 2: THIẾT LẬP HIỂN THỊ & TRẠNG THÁI *@
+                        <div class="tf-cat-section tf-mt-3">
+                            <div class="tf-cat-section-header">
+                                <span class="tf-cat-section-badge">2</span>
+                                <span class="tf-cat-section-title">Thiết lập hiển thị &amp; Vận hành</span>
+                            </div>
+                            <div class="tf-cat-grid-2">
+                                <div class="tf-cat-form-group">
+                                    <label class="tf-cat-label">
+                                        Thứ tự hiển thị
+                                        <span class="tf-cat-subtext">(Số nhỏ ưu tiên trước)</span>
+                                    </label>
+                                    <InputNumber @bind-Value="_model.DisplayOrder" class="tf-cat-input font-mono" @oninput="MarkDirty" min="0" placeholder="0" />
+                                </div>
+                                <div class="tf-cat-form-group">
+                                    <label class="tf-cat-label">
+                                        Trạng thái hoạt động
+                                    </label>
+                                    <div class="tf-cat-switch-card">
+                                        <label class="tf-cat-switch-label">
+                                            <InputCheckbox @bind-Value="_model.IsActive" class="tf-cat-checkbox" @oninput="MarkDirty" />
+                                            <div class="tf-cat-switch-info">
+                                                <span class="tf-cat-switch-title">@(_model.IsActive ? "Đang hoạt động" : "Tạm dừng")</span>
+                                                <span class="tf-cat-switch-desc">@(_model.IsActive ? "Cho phép gán sản phẩm vào nhóm này" : "Ẩn khỏi danh mục khi thêm sản phẩm")</span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @* NHÓM 3: MÔ TẢ *@
+                        <div class="tf-cat-section tf-mt-3">
+                            <div class="tf-cat-section-header">
+                                <span class="tf-cat-section-badge">3</span>
+                                <span class="tf-cat-section-title">Mô tả &amp; Ghi chú phân loại</span>
+                            </div>
+                            <div class="tf-cat-form-group">
+                                <InputTextArea @bind-Value="_model.Description" class="tf-cat-textarea" rows="3" placeholder="Nhập ghi chú đặc điểm kỹ thuật, quy cách hoặc phạm vi hàng hóa thuộc danh mục..." @oninput="MarkDirty" maxlength="500" />
+                            </div>
+                        </div>
+                    </EditForm>
+                }
+            </div>
+
+            @* Modal Footer *@
+            <div class="tf-cat-modal-footer">
+                <button type="button" class="tf-cat-btn tf-cat-btn-secondary" @onclick="HandleRequestClose" disabled="@_isSubmitting">
+                    Hủy bỏ
+                </button>
+                <button type="submit" form="categoryForm" class="tf-cat-btn tf-cat-btn-primary" disabled="@(_isSubmitting || _isLoading)">
+                    @if (_isSubmitting)
+                    {
+                        <span class="tf-cat-btn-spinner"></span>
+                        <span>Đang lưu...</span>
+                    }
+                    else
+                    {
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                            <polyline points="17 21 17 13 7 13 7 21"/>
+                            <polyline points="7 3 7 8 15 8"/>
+                        </svg>
+                        <span>@(IsEdit ? "Lưu thay đổi" : "Tạo danh mục")</span>
+                    }
+                </button>
+            </div>
+
+            @* Dirty Confirmation Dialog *@
+            @if (_showDirtyConfirm)
+            {
+                <div class="tf-cat-confirm-overlay" @onclick:stopPropagation="true">
+                    <div class="tf-cat-confirm-box text-center">
+                        <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(245, 158, 11, 0.15); color: #d97706; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px auto;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                        </div>
+                        <h4 style="font-size: 16px; font-weight: 700; color: var(--tf-text-primary); margin: 0 0 6px 0;">Dữ liệu chưa được lưu</h4>
+                        <p style="font-size: 13px; color: var(--tf-text-muted); margin: 0 0 20px 0; line-height: 1.5;">
+                            Bạn có các thay đổi chưa được lưu trong danh mục này. Bạn có chắc chắn muốn đóng và hủy bỏ?
+                        </p>
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                            <button type="button" class="tf-cat-btn tf-cat-btn-secondary" @onclick="() => _showDirtyConfirm = false">Tiếp tục nhập</button>
+                            <button type="button" class="tf-cat-btn tf-cat-btn-danger" @onclick="ConfirmDiscardAndClose">Hủy thay đổi</button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public int? CategoryId { get; set; }
+    [Parameter] public EventCallback<ProductCategory> OnSaved { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private ProductCategory? _model;
+    private ProductCategory? _initialSnapshot;
+    private List<ProductCategory> _parents = new();
+    private string _displaySystemCode = string.Empty;
+    private string? _errorMessage;
+    private bool _isLoading = false;
+    private bool _isSubmitting = false;
+    private bool _isDirty = false;
+    private bool _showDirtyConfirm = false;
+    private bool _isClosing = false;
+    private bool _wasOpen = false;
+    private bool _scrollLocked = false;
+
+    private bool IsEdit => CategoryId.HasValue && CategoryId.Value > 0;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && !_wasOpen)
+        {
+            _wasOpen = true;
+            _isClosing = false;
+            _isDirty = false;
+            _showDirtyConfirm = false;
+            _errorMessage = null;
+
+            await LockScrollAsync();
+            await LoadDataAsync();
+        }
+        else if (!IsOpen && _wasOpen)
+        {
+            _wasOpen = false;
+            await UnlockScrollAsync();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            await using var db = await DbContextFactory.CreateDbContextAsync();
+
+            _parents = await db.ProductCategories
+                .AsNoTracking()
+                .OrderBy(c => c.Name)
+                .ToListAsync();
+
+            if (IsEdit)
+            {
+                var existing = await db.ProductCategories.FindAsync(CategoryId!.Value);
+                if (existing != null)
+                {
+                    _model = new ProductCategory
+                    {
+                        Code = existing.Code,
+                        Name = existing.Name,
+                        ParentCategoryId = existing.ParentCategoryId,
+                        DisplayOrder = existing.DisplayOrder,
+                        IsActive = existing.IsActive,
+                        Description = existing.Description
+                    };
+                    _initialSnapshot = new ProductCategory
+                    {
+                        Code = existing.Code,
+                        Name = existing.Name,
+                        ParentCategoryId = existing.ParentCategoryId,
+                        DisplayOrder = existing.DisplayOrder,
+                        IsActive = existing.IsActive,
+                        Description = existing.Description
+                    };
+                    _displaySystemCode = existing.Code;
+                }
+                else
+                {
+                    _errorMessage = "Không tìm thấy thông tin danh mục cần sửa.";
+                }
+            }
+            else
+            {
+                var nextCode = await CodeGenerator.PeekNextCodeAsync(SystemCodeConstants.ProductCategory);
+                _displaySystemCode = $"{nextCode} (Tự sinh)";
+
+                _model = new ProductCategory
+                {
+                    DisplayOrder = 0,
+                    IsActive = true
+                };
+                _initialSnapshot = new ProductCategory
+                {
+                    DisplayOrder = 0,
+                    IsActive = true
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi nạp dữ liệu danh mục: " + ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void MarkDirty()
+    {
+        if (_model == null || _initialSnapshot == null) return;
+        _isDirty = _model.Name != _initialSnapshot.Name ||
+                   _model.ParentCategoryId != _initialSnapshot.ParentCategoryId ||
+                   _model.DisplayOrder != _initialSnapshot.DisplayOrder ||
+                   _model.IsActive != _initialSnapshot.IsActive ||
+                   _model.Description != _initialSnapshot.Description;
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        await HandleRequestClose();
+    }
+
+    private async Task HandleRequestClose()
+    {
+        if (_isSubmitting) return;
+
+        if (_isDirty)
+        {
+            _showDirtyConfirm = true;
+            return;
+        }
+
+        await CloseModalAsync();
+    }
+
+    private async Task ConfirmDiscardAndClose()
+    {
+        _showDirtyConfirm = false;
+        _isDirty = false;
+        await CloseModalAsync();
+    }
+
+    private async Task CloseModalAsync()
+    {
+        if (_isClosing) return;
+
+        bool reduced = false;
+        try { reduced = await JS.InvokeAsync<bool>("TradeFlowMotion.isReducedMotion"); } catch { }
+
+        if (!reduced)
+        {
+            _isClosing = true;
+            StateHasChanged();
+            await Task.Delay(150);
+        }
+
+        IsOpen = false;
+        _isClosing = false;
+        _wasOpen = false;
+        _isDirty = false;
+        _showDirtyConfirm = false;
+
+        await UnlockScrollAsync();
+
+        await IsOpenChanged.InvokeAsync(false);
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync();
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (_isSubmitting || _model == null) return;
+
+        if (string.IsNullOrWhiteSpace(_model.Name))
+        {
+            _errorMessage = "Tên danh mục sản phẩm không được để trống.";
+            return;
+        }
+
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            await using var db = await DbContextFactory.CreateDbContextAsync();
+
+            if (IsEdit)
+            {
+                var existing = await db.ProductCategories.FindAsync(CategoryId!.Value);
+                if (existing == null)
+                {
+                    _errorMessage = "Không tìm thấy danh mục để cập nhật.";
+                    return;
+                }
+
+                existing.Name = _model.Name.Trim();
+                existing.ParentCategoryId = _model.ParentCategoryId > 0 ? _model.ParentCategoryId : null;
+                existing.DisplayOrder = _model.DisplayOrder;
+                existing.IsActive = _model.IsActive;
+                existing.Description = _model.Description?.Trim();
+                existing.UpdatedAt = DateTime.UtcNow;
+                existing.UpdatedBy = CurrentUser.UserName;
+
+                await db.SaveChangesAsync();
+                await AuditService.LogAsync(AuditEventType.CategoryUpdated, CurrentUser.UserName, "ProductCategory", existing.Id.ToString());
+
+                _isDirty = false;
+                await OnSaved.InvokeAsync(existing);
+            }
+            else
+            {
+                _model.Code = await CodeGenerator.GenerateCodeAsync(SystemCodeConstants.ProductCategory);
+                _model.Name = _model.Name.Trim();
+                _model.ParentCategoryId = _model.ParentCategoryId > 0 ? _model.ParentCategoryId : null;
+                _model.Description = _model.Description?.Trim();
+                _model.CreatedAt = DateTime.UtcNow;
+                _model.CreatedBy = CurrentUser.UserName;
+
+                db.ProductCategories.Add(_model);
+                await db.SaveChangesAsync();
+                await AuditService.LogAsync(AuditEventType.CategoryCreated, CurrentUser.UserName, "ProductCategory", _model.Code);
+
+                _isDirty = false;
+                await OnSaved.InvokeAsync(_model);
+            }
+
+            await CloseModalAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Không thể lưu danh mục: " + ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task LockScrollAsync()
+    {
+        if (!_scrollLocked)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.lockScroll");
+                _scrollLocked = true;
+            }
+            catch { }
+        }
+    }
+
+    private async Task UnlockScrollAsync()
+    {
+        if (_scrollLocked)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll");
+                _scrollLocked = false;
+            }
+            catch { }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await UnlockScrollAsync();
+    }
+}

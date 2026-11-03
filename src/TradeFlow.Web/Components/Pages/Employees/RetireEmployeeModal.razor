@@ -4,6 +4,7 @@
 @inject IEmployeeService EmployeeService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JS
+@implements IAsyncDisposable
 
 @if (IsOpen && Employee != null)
 {
@@ -161,6 +162,11 @@
 
         IsOpen = false;
         _isClosing = false;
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
         await IsOpenChanged.InvokeAsync(false);
     }
 
@@ -221,5 +227,14 @@
         [Required(ErrorMessage = "Vui lòng nhập lý do thôi việc")]
         [MaxLength(500, ErrorMessage = "Lý do tối đa 500 ký tự")]
         public string TerminationReason { get; set; } = string.Empty;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
     }
 }

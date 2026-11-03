@@ -41,14 +41,25 @@
         if (scrollLockCount === 1) {
             previousBodyOverflow = document.body.style.overflow;
             document.body.style.overflow = 'hidden';
+            document.body.classList.add('tf-modal-open');
+            document.documentElement.classList.add('tf-modal-open');
         }
     }
 
-    function unlockScroll() {
+    function unlockScroll(force) {
         if (typeof document === 'undefined') return;
-        scrollLockCount = Math.max(0, scrollLockCount - 1);
-        if (scrollLockCount === 0) {
+        if (force) {
+            scrollLockCount = 0;
+        } else {
+            scrollLockCount = Math.max(0, scrollLockCount - 1);
+        }
+        // Safeguard: Check if any active modal backdrop or dialog actually remains in DOM
+        const hasActiveModal = !!document.querySelector('.tf-modal-overlay:not(.is-closing), .modal.show:not(.is-closing), [class*="-modal-backdrop"]:not(.is-closing), .tf-gallery-modal-backdrop:not(.is-closing), .voucher-overlay:not(.is-closing)');
+        if (scrollLockCount === 0 || !hasActiveModal) {
+            scrollLockCount = 0;
             document.body.style.overflow = previousBodyOverflow || '';
+            document.body.classList.remove('tf-modal-open');
+            document.documentElement.classList.remove('tf-modal-open');
         }
     }
 
@@ -87,18 +98,10 @@
             });
 
             if (backdrop) {
-                tl.fromTo(backdrop, 
-                    { opacity: 0 }, 
-                    { opacity: 1, duration: 0.2, ease: 'power2.out' }, 
-                    0
-                );
+                tl.fromTo(backdrop, { opacity: 0 }, { opacity: 1, duration: 0.16, ease: 'power2.out' }, 0);
             }
 
-            tl.fromTo(dialog,
-                { opacity: 0, scale: 0.96, y: 10 },
-                { opacity: 1, scale: 1, y: 0, duration: 0.24, ease: 'power3.out' },
-                0.02
-            );
+            tl.fromTo(dialog, { opacity: 0, scale: 0.975, y: 8 }, { opacity: 1, scale: 1, y: 0, duration: 0.19, ease: 'power3.out' }, 0.01);
 
             dialog._tfModalTimeline = tl;
         });
@@ -133,20 +136,10 @@
                 defaults: { overwrite: 'auto' }
             });
 
-            tl.to(dialog, {
-                opacity: 0,
-                scale: 0.96,
-                y: 8,
-                duration: 0.16,
-                ease: 'power2.in'
-            }, 0);
+            tl.to(dialog, { opacity: 0, scale: 0.975, y: 6, duration: 0.15, ease: 'power2.in' }, 0);
 
             if (backdrop) {
-                tl.to(backdrop, {
-                    opacity: 0,
-                    duration: 0.18,
-                    ease: 'power2.in'
-                }, 0.02);
+                tl.to(backdrop, { opacity: 0, duration: 0.15, ease: 'power2.in' }, 0.01);
             }
         });
     }
@@ -194,8 +187,8 @@
 
         gsap.killTweensOf(el);
         gsap.fromTo(el,
-            { opacity: 0.6, y: 8 },
-            { opacity: 1, y: 0, duration: 0.2, ease: 'power2.out', clearProps: 'transform' }
+            { opacity: 0.2, y: 6 },
+            { opacity: 1, y: 0, duration: 0.16, ease: 'power2.out', clearProps: 'transform' }
         );
     }
 
@@ -447,12 +440,33 @@
             animatePageContent(mainContent);
         }
 
-        // Initialize any interactive cards
-        const interactiveCards = document.querySelectorAll('.tf-card-interactive');
+        // Initialize any interactive cards & stat widgets
+        const interactiveCards = document.querySelectorAll('.tf-card-interactive, .tf-stat-card');
         interactiveCards.forEach(c => registerInteractiveCard(c, 2));
     }
 
     if (typeof window !== 'undefined') {
+    // Auto-detect modal removal and unfreeze sidebar/body scroll immediately
+    function setupModalDomObserver() {
+        if (typeof MutationObserver === 'undefined' || typeof document === 'undefined') return;
+        const observer = new MutationObserver(() => {
+            if (document.body && (document.body.classList.contains('tf-modal-open') || scrollLockCount > 0)) {
+                const hasActiveModal = !!document.querySelector('.tf-modal-overlay:not(.is-closing), .modal.show:not(.is-closing), [class*="-modal-backdrop"]:not(.is-closing), .tf-gallery-modal-backdrop:not(.is-closing), .voucher-overlay:not(.is-closing)');
+                if (!hasActiveModal) {
+                    unlockScroll(true);
+                }
+            }
+        });
+        if (document.body) {
+            observer.observe(document.body, { childList: true, subtree: true });
+        } else {
+            document.addEventListener('DOMContentLoaded', () => {
+                if (document.body) observer.observe(document.body, { childList: true, subtree: true });
+            });
+        }
+    }
+    setupModalDomObserver();
+
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initGlobalTransitions);
         } else {
@@ -472,7 +486,7 @@
                     activeInspectClose.click();
                     return;
                 }
-                const activeModalClose = document.querySelector('.tf-preview-modal-dialog .tf-modal-close-btn, .tf-modal-backdrop .tf-modal-close-btn, .tf-modal-overlay .tf-modal-close-btn');
+                const activeModalClose = document.querySelector('.tf-contract-modal-header .tf-modal-close-btn, .modal.show .tf-modal-close-btn, .modal.show .btn-close, .tf-preview-modal-dialog .tf-modal-close-btn, .tf-modal-backdrop .tf-modal-close-btn, .tf-modal-overlay .tf-modal-close-btn');
                 if (activeModalClose) {
                     activeModalClose.click();
                 }
@@ -487,6 +501,83 @@
                 }
             });
         }
+    }
+
+
+    /**
+     * Animate table row selection highlight
+     * @param {HTMLElement|string} rowEl 
+     * @param {boolean} isSelected 
+     */
+    function animateTableRowSelect(rowEl, isSelected) {
+        const el = typeof rowEl === 'string' ? document.querySelector(rowEl) : rowEl;
+        const gsap = getGsap();
+        if (isReducedMotion() || !gsap || !el) return;
+
+        if (isSelected) {
+            gsap.fromTo(el,
+                { backgroundColor: 'rgba(37, 99, 235, 0.16)' },
+                { backgroundColor: 'var(--tf-table-row-selected, rgba(37, 99, 235, 0.08))', duration: 0.18, ease: 'power2.out', clearProps: 'backgroundColor' }
+            );
+        }
+    }
+
+    /**
+     * Animate bulk action bar entrance or exit
+     * @param {HTMLElement|string} barEl 
+     * @param {boolean} show 
+     * @param {Function} [onComplete]
+     */
+    function animateBulkBar(barEl, show, onComplete) {
+        const el = typeof barEl === 'string' ? document.querySelector(barEl) : barEl;
+        const gsap = getGsap();
+        if (isReducedMotion() || !gsap || !el) {
+            if (onComplete) onComplete();
+            return;
+        }
+
+        if (show) {
+            gsap.fromTo(el,
+                { opacity: 0, y: -8 },
+                { opacity: 1, y: 0, duration: 0.16, ease: 'power2.out', clearProps: 'transform', onComplete }
+            );
+        } else {
+            gsap.to(el, {
+                opacity: 0,
+                y: -6,
+                duration: 0.14,
+                ease: 'power2.in',
+                onComplete
+            });
+        }
+    }
+
+    /**
+     * Subtle numeric KPI ticker
+     * @param {HTMLElement|string} element 
+     * @param {number} start 
+     * @param {number} end 
+     * @param {number} [duration=0.5] 
+     * @param {Function} [formatFn]
+     */
+    function animateCounter(element, start, end, duration = 0.5, formatFn = null) {
+        const el = typeof element === 'string' ? document.querySelector(element) : element;
+        const gsap = getGsap();
+        if (isReducedMotion() || !gsap || !el) {
+            if (el) el.textContent = formatFn ? formatFn(end) : end;
+            return;
+        }
+
+        const obj = { val: start };
+        gsap.to(obj, {
+            val: end,
+            duration: duration,
+            ease: 'power1.out',
+            onUpdate: function () {
+                const currentVal = Math.round(obj.val);
+                el.textContent = formatFn ? formatFn(currentVal) : currentVal;
+            }
+        });
     }
 
     /**
@@ -523,6 +614,9 @@
         animateSectionTransition,
         animateToastEntrance,
         animateToastExit,
+        animateTableRowSelect,
+        animateBulkBar,
+        animateCounter,
         cleanupElement,
         initGlobalTransitions
     };

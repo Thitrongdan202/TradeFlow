@@ -28,16 +28,98 @@
                                           ValueChanged="OnSearchChanged" />
                 </div>
 
-                <button type="button" class="tf-btn tf-btn-secondary @(_showSidebar ? "active" : "")" @onclick="ToggleSidebar" title="Bật/Tắt bộ lọc nâng cao">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon points="22 3 2 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                    </svg>
-                    <span>Bộ lọc</span>
-                    @if (ActiveFilterCount > 0)
+                <div class="tf-filter-popover-anchor">
+                    <button type="button" class="tf-btn tf-btn-secondary @(_showSidebar ? "active" : "")" @onclick="ToggleSidebar" title="Bật/Tắt bộ lọc nâng cao">
+                        <span>Bộ lọc</span>
+                        @if (ActiveFilterCount > 0)
+                        {
+                            <span class="tf-filter-active-count">@ActiveFilterCount</span>
+                        }
+                    </button>
+
+                    @if (_showSidebar)
                     {
-                        <span class="tf-filter-active-count">@ActiveFilterCount</span>
+                        <div class="tf-popover-backdrop" @onclick="CloseSidebar"></div>
+                        <div class="tf-filter-popover" role="dialog" aria-modal="false" @onkeydown="HandleFilterKeyDown" tabindex="0">
+                            <div class="tf-sidebar-header">
+                                <span class="tf-sidebar-title">Bộ lọc công nợ</span>
+                                <div class="tf-popover-header-actions">
+                                    @if (ActiveFilterCount > 0)
+                                    {
+                                        <button type="button" class="tf-btn-clear-filters" @onclick="ClearAllFilters">
+                                            Xóa lọc
+                                        </button>
+                                    }
+                                    <button type="button" class="tf-popover-close-btn" @onclick="CloseSidebar" title="Đóng">✕</button>
+                                </div>
+                            </div>
+
+                            <div class="tf-sidebar-body">
+                                @* Filter: Trạng thái thanh toán *@
+                                <div class="tf-filter-group">
+                                    <label class="tf-filter-label">Trạng thái thanh toán</label>
+                                    <div class="tf-filter-pill-list">
+                                        <button type="button" class="tf-filter-pill @(!_filter.DebtStatus.HasValue ? "active" : "")"
+                                                @onclick="() => SetDebtStatus(null)">
+                                            Tất cả
+                                        </button>
+                                        <button type="button" class="tf-filter-pill @(_filter.DebtStatus == DebtStatus.Outstanding ? "active" : "")"
+                                                @onclick="() => SetDebtStatus(DebtStatus.Outstanding)">
+                                            Còn nợ
+                                        </button>
+                                        <button type="button" class="tf-filter-pill @(_filter.DebtStatus == DebtStatus.PartiallyPaid ? "active" : "")"
+                                                @onclick="() => SetDebtStatus(DebtStatus.PartiallyPaid)">
+                                            Nợ một phần
+                                        </button>
+                                        <button type="button" class="tf-filter-pill @(_filter.DebtStatus == DebtStatus.Settled ? "active" : "")"
+                                                @onclick="() => SetDebtStatus(DebtStatus.Settled)">
+                                            Đã thanh toán
+                                        </button>
+                                    </div>
+                                </div>
+
+                                @* Filter: Số tiền nợ còn lại *@
+                                <div class="tf-filter-group">
+                                    <label class="tf-filter-label">Số tiền còn phải thu/trả</label>
+                                    <div class="tf-range-inputs">
+                                        <input type="number" class="tf-input-sm" placeholder="Từ số tiền..." @bind="_filter.MinBalance" @bind:event="onchange" />
+                                        <span class="tf-range-sep">-</span>
+                                        <input type="number" class="tf-input-sm" placeholder="Tới số tiền..." @bind="_filter.MaxBalance" @bind:event="onchange" />
+                                    </div>
+                                </div>
+
+                                @* Filter: Ngày chứng từ *@
+                                <div class="tf-filter-group">
+                                    <label class="tf-filter-label">Thời gian phát sinh chứng từ</label>
+                                    <div class="tf-filter-pill-list tf-mb-2">
+                                        <button type="button" class="tf-filter-pill @(!_datePreset.HasValue ? "active" : "")"
+                                                @onclick="() => SetDatePreset(null)">
+                                            Toàn thời gian
+                                        </button>
+                                        <button type="button" class="tf-filter-pill @(_datePreset == 1 ? "active" : "")"
+                                                @onclick="() => SetDatePreset(1)">
+                                            Hôm nay
+                                        </button>
+                                        <button type="button" class="tf-filter-pill @(_datePreset == 30 ? "active" : "")"
+                                                @onclick="() => SetDatePreset(30)">
+                                            Tháng này
+                                        </button>
+                                    </div>
+                                    <div class="tf-date-range-grid">
+                                        <div>
+                                            <span class="tf-sub-label">Từ ngày:</span>
+                                            <input type="date" class="tf-input-sm" @bind="_filter.FromDate" />
+                                        </div>
+                                        <div>
+                                            <span class="tf-sub-label">Đến ngày:</span>
+                                            <input type="date" class="tf-input-sm" @bind="_filter.ToDate" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     }
-                </button>
+                </div>
             </div>
 
             <div class="tf-header-action-cluster">
@@ -198,88 +280,8 @@
         </button>
     </div>
 
-    @* 5. Split Master-Detail Layout *@
-    <div class="tf-split-layout @(!_showSidebar ? "sidebar-collapsed" : "")">
-        @* Left Filter Sidebar *@
-        @if (_showSidebar)
-        {
-            <aside class="tf-filter-sidebar">
-                <div class="tf-sidebar-header">
-                    <span class="tf-sidebar-title">Bộ lọc công nợ</span>
-                    @if (ActiveFilterCount > 0)
-                    {
-                        <button type="button" class="tf-btn-clear-filters" @onclick="ClearAllFilters">
-                            Xóa lọc
-                        </button>
-                    }
-                </div>
-
-                <div class="tf-sidebar-body">
-                    @* Filter: Trạng thái thanh toán *@
-                    <div class="tf-filter-group">
-                        <label class="tf-filter-label">Trạng thái thanh toán</label>
-                        <div class="tf-filter-pill-list">
-                            <button type="button" class="tf-filter-pill @(!_filter.DebtStatus.HasValue ? "active" : "")"
-                                    @onclick="() => SetDebtStatus(null)">
-                                Tất cả
-                            </button>
-                            <button type="button" class="tf-filter-pill @(_filter.DebtStatus == DebtStatus.Outstanding ? "active" : "")"
-                                    @onclick="() => SetDebtStatus(DebtStatus.Outstanding)">
-                                Còn nợ
-                            </button>
-                            <button type="button" class="tf-filter-pill @(_filter.DebtStatus == DebtStatus.PartiallyPaid ? "active" : "")"
-                                    @onclick="() => SetDebtStatus(DebtStatus.PartiallyPaid)">
-                                Nợ một phần
-                            </button>
-                            <button type="button" class="tf-filter-pill @(_filter.DebtStatus == DebtStatus.Settled ? "active" : "")"
-                                    @onclick="() => SetDebtStatus(DebtStatus.Settled)">
-                                Đã thanh toán
-                            </button>
-                        </div>
-                    </div>
-
-                    @* Filter: Số tiền nợ còn lại *@
-                    <div class="tf-filter-group">
-                        <label class="tf-filter-label">Số tiền còn phải thu/trả</label>
-                        <div class="tf-range-inputs">
-                            <input type="number" class="tf-input-sm" placeholder="Từ số tiền..." @bind="_filter.MinBalance" @bind:event="onchange" />
-                            <span class="tf-range-sep">-</span>
-                            <input type="number" class="tf-input-sm" placeholder="Tới số tiền..." @bind="_filter.MaxBalance" @bind:event="onchange" />
-                        </div>
-                    </div>
-
-                    @* Filter: Ngày chứng từ *@
-                    <div class="tf-filter-group">
-                        <label class="tf-filter-label">Thời gian phát sinh chứng từ</label>
-                        <div class="tf-filter-pill-list tf-mb-2">
-                            <button type="button" class="tf-filter-pill @(!_datePreset.HasValue ? "active" : "")"
-                                    @onclick="() => SetDatePreset(null)">
-                                Toàn thời gian
-                            </button>
-                            <button type="button" class="tf-filter-pill @(_datePreset == 1 ? "active" : "")"
-                                    @onclick="() => SetDatePreset(1)">
-                                Hôm nay
-                            </button>
-                            <button type="button" class="tf-filter-pill @(_datePreset == 30 ? "active" : "")"
-                                    @onclick="() => SetDatePreset(30)">
-                                Tháng này
-                            </button>
-                        </div>
-                        <div class="tf-date-range-grid">
-                            <div>
-                                <span class="tf-sub-label">Từ ngày:</span>
-                                <input type="date" class="tf-input-sm" @bind="_filter.FromDate" />
-                            </div>
-                            <div>
-                                <span class="tf-sub-label">Đến ngày:</span>
-                                <input type="date" class="tf-input-sm" @bind="_filter.ToDate" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </aside>
-        }
-
+    @* 5. Main Data Container *@
+    <div class="tf-main-container">
         @* Right Table Content *@
         <main class="tf-table-main-panel">
             <div class="tf-card">
@@ -528,7 +530,7 @@
     private PagedResult<DebtRecordDto> _pagedResult = new();
     private PartnerDebtSummaryDto _summary = new();
     private bool _isLoading = true;
-    private bool _showSidebar = true;
+    private bool _showSidebar = false;
     private int? _datePreset = null; // null = all, 1 = today, 30 = this month
 
     // Detail Drawer state
@@ -680,6 +682,19 @@
     private void ToggleSidebar()
     {
         _showSidebar = !_showSidebar;
+    }
+
+    private void CloseSidebar()
+    {
+        _showSidebar = false;
+    }
+
+    private void HandleFilterKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            _showSidebar = false;
+        }
     }
 
     private async Task OnSearchChanged(string val)

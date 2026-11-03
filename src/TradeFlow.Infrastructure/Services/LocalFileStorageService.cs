@@ -89,8 +89,8 @@ public class LocalFileStorageService : IFileStorageService
 
     public string GetPublicUrl(string storageReference)
     {
-        if (string.IsNullOrWhiteSpace(storageReference))
-            return string.Empty;
+        if (string.IsNullOrWhiteSpace(storageReference) || storageReference.Equals("dummy_ref", StringComparison.OrdinalIgnoreCase))
+            return "/images/placeholder-product.svg";
 
         return "/" + storageReference.TrimStart('/');
     }

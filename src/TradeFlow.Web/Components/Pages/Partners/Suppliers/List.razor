@@ -31,16 +31,123 @@
                                           ValueChanged="OnSearchChanged" />
                 </div>
 
-                <button type="button" class="tf-btn tf-btn-secondary @(_showSidebar ? "active" : "")" @onclick="ToggleSidebar" title="Bật/Tắt bộ lọc nâng cao">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon points="22 3 2 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                    </svg>
-                    <span>Bộ lọc</span>
-                    @if (ActiveFilterCount > 0)
+                <div class="tf-filter-popover-anchor">
+                    <button type="button" class="tf-btn tf-btn-secondary @(_showSidebar ? "active" : "")" @onclick="ToggleSidebar" title="Bật/Tắt bộ lọc nâng cao">
+                        <span>Bộ lọc</span>
+                        @if (ActiveFilterCount > 0)
+                        {
+                            <span class="tf-filter-active-count">@ActiveFilterCount</span>
+                        }
+                    </button>
+
+                    @if (_showSidebar)
                     {
-                        <span class="tf-filter-active-count">@ActiveFilterCount</span>
+                        <div class="tf-popover-backdrop" @onclick="CloseSidebar"></div>
+                        <div class="tf-filter-popover" role="dialog" aria-modal="false" @onkeydown="HandleFilterKeyDown" tabindex="0">
+                            <div class="tf-sidebar-header">
+                                <span class="tf-sidebar-title">Bộ lọc nhà cung cấp</span>
+                                <div class="tf-popover-header-actions">
+                                    @if (ActiveFilterCount > 0)
+                                    {
+                                        <button type="button" class="tf-btn-clear-filters" @onclick="ClearAllFilters">
+                                            Xóa lọc
+                                        </button>
+                                    }
+                                    <button type="button" class="tf-popover-close-btn" @onclick="CloseSidebar" title="Đóng">✕</button>
+                                </div>
+                            </div>
+
+                            <div class="tf-sidebar-body">
+                                @* Filter: Trạng thái hoạt động *@
+                                <div class="tf-filter-group">
+                                    <label class="tf-filter-label">Trạng thái</label>
+                                    <div class="tf-filter-pill-list">
+                                        <button type="button" class="tf-filter-pill @(!_filter.IsActive.HasValue ? "active" : "")"
+                                                @onclick="() => SetStatus(null)">
+                                            Tất cả
+                                        </button>
+                                        <button type="button" class="tf-filter-pill @(_filter.IsActive == true ? "active" : "")"
+                                                @onclick="() => SetStatus(true)">
+                                            Đang hoạt động
+                                        </button>
+                                        <button type="button" class="tf-filter-pill @(_filter.IsActive == false ? "active" : "")"
+                                                @onclick="() => SetStatus(false)">
+                                            Ngừng hoạt động
+                                        </button>
+                                    </div>
+                                </div>
+
+                                @* Filter: Nợ cần trả *@
+                                <div class="tf-filter-group">
+                                    <label class="tf-filter-label">Nợ cần trả (Phải trả NCC)</label>
+                                    <div class="tf-filter-pill-list tf-mb-2">
+                                        <button type="button" class="tf-filter-pill @(!_debtFilterMode.HasValue ? "active" : "")"
+                                                @onclick="() => SetDebtMode(null)">
+                                            Tất cả
+                                        </button>
+                                        <button type="button" class="tf-filter-pill @(_debtFilterMode == 1 ? "active" : "")"
+                                                @onclick="() => SetDebtMode(1)">
+                                            Có nợ (> 0)
+                                        </button>
+                                        <button type="button" class="tf-filter-pill @(_debtFilterMode == 0 ? "active" : "")"
+                                                @onclick="() => SetDebtMode(0)">
+                                            Không nợ (= 0)
+                                        </button>
+                                    </div>
+                                    <div class="tf-range-inputs">
+                                        <input type="number" class="tf-input-sm" placeholder="Từ số tiền..." @bind="_filter.MinPayable" @bind:event="onchange" />
+                                        <span class="tf-range-sep">-</span>
+                                        <input type="number" class="tf-input-sm" placeholder="Tới số tiền..." @bind="_filter.MaxPayable" @bind:event="onchange" />
+                                    </div>
+                                </div>
+
+                                @* Filter: Ngày tạo *@
+                                <div class="tf-filter-group">
+                                    <label class="tf-filter-label">Thời gian tạo</label>
+                                    <div class="tf-filter-pill-list tf-mb-2">
+                                        <button type="button" class="tf-filter-pill @(!_datePreset.HasValue ? "active" : "")"
+                                                @onclick="() => SetDatePreset(null)">
+                                            Toàn thời gian
+                                        </button>
+                                        <button type="button" class="tf-filter-pill @(_datePreset == 1 ? "active" : "")"
+                                                @onclick="() => SetDatePreset(1)">
+                                            Hôm nay
+                                        </button>
+                                        <button type="button" class="tf-filter-pill @(_datePreset == 30 ? "active" : "")"
+                                                @onclick="() => SetDatePreset(30)">
+                                            Tháng này
+                                        </button>
+                                    </div>
+                                    <div class="tf-date-range-grid">
+                                        <div>
+                                            <span class="tf-sub-label">Từ ngày:</span>
+                                            <input type="date" class="tf-input-sm" @bind="_filter.CreatedFrom" />
+                                        </div>
+                                        <div>
+                                            <span class="tf-sub-label">Đến ngày:</span>
+                                            <input type="date" class="tf-input-sm" @bind="_filter.CreatedTo" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @* Filter: Người tạo *@
+                                @if (_creators.Any())
+                                {
+                                    <div class="tf-filter-group">
+                                        <label class="tf-filter-label">Người tạo</label>
+                                        <select class="tf-select-sm" value="@_filter.CreatedBy" @onchange="OnCreatorChanged">
+                                            <option value="">Tất cả người tạo</option>
+                                            @foreach (var creator in _creators)
+                                            {
+                                                <option value="@creator">@creator</option>
+                                            }
+                                        </select>
+                                    </div>
+                                }
+                            </div>
+                        </div>
                     }
-                </button>
+                </div>
             </div>
 
             <div class="tf-header-action-cluster">
@@ -55,17 +162,40 @@
                 </AuthorizeView>
 
                 <AuthorizeView Policy="Permission:Suppliers:Create">
-                    <a href="/doi-tac/nha-cung-cap/them-moi" class="tf-btn tf-btn-primary" title="Thêm nhà cung cấp mới">
+                    <button type="button" class="tf-btn tf-btn-primary" @onclick="OpenCreateSupplierModal" title="Thêm nhà cung cấp mới">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <line x1="12" y1="5" x2="12" y2="19"></line>
                             <line x1="5" y1="12" x2="19" y2="12"></line>
                         </svg>
                         <span>Thêm nhà cung cấp</span>
-                    </a>
+                    </button>
                 </AuthorizeView>
             </div>
         </div>
     </div>
+
+    @if (!string.IsNullOrEmpty(_notificationMessage))
+    {
+        <div class="tf-alert @(_notificationIsSuccess ? "tf-alert-success" : "tf-alert-error")" style="margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    @if (_notificationIsSuccess)
+                    {
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    }
+                    else
+                    {
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    }
+                </svg>
+                <span>@_notificationMessage</span>
+            </div>
+            <button type="button" class="tf-btn-ghost tf-btn-xs" @onclick="() => _notificationMessage = null" style="padding: 2px 6px; cursor: pointer; border: none; background: transparent;">✕</button>
+        </div>
+    }
 
     @* 2. Summary Metric Cards *@
     <div class="tf-partner-metrics-grid">
@@ -128,113 +258,8 @@
         </div>
     </div>
 
-    @* 3. Master-Detail Split Layout *@
-    <div class="tf-split-layout @(!_showSidebar ? "sidebar-collapsed" : "")">
-        @* Left Filter Sidebar *@
-        @if (_showSidebar)
-        {
-            <aside class="tf-filter-sidebar">
-                <div class="tf-sidebar-header">
-                    <span class="tf-sidebar-title">Bộ lọc nhà cung cấp</span>
-                    @if (ActiveFilterCount > 0)
-                    {
-                        <button type="button" class="tf-btn-clear-filters" @onclick="ClearAllFilters">
-                            Xóa lọc
-                        </button>
-                    }
-                </div>
-
-                <div class="tf-sidebar-body">
-                    @* Filter: Trạng thái hoạt động *@
-                    <div class="tf-filter-group">
-                        <label class="tf-filter-label">Trạng thái</label>
-                        <div class="tf-filter-pill-list">
-                            <button type="button" class="tf-filter-pill @(!_filter.IsActive.HasValue ? "active" : "")"
-                                    @onclick="() => SetStatus(null)">
-                                Tất cả
-                            </button>
-                            <button type="button" class="tf-filter-pill @(_filter.IsActive == true ? "active" : "")"
-                                    @onclick="() => SetStatus(true)">
-                                Đang hoạt động
-                            </button>
-                            <button type="button" class="tf-filter-pill @(_filter.IsActive == false ? "active" : "")"
-                                    @onclick="() => SetStatus(false)">
-                                Ngừng hoạt động
-                            </button>
-                        </div>
-                    </div>
-
-                    @* Filter: Nợ cần trả *@
-                    <div class="tf-filter-group">
-                        <label class="tf-filter-label">Nợ cần trả (Phải trả NCC)</label>
-                        <div class="tf-filter-pill-list tf-mb-2">
-                            <button type="button" class="tf-filter-pill @(!_debtFilterMode.HasValue ? "active" : "")"
-                                    @onclick="() => SetDebtMode(null)">
-                                Tất cả
-                            </button>
-                            <button type="button" class="tf-filter-pill @(_debtFilterMode == 1 ? "active" : "")"
-                                    @onclick="() => SetDebtMode(1)">
-                                Có nợ (> 0)
-                            </button>
-                            <button type="button" class="tf-filter-pill @(_debtFilterMode == 0 ? "active" : "")"
-                                    @onclick="() => SetDebtMode(0)">
-                                Không nợ (= 0)
-                            </button>
-                        </div>
-                        <div class="tf-range-inputs">
-                            <input type="number" class="tf-input-sm" placeholder="Từ số tiền..." @bind="_filter.MinPayable" @bind:event="onchange" />
-                            <span class="tf-range-sep">-</span>
-                            <input type="number" class="tf-input-sm" placeholder="Tới số tiền..." @bind="_filter.MaxPayable" @bind:event="onchange" />
-                        </div>
-                    </div>
-
-                    @* Filter: Ngày tạo *@
-                    <div class="tf-filter-group">
-                        <label class="tf-filter-label">Thời gian tạo</label>
-                        <div class="tf-filter-pill-list tf-mb-2">
-                            <button type="button" class="tf-filter-pill @(!_datePreset.HasValue ? "active" : "")"
-                                    @onclick="() => SetDatePreset(null)">
-                                Toàn thời gian
-                            </button>
-                            <button type="button" class="tf-filter-pill @(_datePreset == 1 ? "active" : "")"
-                                    @onclick="() => SetDatePreset(1)">
-                                Hôm nay
-                            </button>
-                            <button type="button" class="tf-filter-pill @(_datePreset == 30 ? "active" : "")"
-                                    @onclick="() => SetDatePreset(30)">
-                                Tháng này
-                            </button>
-                        </div>
-                        <div class="tf-date-range-grid">
-                            <div>
-                                <span class="tf-sub-label">Từ ngày:</span>
-                                <input type="date" class="tf-input-sm" @bind="_filter.CreatedFrom" />
-                            </div>
-                            <div>
-                                <span class="tf-sub-label">Đến ngày:</span>
-                                <input type="date" class="tf-input-sm" @bind="_filter.CreatedTo" />
-                            </div>
-                        </div>
-                    </div>
-
-                    @* Filter: Người tạo *@
-                    @if (_creators.Any())
-                    {
-                        <div class="tf-filter-group">
-                            <label class="tf-filter-label">Người tạo</label>
-                            <select class="tf-select-sm" value="@_filter.CreatedBy" @onchange="OnCreatorChanged">
-                                <option value="">Tất cả người tạo</option>
-                                @foreach (var creator in _creators)
-                                {
-                                    <option value="@creator">@creator</option>
-                                }
-                            </select>
-                        </div>
-                    }
-                </div>
-            </aside>
-        }
-
+    @* 3. Main Data Container *@
+    <div class="tf-main-container">
         @* Right Table Content *@
         <main class="tf-table-main-panel">
             @* Bulk Delete Action Bar (Only visible if user has delete permission & items selected) *@
@@ -378,9 +403,9 @@
                                                     <button type="button" class="tf-btn-action-stack pay" title="Lập phiếu chi tiền nhà cung cấp" @onclick="() => OpenRowPaymentModal(item)">
                                                         Chi tiền
                                                     </button>
-                                                    <a href="/doi-tac/nha-cung-cap/sua/@item.Id" class="tf-btn-action-stack edit" title="Sửa thông tin">
+                                                    <button type="button" class="tf-btn-action-stack edit" title="Sửa thông tin" @onclick="() => OpenEditSupplierModal(item.Id)">
                                                         Sửa
-                                                    </a>
+                                                    </button>
                                                 </AuthorizeView>
                                                 <AuthorizeView Roles="Administrator">
                                                     @if (!item.IsActive)
@@ -510,11 +535,16 @@
                   CurrentBalance="_paymentCurrentBalance"
                   OnPaymentRecorded="HandlePaymentRecorded" />
 
+@* 9. Supplier Create & Edit Modal *@
+<SupplierFormModal @bind-IsOpen="_showSupplierModal"
+                   SupplierId="_selectedSupplierEditId"
+                   OnSaved="HandleSupplierSaved" />
+
 @code {
     private SupplierFilterDto _filter = new();
     private PagedResult<SupplierListItemDto> _pagedResult = new();
     private bool _isLoading = true;
-    private bool _showSidebar = true;
+    private bool _showSidebar = false;
     private List<string> _creators = new();
 
     // Aggregates
@@ -545,6 +575,37 @@
     private bool _isDeleting = false;
     private string? _deleteMessage;
     private bool _deleteIsWarning = false;
+
+    // Supplier Form Modal State
+    private bool _showSupplierModal = false;
+    private int? _selectedSupplierEditId = null;
+    private string? _notificationMessage;
+    private bool _notificationIsSuccess = true;
+
+    private void OpenCreateSupplierModal()
+    {
+        if (_showSupplierModal) return;
+        _selectedSupplierEditId = null;
+        _showSupplierModal = true;
+    }
+
+    private void OpenEditSupplierModal(int supplierId)
+    {
+        if (_showSupplierModal) return;
+        _selectedSupplierEditId = supplierId;
+        _showSupplierModal = true;
+    }
+
+    private async Task HandleSupplierSaved(Supplier supplier)
+    {
+        bool wasEdit = _selectedSupplierEditId.HasValue;
+        _notificationMessage = wasEdit
+            ? $"Cập nhật thông tin nhà cung cấp {supplier.Name} ({supplier.Code}) thành công!"
+            : $"Thêm mới nhà cung cấp {supplier.Name} ({supplier.Code}) thành công!";
+        _notificationIsSuccess = true;
+
+        await LoadDataAsync();
+    }
 
     private int ActiveFilterCount
     {
@@ -599,6 +660,19 @@
     private void ToggleSidebar()
     {
         _showSidebar = !_showSidebar;
+    }
+
+    private void CloseSidebar()
+    {
+        _showSidebar = false;
+    }
+
+    private void HandleFilterKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            _showSidebar = false;
+        }
     }
 
     private async Task OnSearchChanged(string val)

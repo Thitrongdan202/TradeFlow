@@ -4,6 +4,7 @@
 @inject IContractService ContractService
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@implements IAsyncDisposable
 
 @if (IsOpen)
 {
@@ -75,13 +76,15 @@
     .tf-gallery-modal-backdrop {
         background-color: rgba(15, 23, 42, 0.65);
         z-index: 1060;
-        contain: layout;
     }
 
     .tf-gallery-modal-dialog {
-        max-width: 1380px;
-        width: 96vw;
-        margin: 1.5rem auto;
+        width: min(1180px, calc(100vw - 32px)) !important;
+        max-width: 1180px !important;
+        max-height: min(90vh, 860px) !important;
+        margin: auto !important;
+        display: flex !important;
+        flex-direction: column !important;
     }
 
     .tf-gallery-modal-content {
@@ -90,9 +93,13 @@
         border-radius: 14px;
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
         overflow: hidden;
+        display: flex !important;
+        flex-direction: column !important;
+        max-height: min(90vh, 860px) !important;
     }
 
     .tf-gallery-modal-header {
+        flex: 0 0 auto !important;
         background: #ffffff;
         border-bottom: 1px solid #e2e8f0;
         padding: 16px 24px;
@@ -112,13 +119,16 @@
     }
 
     .tf-gallery-modal-body {
+        flex: 1 1 auto !important;
         background: #f8fafc;
         padding: 20px 24px 28px 24px;
-        max-height: calc(88vh - 140px);
-        overflow-y: auto;
+        overflow-y: auto !important;
+        min-height: 0 !important;
+        overscroll-behavior: contain !important;
     }
 
     .tf-gallery-modal-footer {
+        flex: 0 0 auto !important;
         background: #ffffff;
         border-top: 1px solid #e2e8f0;
         padding: 12px 24px;
@@ -246,21 +256,21 @@
 
     private async Task CloseAsync()
     {
-        if (_isClosing) return;
-
-        bool reduced = false;
-        try { reduced = await JS.InvokeAsync<bool>("TradeFlowMotion.isReducedMotion"); } catch { }
-
-        if (!reduced)
-        {
-            _isClosing = true;
-            StateHasChanged();
-            await Task.Delay(160);
-        }
-
         IsOpen = false;
-        _isClosing = false;
-        try { await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll"); } catch { }
         await IsOpenChanged.InvokeAsync(false);
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
     }
 }

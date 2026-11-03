@@ -1,0 +1,323 @@
+﻿/* Supplier Form Modal Styles */
+.tf-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(15, 23, 42, 0.65);
+    display: flex;
+    align-items: safe center;
+    justify-content: center;
+    z-index: 1050;
+    padding: clamp(16px, 3vh, 32px) 16px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    animation: tfBackdropFadeIn 160ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.tf-modal-overlay.is-closing {
+    pointer-events: none;
+    animation: tfBackdropFadeOut 150ms cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+}
+
+.supplier-modal {position: relative !important;
+    z-index: 1060 !important;
+
+    background-color: var(--tf-surface-card, #ffffff);
+    color: var(--tf-text-primary, #0f172a);
+    border: 1px solid var(--tf-border, #e2e8f0);
+    border-radius: 14px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    animation: tfModalScaleIn 190ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.supplier-modal.is-closing {
+    pointer-events: none;
+    animation: tfModalScaleOut 150ms cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+}
+
+@keyframes tfBackdropFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes tfBackdropFadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+@keyframes tfModalScaleIn {
+    from { opacity: 0; transform: translateY(8px) scale(0.975); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes tfModalScaleOut {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to { opacity: 0; transform: translateY(6px) scale(0.975); }
+}
+
+/* Header */
+.supplier-modal-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--tf-border, #e2e8f0);
+    background-color: var(--tf-surface-card, #ffffff);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.tf-supplier-header-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background: rgba(14, 165, 233, 0.12);
+    color: #0284c7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Error Banner */
+.tf-modal-alert-error {
+    background-color: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #b91c1c;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Form Sections */
+.tf-form-section {
+    background-color: var(--tf-surface-subtle, #f8fafc);
+    border: 1px solid var(--tf-border, #e2e8f0);
+    border-radius: 10px;
+    padding: clamp(24px, 4vh, 44px) 16px;
+}
+
+.tf-form-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--tf-text-primary, #1e293b);
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--tf-border, #e2e8f0);
+}
+
+.tf-section-step {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--tf-primary, #2563eb);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.tf-form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+@media (max-width: 640px) {
+    .tf-form-grid-2 {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+}
+
+.tf-label-hint {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--tf-text-muted, #94a3b8);
+    margin-left: 4px;
+}
+
+/* Readonly Wrap */
+.tf-input-readonly-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.tf-input-readonly-wrap .tf-input {
+    background-color: var(--tf-bg-disabled, #f1f5f9);
+    cursor: not-allowed;
+    font-weight: 600;
+    color: var(--tf-text-secondary, #475569);
+    padding-right: 70px;
+}
+
+.tf-readonly-badge {
+    position: absolute;
+    right: 8px;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #64748b;
+    background: #e2e8f0;
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+
+/* Checkbox Label */
+.tf-checkbox-custom-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.tf-checkbox-input {
+    width: 17px;
+    height: 17px;
+    border-radius: 4px;
+    border: 1px solid var(--tf-border, #cbd5e1);
+    accent-color: var(--tf-primary, #2563eb);
+    margin-top: 2px;
+    cursor: pointer;
+}
+
+.tf-checkbox-text {
+    font-size: 13px;
+    color: var(--tf-text-primary, #1e293b);
+    line-height: 1.4;
+}
+
+/* Footer */
+.supplier-modal-footer {
+    padding: 14px 24px;
+    border-top: 1px solid var(--tf-border, #e2e8f0);
+    background-color: var(--tf-surface-card, #ffffff);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Confirm Dialog */
+.tf-modal-confirm-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(15, 23, 42, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    z-index: 50;
+    padding: clamp(24px, 4vh, 44px) 16px;
+}
+
+.tf-modal-confirm-box {
+    background-color: var(--tf-surface-card, #ffffff);
+    border: 1px solid var(--tf-border, #e2e8f0);
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 380px;
+    width: 100%;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+}
+
+/* Spinner */
+.tf-spinner-sm {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: tfSpin 0.6s linear infinite;
+}
+
+@keyframes tfSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* Dark Mode Overrides */
+[data-theme="dark"] .supplier-modal,
+[data-bs-theme="dark"] .supplier-modal,
+:root[data-theme="dark"] .supplier-modal,
+:root[data-bs-theme="dark"] .supplier-modal {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .supplier-modal-header,
+[data-bs-theme="dark"] .supplier-modal-header,
+[data-theme="dark"] .supplier-modal-footer,
+[data-bs-theme="dark"] .supplier-modal-footer,
+:root[data-theme="dark"] .supplier-modal-header,
+:root[data-bs-theme="dark"] .supplier-modal-header,
+:root[data-theme="dark"] .supplier-modal-footer,
+:root[data-bs-theme="dark"] .supplier-modal-footer {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+[data-theme="dark"] .tf-form-section,
+[data-bs-theme="dark"] .tf-form-section,
+:root[data-theme="dark"] .tf-form-section,
+:root[data-bs-theme="dark"] .tf-form-section {
+    background-color: #0f172a !important;
+    border-color: #334155 !important;
+}
+
+[data-theme="dark"] .tf-form-section-title,
+[data-bs-theme="dark"] .tf-form-section-title,
+:root[data-theme="dark"] .tf-form-section-title,
+:root[data-bs-theme="dark"] .tf-form-section-title {
+    color: #f1f5f9 !important;
+    border-color: #334155 !important;
+}
+
+[data-theme="dark"] .tf-input-readonly-wrap .tf-input,
+[data-bs-theme="dark"] .tf-input-readonly-wrap .tf-input,
+:root[data-theme="dark"] .tf-input-readonly-wrap .tf-input,
+:root[data-bs-theme="dark"] .tf-input-readonly-wrap .tf-input {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+    color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .tf-readonly-badge,
+[data-bs-theme="dark"] .tf-readonly-badge,
+:root[data-theme="dark"] .tf-readonly-badge,
+:root[data-bs-theme="dark"] .tf-readonly-badge {
+    background-color: #334155 !important;
+    color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .tf-checkbox-text,
+[data-bs-theme="dark"] .tf-checkbox-text,
+:root[data-theme="dark"] .tf-checkbox-text,
+:root[data-bs-theme="dark"] .tf-checkbox-text {
+    color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .tf-modal-confirm-box,
+[data-bs-theme="dark"] .tf-modal-confirm-box,
+:root[data-theme="dark"] .tf-modal-confirm-box,
+:root[data-bs-theme="dark"] .tf-modal-confirm-box {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+}

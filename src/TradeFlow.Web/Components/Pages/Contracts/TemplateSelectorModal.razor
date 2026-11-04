@@ -15,35 +15,47 @@
          @onclick="HandleBackdropClick"
          @onkeydown="HandleKeyDown"
          @ref="backdropRef">
-        <div class="modal-dialog modal-dialog-centered tf-gallery-modal-dialog"
+        <div class="modal-dialog modal-dialog-centered tf-gallery-modal-dialog @(_inspectingTemplate != null ? "is-inspecting" : "")"
              @onclick:stopPropagation="true">
-            <div class="modal-content tf-gallery-modal-content">
-                <!-- Modal Header (Clean Light Theme) -->
-                <div class="modal-header tf-gallery-modal-header">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="tf-modal-icon-badge">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <line x1="16" y1="13" x2="8" y2="13"/>
-                                <line x1="16" y1="17" x2="8" y2="17"/>
+            <div class="modal-content tf-gallery-modal-content @(_inspectingTemplate != null ? "is-inspecting" : "")">
+                @if (_inspectingTemplate == null)
+                {
+                    <!-- Modal Header (Clean Light Theme) -->
+                    <div class="modal-header tf-gallery-modal-header d-flex align-items-start justify-content-between w-100 p-4">
+                        <div class="d-flex align-items-start gap-3 flex-grow-1" style="min-width: 0;">
+                            <div class="tf-modal-icon-badge flex-shrink-0">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="16" y1="13" x2="8" y2="13"/>
+                                    <line x1="16" y1="17" x2="8" y2="17"/>
+                                </svg>
+                            </div>
+                            <div style="min-width: 0; flex: 1 1 auto;">
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <h5 class="modal-title fs-5 fw-bold text-dark mb-0">Thư viện Mẫu Hợp đồng Thương mại &amp; Dân sự</h5>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 small flex-shrink-0">BLDS 2015 &amp; Luật GDĐT 2023</span>
+                                </div>
+                                <div class="text-muted small mt-1">
+                                    Tuyển tập 7 mẫu văn bản chuẩn hóa ngành thiết bị vệ sinh LACASA — Xem trước tài liệu A4 chuẩn in ấn
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button"
+                                class="tf-modal-close-btn flex-shrink-0 ms-3"
+                                @onclick="CloseAsync"
+                                aria-label="Đóng (Esc)"
+                                title="Đóng (Esc)">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
                             </svg>
-                        </div>
-                        <div>
-                            <div class="d-flex align-items-center gap-2">
-                                <h5 class="modal-title fs-5 fw-bold text-dark mb-0">Thư viện Mẫu Hợp đồng Thương mại &amp; Dân sự</h5>
-                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 small">BLDS 2015 &amp; Luật GDĐT 2023</span>
-                            </div>
-                            <div class="text-muted small mt-1">
-                                Tuyển tập 7 mẫu văn bản chuẩn hóa ngành thiết bị vệ sinh LACASA — Xem trước tài liệu A4 chuẩn in ấn
-                            </div>
-                        </div>
+                        </button>
                     </div>
-                    <button type="button" class="btn-close" @onclick="CloseAsync" aria-label="Đóng"></button>
-                </div>
+                }
 
                 <!-- Modal Body: Real A4 Document Preview Gallery -->
-                <div class="modal-body tf-gallery-modal-body">
+                <div class="modal-body tf-gallery-modal-body @(_inspectingTemplate != null ? "is-inspecting" : "")">
                     @if (isLoading)
                     {
                         <div class="text-center py-5">
@@ -55,18 +67,22 @@
                     {
                         <ContractTemplateGallery Templates="@templates"
                                                 OnSelect="SelectTemplate"
-                                                ActionButtonText="Soạn hợp đồng" />
+                                                ActionButtonText="Soạn hợp đồng"
+                                                IsEmbeddedInModal="true"
+                                                OnInspectChanged="HandleInspectChanged" />
                     }
                 </div>
 
-                <!-- Modal Footer -->
-                <div class="modal-footer tf-gallery-modal-footer">
-                    <div class="text-muted small me-auto d-flex align-items-center gap-2">
-                        <span class="tf-hint-dot"></span>
-                        <span>Chọn một mẫu hợp đồng hoặc bấm "Xem mẫu" để đọc toàn văn tài liệu A4 trước khi soạn thảo.</span>
+                @if (_inspectingTemplate == null)
+                {
+                    <!-- Modal Footer -->
+                    <div class="modal-footer tf-gallery-modal-footer">
+                        <div class="text-muted small me-auto d-flex align-items-center gap-2">
+                            <span class="tf-hint-dot"></span>
+                            <span>Chọn một mẫu hợp đồng hoặc bấm "Xem mẫu" để đọc toàn văn tài liệu A4 trước khi soạn thảo.</span>
+                        </div>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-secondary px-4" @onclick="CloseAsync">Đóng</button>
-                </div>
+                }
             </div>
         </div>
     </div>
@@ -85,6 +101,14 @@
         margin: auto !important;
         display: flex !important;
         flex-direction: column !important;
+        transition: width 0.2s ease, max-width 0.2s ease;
+    }
+
+    .tf-gallery-modal-dialog.is-inspecting {
+        width: min(1080px, calc(100vw - 32px)) !important;
+        max-width: 1080px !important;
+        height: min(92vh, 920px) !important;
+        max-height: min(92vh, 920px) !important;
     }
 
     .tf-gallery-modal-content {
@@ -96,6 +120,12 @@
         display: flex !important;
         flex-direction: column !important;
         max-height: min(90vh, 860px) !important;
+        position: relative;
+    }
+
+    .tf-gallery-modal-content.is-inspecting {
+        height: 100% !important;
+        max-height: min(92vh, 920px) !important;
     }
 
     .tf-gallery-modal-header {
@@ -125,6 +155,14 @@
         overflow-y: auto !important;
         min-height: 0 !important;
         overscroll-behavior: contain !important;
+        position: relative;
+    }
+
+    .tf-gallery-modal-body.is-inspecting {
+        padding: 0 !important;
+        overflow: hidden !important;
+        height: 100% !important;
+        flex: 1 1 100% !important;
     }
 
     .tf-gallery-modal-footer {
@@ -191,6 +229,7 @@
     private List<ContractTemplateDto> templates = new();
     private bool isLoading = true;
     private ElementReference backdropRef;
+    private ContractTemplateDto? _inspectingTemplate;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -204,8 +243,20 @@
         }
     }
 
+    private void HandleInspectChanged(ContractTemplateDto? t)
+    {
+        _inspectingTemplate = t;
+        StateHasChanged();
+    }
+
     private async Task HandleBackdropClick()
     {
+        if (_inspectingTemplate != null)
+        {
+            _inspectingTemplate = null;
+            StateHasChanged();
+            return;
+        }
         await CloseAsync();
     }
 
@@ -213,6 +264,12 @@
     {
         if (e.Key == "Escape")
         {
+            if (_inspectingTemplate != null)
+            {
+                _inspectingTemplate = null;
+                StateHasChanged();
+                return;
+            }
             await CloseAsync();
         }
     }
@@ -256,6 +313,7 @@
 
     private async Task CloseAsync()
     {
+        _inspectingTemplate = null;
         IsOpen = false;
         await IsOpenChanged.InvokeAsync(false);
         try

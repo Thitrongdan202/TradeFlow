@@ -202,17 +202,17 @@
                                             var primaryImg = item.Images?.FirstOrDefault(i => i.IsActive && i.IsPrimary) 
                                                           ?? item.Images?.FirstOrDefault(i => i.IsActive);
 
-                                            <tr class="tf-product-row @(isExpanded ? "is-expanded" : "")" @onclick="() => ToggleExpand(item.Id)">
+                                            <tr class="tf-product-row @(isExpanded ? "is-expanded" : "") @(_selectedItems.Contains(item.Id) ? "is-selected" : "")" @onclick="() => ToggleExpand(item.Id)">
                                                 <td style="text-align: center;" @onclick:stopPropagation="true">
                                                     <input type="checkbox" @onchange="@(e => ToggleSelect(item.Id, e))" checked="@(_selectedItems.Contains(item.Id))" />
                                                 </td>
 
-                                                @* Product Thumbnail *@
+                                                @* Product Thumbnail with Lightbox click *@
                                                 <td style="text-align: center; padding: 6px 8px;">
-                                                    <div class="tf-product-thumb">
-                                                        @if (primaryImg != null && !string.IsNullOrEmpty(primaryImg.StorageReference) && !primaryImg.StorageReference.Contains("dummy_ref"))
+                                                    <div class="tf-product-thumb" @onclick="() => TryPreviewImage(primaryImg, item.Name)" @onclick:stopPropagation="true" title="@(HasValidImage(primaryImg) ? "Nhấp để xem ảnh đầy đủ" : "")">
+                                                        @if (HasValidImage(primaryImg))
                                                         {
-                                                            <img src="@FileStorage.GetPublicUrl(primaryImg.StorageReference)" alt="@item.Name" loading="lazy" />
+                                                            <img src="@FileStorage.GetPublicUrl(primaryImg!.StorageReference)" alt="@item.Name" loading="lazy" />
                                                         }
                                                         else
                                                         {
@@ -320,10 +320,10 @@
                                                             @* Expanded Header Bar *@
                                                             <div class="tf-product-expanded-header">
                                                                 <div style="display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1;">
-                                                                    <div style="width: 48px; height: 48px; border-radius: 8px; border: 1px solid var(--tf-border, #e2e8f0); background: var(--tf-bg-card, #ffffff); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
-                                                                        @if (primaryImg != null && !string.IsNullOrEmpty(primaryImg.StorageReference) && !primaryImg.StorageReference.Contains("dummy_ref"))
+                                                                    <div class="tf-product-thumb" style="width: 48px; height: 48px; border-radius: 8px;" @onclick="() => TryPreviewImage(primaryImg, item.Name)" title="@(HasValidImage(primaryImg) ? "Nhấp để xem ảnh đầy đủ" : "")">
+                                                                        @if (HasValidImage(primaryImg))
                                                                         {
-                                                                            <img src="@FileStorage.GetPublicUrl(primaryImg.StorageReference)" alt="" style="width: 100%; height: 100%; object-fit: contain;" />
+                                                                            <img src="@FileStorage.GetPublicUrl(primaryImg!.StorageReference)" alt="" style="width: 100%; height: 100%; object-fit: contain;" />
                                                                         }
                                                                         else
                                                                         {
@@ -337,7 +337,7 @@
                                                                     <div>
                                                                         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                                                                             <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: var(--tf-text-primary, #0f172a);">@item.Name</h3>
-                                                                            <span class="tf-product-code" style="font-size: 13px; background: #e0f2fe; padding: 2px 8px; border-radius: 4px;">@item.Code</span>
+                                                                            <span class="tf-product-code" style="font-size: 13px; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--tf-border, rgba(14, 165, 233, 0.3));">@item.Code</span>
                                                                             @if (!string.IsNullOrEmpty(item.NewCode))
                                                                             {
                                                                                 <span class="tf-badge tf-badge-info" style="font-size: 12px;">Mã mới: @item.NewCode</span>
@@ -351,8 +351,8 @@
                                                                                 <span class="tf-badge tf-badge-neutral" style="font-size: 11px;">Đã ngừng sử dụng</span>
                                                                             }
                                                                         </div>
-                                                                        <div style="font-size: 12.5px; color: #64748b; margin-top: 3px;">
-                                                                            Danh mục: <strong>@(item.Category?.Name ?? "Chưa phân loại")</strong> • Đơn vị tính: <strong>@(item.Unit?.Name ?? "Cái")</strong>
+                                                                        <div style="font-size: 12.5px; color: var(--tf-text-secondary, #64748b); margin-top: 3px;">
+                                                                            Danh mục: <strong style="color: var(--tf-text-primary, #0f172a);">@(item.Category?.Name ?? "Chưa phân loại")</strong> • Đơn vị tính: <strong style="color: var(--tf-text-primary, #0f172a);">@(item.Unit?.Name ?? "Cái")</strong>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -422,31 +422,48 @@
                                                                 @* INLINE EDIT FORM (3 COLUMNS) *@
                                                                 <div class="tf-product-detail-grid">
                                                                     @* Col 1: Image & Upload *@
-                                                                    <div class="tf-product-img-box">
-                                                                        <div class="tf-product-img-main">
+                                                                    <div class="tf-product-img-stage">
+                                                                        <div class="tf-product-img-hero has-image">
                                                                             @if (_inlineEditImages != null && _inlineEditImages.Any(i => i.IsActive && i.IsPrimary))
                                                                             {
                                                                                 var curImg = _inlineEditImages.First(i => i.IsActive && i.IsPrimary);
-                                                                                <img src="@FileStorage.GetPublicUrl(curImg.StorageReference)" alt="" />
+                                                                                var curUrl = FileStorage.GetPublicUrl(curImg.StorageReference);
+                                                                                <img src="@curUrl" alt="" @onclick="() => OpenImagePreview(curUrl, item.Name)" title="Nhấp để phóng to ảnh" />
+                                                                                <div class="tf-img-zoom-badge">
+                                                                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                                                        <circle cx="11" cy="11" r="8"/>
+                                                                                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                                                                                        <line x1="11" y1="8" x2="11" y2="14"/>
+                                                                                        <line x1="8" y1="11" x2="14" y2="11"/>
+                                                                                    </svg>
+                                                                                    <span>Phóng to</span>
+                                                                                </div>
                                                                             }
                                                                             else
                                                                             {
-                                                                                <div style="color: #94a3b8; font-size: 13px; text-align: center; padding: 12px;">Chưa có ảnh</div>
+                                                                                <div class="tf-product-empty-image">
+                                                                                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                                                                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                                                                                        <polyline points="21 15 16 10 5 21"/>
+                                                                                    </svg>
+                                                                                    <span class="tf-empty-img-text">Chưa có ảnh</span>
+                                                                                </div>
                                                                             }
                                                                         </div>
 
-                                                                        <label class="tf-btn tf-btn-sm tf-btn-outline-secondary" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                                                        <label class="tf-btn tf-btn-sm tf-btn-outline-primary" style="cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%;">
                                                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                                                                 <polyline points="17 8 12 3 7 8"/>
                                                                                 <line x1="12" y1="3" x2="12" y2="15"/>
                                                                             </svg>
-                                                                            <span>Thay ảnh mới...</span>
+                                                                            <span>Tải ảnh mới lên...</span>
                                                                             <InputFile OnChange="e => HandleInlineImageUpload(item.Id, e)" accept="image/*" style="display:none;" />
                                                                         </label>
                                                                         @if (_isUploadingInlineImage)
                                                                         {
-                                                                            <span style="font-size: 11px; color: #2563eb;">Đang tải ảnh...</span>
+                                                                            <div style="font-size: 11.5px; color: var(--tf-primary, #3b82f6); text-align: center;">Đang tải ảnh lên...</div>
                                                                         }
                                                                     </div>
 
@@ -521,111 +538,146 @@
                                                             {
                                                                 @* INLINE VIEW MODE (3 COLUMNS) *@
                                                                 <div class="tf-product-detail-grid">
-                                                                    @* Col 1: High-Res Image Gallery *@
-                                                                    <div class="tf-product-img-box">
-                                                                        <div class="tf-product-img-main">
-                                                                            @if (primaryImg != null && !string.IsNullOrEmpty(primaryImg.StorageReference) && !primaryImg.StorageReference.Contains("dummy_ref"))
+                                                                    @{
+                                                                        var activeRef = GetActiveImageReference(item, primaryImg);
+                                                                        var hasImage = !string.IsNullOrEmpty(activeRef) && !activeRef.Contains("dummy_ref");
+                                                                        var activeUrl = hasImage ? FileStorage.GetPublicUrl(activeRef!) : null;
+                                                                    }
+                                                                    @* Col 1: High-Res Image Gallery (Redesigned Single Clean Container) *@
+                                                                    <div class="tf-product-img-stage">
+                                                                        <div class="tf-product-img-hero @(hasImage ? "has-image" : "is-empty")" 
+                                                                             @onclick="() => { if (hasImage) OpenImagePreview(activeUrl, item.Name); }" 
+                                                                             title="@(hasImage ? "Nhấp để phóng to ảnh" : "")">
+                                                                            @if (hasImage)
                                                                             {
-                                                                                <img src="@FileStorage.GetPublicUrl(primaryImg.StorageReference)" alt="@item.Name" />
+                                                                                <img src="@activeUrl" alt="@item.Name" />
+                                                                                <div class="tf-img-zoom-badge">
+                                                                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                                                        <circle cx="11" cy="11" r="8"/>
+                                                                                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                                                                                        <line x1="11" y1="8" x2="11" y2="14"/>
+                                                                                        <line x1="8" y1="11" x2="14" y2="11"/>
+                                                                                    </svg>
+                                                                                    <span>Phóng to</span>
+                                                                                </div>
                                                                             }
                                                                             else
                                                                             {
-                                                                                <div style="text-align: center; color: #94a3b8; font-size: 13px;">
-                                                                                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 6px;">
+                                                                                <div class="tf-product-empty-image">
+                                                                                    <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                                                                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                                                                                         <circle cx="8.5" cy="8.5" r="1.5"/>
                                                                                         <polyline points="21 15 16 10 5 21"/>
                                                                                     </svg>
-                                                                                    <div>Chưa có hình ảnh</div>
+                                                                                    <span class="tf-empty-img-text">Chưa có hình ảnh</span>
+                                                                                    <button type="button" class="tf-btn tf-btn-ghost tf-btn-xs" style="margin-top: 4px; font-size: 11.5px;" @onclick="() => StartInlineEdit(item)" @onclick:stopPropagation="true">
+                                                                                        + Thêm hình ảnh
+                                                                                    </button>
                                                                                 </div>
                                                                             }
                                                                         </div>
                                                                         @if (item.Images != null && item.Images.Count(i => i.IsActive) > 1)
                                                                         {
-                                                                            <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;">
+                                                                            <div class="tf-product-sub-gallery">
                                                                                 @foreach (var subImg in item.Images.Where(i => i.IsActive))
                                                                                 {
-                                                                                    <div style="width: 38px; height: 38px; border-radius: 4px; border: 1px solid @(subImg.IsPrimary ? "#2563eb" : "var(--tf-border, #e2e8f0)"); overflow: hidden; padding: 2px; background: var(--tf-bg-card, #fff);">
-                                                                                        <img src="@FileStorage.GetPublicUrl(subImg.StorageReference)" alt="" style="width: 100%; height: 100%; object-fit: cover;" />
-                                                                                    </div>
+                                                                                    var subUrl = FileStorage.GetPublicUrl(subImg.StorageReference);
+                                                                                    bool isSubActive = (activeRef == subImg.StorageReference);
+                                                                                    <button type="button" class="tf-product-sub-thumb @(isSubActive ? "is-active" : "")" 
+                                                                                            @onclick="() => _activeImageByProductId[item.Id] = subImg.StorageReference" 
+                                                                                            title="Chọn ảnh hiển thị">
+                                                                                        <img src="@subUrl" alt="" />
+                                                                                    </button>
                                                                                 }
                                                                             </div>
                                                                         }
                                                                     </div>
 
                                                                     @* Col 2: Identification & Classification *@
-                                                                    <div style="background: var(--tf-bg-card, #ffffff); padding: 16px; border-radius: 8px; border: 1px solid var(--tf-border, #e2e8f0); display: flex; flex-direction: column; gap: 12px;">
-                                                                        <div style="font-size: 12px; font-weight: 700; color: var(--tf-text-secondary, #475569); text-transform: uppercase; border-bottom: 1px solid var(--tf-border, #f1f5f9); padding-bottom: 6px;">
-                                                                            Thông tin cơ bản
+                                                                    <div class="tf-product-detail-card">
+                                                                        <div class="tf-product-detail-card-title">
+                                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                                                                <polyline points="14 2 14 8 20 8"/>
+                                                                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                                                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                                                            </svg>
+                                                                            <span>Thông tin định danh</span>
                                                                         </div>
-                                                                        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
-                                                                            <div>
-                                                                                <span style="color: var(--tf-text-muted, #64748b);">Mã hệ thống:</span>
-                                                                                <span style="font-weight: 600; color: #0f766e; font-family: monospace; margin-left: 6px;">@item.Code</span>
+                                                                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                                                                            <div class="tf-product-detail-item">
+                                                                                <span class="tf-product-detail-label">Mã hệ thống:</span>
+                                                                                <span class="tf-product-detail-val" style="color: #0d9488; font-family: monospace; font-size: 13.5px;">@item.Code</span>
                                                                             </div>
-                                                                            <div>
-                                                                                <span style="color: var(--tf-text-muted, #64748b);">Mã hàng mới:</span>
-                                                                                <span style="font-weight: 600; color: var(--tf-text-primary, #1e293b); margin-left: 6px;">@(item.NewCode ?? "—")</span>
+                                                                            <div class="tf-product-detail-item">
+                                                                                <span class="tf-product-detail-label">Mã hàng mới:</span>
+                                                                                <span class="tf-product-detail-val">@(item.NewCode ?? "—")</span>
                                                                             </div>
-                                                                            <div>
-                                                                                <span style="color: var(--tf-text-muted, #64748b);">Mã hàng cũ:</span>
-                                                                                <span style="font-family: monospace; color: var(--tf-text-secondary, #475569); margin-left: 6px;">@(item.LegacyCode ?? "—")</span>
+                                                                            <div class="tf-product-detail-item">
+                                                                                <span class="tf-product-detail-label">Mã hàng cũ:</span>
+                                                                                <span class="tf-product-detail-val" style="font-family: monospace; font-weight: normal; color: var(--tf-text-secondary, #64748b);">@(item.LegacyCode ?? "—")</span>
                                                                             </div>
-                                                                            <div>
-                                                                                <span style="color: var(--tf-text-muted, #64748b);">Loại hàng:</span>
-                                                                                <span style="font-weight: 500; color: var(--tf-text-primary, #1e293b); margin-left: 6px;">@(item.Category?.Name ?? "—")</span>
+                                                                            <div class="tf-product-detail-item">
+                                                                                <span class="tf-product-detail-label">Loại hàng:</span>
+                                                                                <span class="tf-product-detail-val">@(item.Category?.Name ?? "—")</span>
                                                                             </div>
-                                                                            <div>
-                                                                                <span style="color: var(--tf-text-muted, #64748b);">Đơn vị tính:</span>
-                                                                                <span style="font-weight: 500; color: var(--tf-text-primary, #1e293b); margin-left: 6px;">@(item.Unit?.Name ?? "Cái")</span>
+                                                                            <div class="tf-product-detail-item">
+                                                                                <span class="tf-product-detail-label">Đơn vị tính:</span>
+                                                                                <span class="tf-product-detail-val">@(item.Unit?.Name ?? "Cái")</span>
                                                                             </div>
                                                                             @if (!string.IsNullOrEmpty(item.ShortName))
                                                                             {
-                                                                                <div>
-                                                                                    <span style="color: var(--tf-text-muted, #64748b);">Tên viết tắt:</span>
-                                                                                    <span style="margin-left: 6px; color: var(--tf-text-primary);">@item.ShortName</span>
+                                                                                <div class="tf-product-detail-item">
+                                                                                    <span class="tf-product-detail-label">Tên viết tắt:</span>
+                                                                                    <span class="tf-product-detail-val">@item.ShortName</span>
                                                                                 </div>
                                                                             }
                                                                         </div>
                                                                     </div>
 
                                                                     @* Col 3: Pricing, VAT & Specifications *@
-                                                                    <div style="background: var(--tf-bg-card, #ffffff); padding: 16px; border-radius: 8px; border: 1px solid var(--tf-border, #e2e8f0); display: flex; flex-direction: column; gap: 12px;">
-                                                                        <div style="font-size: 12px; font-weight: 700; color: var(--tf-text-secondary, #475569); text-transform: uppercase; border-bottom: 1px solid var(--tf-border, #f1f5f9); padding-bottom: 6px;">
-                                                                            Chính sách giá &amp; Quy cách
+                                                                    <div class="tf-product-detail-card">
+                                                                        <div class="tf-product-detail-card-title">
+                                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                                                <line x1="12" y1="1" x2="12" y2="23"/>
+                                                                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                                                                            </svg>
+                                                                            <span>Chính sách giá &amp; Quy cách</span>
                                                                         </div>
-                                                                        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
-                                                                            <div>
-                                                                                <span style="color: var(--tf-text-muted, #64748b);">Đơn giá trước VAT:</span>
+                                                                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                                                                            <div class="tf-product-detail-item">
+                                                                                <span class="tf-product-detail-label">Đơn giá trước VAT:</span>
                                                                                 @if (_currentPrices.TryGetValue(item.Id, out var p) && p.HasValue && p.Value > 0)
                                                                                 {
-                                                                                    <span style="font-weight: 700; color: #047857; font-size: 16px; margin-left: 6px;">@p.Value.ToString("N0") ₫</span>
+                                                                                    <span class="tf-product-detail-val" style="font-weight: 700; color: #10b981; font-size: 16px;">@p.Value.ToString("N0") ₫</span>
                                                                                 }
                                                                                 else
                                                                                 {
-                                                                                    <span style="color: var(--tf-text-muted, #94a3b8); margin-left: 6px;">Chưa thiết lập giá</span>
+                                                                                    <span class="tf-product-detail-val" style="color: var(--tf-text-muted, #94a3b8); font-weight: normal;">Chưa thiết lập giá</span>
                                                                                 }
                                                                             </div>
-                                                                            <div>
-                                                                                <span style="color: var(--tf-text-muted, #64748b);">Thuế suất GTGT:</span>
-                                                                                <span style="font-weight: 500; color: var(--tf-text-primary, #1e293b); margin-left: 6px;">
+                                                                            <div class="tf-product-detail-item">
+                                                                                <span class="tf-product-detail-label">Thuế suất GTGT:</span>
+                                                                                <span class="tf-product-detail-val">
                                                                                     @(item.TaxTreatment == TaxTreatment.Standard10 ? (item.IsTaxReductionEligible ? "8% (Giảm từ 10%)" : "10%") : item.TaxTreatment.ToString())
                                                                                 </span>
                                                                             </div>
                                                                             @if (!string.IsNullOrWhiteSpace(item.Specifications))
                                                                             {
-                                                                                <div>
-                                                                                    <div style="color: var(--tf-text-muted, #64748b); margin-bottom: 2px;">Quy cách kỹ thuật:</div>
-                                                                                    <div style="background: var(--tf-bg-subtle, #f8fafc); border: 1px solid var(--tf-border, #e2e8f0); padding: 8px; border-radius: 6px; font-size: 12px; color: var(--tf-text-secondary, #334155); line-height: 1.4; white-space: pre-line;">
+                                                                                <div style="margin-top: 4px;">
+                                                                                    <div class="tf-product-detail-label" style="margin-bottom: 4px;">Quy cách kỹ thuật:</div>
+                                                                                    <div class="tf-product-specs-box">
                                                                                         @item.Specifications
                                                                                     </div>
                                                                                 </div>
                                                                             }
                                                                             @if (!string.IsNullOrWhiteSpace(item.Description))
                                                                             {
-                                                                                <div>
-                                                                                    <div style="color: #64748b; margin-bottom: 2px;">Mô tả chi tiết:</div>
-                                                                                    <div style="font-size: 12px; color: #475569;">@item.Description</div>
+                                                                                <div style="margin-top: 4px;">
+                                                                                    <div class="tf-product-detail-label" style="margin-bottom: 4px;">Mô tả chi tiết:</div>
+                                                                                    <div class="tf-product-specs-box">
+                                                                                        @item.Description
+                                                                                    </div>
                                                                                 </div>
                                                                             }
                                                                         </div>
@@ -739,11 +791,91 @@
     </div>
 }
 
+@* Fullscreen Image Preview Lightbox Modal *@
+@if (!string.IsNullOrEmpty(_previewImageUrl))
+{
+    <div class="tf-img-lightbox-backdrop" @onclick="CloseImagePreview">
+        <div class="tf-img-lightbox-dialog" @onclick:stopPropagation="true">
+            <div class="tf-img-lightbox-header">
+                <div class="tf-img-lightbox-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    <span>@(_previewImageTitle ?? "Chi tiết ảnh sản phẩm")</span>
+                </div>
+                <button type="button" class="tf-modal-btn-close" @onclick="CloseImagePreview" aria-label="Đóng">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="tf-img-lightbox-body">
+                <img src="@_previewImageUrl" alt="@_previewImageTitle" />
+            </div>
+            <div class="tf-img-lightbox-footer">
+                <a href="@_previewImageUrl" target="_blank" rel="noopener noreferrer" class="tf-btn tf-btn-outline-secondary tf-btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/>
+                        <line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                    <span>Mở tab mới</span>
+                </a>
+                <button type="button" class="tf-btn tf-btn-primary tf-btn-sm" @onclick="CloseImagePreview">
+                    Đóng
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<Product>? _items;
     private Dictionary<int, decimal?> _currentPrices = new();
     private List<ProductCategory>? _categories;
     private List<UnitOfMeasure>? _units;
+
+    // Image Stage and Lightbox State
+    private Dictionary<int, string> _activeImageByProductId = new();
+    private string? _previewImageUrl;
+    private string? _previewImageTitle;
+
+    private string? GetActiveImageReference(Product item, ProductImage? primaryImg)
+    {
+        if (_activeImageByProductId.TryGetValue(item.Id, out var activeRef) && !string.IsNullOrEmpty(activeRef))
+        {
+            return activeRef;
+        }
+        return primaryImg?.StorageReference;
+    }
+
+    private void OpenImagePreview(string? url, string? title)
+    {
+        if (!string.IsNullOrEmpty(url))
+        {
+            _previewImageUrl = url;
+            _previewImageTitle = title;
+        }
+    }
+
+    private bool HasValidImage(ProductImage? img) => img != null && !string.IsNullOrEmpty(img.StorageReference) && !img.StorageReference.Contains("dummy_ref");
+
+    private void TryPreviewImage(ProductImage? img, string title)
+    {
+        if (HasValidImage(img))
+        {
+            OpenImagePreview(FileStorage.GetPublicUrl(img!.StorageReference), title);
+        }
+    }
+
+    private void CloseImagePreview()
+    {
+        _previewImageUrl = null;
+        _previewImageTitle = null;
+    }
 
     private string _searchTerm = string.Empty;
     private string _categorySearchTerm = string.Empty;

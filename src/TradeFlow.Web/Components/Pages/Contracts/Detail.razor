@@ -8,6 +8,7 @@
 @inject IContractService ContractService
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
 
 <PageTitle>@(contract?.ContractNumber ?? "Hợp đồng") — TradeFlow</PageTitle>
 
@@ -28,7 +29,7 @@
     else
     {
         <!-- Action Toolbar -->
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4 tf-card p-3 rounded shadow-sm border">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4 tf-card p-3 rounded shadow-sm border no-print">
             <div class="d-flex align-items-center gap-2">
                 <a href="/hop-dong" class="btn btn-sm btn-outline-secondary">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -53,14 +54,30 @@
             </div>
 
             <div class="d-flex flex-wrap gap-2">
-                <a href="/api/contracts/@contract.Id/export-pdf" target="_blank" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1">
+                <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-1.5 shadow-xs" @onclick="DownloadPdfAsync" disabled="@isDownloading" title="Tải trực tiếp file PDF chính thức về máy (Không có header/footer của trình duyệt)">
+                    @if (isDownloading)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>Đang tải...</span>
+                    }
+                    else
+                    {
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        <span>Tải xuống PDF</span>
+                    }
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1.5" @onclick="PrintContractAsync" title="In trực tiếp ra máy in giấy (Mẹo: Bỏ chọn 'Headers and footers' trong hộp thoại in để tránh chèn URL trình duyệt)">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
+                        <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                        <rect x="6" y="14" width="12" height="8"></rect>
                     </svg>
-                    <span>Xuất PDF (Times New Roman)</span>
-                </a>
+                    <span>In hợp đồng</span>
+                </button>
 
                 @if (contract.Status == ContractStatus.Draft)
                 {
@@ -99,21 +116,21 @@
 
         <div class="row g-4">
             <!-- Left: Document Preview (Times New Roman A4) -->
-            <div class="col-lg-8">
-                <div class="rounded-3 border-0 shadow-sm p-4 p-md-5 bg-white tf-document-paper a4-contract-page"
-                     style="font-family: 'Times New Roman', Times, serif; font-size: 14.5px; line-height: 1.5; color: #000;">
+            <div class="col-12 col-lg-8">
+                <div id="tf-contract-sheet" class="rounded-3 border-0 shadow-sm bg-white tf-document-paper a4-contract-page tf-a4-page"
+                     style="font-family: 'Times New Roman', Times, serif; font-size: 13pt; line-height: 1.25; color: #000000; padding: 20mm 20mm 20mm 30mm; max-width: 210mm; margin: 0 auto; box-sizing: border-box; text-align: justify;">
                     
-                    <!-- National Header -->
-                    <div class="text-center mb-4">
-                        <div class="fw-bold" style="font-size: 15px;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
-                        <div class="fw-bold" style="font-size: 14px;">Độc lập - Tự do - Hạnh phúc</div>
-                        <div class="mx-auto my-1" style="width: 140px; height: 1px; background-color: #333;"></div>
-                        <div class="fst-italic" style="font-size: 13px;">@contract.ContractPlace, ngày @contract.ContractDate.ToString("dd") tháng @contract.ContractDate.ToString("MM") năm @contract.ContractDate.ToString("yyyy")</div>
+                    <!-- National Header (Decree 30/2020/ND-CP Standard Block) -->
+                    <div class="tf-doc-national-header text-center mb-4" style="display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%;">
+                        <div class="tf-doc-nat-title fw-bold" style="font-size: 13pt; text-transform: uppercase; letter-spacing: 0.2pt; line-height: 1.25; margin: 0;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+                        <div class="tf-doc-nat-motto fw-bold" style="font-size: 13pt; line-height: 1.25; margin-top: 3pt; margin-bottom: 0;">Độc lập - Tự do - Hạnh phúc</div>
+                        <div class="tf-doc-nat-line" style="width: 140px; height: 1.5px; background-color: #000000; margin: 4pt auto 5pt auto;"></div>
+                        <div class="tf-doc-nat-date fst-italic" style="font-size: 13pt; line-height: 1.25; margin: 0;">@(!string.IsNullOrWhiteSpace(contract.ContractPlace) ? contract.ContractPlace : "Cần Thơ"), ngày @contract.ContractDate.ToString("dd") tháng @contract.ContractDate.ToString("MM") năm @contract.ContractDate.ToString("yyyy")</div>
                     </div>
 
-                    <div class="text-center mb-4">
-                        <div class="fw-bold fs-5 text-uppercase">@contract.Title</div>
-                        <div class="fw-semibold">Số: @contract.ContractNumber</div>
+                    <div class="tf-doc-title-block text-center mb-4" style="text-align: center; margin-top: 14pt; margin-bottom: 16pt;">
+                        <div class="fw-bold fs-5 text-uppercase" style="font-size: 15pt; line-height: 1.25; letter-spacing: 0.5pt;">@contract.Title</div>
+                        <div class="fw-semibold" style="font-size: 13pt; margin-top: 3pt;">Số: @contract.ContractNumber</div>
                     </div>
 
                     <div class="mb-3 fst-italic" style="font-size: 13px;">
@@ -128,31 +145,35 @@
                     </div>
 
                     <!-- Party A -->
-                    <div class="mb-3 p-3 border rounded tf-doc-party-box" style="background-color: #f8fafc !important; color: #111827 !important; border-color: #e2e8f0 !important;">
+                    <div class="mb-3 tf-doc-party-box tf-legal-party-block">
                         <div class="fw-bold text-uppercase mb-1">BÊN A (BÊN BÁN): @contract.PartyAName</div>
-                        <div>Địa chỉ: @contract.PartyAAddress</div>
-                        <div>Mã số thuế: @contract.PartyATaxCode | Điện thoại: @contract.PartyAPhone</div>
-                        <div>Đại diện: @contract.PartyARepresentative - Chức vụ: @contract.PartyAPosition (@contract.PartyAAuthority)</div>
-                        <div>Tài khoản ngân hàng: @contract.PartyABankAccount tại @contract.PartyABankName @contract.PartyABankBranch</div>
+                        <div class="ps-3">
+                            <div>Địa chỉ: @contract.PartyAAddress</div>
+                            <div>Mã số thuế: @contract.PartyATaxCode | Điện thoại: @contract.PartyAPhone</div>
+                            <div>Đại diện: <strong>@contract.PartyARepresentative</strong> - Chức vụ: @contract.PartyAPosition (@contract.PartyAAuthority)</div>
+                            <div>Tài khoản ngân hàng: @contract.PartyABankAccount tại @contract.PartyABankName @contract.PartyABankBranch</div>
+                        </div>
                     </div>
 
                     <!-- Party B -->
-                    <div class="mb-3 p-3 border rounded tf-doc-party-box" style="background-color: #f8fafc !important; color: #111827 !important; border-color: #e2e8f0 !important;">
+                    <div class="mb-3 tf-doc-party-box tf-legal-party-block">
                         <div class="fw-bold text-uppercase mb-1">BÊN B (BÊN MUA): @contract.PartyBName</div>
-                        <div>Địa chỉ: @contract.PartyBAddress</div>
-                        @if (contract.PartyBType == ContractPartyBType.Company)
-                        {
-                            <div>Mã số thuế: @contract.PartyBTaxCode | Điện thoại: @contract.PartyBPhone</div>
-                            <div>Đại diện: @contract.PartyBRepresentative - Chức vụ: @contract.PartyBPosition</div>
-                        }
-                        else
-                        {
-                            <div>Số CCCD: @contract.PartyBIdCardNumber | Điện thoại: @contract.PartyBPhone</div>
-                        }
-                        @if (!string.IsNullOrEmpty(contract.PartyBDeliveryAddress))
-                        {
-                            <div>Địa điểm giao hàng: @contract.PartyBDeliveryAddress</div>
-                        }
+                        <div class="ps-3">
+                            <div>Địa chỉ: @(string.IsNullOrWhiteSpace(contract.PartyBAddress) ? "Trụ sở / Địa chỉ liên hệ của Bên B" : contract.PartyBAddress)</div>
+                            @if (contract.PartyBType == ContractPartyBType.Company)
+                            {
+                                <div>Mã số thuế: @(string.IsNullOrWhiteSpace(contract.PartyBTaxCode) ? "[Đang cập nhật]" : contract.PartyBTaxCode) | Điện thoại: @(string.IsNullOrWhiteSpace(contract.PartyBPhone) ? "[Đang cập nhật]" : contract.PartyBPhone)</div>
+                                <div>Người đại diện: <strong>@(string.IsNullOrWhiteSpace(contract.PartyBRepresentative) ? "Người đại diện theo pháp luật" : contract.PartyBRepresentative)</strong> - Chức vụ: @(string.IsNullOrWhiteSpace(contract.PartyBPosition) ? "Giám đốc" : contract.PartyBPosition)</div>
+                            }
+                            else
+                            {
+                                <div>Số CCCD/CMND: @(string.IsNullOrWhiteSpace(contract.PartyBIdCardNumber) ? "[Đang cập nhật]" : contract.PartyBIdCardNumber) | Điện thoại: @(string.IsNullOrWhiteSpace(contract.PartyBPhone) ? "[Đang cập nhật]" : contract.PartyBPhone)</div>
+                            }
+                            @if (!string.IsNullOrEmpty(contract.PartyBDeliveryAddress))
+                            {
+                                <div>Địa điểm giao nhận hàng: @contract.PartyBDeliveryAddress</div>
+                            }
+                        </div>
                     </div>
 
                     <div class="mb-3 fst-italic">
@@ -193,7 +214,7 @@
                     }
 
                     <!-- Financial Summary -->
-                    <div class="p-3 border rounded mb-4 tf-doc-summary-box" style="background-color: #f8fafc !important; color: #111827 !important; border-color: #e2e8f0 !important;">
+                    <div class="mb-3 py-2 px-3 border-top border-bottom tf-legal-summary-block">
                         <div class="fw-bold fs-6">Tổng giá trị hợp đồng: @contract.TotalAmount.ToString("N0") @contract.CurrencyCode</div>
                         @if (contract.DepositAmount > 0)
                         {
@@ -202,17 +223,17 @@
                         <div class="fst-italic">Bằng chữ: @contract.AmountInWords</div>
                     </div>
 
-                    <!-- Clauses -->
+                    <!-- Clauses (Anti-orphan Heading Protection) -->
                     @foreach (var cl in contract.Clauses)
                     {
-                        <div class="mb-3">
-                            <div class="fw-bold">@cl.ClauseNumber: @cl.Title</div>
-                            <div style="text-align: justify;">@cl.Content</div>
+                        <div class="mb-3 tf-clause-item">
+                            <div class="clause-heading fw-bold mt-2 mb-1" style="break-after: avoid-page; page-break-after: avoid;">@cl.ClauseNumber: @cl.Title</div>
+                            <div class="clause-paragraph" style="text-align: justify; text-justify: inter-word; white-space: pre-line; orphans: 3; widows: 3;">@cl.Content</div>
                         </div>
                     }
 
-                    <!-- Signatures Box -->
-                    <div class="row mt-5 pt-4 text-center" style="break-inside: avoid !important; page-break-inside: avoid !important;">
+                    <!-- Signatures Box (Anti-break Protection) -->
+                    <div class="row mt-5 pt-4 text-center tf-signature-block" style="break-inside: avoid !important; page-break-inside: avoid !important;">
                         <!-- Party A Signature -->
                         <div class="col-6">
                             <div class="fw-bold">ĐẠI DIỆN BÊN A</div>
@@ -261,11 +282,17 @@
                             }
                         </div>
                     </div>
+
+                    <!-- Document Running Footer -->
+                    <div class="tf-contract-running-footer d-flex justify-content-between text-muted small mt-4 pt-2 border-top no-print">
+                        <span>Hợp đồng số: @contract.ContractNumber</span>
+                        <span>Trang chuẩn thể thức văn bản A4 — NĐ 30/2020/NĐ-CP</span>
+                    </div>
                 </div>
             </div>
 
             <!-- Right: Meta, Legal & Audit Trail -->
-            <div class="col-lg-4">
+            <div class="col-lg-4 no-print">
                 <!-- Integrity & Security Card -->
                 <div class="card border-0 shadow-sm p-3 mb-3 tf-card" style="background-color:var(--tf-bg-card, #ffffff); border:1px solid var(--tf-border, #e2e8f0) !important;">
                     <h6 class="fw-bold border-bottom pb-2 mb-3 d-flex align-items-center gap-1" style="color:var(--tf-text-primary, #0f172a);">
@@ -377,12 +404,49 @@
 
     private ContractDto? contract;
     private bool isLoading = true;
+    private bool isDownloading = false;
     private bool showSignModal = false;
     private bool showLiquidationModal = false;
 
     protected override async Task OnParametersSetAsync()
     {
         await LoadContractAsync();
+    }
+
+    private async Task DownloadPdfAsync()
+    {
+        if (contract == null || isDownloading) return;
+        try
+        {
+            isDownloading = true;
+            StateHasChanged();
+            var rawNumber = string.IsNullOrWhiteSpace(contract.ContractNumber) ? $"HD-{contract.Id}" : contract.ContractNumber.Trim();
+            var safeCode = string.Concat(rawNumber.Split(System.IO.Path.GetInvalidFileNameChars())).Replace(" ", "_");
+            var filename = $"Hop_dong_{safeCode}.pdf";
+            await JS.InvokeVoidAsync("tradeflow.downloadPdf", $"/api/contracts/{contract.Id}/export-pdf", filename);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Detail.DownloadPdfAsync] Error: {ex.Message}");
+        }
+        finally
+        {
+            isDownloading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task PrintContractAsync()
+    {
+        if (contract == null) return;
+        try
+        {
+            var rawNumber = string.IsNullOrWhiteSpace(contract.ContractNumber) ? $"HD-{contract.Id}" : contract.ContractNumber.Trim();
+            var safeCode = string.Concat(rawNumber.Split(System.IO.Path.GetInvalidFileNameChars())).Replace(" ", "_");
+            var docTitle = $"Hop_Dong_{safeCode}";
+            await JS.InvokeVoidAsync("tradeflow.printDocument", "tf-contract-sheet", docTitle);
+        }
+        catch { }
     }
 
     private async Task LoadContractAsync()

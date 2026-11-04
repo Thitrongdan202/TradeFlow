@@ -423,22 +423,26 @@
                 </div>
 
                 <!-- Parties -->
-                <div class="mb-3 border p-3">
+                <div class="mb-3 tf-doc-party-box tf-legal-party-block">
                     <div class="fw-bold text-uppercase mb-1">BÊN A (BÊN BÁN): @model.PartyAName</div>
-                    <div>Địa chỉ: @model.PartyAAddress</div>
-                    <div>Mã số thuế: @model.PartyATaxCode | Điện thoại: @model.PartyAPhone</div>
-                    <div>Đại diện: @model.PartyARepresentative - Chức vụ: @model.PartyAPosition</div>
-                    <div>Tài khoản: @model.PartyABankAccount tại @model.PartyABankName</div>
+                    <div class="ps-3">
+                        <div>Địa chỉ: @model.PartyAAddress</div>
+                        <div>Mã số thuế: @model.PartyATaxCode | Điện thoại: @model.PartyAPhone</div>
+                        <div>Đại diện: <strong>@model.PartyARepresentative</strong> - Chức vụ: @model.PartyAPosition</div>
+                        <div>Tài khoản ngân hàng: @model.PartyABankAccount tại @model.PartyABankName</div>
+                    </div>
                 </div>
 
-                <div class="mb-3 border p-3">
+                <div class="mb-3 tf-doc-party-box tf-legal-party-block">
                     <div class="fw-bold text-uppercase mb-1">BÊN B (BÊN MUA): @model.PartyBName</div>
-                    <div>Địa chỉ: @model.PartyBAddress</div>
-                    <div>@(model.PartyBType == ContractPartyBType.Company ? $"Mã số thuế: {model.PartyBTaxCode}" : $"Số CCCD: {model.PartyBIdCardNumber}") | Điện thoại: @model.PartyBPhone</div>
-                    @if (!string.IsNullOrEmpty(model.PartyBRepresentative))
-                    {
-                        <div>Đại diện: @model.PartyBRepresentative - Chức vụ: @model.PartyBPosition</div>
-                    }
+                    <div class="ps-3">
+                        <div>Địa chỉ: @(string.IsNullOrWhiteSpace(model.PartyBAddress) ? "Trụ sở / Địa chỉ liên hệ của Bên B" : model.PartyBAddress)</div>
+                        <div>@(model.PartyBType == ContractPartyBType.Company ? $"Mã số thuế: {(string.IsNullOrWhiteSpace(model.PartyBTaxCode) ? "[Đang cập nhật]" : model.PartyBTaxCode)}" : $"Số CCCD: {(string.IsNullOrWhiteSpace(model.PartyBIdCardNumber) ? "[Đang cập nhật]" : model.PartyBIdCardNumber)}") | Điện thoại: @(string.IsNullOrWhiteSpace(model.PartyBPhone) ? "[Đang cập nhật]" : model.PartyBPhone)</div>
+                        @if (!string.IsNullOrEmpty(model.PartyBRepresentative) || model.PartyBType == ContractPartyBType.Company)
+                        {
+                            <div>Người đại diện: <strong>@(string.IsNullOrWhiteSpace(model.PartyBRepresentative) ? "Người đại diện pháp luật" : model.PartyBRepresentative)</strong> - Chức vụ: @(string.IsNullOrWhiteSpace(model.PartyBPosition) ? "Giám đốc" : model.PartyBPosition)</div>
+                        }
+                    </div>
                 </div>
 
                 <!-- Items Table -->
@@ -474,22 +478,22 @@
                     </table>
                 }
 
-                <div class="mb-3 p-2 bg-light border">
+                <div class="mb-3 py-2 px-3 border-top border-bottom tf-legal-summary-block">
                     <div class="fw-bold">Tổng giá trị hợp đồng: @model.TotalAmount.ToString("N0") đ</div>
                     <div class="fst-italic">Bằng chữ: @model.AmountInWords</div>
                 </div>
 
-                <!-- Clauses -->
+                <!-- Clauses (Anti-orphan Heading Protection) -->
                 @foreach (var c in model.Clauses)
                 {
-                    <div class="mb-2">
-                        <div class="fw-bold">@c.ClauseNumber: @c.Title</div>
-                        <div style="text-align: justify;">@c.Content</div>
+                    <div class="mb-3 tf-clause-item">
+                        <div class="clause-heading fw-bold mt-2 mb-1" style="break-after: avoid-page; page-break-after: avoid;">@c.ClauseNumber: @c.Title</div>
+                        <div class="clause-paragraph" style="text-align: justify; text-justify: inter-word; white-space: pre-line; orphans: 3; widows: 3;">@c.Content</div>
                     </div>
                 }
 
-                <!-- Signatures -->
-                <div class="row mt-4 pt-3 text-center" style="break-inside: avoid; page-break-inside: avoid;">
+                <!-- Signatures (Anti-break Protection) -->
+                <div class="row mt-4 pt-3 text-center tf-signature-block" style="break-inside: avoid !important; page-break-inside: avoid !important;">
                     <div class="col-6">
                         <div class="fw-bold">ĐẠI DIỆN BÊN A</div>
                         <div class="fst-italic small">(Ký, ghi rõ họ tên và đóng dấu)</div>

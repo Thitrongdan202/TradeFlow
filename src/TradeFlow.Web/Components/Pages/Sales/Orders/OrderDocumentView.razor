@@ -270,7 +270,7 @@ else
         _isPrinting = true;
         try
         {
-            await JS.InvokeVoidAsync("window.print");
+            await JS.InvokeVoidAsync("tradeflow.printDocument", "print-area", $"Don_Ban_Hang_{_orderDoc?.OrderCode ?? "Order"}");
         }
         finally
         {

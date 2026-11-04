@@ -36,8 +36,8 @@
                         <span class="tf-prod-modal-subtitle">@(IsEdit ? $"Cập nhật hàng hóa #{_displaySystemCode}" : "Khai báo thông số kỹ thuật, giá đại lý và ảnh sản phẩm")</span>
                     </div>
                 </div>
-                <button type="button" class="tf-prod-modal-close" @onclick="HandleRequestClose" title="Đóng (Esc)">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <button type="button" class="tf-modal-close-btn flex-shrink-0 ms-3" @onclick="HandleRequestClose" aria-label="Đóng (Esc)" title="Đóng (Esc)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
                         <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
@@ -77,20 +77,32 @@
                                 <span>Thông tin định danh sản phẩm</span>
                             </div>
 
-                            <div class="tf-prod-grid-2">
+                            @* Dòng 1: Mã hệ thống (~200px) + Tên sản phẩm (toàn bộ phần còn lại) *@
+                            <div class="tf-prod-row-1">
                                 <div class="tf-prod-form-group">
-                                    <label class="tf-prod-label">Mã hệ thống <span class="tf-prod-subtext">(Tự sinh)</span></label>
-                                    <input type="text" class="tf-prod-input tf-prod-readonly" value="@_displaySystemCode" readonly disabled />
+                                    <label class="tf-prod-label">
+                                        <span>Mã hệ thống</span>
+                                        <span class="tf-prod-badge-auto">Tự động</span>
+                                    </label>
+                                    <div class="tf-prod-input-lock-wrap">
+                                        <input type="text" class="tf-prod-input tf-prod-readonly" value="@_displaySystemCode" readonly disabled />
+                                        <svg class="tf-prod-lock-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                        </svg>
+                                    </div>
                                 </div>
                                 <div class="tf-prod-form-group">
                                     <label class="tf-prod-label">Tên sản phẩm <span class="tf-prod-req">*</span></label>
-                                    <InputText @bind-Value="_model.Name" class="tf-prod-input" placeholder="Nhập tên sản phẩm đầy đủ..." @oninput="MarkDirty" />
+                                    <InputText @bind-Value="_model.Name" class="tf-prod-input" placeholder="Nhập tên sản phẩm đầy đủ (Ví dụ: Sen tắm cây nhiệt độ cao cấp LACASA...)" @oninput="MarkDirty" />
+                                    <ValidationMessage For="@(() => _model.Name)" class="tf-prod-field-error" />
                                 </div>
                             </div>
 
-                            <div class="tf-prod-grid-2">
+                            @* Dòng 2: Mã hàng mới (1fr) + Mã hàng cũ (1fr) *@
+                            <div class="tf-prod-row-2">
                                 <div class="tf-prod-form-group">
-                                    <label class="tf-prod-label">Mã hàng mới <span class="tf-prod-subtext">(vd: TL2138, K8012)</span></label>
+                                    <label class="tf-prod-label">Mã hàng mới <span class="tf-prod-subtext">(Ví dụ: TL2138, K8012)</span></label>
                                     <InputText @bind-Value="_model.NewCode" class="tf-prod-input" placeholder="Mã hàng kinh doanh / phân loại" @oninput="MarkDirty" />
                                 </div>
                                 <div class="tf-prod-form-group">
@@ -99,49 +111,59 @@
                                 </div>
                             </div>
 
-                            <div class="tf-prod-grid-2">
+                            @* Dòng 3: Danh mục (1.8fr kèm nút Thêm) + Đơn vị tính (1fr) + Tên viết tắt (1.2fr) *@
+                            <div class="tf-prod-row-3">
                                 <div class="tf-prod-form-group">
-                                    <div class="tf-prod-label-row">
-                                        <label class="tf-prod-label">Danh mục sản phẩm <span class="tf-prod-req">*</span></label>
-                                        <button type="button" class="tf-prod-btn-link" @onclick="OpenAddCategoryModal" title="Thêm danh mục mới ngay tại đây">+ Thêm mới</button>
-                                    </div>
-                                    <InputSelect @bind-Value="_model.CategoryId" class="tf-prod-select" @oninput="MarkDirty">
-                                        <option value="">-- Chọn danh mục --</option>
-                                        @if (_categories != null)
-                                        {
-                                            @foreach (var c in _categories)
+                                    <label class="tf-prod-label">Danh mục sản phẩm <span class="tf-prod-req">*</span></label>
+                                    <div class="tf-prod-input-group">
+                                        <InputSelect @bind-Value="_model.CategoryId" class="tf-prod-select tf-prod-select-grouped" @oninput="MarkDirty">
+                                            <option value="">-- Chọn danh mục --</option>
+                                            @if (_categories != null)
                                             {
-                                                <option value="@c.Id">@c.Name (@c.Code)</option>
+                                                @foreach (var c in _categories)
+                                                {
+                                                    <option value="@c.Id">@c.Name (@c.Code)</option>
+                                                }
+                                            }
+                                        </InputSelect>
+                                        <button type="button" class="tf-prod-addon-btn" @onclick="OpenAddCategoryModal" title="Thêm nhanh danh mục mới">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                                            </svg>
+                                            <span>Thêm</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="tf-prod-form-group">
+                                    <label class="tf-prod-label">Đơn vị tính</label>
+                                    <InputSelect @bind-Value="_model.UnitId" class="tf-prod-select" @oninput="MarkDirty">
+                                        <option value="">-- (@(_defaultUnitName ?? "Cái")) --</option>
+                                        @if (_units != null)
+                                        {
+                                            @foreach (var u in _units)
+                                            {
+                                                <option value="@u.Id">@u.Name (@u.Symbol)</option>
                                             }
                                         }
                                     </InputSelect>
                                 </div>
-                                <div class="tf-prod-grid-2" style="gap:10px;">
-                                    <div class="tf-prod-form-group">
-                                        <label class="tf-prod-label">Đơn vị tính</label>
-                                        <InputSelect @bind-Value="_model.UnitId" class="tf-prod-select" @oninput="MarkDirty">
-                                            <option value="">-- (@(_defaultUnitName ?? "Cái")) --</option>
-                                            @if (_units != null)
-                                            {
-                                                @foreach (var u in _units)
-                                                {
-                                                    <option value="@u.Id">@u.Name (@u.Symbol)</option>
-                                                }
-                                            }
-                                        </InputSelect>
-                                    </div>
-                                    <div class="tf-prod-form-group">
-                                        <label class="tf-prod-label">Tên viết tắt</label>
-                                        <InputText @bind-Value="_model.ShortName" class="tf-prod-input" placeholder="Tên vắn tắt" @oninput="MarkDirty" />
-                                    </div>
+                                <div class="tf-prod-form-group">
+                                    <label class="tf-prod-label">Tên viết tắt</label>
+                                    <InputText @bind-Value="_model.ShortName" class="tf-prod-input" placeholder="Tên vắn tắt" @oninput="MarkDirty" />
                                 </div>
                             </div>
 
-                            <div class="tf-prod-form-group" style="margin-top: 8px;">
-                                <label class="tf-prod-checkbox-label">
-                                    <InputCheckbox @bind-Value="_model.IsActive" @oninput="MarkDirty" />
-                                    <span>Đang áp dụng kinh doanh (Hoạt động)</span>
+                            @* Trạng thái kinh doanh Switch card *@
+                            <div class="tf-prod-status-card" @onclick="ToggleActive">
+                                <label class="tf-prod-toggle-wrap" for="prod-is-active" @onclick:stopPropagation="true">
+                                    <InputCheckbox @bind-Value="_model.IsActive" id="prod-is-active" @oninput="MarkDirty" class="tf-prod-toggle-input" />
+                                    <span class="tf-prod-toggle-slider"></span>
                                 </label>
+                                <div class="tf-prod-status-text">
+                                    <label for="prod-is-active" class="tf-prod-status-label" style="cursor: pointer; margin: 0;">@(_model.IsActive ? "Đang áp dụng kinh doanh" : "Tạm ngưng kinh doanh")</label>
+                                    <div class="tf-prod-status-desc">@(_model.IsActive ? "Cho phép xuất nhập kho, hiển thị trong danh mục báo giá và lập đơn hàng bán lẻ / đại lý." : "Sản phẩm tạm khóa, không cho phép chọn tạo mới đơn hàng hoặc xuất kho.")</div>
+                                </div>
                             </div>
                         </div>
 
@@ -149,10 +171,10 @@
                         <div class="tf-prod-section">
                             <div class="tf-prod-section-title">
                                 <span class="tf-prod-section-num">2</span>
-                                <span>Chính sách thuế GTGT & Đơn giá đại lý</span>
+                                <span>Chính sách thuế GTGT &amp; Đơn giá đại lý</span>
                             </div>
 
-                            <div class="tf-prod-grid-2">
+                            <div class="tf-prod-row-2">
                                 <div class="tf-prod-form-group">
                                     <label class="tf-prod-label">Phân loại thuế GTGT</label>
                                     <InputSelect @bind-Value="_model.TaxTreatment" class="tf-prod-select" @oninput="MarkDirty">
@@ -172,11 +194,15 @@
                                 </div>
                             </div>
 
-                            <div class="tf-prod-form-group" style="margin-top: 8px;">
-                                <label class="tf-prod-checkbox-label">
-                                    <InputCheckbox @bind-Value="_model.IsTaxReductionEligible" @oninput="MarkDirty" />
-                                    <span>Đủ điều kiện giảm thuế GTGT (10% ➔ 8% theo Nghị quyết Quốc hội đến 31/12/2026)</span>
+                            <div class="tf-prod-status-card tf-prod-tax-card" @onclick="ToggleTaxReduction">
+                                <label class="tf-prod-toggle-wrap" for="prod-tax-reduction" @onclick:stopPropagation="true">
+                                    <InputCheckbox @bind-Value="_model.IsTaxReductionEligible" id="prod-tax-reduction" @oninput="MarkDirty" class="tf-prod-toggle-input" />
+                                    <span class="tf-prod-toggle-slider"></span>
                                 </label>
+                                <div class="tf-prod-status-text">
+                                    <label for="prod-tax-reduction" class="tf-prod-status-label" style="cursor: pointer; margin: 0;">@(_model.IsTaxReductionEligible ? "Đủ điều kiện giảm thuế GTGT (10% ➔ 8%)" : "Áp dụng mức thuế GTGT thông thường")</label>
+                                    <div class="tf-prod-status-desc">Hưởng chính sách giảm thuế giá trị gia tăng từ 10% xuống 8% theo Nghị quyết của Quốc hội và Nghị định Chính phủ đến ngày 31/12/2026.</div>
+                                </div>
                             </div>
                         </div>
 
@@ -184,17 +210,17 @@
                         <div class="tf-prod-section">
                             <div class="tf-prod-section-title">
                                 <span class="tf-prod-section-num">3</span>
-                                <span>Mô tả & Quy cách kỹ thuật</span>
+                                <span>Mô tả &amp; Quy cách kỹ thuật</span>
                             </div>
 
-                            <div class="tf-prod-grid-2">
+                            <div class="tf-prod-row-2">
                                 <div class="tf-prod-form-group">
                                     <label class="tf-prod-label">Mô tả sản phẩm</label>
-                                    <InputTextArea @bind-Value="_model.Description" class="tf-prod-textarea" rows="2" placeholder="Ghi chú chi tiết về dòng sản phẩm..." @oninput="MarkDirty" />
+                                    <InputTextArea @bind-Value="_model.Description" class="tf-prod-textarea" rows="3" placeholder="Ghi chú chi tiết về dòng sản phẩm..." @oninput="MarkDirty" />
                                 </div>
                                 <div class="tf-prod-form-group">
                                     <label class="tf-prod-label">Thông số kỹ thuật / Quy cách</label>
-                                    <InputTextArea @bind-Value="_model.Specifications" class="tf-prod-textarea" rows="2" placeholder="Kích thước, trọng lượng, tiêu chuẩn..." @oninput="MarkDirty" />
+                                    <InputTextArea @bind-Value="_model.Specifications" class="tf-prod-textarea" rows="3" placeholder="Kích thước, trọng lượng, tiêu chuẩn..." @oninput="MarkDirty" />
                                 </div>
                             </div>
                         </div>
@@ -216,7 +242,7 @@
                                             {
                                                 <span class="tf-prod-primary-badge">Ảnh chính</span>
                                             }
-                                            <img src="@FileStorage.GetPublicUrl(img.StorageReference)" alt="@img.FileName" class="tf-prod-image-thumb" />
+                                            <img src="@FileStorage.GetPublicUrl(img.StorageReference)" alt="@img.FileName" class="tf-prod-image-thumb" @onclick="() => OpenImagePreview(FileStorage.GetPublicUrl(img.StorageReference), img.FileName)" title="Nhấp để xem ảnh đầy đủ" style="cursor: zoom-in;" />
                                             <div class="tf-prod-image-name" title="@img.FileName">@img.FileName</div>
                                             <div class="tf-prod-image-actions">
                                                 @if (!img.IsPrimary)
@@ -264,10 +290,10 @@
 
             @* Footer *@
             <div class="tf-prod-modal-footer">
-                <button type="button" class="tf-prod-btn tf-prod-btn-secondary" @onclick="HandleRequestClose" disabled="@_isSubmitting">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="HandleRequestClose" disabled="@_isSubmitting">
                     Hủy bỏ
                 </button>
-                <button type="button" class="tf-prod-btn tf-prod-btn-primary" @onclick="HandleValidSubmit" disabled="@(_isSubmitting || _isLoading)">
+                <button type="button" class="tf-btn tf-btn-primary" @onclick="HandleValidSubmit" disabled="@(_isSubmitting || _isLoading)">
                     @if (_isSubmitting)
                     {
                         <span class="tf-prod-btn-spinner"></span>
@@ -298,8 +324,8 @@
                         </div>
                         <p class="tf-prod-confirm-desc">Bạn có các thay đổi chưa được lưu trong form sản phẩm này. Bạn có chắc muốn đóng và hủy thay đổi?</p>
                         <div class="tf-prod-confirm-actions">
-                            <button type="button" class="tf-prod-btn tf-prod-btn-secondary" @onclick="() => _showDirtyConfirm = false">Tiếp tục nhập</button>
-                            <button type="button" class="tf-prod-btn tf-prod-btn-danger" @onclick="ConfirmDiscardAndClose">Bỏ thay đổi</button>
+                            <button type="button" class="tf-prod-btn tf-prod-btn-secondary tf-btn tf-btn-secondary" @onclick="() => _showDirtyConfirm = false">Tiếp tục nhập</button>
+                            <button type="button" class="tf-prod-btn tf-prod-btn-danger tf-btn tf-btn-danger" @onclick="ConfirmDiscardAndClose">Bỏ thay đổi</button>
                         </div>
                     </div>
                 </div>
@@ -311,12 +337,71 @@
 @* Quick Category Add Modal Embedded *@
 <CategoryFormModal @bind-IsOpen="_showAddCategoryModal" OnSaved="HandleQuickCategorySaved" />
 
+@* Fullscreen Image Preview Lightbox Modal *@
+@if (!string.IsNullOrEmpty(_previewImageUrl))
+{
+    <div class="tf-img-lightbox-backdrop" style="z-index: 2200;" @onclick="CloseImagePreview">
+        <div class="tf-img-lightbox-dialog" @onclick:stopPropagation="true">
+            <div class="tf-img-lightbox-header">
+                <div class="tf-img-lightbox-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    <span>@(_previewImageTitle ?? "Chi tiết ảnh sản phẩm")</span>
+                </div>
+                <button type="button" class="tf-modal-btn-close" @onclick="CloseImagePreview" aria-label="Đóng">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="tf-img-lightbox-body">
+                <img src="@_previewImageUrl" alt="@_previewImageTitle" />
+            </div>
+            <div class="tf-img-lightbox-footer">
+                <a href="@_previewImageUrl" target="_blank" rel="noopener noreferrer" class="tf-btn tf-btn-outline-secondary tf-btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/>
+                        <line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                    <span>Mở tab mới</span>
+                </a>
+                <button type="button" class="tf-btn tf-btn-primary tf-btn-sm" @onclick="CloseImagePreview">
+                    Đóng
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
     [Parameter] public int? ProductId { get; set; }
     [Parameter] public EventCallback<Product> OnSaved { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
+
+    private string? _previewImageUrl;
+    private string? _previewImageTitle;
+
+    private void OpenImagePreview(string? url, string? title)
+    {
+        if (!string.IsNullOrEmpty(url))
+        {
+            _previewImageUrl = url;
+            _previewImageTitle = title;
+        }
+    }
+
+    private void CloseImagePreview()
+    {
+        _previewImageUrl = null;
+        _previewImageTitle = null;
+    }
 
     private bool IsEdit => ProductId.HasValue && ProductId.Value > 0;
     private Product? _model;
@@ -426,6 +511,25 @@
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    
+    private void ToggleActive()
+    {
+        if (_model != null)
+        {
+            _model.IsActive = !_model.IsActive;
+            MarkDirty();
+        }
+    }
+
+    private void ToggleTaxReduction()
+    {
+        if (_model != null)
+        {
+            _model.IsTaxReductionEligible = !_model.IsTaxReductionEligible;
+            MarkDirty();
         }
     }
 

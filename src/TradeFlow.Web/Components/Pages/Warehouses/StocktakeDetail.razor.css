@@ -61,11 +61,44 @@
     background: rgba(255, 255, 255, 0.15);
 }
 
-[data-theme="dark"] .tw-bg-white,
-[data-bs-theme="dark"] .tw-bg-white {
+[data-theme="dark"] .tw-bg-white:not(.stocktake-print-sheet):not(.tf-document-paper),
+[data-bs-theme="dark"] .tw-bg-white:not(.stocktake-print-sheet):not(.tf-document-paper) {
     background-color: #1e222b !important;
     border-color: #383e4b !important;
     color: #f1f5f9 !important;
+}
+
+/* Document Paper Strict Isolation - Always Pure White A4 Document */
+.stocktake-print-sheet,
+[data-theme="dark"] .stocktake-print-sheet,
+[data-bs-theme="dark"] .stocktake-print-sheet {
+    background-color: #ffffff !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+}
+
+.stocktake-print-sheet *,
+[data-theme="dark"] .stocktake-print-sheet *,
+[data-bs-theme="dark"] .stocktake-print-sheet * {
+    color-scheme: light !important;
+}
+
+.stocktake-print-sheet table,
+[data-theme="dark"] .stocktake-print-sheet table,
+[data-bs-theme="dark"] .stocktake-print-sheet table {
+    background-color: transparent !important;
+    color: #0f172a !important;
+}
+
+.stocktake-print-sheet th,
+.stocktake-print-sheet td,
+[data-theme="dark"] .stocktake-print-sheet th,
+[data-theme="dark"] .stocktake-print-sheet td,
+[data-bs-theme="dark"] .stocktake-print-sheet th,
+[data-bs-theme="dark"] .stocktake-print-sheet td {
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
 }
 
 [data-theme="dark"] .tw-text-slate-900,

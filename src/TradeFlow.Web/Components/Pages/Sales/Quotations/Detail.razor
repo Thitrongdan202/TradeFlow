@@ -121,7 +121,7 @@ else
                 </a>
             }
 
-            <a href="/api/quotations/@Id/export-pdf" target="_blank" class="tf-btn tf-btn-outline-secondary" title="Tải xuống tệp PDF">
+            <a href="/api/quotations/@Id/export-pdf" download class="tf-btn tf-btn-outline-secondary" title="Tải xuống tệp PDF">
                 Xuất PDF
             </a>
             <button type="button" class="tf-btn tf-btn-outline-secondary" @onclick="PrintQuotation" title="In trực tiếp tài liệu">
@@ -620,7 +620,7 @@ else
 
     private async Task PrintQuotation()
     {
-        await JS.InvokeVoidAsync("window.print");
+        await JS.InvokeVoidAsync("tradeflow.printDocument", "print-quotation-area", $"Bao_Gia_{_quotation?.Code ?? "Quotation"}");
     }
 
     private RenderFragment GetStatusBadge(QuotationStatus status, string? salesOrderCode) => __builder =>

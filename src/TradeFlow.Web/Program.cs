@@ -170,7 +170,10 @@ app.MapGet("/api/contracts/{id:int}/export-pdf", async (int id, IContractService
     var contract = await contractService.GetContractByIdAsync(id);
     if (contract == null) return Results.NotFound();
     var bytes = await contractService.GenerateContractPdfAsync(id);
-    return Results.File(bytes, "application/pdf", $"HopDong_{contract.ContractNumber}.pdf");
+    var rawNumber = string.IsNullOrWhiteSpace(contract.ContractNumber) ? $"HD-{id}" : contract.ContractNumber.Trim();
+    var safeCode = string.Concat(rawNumber.Split(System.IO.Path.GetInvalidFileNameChars())).Replace(" ", "_");
+    var fileName = $"Hop_dong_{safeCode}.pdf";
+    return Results.File(bytes, "application/pdf", fileName);
 }).RequireAuthorization("Permission:Contracts:View");
 
 app.MapGet("/api/contracts/employment/{id:int}/export-pdf", async (int id, IEmploymentContractService employmentContractService) =>
@@ -178,8 +181,41 @@ app.MapGet("/api/contracts/employment/{id:int}/export-pdf", async (int id, IEmpl
     var contract = await employmentContractService.GetContractByIdAsync(id, canViewSensitiveData: true);
     if (contract == null) return Results.NotFound();
     var bytes = await employmentContractService.GeneratePdfAsync(id);
-    return Results.File(bytes, "application/pdf", $"HDLD_{contract.ContractNumber}.pdf");
+    var rawNumber = string.IsNullOrWhiteSpace(contract.ContractNumber) ? $"HDLD-{id}" : contract.ContractNumber.Trim();
+    var safeCode = string.Concat(rawNumber.Split(System.IO.Path.GetInvalidFileNameChars())).Replace(" ", "_");
+    var fileName = $"Hop_dong_lao_dong_{safeCode}.pdf";
+    return Results.File(bytes, "application/pdf", fileName);
 }).RequireAuthorization("Permission:EmploymentContracts:View");
+
+app.MapGet("/api/contracts/templates/{code}/export-pdf", async (string code, IContractService contractService, IEmploymentContractService empService) =>
+{
+    var safeCode = string.Concat(code.Split(System.IO.Path.GetInvalidFileNameChars())).Replace(" ", "_");
+    if (code.Equals("LABOR_CONTRACT", StringComparison.OrdinalIgnoreCase) || code.StartsWith("LABOR_", StringComparison.OrdinalIgnoreCase))
+    {
+        var empContracts = await empService.GetContractsAsync(new TradeFlow.Application.Common.Models.Contracts.EmploymentContractFilterDto());
+        if (empContracts.Any())
+        {
+            var bytes = await empService.GeneratePdfAsync(empContracts.First().Id);
+            return Results.File(bytes, "application/pdf", $"Mau_hop_dong_lao_dong_{safeCode}.pdf");
+        }
+    }
+    else
+    {
+        var contracts = await contractService.GetContractsAsync(new TradeFlow.Application.Common.Models.Contracts.ContractFilterDto { TemplateCode = code });
+        if (contracts.Any())
+        {
+            var bytes = await contractService.GenerateContractPdfAsync(contracts.First().Id);
+            return Results.File(bytes, "application/pdf", $"Mau_hop_dong_{safeCode}.pdf");
+        }
+        var allContracts = await contractService.GetContractsAsync(null);
+        if (allContracts.Any())
+        {
+            var bytes = await contractService.GenerateContractPdfAsync(allContracts.First().Id);
+            return Results.File(bytes, "application/pdf", $"Mau_hop_dong_{safeCode}.pdf");
+        }
+    }
+    return Results.NotFound();
+}).RequireAuthorization("Permission:Contracts:View");
 
 app.MapGet("/api/warehouses/vouchers/{id:int}/export-pdf", async (int id, IWarehouseService warehouseService) =>
 {

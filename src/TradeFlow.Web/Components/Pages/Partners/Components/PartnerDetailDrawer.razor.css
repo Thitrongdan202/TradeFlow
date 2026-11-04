@@ -831,3 +831,46 @@
     color: #94a3b8;
 }
 
+
+
+/* Audit Log Dark Mode Contrast */
+[data-bs-theme="dark"] .tf-drawer-audit-box::before,
+[data-theme="dark"] .tf-drawer-audit-box::before {
+    background: #334155 !important;
+}
+
+[data-bs-theme="dark"] .tf-audit-marker,
+[data-theme="dark"] .tf-audit-marker {
+    background: #1e293b !important;
+}
+
+[data-bs-theme="dark"] .tf-audit-title,
+[data-theme="dark"] .tf-audit-title {
+    color: #f8fafc !important;
+}
+
+[data-bs-theme="dark"] .tf-audit-time,
+[data-theme="dark"] .tf-audit-time {
+    color: #94a3b8 !important;
+}
+
+[data-bs-theme="dark"] .tf-audit-user,
+[data-theme="dark"] .tf-audit-user {
+    color: #cbd5e1 !important;
+}
+
+[data-bs-theme="dark"] .tf-audit-user strong,
+[data-theme="dark"] .tf-audit-user strong {
+    color: #f1f5f9 !important;
+}
+
+[data-bs-theme="dark"] .tf-audit-desc,
+[data-theme="dark"] .tf-audit-desc {
+    color: #94a3b8 !important;
+}
+
+[data-bs-theme="dark"] .tf-drawer-footer,
+[data-theme="dark"] .tf-drawer-footer {
+    background: #1a1d24 !important;
+    border-color: #2e3542 !important;
+}

@@ -1,14 +1,17 @@
 @namespace TradeFlow.Web.Components.Shared.Forms
 @using System.Globalization
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <div class="tf-date-input-container @Class" style="position: relative; width: 100%;">
-    <div class="tf-date-input-wrap" style="position: relative; display: flex; align-items: center; width: 100%;">
+    <div id="@_wrapId" class="tf-date-input-wrap" style="position: relative; display: flex; align-items: center; width: 100%;">
         <input type="text"
                id="@Id"
                class="tf-input tf-date-field @(_hasError ? "is-invalid" : "")"
-               style="padding-right: 36px; width: 100%;"
+               style="padding-right: 36px; width: 100%; cursor: pointer;"
                placeholder="@Placeholder"
                value="@_displayString"
+               @onclick="HandleInputClick"
                @onchange="HandleChange"
                @onblur="HandleBlur"
                @onkeydown="HandleKeyDown"
@@ -34,7 +37,7 @@
 
     @if (_isCalendarOpen)
     {
-        <div class="tf-date-picker-popup" @onclick:stopPropagation="true">
+        <div id="@_popupId" class="tf-date-picker-popup" @onclick:stopPropagation="true">
             <div class="tf-calendar-nav">
                 <button type="button" class="tf-calendar-nav-btn" @onclick="PrevMonth" title="Tháng trước">&lt;</button>
                 <div class="tf-calendar-selectors">
@@ -71,9 +74,9 @@
             </div>
 
             <div class="tf-calendar-footer">
-                <button type="button" class="tf-btn-link tf-btn-sm" @onclick="SelectToday">Hôm nay</button>
-                <button type="button" class="tf-btn-link tf-btn-sm" style="color: var(--tf-text-muted);" @onclick="ClearDate">Xóa</button>
-                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" @onclick="CloseCalendar">Đóng</button>
+                <button type="button" class="tf-calendar-action-btn tf-calendar-action-today" @onclick="SelectToday">Hôm nay</button>
+                <button type="button" class="tf-calendar-action-btn tf-calendar-action-clear" @onclick="ClearDate">Xóa</button>
+                <button type="button" class="tf-calendar-action-btn tf-calendar-action-close" @onclick="CloseCalendar">Đóng</button>
             </div>
         </div>
     }
@@ -98,6 +101,11 @@
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public DateTime? MinDate { get; set; }
     [Parameter] public DateTime? MaxDate { get; set; }
+
+    private readonly string _wrapId = "tf_date_wrap_" + Guid.NewGuid().ToString("N");
+    private readonly string _popupId = "tf_date_pop_" + Guid.NewGuid().ToString("N");
+    private DotNetObjectReference<TfDateInput>? _dotNetRef;
+    private bool _shouldCallOpenJs = false;
 
     private string _displayString = string.Empty;
     private bool _isCalendarOpen = false;
@@ -125,9 +133,32 @@
         }
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_shouldCallOpenJs && _isCalendarOpen)
+        {
+            _shouldCallOpenJs = false;
+            try
+            {
+                _dotNetRef ??= DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync("window.tradeflow.openDatePicker", _wrapId, _popupId, _dotNetRef);
+            }
+            catch { }
+        }
+    }
+
     private void HandleInput(ChangeEventArgs e)
     {
         _displayString = e.Value?.ToString() ?? string.Empty;
+    }
+
+    private void HandleInputClick()
+    {
+        if (Disabled) return;
+        if (!_isCalendarOpen)
+        {
+            ToggleCalendar();
+        }
     }
 
     private async Task HandleChange(ChangeEventArgs e)
@@ -206,6 +237,7 @@
         _isCalendarOpen = !_isCalendarOpen;
         if (_isCalendarOpen)
         {
+            _shouldCallOpenJs = true;
             if (Value.HasValue)
             {
                 _viewYear = Value.Value.Year;
@@ -217,11 +249,34 @@
                 _viewMonth = DateTime.Today.Month;
             }
         }
+        else
+        {
+            CloseCalendar();
+        }
     }
 
     private void CloseCalendar()
     {
         _isCalendarOpen = false;
+        _shouldCallOpenJs = false;
+        _ = CloseJsAsync();
+    }
+
+    private async Task CloseJsAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("window.tradeflow.closeDatePicker", _popupId);
+        }
+        catch { }
+    }
+
+    [JSInvokable]
+    public void CloseFromJs()
+    {
+        _isCalendarOpen = false;
+        _shouldCallOpenJs = false;
+        StateHasChanged();
     }
 
     private void PrevMonth()
@@ -275,7 +330,7 @@
         _displayString = cleanDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
         _viewYear = cleanDate.Year;
         _viewMonth = cleanDate.Month;
-        _isCalendarOpen = false;
+        CloseCalendar();
         await ValueChanged.InvokeAsync(cleanDate);
     }
 
@@ -290,7 +345,7 @@
         _errorMessage = null;
         Value = null;
         _displayString = string.Empty;
-        _isCalendarOpen = false;
+        CloseCalendar();
         await ValueChanged.InvokeAsync(null);
     }
 
@@ -352,6 +407,16 @@
         }
 
         return days;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("window.tradeflow.closeDatePicker", _popupId);
+        }
+        catch { }
+        _dotNetRef?.Dispose();
     }
 
     private class CalendarDay

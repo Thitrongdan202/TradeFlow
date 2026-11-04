@@ -30,8 +30,8 @@
                         <span class="tf-wh-modal-subtitle">@(IsEdit ? $"Cập nhật địa điểm lưu kho #{_displaySystemCode}" : "Khai báo địa điểm lưu trữ, quản lý tồn kho và thông tin thủ kho")</span>
                     </div>
                 </div>
-                <button type="button" class="tf-wh-modal-close" @onclick="HandleRequestClose" title="Đóng (Esc)">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <button type="button" class="tf-modal-close-btn" @onclick="HandleRequestClose" aria-label="Đóng (Esc)" title="Đóng (Esc)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
                         <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
@@ -156,13 +156,13 @@
                                     <InputTextArea @bind-Value="_model.Notes" class="tf-wh-textarea" rows="2" placeholder="Diện tích kho, điều kiện bảo quản, tải trọng xe ra vào..." @oninput="MarkDirty" />
                                 </div>
 
-                                <div class="tf-wh-status-card">
-                                    <label class="tf-wh-toggle-wrap">
-                                        <InputCheckbox @bind-Value="_model.IsActive" @oninput="MarkDirty" class="tf-wh-toggle-input" />
+                                <div class="tf-wh-status-card" @onclick="ToggleActive">
+                                    <label class="tf-wh-toggle-wrap" for="wh-is-active" @onclick:stopPropagation="true">
+                                        <InputCheckbox @bind-Value="_model.IsActive" id="wh-is-active" @oninput="MarkDirty" class="tf-wh-toggle-input" />
                                         <span class="tf-wh-toggle-slider"></span>
                                     </label>
                                     <div class="tf-wh-status-text">
-                                        <div class="tf-wh-status-label">@(_model.IsActive ? "Đang mở kho hoạt động" : "Tạm dừng hoạt động kho")</div>
+                                        <label for="wh-is-active" class="tf-wh-status-label" style="cursor: pointer; margin: 0;">@(_model.IsActive ? "Đang mở kho hoạt động" : "Tạm dừng hoạt động kho")</label>
                                         <div class="tf-wh-status-desc">@(_model.IsActive ? "Cho phép nhập xuất chuyển kho và xuất hiện trong báo cáo tồn kho tức thời." : "Kho tạm khóa các giao dịch xuất nhập mới.")</div>
                                     </div>
                                 </div>
@@ -174,10 +174,10 @@
 
             @* Footer *@
             <div class="tf-wh-modal-footer">
-                <button type="button" class="tf-wh-btn tf-wh-btn-secondary" @onclick="HandleRequestClose" disabled="@_isSubmitting">
+                <button type="button" class="tf-btn tf-btn-secondary" @onclick="HandleRequestClose" disabled="@_isSubmitting">
                     Hủy bỏ
                 </button>
-                <button type="button" class="tf-wh-btn tf-wh-btn-primary" @onclick="HandleValidSubmit" disabled="@(_isSubmitting || _isLoading)">
+                <button type="button" class="tf-btn tf-btn-primary" @onclick="HandleValidSubmit" disabled="@(_isSubmitting || _isLoading)">
                     @if (_isSubmitting)
                     {
                         <span class="tf-wh-btn-spinner"></span>
@@ -208,8 +208,8 @@
                         </div>
                         <p class="tf-wh-confirm-desc">Bạn có các thay đổi chưa được lưu trong thông tin kho hàng. Bạn có chắc muốn đóng và hủy thay đổi?</p>
                         <div class="tf-wh-confirm-actions">
-                            <button type="button" class="tf-wh-btn tf-wh-btn-secondary" @onclick="() => _showDirtyConfirm = false">Tiếp tục nhập</button>
-                            <button type="button" class="tf-wh-btn tf-wh-btn-danger" @onclick="ConfirmDiscardAndClose">Bỏ thay đổi</button>
+                            <button type="button" class="tf-wh-btn tf-wh-btn-secondary tf-btn tf-btn-secondary" @onclick="() => _showDirtyConfirm = false">Tiếp tục nhập</button>
+                            <button type="button" class="tf-wh-btn tf-wh-btn-danger tf-btn tf-btn-danger" @onclick="ConfirmDiscardAndClose">Bỏ thay đổi</button>
                         </div>
                     </div>
                 </div>
@@ -305,6 +305,16 @@
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    
+    private void ToggleActive()
+    {
+        if (_model != null)
+        {
+            _model.IsActive = !_model.IsActive;
+            MarkDirty();
         }
     }
 

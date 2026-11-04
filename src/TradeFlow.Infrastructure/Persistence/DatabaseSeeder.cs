@@ -1008,206 +1008,255 @@ public class DatabaseSeeder
             await _context.SaveChangesAsync();
         }
 
-        // 2. Mẫu hợp đồng chuẩn
-        if (!await _context.ContractTemplates.AnyAsync())
+        // 2. Mẫu hợp đồng chuẩn hóa theo pháp luật Việt Nam (BLDS 2015, LTM 2005, Luật BVQLNTD 2023, BLLĐ 2026)
+        var templates = new List<ContractTemplate>
         {
-            var templates = new List<ContractTemplate>
+            new ContractTemplate
             {
-                new ContractTemplate
+                Code = "B2B_SALE",
+                Title = "Hợp đồng mua bán thiết bị vệ sinh (B2B)",
+                Category = "Mua bán thương mại",
+                Description = "Hợp đồng cung cấp thiết bị vệ sinh cao cấp số lượng lớn cho chủ đầu tư, tổng thầu xây dựng hoặc đại lý ủy quyền.",
+                TypicalUseCase = "Dành cho giao dịch mua bán hàng hóa giữa hai pháp nhân doanh nghiệp, có giá trị đơn hàng lớn.",
+                TargetPartyType = ContractPartyBType.Company,
+                RequiredInfo = "Mã số thuế, Giấy phép ĐKKD, Đại diện pháp luật, Địa chỉ nhận hàng, Danh mục hàng hóa và tiến độ thanh toán",
+                Icon = "building",
+                Version = "2026.1",
+                DisplayOrder = 1,
+                IsActive = true,
+                LegalBasis = "Căn cứ Bộ luật Dân sự số 91/2015/QH13; Căn cứ Luật Thương mại số 36/2005/QH11 (Điều 24, Điều 301 về mức phạt vi phạm không quá 8% giá trị nghĩa vụ bị vi phạm; Điều 302-305 về bồi thường thiệt hại; Điều 306 về lãi chậm trả); Căn cứ Luật Giao dịch điện tử số 20/2023/QH15.",
+                KnownLimitations = "Mức phạt vi phạm nghĩa vụ hợp đồng tối đa 8% tính trên GIÁ TRỊ PHẦN NGHĨA VỤ BỊ VI PHẠM theo Điều 301 Luật Thương mại 2005 đối với quan hệ thương mại giữa các thương nhân.",
+                IsReviewedByLegal = true,
+                DefaultClausesJson = JsonSerializer.Serialize(new[]
                 {
-                    Code = "B2B_SALE",
-                    Title = "Hợp đồng mua bán thiết bị vệ sinh (B2B)",
-                    Category = "Mua bán thương mại",
-                    Description = "Hợp đồng cung cấp thiết bị vệ sinh cao cấp số lượng lớn cho chủ đầu tư, tổng thầu xây dựng hoặc đại lý ủy quyền.",
-                    TypicalUseCase = "Dành cho giao dịch mua bán hàng hóa giữa hai pháp nhân doanh nghiệp, có giá trị đơn hàng lớn.",
-                    TargetPartyType = ContractPartyBType.Company,
-                    RequiredInfo = "Mã số thuế, Giấy phép ĐKKD, Đại diện pháp luật, Địa chỉ nhận hàng, Danh mục hàng hóa & tiến độ thanh toán",
-                    Icon = "building",
-                    Version = "1.0",
-                    DisplayOrder = 1,
-                    IsActive = true,
-                    LegalBasis = "Căn cứ Bộ luật Dân sự số 91/2015/QH13; Căn cứ Luật Thương mại số 36/2005/QH11 (Điều 24, Điều 301 về mức phạt vi phạm không quá 8% giá trị nghĩa vụ); Căn cứ Luật Giao dịch điện tử số 20/2023/QH15.",
-                    KnownLimitations = "Mức phạt vi phạm nghĩa vụ hợp đồng tối đa 8% theo Điều 301 Luật Thương mại 2005 đối với quan hệ thương mại giữa các thương nhân.",
-                    IsReviewedByLegal = true,
-                    DefaultClausesJson = JsonSerializer.Serialize(new[]
-                    {
-                        new { ClauseNumber = "Điều 1", Title = "Đối tượng hợp đồng và Danh mục hàng hóa", Content = "Bên A đồng ý bán và Bên B đồng ý mua các thiết bị vệ sinh, phụ kiện và vật tư cao cấp theo danh mục, chủng loại, số lượng, quy cách và đơn giá chi tiết tại Bảng kê hàng hóa đính kèm Hợp đồng này." },
-                        new { ClauseNumber = "Điều 2", Title = "Giá trị hợp đồng và Phương thức thanh toán", Content = "Giá trị hợp đồng đã bao gồm thuế GTGT (VAT), chi phí đóng gói, bảo hiểm vận chuyển đến chân công trình. Thanh toán chia làm 03 đợt: Đợt 1 đặt cọc 30% ngay sau khi ký; Đợt 2 thanh toán 50% trước khi giao hàng; Đợt 3 thanh toán 20% còn lại trong vòng 07 ngày sau khi nghiệm thu." },
-                        new { ClauseNumber = "Điều 3", Title = "Thời gian, địa điểm và Quy cách giao nhận", Content = "Bên A giao hàng trong vòng 07-15 ngày làm việc kể từ ngày nhận đủ tiền đợt 1. Địa điểm giao hàng tại công trình hoặc kho của Bên B. Hai bên ký Biên bản giao nhận và phiếu kiểm định chất lượng." },
-                        new { ClauseNumber = "Điều 4", Title = "Tiêu chuẩn chất lượng và Xuất xứ hàng hóa", Content = "Hàng hóa do Bên A cung cấp là hàng mới 100%, chính hãng LACASA, đạt tiêu chuẩn chất lượng TCVN và có đầy đủ CO/CQ từ nhà sản xuất." },
-                        new { ClauseNumber = "Điều 5", Title = "Trách nhiệm và Bảo hành thiết bị", Content = "Bên A bảo hành 10 năm cho phần men sứ và 03 năm cho linh kiện phụ trợ. Mọi hư hỏng do lỗi sản xuất sẽ được đổi mới miễn phí trong vòng 48 giờ." },
-                        new { ClauseNumber = "Điều 6", Title = "Phạt vi phạm và Bồi thường thiệt hại", Content = "Bên nào vi phạm nghĩa vụ hợp đồng sẽ phải chịu phạt vi phạm với mức 8% giá trị phần nghĩa vụ bị vi phạm theo đúng quy định tại Điều 301 Luật Thương mại 2005 và bồi thường thiệt hại thực tế phát sinh." },
-                        new { ClauseNumber = "Điều 7", Title = "Giải quyết tranh chấp và Điều khoản thi hành", Content = "Mọi tranh chấp phát sinh sẽ được ưu tiên giải quyết thông qua thương lượng, hòa giải. Trường hợp không hòa giải được sẽ đưa ra Tòa án nhân dân có thẩm quyền nơi Bên A đặt trụ sở chính hoặc nơi thực hiện hợp đồng để giải quyết." }
-                    }),
-                    CreatedAt = now,
-                    CreatedBy = "System"
-                },
-                new ContractTemplate
+                    new { ClauseNumber = "Điều 1", Title = "Đối tượng và phạm vi hợp đồng", Content = "1.1. Bên A đồng ý bán và Bên B đồng ý mua các thiết bị vệ sinh, phụ kiện và vật tư chuyên ngành cao cấp thương hiệu LACASA (bao gồm bồn cầu thông minh, bồn cầu liền khối men Nano kháng khuẩn, sen cây nhiệt độ, chậu lavabo, phụ kiện đồng bộ) theo danh mục, chủng loại, số lượng, quy cách và đơn giá chi tiết tại Bảng kê hàng hóa đính kèm Hợp đồng này.\n1.2. Hàng hóa cung cấp đi kèm tài liệu kỹ thuật, phiếu bảo hành chính hãng và các chứng từ xuất xưởng (CO/CQ)." },
+                    new { ClauseNumber = "Điều 2", Title = "Chất lượng và tiêu chuẩn hàng hóa", Content = "2.1. Hàng hóa do Bên A cung cấp là hàng mới 100%, xuất xưởng chính hãng, đạt tiêu chuẩn chất lượng TCVN và quy chuẩn kỹ thuật nhà sản xuất. Bề mặt men sứ phủ Nano nung kháng khuẩn, chống bám bẩn; linh kiện van xả và sen vòi bằng đồng mạ Crom-Niken đa lớp chống ăn mòn.\n2.2. Quy cách đóng gói: Hàng hóa được đóng thùng carton chuyên dụng nguyên đai nguyên kiện, có chèn mút xốp định hình bảo vệ chống va đập.\n2.3. Hàng hóa lỗi: Trường hợp phát hiện lỗi kỹ thuật sản xuất hoặc nứt vỡ trong quá trình vận chuyển của Bên A, Bên A có trách nhiệm đổi mới 100% trong vòng 48 giờ làm việc kể từ thời điểm nhận thông báo." },
+                    new { ClauseNumber = "Điều 3", Title = "Giá trị hợp đồng và thuế", Content = "3.1. Tổng giá trị hợp đồng đã bao gồm tiền hàng, thuế GTGT (VAT) theo tỷ lệ luật định, chi phí đóng gói tiêu chuẩn và chi phí vận chuyển, bốc xếp đến chân công trình hoặc kho Bên B theo thỏa thuận.\n3.2. Đơn giá hàng hóa là đơn giá cố định trong suốt thời hạn thực hiện Hợp đồng, không thay đổi trừ trường hợp hai bên có thỏa thuận điều chỉnh bằng văn bản phụ lục hợp đồng.\n3.3. Tổng số tiền thanh toán bằng số và bằng chữ được xác định chính xác theo Bảng kê danh mục hàng hóa đính kèm." },
+                    new { ClauseNumber = "Điều 4", Title = "Phương thức và thời hạn thanh toán", Content = "4.1. Phương thức thanh toán: Chuyển khoản vào tài khoản ngân hàng chính thức của Bên A được ghi nhận tại phần thông tin các bên trong Hợp đồng này.\n4.2. Tiến độ thanh toán chia làm 03 đợt: Đợt 1 (Đặt cọc giữ hàng/sản xuất): 30% giá trị hợp đồng trong vòng 03 ngày làm việc sau khi ký kết; Đợt 2: 50% giá trị hợp đồng trước khi Bên A xuất hàng tập kết đến chân công trình; Đợt 3: 20% còn lại trong vòng 07 ngày làm việc sau khi hai bên hoàn thành giao nhận và ký Biên bản bàn giao.\n4.3. Xử lý chậm thanh toán: Trường hợp Bên B chậm thanh toán, Bên B phải trả tiền lãi trên số tiền chậm trả theo quy định tại Điều 306 Luật Thương mại 2005 căn cứ mức lãi suất nợ quá hạn trung bình trên thị trường tại thời điểm thanh toán tương ứng với thời gian chậm trả." },
+                    new { ClauseNumber = "Điều 5", Title = "Giao nhận hàng hóa và chuyển giao rủi ro", Content = "5.1. Địa điểm giao hàng: Tại chân công trình hoặc kho của Bên B theo địa chỉ đã xác định trong Hợp đồng.\n5.2. Thời gian giao hàng: Trong vòng 07 - 15 ngày làm việc kể từ ngày Bên A nhận đủ tiền thanh toán Đợt 1. Bên A thông báo cho Bên B trước tối thiểu 24 giờ về thời điểm xe giao hàng cập bến.\n5.3. Người nhận hàng: Đại diện theo pháp luật của Bên B hoặc người được ủy quyền hợp pháp bằng văn bản/giấy giới thiệu có trách nhiệm tiếp nhận và ký Biên bản giao nhận.\n5.4. Chuyển giao rủi ro: Rủi ro về mất mát, hư hỏng hàng hóa được chuyển giao từ Bên A sang Bên B kể từ thời điểm Bên B ký Biên bản bàn giao nhận hàng tại địa điểm giao hàng đã thỏa thuận." },
+                    new { ClauseNumber = "Điều 6", Title = "Lắp đặt, hướng dẫn kỹ thuật và nghiệm thu", Content = "6.1. Trường hợp hợp đồng bao gồm dịch vụ lắp đặt, Bên A bố trí đội ngũ kỹ thuật viên có chứng chỉ chuyên môn thực hiện lắp đặt đúng yêu cầu kỹ thuật và tiêu chuẩn an toàn cấp thoát nước TCVN 4513:1988.\n6.2. Sau khi lắp đặt hoàn thiện, hai bên tiến hành xả thử nước, kiểm tra độ kín nước và vận hành hệ thống trước khi ký Biên bản nghiệm thu kỹ thuật đưa vào sử dụng.\n6.3. Trường hợp Bên B tự tổ chức lắp đặt, Bên A cung cấp đầy đủ sơ đồ bản vẽ lắp đặt, tư vấn kỹ thuật và bàn giao biên bản giao nhận nguyên trạng." },
+                    new { ClauseNumber = "Điều 7", Title = "Chính sách bảo hành và hỗ trợ kỹ thuật", Content = "7.1. Thời hạn bảo hành: Bảo hành chính hãng 10 năm đối với phần thân men sứ vệ sinh; bảo hành 03 năm đối với linh kiện phụ trợ van xả, nắp điện tử và sen vòi nóng lạnh kể từ ngày bàn giao.\n7.2. Phạm vi và điều kiện bảo hành: Bảo hành miễn phí các hư hỏng, rò rỉ hoặc lỗi men sứ do lỗi kỹ thuật của nhà sản xuất. Không bảo hành các trường hợp hư hại do va đập ngoại lực sau khi nhận hàng, sử dụng nguồn nước nhiễm phèn axit nặng vượt tiêu chuẩn hoặc tẩy rửa bằng hóa chất công nghiệp không đúng khuyến cáo.\n7.3. Thời gian xử lý: Bên A có mặt kiểm tra và xử lý trong vòng 24 giờ đối với khu vực nội thành và 48 giờ đối với khu vực ngoại tỉnh kể từ khi tiếp nhận thông tin bảo hành." },
+                    new { ClauseNumber = "Điều 8", Title = "Quyền và nghĩa vụ của các bên", Content = "8.1. Quyền và nghĩa vụ của Bên A: Cung cấp hàng hóa đúng chủng loại, chất lượng, nguồn gốc và tiến độ đã cam kết; xuất hóa đơn GTGT hợp pháp; cung cấp hồ sơ CO/CQ và thực hiện nghĩa vụ bảo hành; có quyền tạm ngưng giao hàng nếu Bên B vi phạm nghĩa vụ thanh toán theo đợt thỏa thuận.\n8.2. Quyền và nghĩa vụ của Bên B: Chuẩn bị mặt bằng kho bãi tiếp nhận hàng hóa an toàn; bố trí nhân sự nghiệm thu đúng giờ; thanh toán đầy đủ, đúng hạn theo Điều 4; kiểm tra đối chiếu hàng hóa trước khi ký nhận." },
+                    new { ClauseNumber = "Điều 9", Title = "Vi phạm hợp đồng và bồi thường thiệt hại", Content = "9.1. Phạt vi phạm: Bên nào có hành vi vi phạm nghĩa vụ hợp đồng sẽ phải chịu phạt vi phạm với mức tối đa 8% giá trị phần nghĩa vụ hợp đồng bị vi phạm theo đúng quy định tại Điều 301 Luật Thương mại 2005.\n9.2. Bồi thường thiệt hại: Bên vi phạm có nghĩa vụ bồi thường toàn bộ thiệt hại thực tế, trực tiếp mà bên bị vi phạm phải gánh chịu do hành vi vi phạm gây ra theo quy định từ Điều 302 đến Điều 305 Luật Thương mại 2005.\n9.3. Miễn phạt vi phạm trong trường hợp xảy ra sự kiện bất khả kháng được hai bên xác nhận theo Điều 10." },
+                    new { ClauseNumber = "Điều 10", Title = "Sự kiện bất khả kháng và miễn trách nhiệm", Content = "10.1. Sự kiện bất khả kháng là sự kiện xảy ra một cách khách quan không thể lường trước được và không thể khắc phục được mặc dù đã áp dụng mọi biện pháp cần thiết trong khả năng cho phép (thiên tai, dịch bệnh, hỏa hoạn, chiến tranh hoặc thay đổi chính sách pháp luật quốc gia cấm lưu thông hàng hóa).\n10.2. Bên gặp sự kiện bất khả kháng phải thông báo bằng văn bản cho bên kia trong vòng 03 ngày làm việc kể từ ngày phát sinh sự kiện kèm theo xác nhận của cơ quan có thẩm quyền và áp dụng mọi biện pháp cần thiết để hạn chế tối đa thiệt hại." },
+                    new { ClauseNumber = "Điều 11", Title = "Sửa đổi, tạm ngừng và chấm dứt hợp đồng", Content = "11.1. Mọi sửa đổi, bổ sung nội dung Hợp đồng này chỉ có giá trị pháp lý khi được lập thành văn bản phụ lục hợp đồng có chữ ký xác nhận của đại diện có thẩm quyền của hai bên (căn cứ Điều 403 Bộ luật Dân sự 2015).\n11.2. Hợp đồng chấm dứt khi: Hai bên hoàn thành toàn bộ nghĩa vụ và ký biên bản thanh lý hợp đồng; hoặc một bên có quyền đơn phương chấm dứt hợp đồng hợp pháp khi bên kia vi phạm nghiêm trọng nghĩa vụ hợp đồng và không khắc phục trong thời hạn 15 ngày kể từ ngày nhận thông báo bằng văn bản." },
+                    new { ClauseNumber = "Điều 12", Title = "Giải quyết tranh chấp", Content = "12.1. Hai bên cam kết thực hiện nghiêm túc các điều khoản đã thỏa thuận. Mọi tranh chấp hoặc bất đồng phát sinh từ hoặc liên quan đến Hợp đồng này trước hết sẽ được giải quyết thông qua thương lượng, hòa giải trên tinh thần thiện chí, hợp tác.\n12.2. Trường hợp không đạt được thỏa thuận hòa giải trong vòng 30 ngày kể từ ngày phát sinh tranh chấp, một trong hai bên có quyền đưa vụ tranh chấp ra Tòa án nhân dân có thẩm quyền tại nơi Bên A đặt trụ sở chính hoặc nơi thực hiện hợp đồng để giải quyết theo quy định của pháp luật Việt Nam. Án phí và chi phí pháp lý do bên có lỗi chịu theo phán quyết của Tòa án." },
+                    new { ClauseNumber = "Điều 13", Title = "Hiệu lực và số bản hợp đồng", Content = "13.1. Hợp đồng này có hiệu lực kể từ ngày đại diện có thẩm quyền của hai bên hoàn tất việc ký kết hợp pháp.\n13.2. Hợp đồng được lập thành 04 (bốn) bản chính bằng tiếng Việt có giá trị pháp lý như nhau, Bên A giữ 02 (hai) bản, Bên B giữ 02 (hai) bản để cùng lưu trữ và tổ chức thực hiện." }
+                }),
+                CreatedAt = now,
+                CreatedBy = "System"
+            },
+            new ContractTemplate
+            {
+                Code = "B2C_RETAIL",
+                Title = "Hợp đồng bán lẻ thiết bị vệ sinh (B2C)",
+                Category = "Bán lẻ tiêu dùng",
+                Description = "Hợp đồng mua bán thiết bị vệ sinh trọn gói phục vụ khách hàng cá nhân, hộ gia đình, biệt thự, căn hộ chung cư.",
+                TypicalUseCase = "Dành cho khách hàng cá nhân mua sắm thiết bị phòng tắm hoàn thiện.",
+                TargetPartyType = ContractPartyBType.Individual,
+                RequiredInfo = "Họ tên, CCCD/CMND, Số điện thoại, Địa chỉ giao hàng và lắp đặt",
+                Icon = "user",
+                Version = "2026.1",
+                DisplayOrder = 2,
+                IsActive = true,
+                LegalBasis = "Căn cứ Bộ luật Dân sự số 91/2015/QH13; Căn cứ Luật Bảo vệ quyền lợi người tiêu dùng số 19/2023/QH15; Căn cứ Nghị định số 55/2024/NĐ-CP; Căn cứ Luật Giao dịch điện tử số 20/2023/QH15.",
+                KnownLimitations = "Tuân thủ chặt chẽ các điều khoản bảo vệ người tiêu dùng (Điều 25 Luật BVQLNTD 2023: không có điều khoản loại trừ trách nhiệm hoặc hạn chế quyền khiếu nại của người tiêu dùng; cỡ chữ in tối thiểu 12pt).",
+                IsReviewedByLegal = true,
+                DefaultClausesJson = JsonSerializer.Serialize(new[]
                 {
-                    Code = "B2C_RETAIL",
-                    Title = "Hợp đồng bán lẻ thiết bị vệ sinh (B2C)",
-                    Category = "Bán lẻ tiêu dùng",
-                    Description = "Hợp đồng mua bán thiết bị vệ sinh trọn gói phục vụ khách hàng cá nhân, hộ gia đình, biệt thự, căn hộ chung cư.",
-                    TypicalUseCase = "Dành cho khách hàng cá nhân mua sắm thiết bị phòng tắm hoàn thiện.",
-                    TargetPartyType = ContractPartyBType.Individual,
-                    RequiredInfo = "Họ tên, CCCD/CMND, Số điện thoại, Địa chỉ giao hàng & lắp đặt",
-                    Icon = "user",
-                    Version = "1.0",
-                    DisplayOrder = 2,
-                    IsActive = true,
-                    LegalBasis = "Căn cứ Bộ luật Dân sự số 91/2015/QH13; Căn cứ Luật Bảo vệ quyền lợi người tiêu dùng số 19/2023/QH15; Căn cứ Luật Giao dịch điện tử số 20/2023/QH15.",
-                    KnownLimitations = "Tuân thủ chặt chẽ các điều khoản bảo vệ người tiêu dùng, chính sách đổi trả hàng hóa và bảo hành minh bạch.",
-                    IsReviewedByLegal = true,
-                    DefaultClausesJson = JsonSerializer.Serialize(new[]
-                    {
-                        new { ClauseNumber = "Điều 1", Title = "Hàng hóa đặt mua", Content = "Bên A cung cấp cho Bên B các sản phẩm thiết bị vệ sinh LACASA chính hãng theo đơn đặt hàng chi tiết." },
-                        new { ClauseNumber = "Điều 2", Title = "Giá cả và Thanh toán", Content = "Bên B đặt cọc 20-30% khi xác nhận đơn và thanh toán số tiền còn lại ngay khi nhận hàng và kiểm tra nguyên vẹn tại nhà." },
-                        new { ClauseNumber = "Điều 3", Title = "Giao hàng và Kiểm tra", Content = "Bên A giao hàng tận nơi theo lịch hẹn trước với Bên B. Bên B có trách nhiệm kiểm tra ngoại quan men sứ, linh kiện kèm theo trước khi ký biên bản giao nhận." },
-                        new { ClauseNumber = "Điều 4", Title = "Chính sách bảo hành và Đổi trả", Content = "Áp dụng chính sách 1 đổi 1 trong vòng 30 ngày nếu phát hiện lỗi kỹ thuật từ nhà sản xuất. Bảo hành thân sứ 10 năm theo số điện thoại kích hoạt bảo hành điện tử." },
-                        new { ClauseNumber = "Điều 5", Title = "Hiệu lực hợp đồng", Content = "Hợp đồng có hiệu lực kể từ ngày ký và chấm dứt khi hai bên hoàn thành nghĩa vụ giao nhận, thanh toán." }
-                    }),
-                    CreatedAt = now,
-                    CreatedBy = "System"
-                },
-                new ContractTemplate
+                    new { ClauseNumber = "Điều 1", Title = "Hàng hóa đặt mua và Thông tin sản phẩm", Content = "1.1. Bên A cung cấp cho Bên B các sản phẩm thiết bị vệ sinh LACASA chính hãng theo đơn đặt hàng chi tiết phục vụ nhu cầu sinh hoạt nhà ở của Bên B.\n1.2. Hàng hóa là hàng mới 100%, nguyên đai nguyên kiện, có tem chống hàng giả và tài liệu hướng dẫn sử dụng kèm theo." },
+                    new { ClauseNumber = "Điều 2", Title = "Giá niêm yết, thuế GTGT và Phương thức thanh toán", Content = "2.1. Giá bán đã bao gồm thuế GTGT (VAT) và chi phí vận chuyển tận nhà. Bên A cam kết giữ nguyên giá niêm yết đã thỏa thuận, không tự ý điều chỉnh tăng giá.\n2.2. Phương thức thanh toán: Bên B thanh toán bằng chuyển khoản hoặc tiền mặt. Đợt 1 đặt cọc 20% - 30% khi xác nhận đơn hàng; số tiền còn lại thanh toán ngay khi Bên A giao hàng và Bên B kiểm tra nguyên vẹn tại nhà." },
+                    new { ClauseNumber = "Điều 3", Title = "Giao nhận, kiểm tra ngoại quan và Bàn giao tại nhà", Content = "3.1. Bên A giao hàng tận nơi theo lịch hẹn đã thống nhất trước với Bên B.\n3.2. Bên B có quyền và trách nhiệm kiểm tra ngoại quan men sứ, phụ kiện kèm theo trước khi ký biên bản giao nhận.\n3.3. Bên A hướng dẫn Bên B quy trình kích hoạt bảo hành điện tử và bàn giao phiếu bảo hành chính hãng." },
+                    new { ClauseNumber = "Điều 4", Title = "Quyền đổi trả miễn phí và Chính sách bảo hành chính hãng", Content = "4.1. Chính sách đổi trả: Áp dụng chính sách 1 đổi 1 miễn phí trong vòng 30 ngày kể từ ngày giao hàng nếu sản phẩm phát sinh lỗi kỹ thuật do nhà sản xuất.\n4.2. Chính sách bảo hành: Bảo hành thân sứ 10 năm, linh kiện phụ kiện 03 năm theo số điện thoại kích hoạt bảo hành điện tử.\n4.3. Bên A tiếp nhận và xử lý yêu cầu bảo hành tận nhà trong vòng 24 giờ kể từ khi nhận được thông báo từ Bên B." },
+                    new { ClauseNumber = "Điều 5", Title = "Quyền khiếu nại, hỗ trợ và Bảo vệ dữ liệu cá nhân", Content = "5.1. Bên B có quyền phản ánh, khiếu nại về chất lượng sản phẩm và thái độ phục vụ qua đường dây nóng chăm sóc khách hàng của Bên A.\n5.2. Bên A cam kết bảo mật tuyệt đối thông tin định danh cá nhân của Bên B theo quy định pháp luật về bảo vệ dữ liệu cá nhân (Nghị định 13/2023/NĐ-CP)." },
+                    new { ClauseNumber = "Điều 6", Title = "Hiệu lực hợp đồng và Số bản", Content = "6.1. Hợp đồng có hiệu lực kể từ ngày ký và chấm dứt khi hai bên hoàn thành nghĩa vụ giao nhận, thanh toán.\n6.2. Hợp đồng bằng văn bản giấy tuân thủ quy chuẩn cỡ chữ tối thiểu 12pt theo Nghị định 55/2024/NĐ-CP, được lập thành 02 bản, mỗi bên giữ 01 bản có giá trị pháp lý như nhau." }
+                }),
+                CreatedAt = now,
+                CreatedBy = "System"
+            },
+            new ContractTemplate
+            {
+                Code = "SUPPLY_INSTALL",
+                Title = "Hợp đồng cung cấp và lắp đặt thiết bị vệ sinh",
+                Category = "Cung cấp & Lắp đặt",
+                Description = "Hợp đồng trọn gói từ cung cấp thiết bị đến thi công lắp đặt, đấu nối kỹ thuật, thử nghiệm áp lực nước và bàn giao hoàn thiện.",
+                TypicalUseCase = "Dành cho công trình khách sạn, resort, chung cư, biệt thự yêu cầu kiểm tra kỹ thuật lắp đặt khắt khe.",
+                TargetPartyType = null,
+                RequiredInfo = "Địa điểm công trình, Thông số áp lực nước, Kế hoạch nghiệm thu, An toàn lao động",
+                Icon = "wrench",
+                Version = "2026.1",
+                DisplayOrder = 3,
+                IsActive = true,
+                LegalBasis = "Căn cứ Bộ luật Dân sự 2015; Luật Thương mại 2005; Luật Xây dựng số 50/2014/QH13 sửa đổi bổ sung số 62/2020/QH14; Tiêu chuẩn quốc gia TCVN 4513:1988 cấp thoát nước.",
+                KnownLimitations = "Bắt buộc có biên bản nghiệm thu kỹ thuật và thử nghiệm áp lực đường ống nước trước khi bàn giao hoàn công.",
+                IsReviewedByLegal = true,
+                DefaultClausesJson = JsonSerializer.Serialize(new[]
                 {
-                    Code = "SUPPLY_INSTALL",
-                    Title = "Hợp đồng cung cấp và lắp đặt thiết bị vệ sinh",
-                    Category = "Cung cấp & Lắp đặt",
-                    Description = "Hợp đồng trọn gói từ cung cấp thiết bị đến thi công lắp đặt, đấu nối kỹ thuật, thử nghiệm áp lực nước và bàn giao hoàn thiện.",
-                    TypicalUseCase = "Dành cho công trình khách sạn, resort, chung cư, biệt thự yêu cầu kiểm tra kỹ thuật lắp đặt khắt khe.",
-                    TargetPartyType = null,
-                    RequiredInfo = "Địa điểm công trình, Thông số áp lực nước, Kế hoạch nghiệm thu, An toàn lao động",
-                    Icon = "wrench",
-                    Version = "1.0",
-                    DisplayOrder = 3,
-                    IsActive = true,
-                    LegalBasis = "Căn cứ Bộ luật Dân sự 2015; Luật Thương mại 2005; Luật Xây dựng số 50/2014/QH13 sửa đổi bổ sung số 62/2020/QH14; Tiêu chuẩn quốc gia TCVN 4513:1988.",
-                    KnownLimitations = "Bắt buộc có biên bản nghiệm thu kỹ thuật và thử nghiệm áp lực đường ống nước trước khi bàn giao hoàn công.",
-                    IsReviewedByLegal = true,
-                    DefaultClausesJson = JsonSerializer.Serialize(new[]
-                    {
-                        new { ClauseNumber = "Điều 1", Title = "Phạm vi cung cấp và Thi công lắp đặt", Content = "Bên A chịu trách nhiệm cung ứng toàn bộ thiết bị vệ sinh, phụ kiện đấu nối và bố trí đội ngũ kỹ thuật viên có chứng chỉ nghề thực hiện lắp đặt hoàn thiện theo bản vẽ thiết kế đã duyệt." },
-                        new { ClauseNumber = "Điều 2", Title = "Tiêu chuẩn kỹ thuật và Nghiệm thu thử áp lực nước", Content = "Công tác lắp đặt phải tuân thủ nghiêm ngặt TCVN 4513:1988. Sau khi lắp đặt hoàn thiện, hai bên tiến hành thử áp lực nước tối thiểu 3-5 bar trong 30 phút, kiểm tra độ kín nước, chống rò rỉ và thoát nước êm trước khi ký Biên bản nghiệm thu kỹ thuật." },
-                        new { ClauseNumber = "Điều 3", Title = "An toàn lao động và Vệ sinh môi trường", Content = "Bên A cam kết trang bị đầy đủ bảo hộ lao động cho công nhân, tuân thủ nội quy công trường và dọn dẹp sạch sẽ mặt bằng sau khi hoàn thành công việc." },
-                        new { ClauseNumber = "Điều 4", Title = "Giá trị hợp đồng và Phương thức nghiệm thu thanh toán", Content = "Thanh toán theo 3 đợt: 30% tạm ứng, 40% khi tập kết vật tư đến công trường, 30% còn lại sau khi ký Biên bản nghiệm thu bàn giao và bàn giao phiếu bảo hành." },
-                        new { ClauseNumber = "Điều 5", Title = "Bảo hành công trình và Thiết bị", Content = "Bảo hành kỹ thuật lắp đặt 24 tháng; bảo hành thiết bị chính hãng theo tiêu chuẩn LACASA (10 năm sứ, 03 năm sen vòi)." }
-                    }),
-                    CreatedAt = now,
-                    CreatedBy = "System"
-                },
-                new ContractTemplate
+                    new { ClauseNumber = "Điều 1", Title = "Phạm vi cung cấp và Thi công lắp đặt", Content = "Bên A chịu trách nhiệm cung ứng toàn bộ thiết bị vệ sinh, phụ kiện đấu nối và bố trí đội ngũ kỹ thuật viên có chứng chỉ nghề thực hiện lắp đặt hoàn thiện theo bản vẽ thiết kế đã duyệt." },
+                    new { ClauseNumber = "Điều 2", Title = "Tiêu chuẩn kỹ thuật và Nghiệm thu thử áp lực nước", Content = "Công tác lắp đặt phải tuân thủ nghiêm ngặt TCVN 4513:1988. Sau khi lắp đặt hoàn thiện, hai bên tiến hành thử áp lực nước tối thiểu 3-5 bar trong 30 phút, kiểm tra độ kín nước, chống rò rỉ và thoát nước êm trước khi ký Biên bản nghiệm thu kỹ thuật." },
+                    new { ClauseNumber = "Điều 3", Title = "An toàn lao động và Vệ sinh môi trường", Content = "Bên A cam kết trang bị đầy đủ bảo hộ lao động cho công nhân, tuân thủ nội quy công trường và dọn dẹp sạch sẽ mặt bằng sau khi hoàn thành công việc." },
+                    new { ClauseNumber = "Điều 4", Title = "Giá trị hợp đồng và Phương thức nghiệm thu thanh toán", Content = "Thanh toán theo 3 đợt: 30% tạm ứng, 40% khi tập kết vật tư đến công trường, 30% còn lại sau khi ký Biên bản nghiệm thu bàn giao và bàn giao phiếu bảo hành." },
+                    new { ClauseNumber = "Điều 5", Title = "Bảo hành công trình và Thiết bị", Content = "Bảo hành kỹ thuật lắp đặt 24 tháng; bảo hành thiết bị chính hãng theo tiêu chuẩn LACASA (10 năm sứ, 03 năm sen vòi)." },
+                    new { ClauseNumber = "Điều 6", Title = "Phạt vi phạm và Giải quyết tranh chấp", Content = "Phạt vi phạm áp dụng theo Điều 301 Luật Thương mại 2005 tối đa 8% giá trị phần nghĩa vụ bị vi phạm. Mọi tranh chấp thương lượng không thành sẽ được giải quyết tại Tòa án nhân dân có thẩm quyền." },
+                    new { ClauseNumber = "Điều 7", Title = "Hiệu lực và số bản hợp đồng", Content = "Hợp đồng có hiệu lực từ ngày ký, được lập thành 04 bản chính, mỗi bên giữ 02 bản." }
+                }),
+                CreatedAt = now,
+                CreatedBy = "System"
+            },
+            new ContractTemplate
+            {
+                Code = "PRINCIPLE_AGREEMENT",
+                Title = "Hợp đồng nguyên tắc cung ứng hàng hóa",
+                Category = "Khung hợp tác dài hạn",
+                Description = "Hợp đồng khung định kỳ quy định nguyên tắc giao dịch, mức chiết khấu, hạn mức công nợ cho các đơn đặt hàng (PO) phát sinh trong kỳ.",
+                TypicalUseCase = "Ký kết định kỳ 1 năm hoặc nhiều năm với các nhà thầu cơ điện, tổng thầu xây dựng hoặc hệ thống đại lý phân phối.",
+                TargetPartyType = ContractPartyBType.Company,
+                RequiredInfo = "Hạn mức tín dụng, Thời hạn công nợ, Chính sách thưởng doanh số năm, Quy trình gửi nhận Đơn đặt hàng (PO)",
+                Icon = "layers",
+                Version = "2026.1",
+                DisplayOrder = 4,
+                IsActive = true,
+                LegalBasis = "Căn cứ Bộ luật Dân sự 2015; Luật Thương mại 2005; Luật Doanh nghiệp 2020.",
+                KnownLimitations = "Mỗi đợt mua bán cụ thể phải phát hành Đơn đặt hàng (PO) hoặc Phụ lục chi tiết xác định chủng loại, số lượng và đơn giá áp dụng.",
+                IsReviewedByLegal = true,
+                DefaultClausesJson = JsonSerializer.Serialize(new[]
                 {
-                    Code = "PRINCIPLE_AGREEMENT",
-                    Title = "Hợp đồng nguyên tắc cung ứng hàng hóa",
-                    Category = "Khung hợp tác dài hạn",
-                    Description = "Hợp đồng khung định kỳ quy định nguyên tắc giao dịch, mức chiết khấu, hạn mức công nợ cho các đơn đặt hàng (PO) phát sinh trong kỳ.",
-                    TypicalUseCase = "Ký kết định kỳ 1 năm hoặc nhiều năm với các nhà thầu cơ điện, tổng thầu xây dựng hoặc hệ thống đại lý phân phối.",
-                    TargetPartyType = ContractPartyBType.Company,
-                    RequiredInfo = "Hạn mức tín dụng, Thời hạn công nợ, Chính sách thưởng doanh số năm, Quy trình gửi nhận Đơn đặt hàng (PO)",
-                    Icon = "layers",
-                    Version = "1.0",
-                    DisplayOrder = 4,
-                    IsActive = true,
-                    LegalBasis = "Căn cứ Bộ luật Dân sự 2015; Luật Thương mại 2005; Luật Doanh nghiệp 2020.",
-                    KnownLimitations = "Mỗi đợt mua bán cụ thể phải phát hành Đơn đặt hàng (PO) hoặc Phụ lục chi tiết xác định chủng loại, số lượng và đơn giá áp dụng.",
-                    IsReviewedByLegal = true,
-                    DefaultClausesJson = JsonSerializer.Serialize(new[]
-                    {
-                        new { ClauseNumber = "Điều 1", Title = "Nguyên tắc hợp tác và Đặt hàng", Content = "Hợp đồng này xác định các nguyên tắc chung về việc Bên A cung cấp thiết bị vệ sinh cho Bên B. Từng lần mua bán cụ thể sẽ được thực hiện bằng Đơn đặt hàng (PO) được xác nhận bởi đại diện có thẩm quyền của hai bên." },
-                        new { ClauseNumber = "Điều 2", Title = "Chính sách giá và Chiết khấu thương mại", Content = "Đơn giá được áp dụng theo Bảng giá niêm yết hiện hành của Bên A trừ đi tỷ lệ chiết khấu theo phân hạng đối tác được quy định chi tiết trong phụ lục hợp tác." },
-                        new { ClauseNumber = "Điều 3", Title = "Hạn mức công nợ và Thời hạn thanh toán", Content = "Bên A cấp cho Bên B hạn mức tín dụng công nợ tối đa là 500.000.000 VNĐ với thời hạn thanh toán không quá 30 ngày kể từ ngày xuất hóa đơn GTGT." },
-                        new { ClauseNumber = "Điều 4", Title = "Thời hạn hiệu lực của Hợp đồng nguyên tắc", Content = "Hợp đồng này có hiệu lực 01 năm kể từ ngày ký và tự động gia hạn thêm 01 năm tiếp theo nếu không bên nào có văn bản chấm dứt trước 30 ngày." }
-                    }),
-                    CreatedAt = now,
-                    CreatedBy = "System"
-                },
-                new ContractTemplate
+                    new { ClauseNumber = "Điều 1", Title = "Nguyên tắc hợp tác và Đặt hàng", Content = "Hợp đồng này xác định các nguyên tắc chung về việc Bên A cung cấp thiết bị vệ sinh cho Bên B. Từng lần mua bán cụ thể sẽ được thực hiện bằng Đơn đặt hàng (PO) được xác nhận bởi đại diện có thẩm quyền của hai bên." },
+                    new { ClauseNumber = "Điều 2", Title = "Chính sách giá và Chiết khấu thương mại", Content = "Đơn giá được áp dụng theo Bảng giá niêm yết hiện hành của Bên A trừ đi tỷ lệ chiết khấu theo phân hạng đối tác được quy định chi tiết trong phụ lục hợp tác." },
+                    new { ClauseNumber = "Điều 3", Title = "Hạn mức công nợ và Thời hạn thanh toán", Content = "Bên A cấp cho Bên B hạn mức tín dụng công nợ tối đa là 500.000.000 VNĐ với thời hạn thanh toán không quá 30 ngày kể từ ngày xuất hóa đơn GTGT. Tiền lãi chậm trả tính theo Điều 306 Luật Thương mại 2005." },
+                    new { ClauseNumber = "Điều 4", Title = "Thời hạn hiệu lực của Hợp đồng nguyên tắc", Content = "Hợp đồng này có hiệu lực 01 năm kể từ ngày ký và tự động gia hạn thêm 01 năm tiếp theo nếu không bên nào có văn bản chấm dứt trước 30 ngày. Hợp đồng lập thành 04 bản, mỗi bên giữ 02 bản." }
+                }),
+                CreatedAt = now,
+                CreatedBy = "System"
+            },
+            new ContractTemplate
+            {
+                Code = "DEPOSIT_AGREEMENT",
+                Title = "Thỏa thuận đặt cọc giữ hàng / sản xuất",
+                Category = "Biện pháp bảo đảm",
+                Description = "Văn bản thỏa thuận đặt cọc để giữ giá, đảm bảo tiến độ giữ lô hàng sứ/sen vòi số lượng giới hạn hoặc sản xuất theo thiết kế riêng.",
+                TypicalUseCase = "Khách hàng muốn giữ mẫu hàng đặc thù hoặc nhập khẩu riêng trước khi ký hợp đồng mua bán chính thức.",
+                TargetPartyType = null,
+                RequiredInfo = "Số tiền đặt cọc, Thời hạn đặt cọc, Cam kết xử lý tiền cọc khi bên nào vi phạm",
+                Icon = "shield",
+                Version = "2026.1",
+                DisplayOrder = 5,
+                IsActive = true,
+                LegalBasis = "Căn cứ Điều 328 Bộ luật Dân sự số 91/2015/QH13 về Đặt cọc; Căn cứ Luật Thương mại 2005.",
+                KnownLimitations = "Nếu bên đặt cọc từ chối giao kết hợp đồng thì tài sản đặt cọc thuộc về bên nhận đặt cọc; nếu bên nhận đặt cọc từ chối thì phải trả lại tiền đặt cọc và bồi thường một khoản tương đương giá trị đặt cọc (Điều 328 BLDS 2015).",
+                IsReviewedByLegal = true,
+                DefaultClausesJson = JsonSerializer.Serialize(new[]
                 {
-                    Code = "DEPOSIT_AGREEMENT",
-                    Title = "Thỏa thuận đặt cọc giữ hàng / sản xuất",
-                    Category = "Biện pháp bảo đảm",
-                    Description = "Văn bản thỏa thuận đặt cọc để giữ giá, đảm bảo tiến độ giữ lô hàng sứ/sen vòi số lượng giới hạn hoặc sản xuất theo thiết kế riêng.",
-                    TypicalUseCase = "Khách hàng muốn giữ mẫu hàng đặc thù hoặc nhập khẩu riêng trước khi ký hợp đồng mua bán chính thức.",
-                    TargetPartyType = null,
-                    RequiredInfo = "Số tiền đặt cọc, Thời hạn đặt cọc, Cam kết xử lý tiền cọc khi bên nào vi phạm",
-                    Icon = "shield",
-                    Version = "1.0",
-                    DisplayOrder = 5,
-                    IsActive = true,
-                    LegalBasis = "Căn cứ Điều 328 Bộ luật Dân sự số 91/2015/QH13 về Đặt cọc; Căn cứ Luật Thương mại 2005.",
-                    KnownLimitations = "Nếu bên đặt cọc từ chối giao kết hợp đồng thì tài sản đặt cọc thuộc về bên nhận đặt cọc; nếu bên nhận đặt cọc từ chối thì phải trả lại tiền đặt cọc và bồi thường một khoản tương đương giá trị đặt cọc (Điều 328 BLDS 2015).",
-                    IsReviewedByLegal = true,
-                    DefaultClausesJson = JsonSerializer.Serialize(new[]
-                    {
-                        new { ClauseNumber = "Điều 1", Title = "Mục đích đặt cọc", Content = "Bên B tự nguyện đặt cọc cho Bên A một khoản tiền để đảm bảo quyền ưu tiên mua và giữ giá lô thiết bị vệ sinh LACASA theo danh mục đính kèm trong thời gian chuẩn bị ký kết Hợp đồng mua bán chính thức." },
-                        new { ClauseNumber = "Điều 2", Title = "Số tiền đặt cọc và Phương thức giao nhận", Content = "Số tiền đặt cọc được xác định tương ứng 10% - 20% tổng giá trị dự kiến của lô hàng, được chuyển khoản trực tiếp vào tài khoản ngân hàng của Bên A." },
-                        new { ClauseNumber = "Điều 3", Title = "Thời hạn đặt cọc và Ký hợp đồng chính thức", Content = "Thời hạn đặt cọc có hiệu lực trong vòng 30 ngày kể từ ngày Bên A nhận được tiền cọc. Hai bên cam kết ký kết Hợp đồng mua bán chính thức trước khi hết hạn đặt cọc." },
-                        new { ClauseNumber = "Điều 4", Title = "Xử lý tiền đặt cọc (Theo Điều 328 Bộ luật Dân sự)", Content = "Khi Hợp đồng chính thức được giao kết, tiền đặt cọc sẽ được cấn trừ vào đợt thanh toán đầu tiên. Nếu Bên B từ chối ký hợp đồng thì mất tiền đặt cọc; nếu Bên A từ chối bán hoặc không có hàng cung cấp theo thỏa thuận thì phải trả lại tiền đặt cọc và nộp phạt một khoản tiền tương đương giá trị tiền cọc cho Bên B." }
-                    }),
-                    CreatedAt = now,
-                    CreatedBy = "System"
-                },
-                new ContractTemplate
+                    new { ClauseNumber = "Điều 1", Title = "Mục đích đặt cọc", Content = "Bên B tự nguyện đặt cọc cho Bên A một khoản tiền để đảm bảo quyền ưu tiên mua và giữ giá lô thiết bị vệ sinh LACASA theo danh mục đính kèm trong thời gian chuẩn bị ký kết Hợp đồng mua bán chính thức." },
+                    new { ClauseNumber = "Điều 2", Title = "Số tiền đặt cọc và Phương thức giao nhận", Content = "Số tiền đặt cọc được xác định tương ứng 10% - 20% tổng giá trị dự kiến của lô hàng, được chuyển khoản trực tiếp vào tài khoản ngân hàng của Bên A." },
+                    new { ClauseNumber = "Điều 3", Title = "Thời hạn đặt cọc và Ký hợp đồng chính thức", Content = "Thời hạn đặt cọc có hiệu lực trong vòng 30 ngày kể từ ngày Bên A nhận được tiền cọc. Hai bên cam kết ký kết Hợp đồng mua bán chính thức trước khi hết hạn đặt cọc." },
+                    new { ClauseNumber = "Điều 4", Title = "Xử lý tiền đặt cọc (Theo Điều 328 Bộ luật Dân sự)", Content = "Khi Hợp đồng chính thức được giao kết, tiền đặt cọc sẽ được cấn trừ vào đợt thanh toán đầu tiên. Nếu Bên B từ chối ký hợp đồng thì mất tiền đặt cọc; nếu Bên A từ chối bán hoặc không có hàng cung cấp theo thỏa thuận thì phải trả lại tiền đặt cọc và bồi thường một khoản tiền tương đương giá trị tiền cọc cho Bên B. Văn bản lập thành 02 bản, mỗi bên giữ 01 bản." }
+                }),
+                CreatedAt = now,
+                CreatedBy = "System"
+            },
+            new ContractTemplate
+            {
+                Code = "CONTRACT_LIQUIDATION",
+                Title = "Biên bản thanh lý hợp đồng",
+                Category = "Kết thúc hợp đồng",
+                Description = "Biên bản xác nhận hai bên đã hoàn thành đầy đủ các quyền và nghĩa vụ giao nhận, nghiệm thu, thanh toán công nợ và chấm dứt hiệu lực hợp đồng.",
+                TypicalUseCase = "Lập khi hoàn tất toàn bộ công việc, quyết toán tài chính và giải phóng các nghĩa vụ liên quan.",
+                TargetPartyType = null,
+                RequiredInfo = "Số hợp đồng gốc, Giá trị thực tế đã thực hiện, Số tiền đã thanh toán, Số tiền còn lại phải thanh toán dứt điểm",
+                Icon = "check-circle",
+                Version = "2026.1",
+                DisplayOrder = 6,
+                IsActive = true,
+                LegalBasis = "Căn cứ Điều 422, Điều 424 Bộ luật Dân sự số 91/2015/QH13 về Chấm dứt hợp đồng; Căn cứ các Biên bản giao nhận và Hồ sơ thanh quyết toán công nợ.",
+                KnownLimitations = "Cần đối chiếu sổ phụ công nợ và biên bản giao nhận thực tế trước khi ký kết biên bản thanh lý.",
+                IsReviewedByLegal = true,
+                DefaultClausesJson = JsonSerializer.Serialize(new[]
                 {
-                    Code = "CONTRACT_LIQUIDATION",
-                    Title = "Biên bản thanh lý hợp đồng",
-                    Category = "Kết thúc hợp đồng",
-                    Description = "Biên bản xác nhận hai bên đã hoàn thành đầy đủ các quyền và nghĩa vụ giao nhận, nghiệm thu, thanh toán công nợ và chấm dứt hiệu lực hợp đồng.",
-                    TypicalUseCase = "Lập khi hoàn tất toàn bộ công việc, quyết toán tài chính và giải phóng các nghĩa vụ liên quan.",
-                    TargetPartyType = null,
-                    RequiredInfo = "Số hợp đồng gốc, Giá trị thực tế đã thực hiện, Số tiền đã thanh toán, Số tiền còn lại phải thanh toán dứt điểm",
-                    Icon = "check-circle",
-                    Version = "1.0",
-                    DisplayOrder = 6,
-                    IsActive = true,
-                    LegalBasis = "Căn cứ Điều 422, Điều 424 Bộ luật Dân sự số 91/2015/QH13 về Chấm dứt hợp đồng; Căn cứ các Biên bản giao nhận và Hồ sơ thanh quyết toán công nợ.",
-                    KnownLimitations = "Cần đối chiếu sổ phụ công nợ và biên bản giao nhận thực tế trước khi ký kết biên bản thanh lý.",
-                    IsReviewedByLegal = true,
-                    DefaultClausesJson = JsonSerializer.Serialize(new[]
-                    {
-                        new { ClauseNumber = "Điều 1", Title = "Căn cứ và Phạm vi thanh lý", Content = "Hai bên cùng xác nhận đã thực hiện đầy đủ nghĩa vụ cung cấp, lắp đặt và nghiệm thu toàn bộ khối lượng thiết bị vệ sinh theo Hợp đồng gốc đã ký kết." },
-                        new { ClauseNumber = "Điều 2", Title = "Quyết toán giá trị hợp đồng và Công nợ", Content = "Tổng giá trị hợp đồng thực tế sau quyết toán là [Số tiền]. Bên B đã thanh toán đầy đủ 100% giá trị hợp đồng cho Bên A. Hai bên xác nhận không còn bất kỳ tranh chấp công nợ nào." },
-                        new { ClauseNumber = "Điều 3", Title = "Nghĩa vụ bảo hành sau thanh lý", Content = "Việc thanh lý hợp đồng không làm chấm dứt trách nhiệm bảo hành thiết bị của Bên A theo đúng thời hạn và chính sách bảo hành đã cam kết." },
-                        new { ClauseNumber = "Điều 4", Title = "Chấm dứt hiệu lực hợp đồng", Content = "Kể từ ngày ký Biên bản này, Hợp đồng gốc chính thức hết hiệu lực thi hành, hai bên không còn bất kỳ khiếu nại hay ràng buộc pháp lý nào khác đối với nhau." }
-                    }),
-                    CreatedAt = now,
-                    CreatedBy = "System"
-                },
-                new ContractTemplate
+                    new { ClauseNumber = "Điều 1", Title = "Căn cứ và Phạm vi thanh lý", Content = "Hai bên cùng xác nhận đã thực hiện đầy đủ nghĩa vụ cung cấp, lắp đặt và nghiệm thu toàn bộ khối lượng thiết bị vệ sinh theo Hợp đồng gốc đã ký kết." },
+                    new { ClauseNumber = "Điều 2", Title = "Quyết toán giá trị hợp đồng và Công nợ", Content = "Tổng giá trị hợp đồng thực tế sau quyết toán đã được thanh toán 100%. Hai bên xác nhận không còn bất kỳ khiếu nại hay tranh chấp công nợ nào." },
+                    new { ClauseNumber = "Điều 3", Title = "Nghĩa vụ bảo hành sau thanh lý", Content = "Việc thanh lý hợp đồng không làm chấm dứt trách nhiệm bảo hành thiết bị của Bên A theo đúng thời hạn và chính sách bảo hành đã cam kết (men sứ 10 năm, phụ kiện 03 năm)." },
+                    new { ClauseNumber = "Điều 4", Title = "Chấm dứt hiệu lực hợp đồng", Content = "Kể từ ngày ký Biên bản này, Hợp đồng gốc chính thức hết hiệu lực thi hành, hai bên được giải phóng khỏi các nghĩa vụ đã hoàn thành. Biên bản lập thành 04 bản, mỗi bên giữ 02 bản." }
+                }),
+                CreatedAt = now,
+                CreatedBy = "System"
+            },
+            new ContractTemplate
+            {
+                Code = "CONTRACT_APPENDIX",
+                Title = "Phụ lục hợp đồng (Bổ sung/Điều chỉnh)",
+                Category = "Bổ sung & Điều chỉnh",
+                Description = "Phụ lục sửa đổi, bổ sung khối lượng thiết bị, điều chỉnh đơn giá, gia hạn tiến độ giao nhận hoặc cập nhật các điều khoản của hợp đồng gốc.",
+                TypicalUseCase = "Công trình phát sinh hạng mục thiết bị vệ sinh bổ sung hoặc thay đổi thiết kế phòng tắm.",
+                TargetPartyType = null,
+                RequiredInfo = "Số hợp đồng gốc, Nội dung các điều khoản sửa đổi/bổ sung, Giá trị hợp đồng điều chỉnh",
+                Icon = "paperclip",
+                Version = "2026.1",
+                DisplayOrder = 7,
+                IsActive = true,
+                LegalBasis = "Căn cứ Điều 403 Bộ luật Dân sự số 91/2015/QH13 về Phụ lục hợp đồng; Phụ lục hợp đồng là bộ phận không thể tách rời của hợp đồng chính.",
+                KnownLimitations = "Nội dung phụ lục không được trái với nội dung của hợp đồng chính trừ khi có thỏa thuận thay thế rõ ràng.",
+                IsReviewedByLegal = true,
+                DefaultClausesJson = JsonSerializer.Serialize(new[]
                 {
-                    Code = "CONTRACT_APPENDIX",
-                    Title = "Phụ lục hợp đồng (Bổ sung/Điều chỉnh)",
-                    Category = "Bổ sung & Điều chỉnh",
-                    Description = "Phụ lục sửa đổi, bổ sung khối lượng thiết bị, điều chỉnh đơn giá, gia hạn tiến độ giao nhận hoặc cập nhật các điều khoản của hợp đồng gốc.",
-                    TypicalUseCase = "Công trình phát sinh hạng mục thiết bị vệ sinh bổ sung hoặc thay đổi thiết kế phòng tắm.",
-                    TargetPartyType = null,
-                    RequiredInfo = "Số hợp đồng gốc, Nội dung các điều khoản sửa đổi/bổ sung, Giá trị hợp đồng điều chỉnh",
-                    Icon = "paperclip",
-                    Version = "1.0",
-                    DisplayOrder = 7,
-                    IsActive = true,
-                    LegalBasis = "Căn cứ Điều 403 Bộ luật Dân sự số 91/2015/QH13 về Phụ lục hợp đồng; Phụ lục hợp đồng là bộ phận không thể tách rời của hợp đồng chính.",
-                    KnownLimitations = "Nội dung phụ lục không được trái với nội dung của hợp đồng chính trừ khi có thỏa thuận thay thế rõ ràng.",
-                    IsReviewedByLegal = true,
-                    DefaultClausesJson = JsonSerializer.Serialize(new[]
-                    {
-                        new { ClauseNumber = "Điều 1", Title = "Căn cứ lập phụ lục hợp đồng", Content = "Phụ lục này được lập căn cứ theo Hợp đồng gốc đã ký kết giữa hai bên và nhu cầu thực tế về việc bổ sung/điều chỉnh chủng loại, số lượng thiết bị vệ sinh của Bên B." },
-                        new { ClauseNumber = "Điều 2", Title = "Nội dung bổ sung và Điều chỉnh", Content = "Bổ sung danh mục thiết bị và điều chỉnh khối lượng theo Bảng chi tiết đính kèm. Tiến độ giao hàng đối với phần khối lượng bổ sung là trong vòng 10 ngày kể từ ngày ký phụ lục này." },
-                        new { ClauseNumber = "Điều 3", Title = "Giá trị phụ lục và Tiến độ thanh toán", Content = "Giá trị phát sinh bổ sung theo Phụ lục này là [Số tiền]. Bên B tiến hành thanh toán tương ứng theo tiến độ giao nhận phần hàng hóa bổ sung." },
-                        new { ClauseNumber = "Điều 4", Title = "Hiệu lực của Phụ lục", Content = "Phụ lục này là một bộ phận cấu thành không thể tách rời của Hợp đồng gốc. Các điều khoản khác không được đề cập trong Phụ lục này vẫn giữ nguyên giá trị pháp lý." }
-                    }),
-                    CreatedAt = now,
-                    CreatedBy = "System"
-                }
-            };
+                    new { ClauseNumber = "Điều 1", Title = "Căn cứ lập phụ lục hợp đồng", Content = "Phụ lục này được lập căn cứ theo Hợp đồng gốc đã ký kết giữa hai bên và nhu cầu thực tế về việc bổ sung/điều chỉnh chủng loại, số lượng thiết bị vệ sinh của Bên B." },
+                    new { ClauseNumber = "Điều 2", Title = "Nội dung bổ sung và Điều chỉnh", Content = "Bổ sung danh mục thiết bị và điều chỉnh khối lượng theo Bảng chi tiết đính kèm. Tiến độ giao hàng đối với phần khối lượng bổ sung là trong vòng 10 ngày làm việc kể từ ngày ký phụ lục này." },
+                    new { ClauseNumber = "Điều 3", Title = "Giá trị phụ lục và Tiến độ thanh toán", Content = "Giá trị phát sinh bổ sung được xác định chi tiết theo Bảng kê đính kèm. Bên B tiến hành thanh toán tương ứng theo tiến độ giao nhận phần hàng hóa bổ sung." },
+                    new { ClauseNumber = "Điều 4", Title = "Hiệu lực của Phụ lục", Content = "Phụ lục này là một bộ phận cấu thành không thể tách rời của Hợp đồng gốc. Các điều khoản khác không được đề cập trong Phụ lục này vẫn giữ nguyên giá trị pháp lý. Phụ lục lập thành 04 bản, mỗi bên giữ 02 bản." }
+                }),
+                CreatedAt = now,
+                CreatedBy = "System"
+            }
+        };
 
-            _context.ContractTemplates.AddRange(templates);
+        var existingTemplates = await _context.ContractTemplates.ToListAsync();
+        foreach (var t in templates)
+        {
+            var existing = existingTemplates.FirstOrDefault(x => x.Code == t.Code);
+            if (existing != null)
+            {
+                existing.Title = t.Title;
+                existing.Category = t.Category;
+                existing.Description = t.Description;
+                existing.TypicalUseCase = t.TypicalUseCase;
+                existing.TargetPartyType = t.TargetPartyType;
+                existing.RequiredInfo = t.RequiredInfo;
+                existing.Icon = t.Icon;
+                existing.Version = t.Version;
+                existing.DisplayOrder = t.DisplayOrder;
+                existing.IsActive = t.IsActive;
+                existing.LegalBasis = t.LegalBasis;
+                existing.KnownLimitations = t.KnownLimitations;
+                existing.IsReviewedByLegal = t.IsReviewedByLegal;
+                existing.DefaultClausesJson = t.DefaultClausesJson;
+                existing.UpdatedAt = now;
+                existing.UpdatedBy = "LegalSystem";
+            }
+            else
+            {
+                _context.ContractTemplates.Add(t);
+            }
+        }
+        await _context.SaveChangesAsync();
+
+        // Chuẩn hóa và làm sạch placeholder {Year} còn sót trong mã hợp đồng đã lưu trước đó
+        var contractsWithPlaceholder = await _context.Contracts
+            .Where(c => c.ContractNumber.Contains("{Year}") || c.ContractNumber.Contains("{year}"))
+            .ToListAsync();
+        if (contractsWithPlaceholder.Any())
+        {
+            var yearStr = now.Year.ToString();
+            foreach (var c in contractsWithPlaceholder)
+            {
+                c.ContractNumber = c.ContractNumber
+                    .Replace("{Year}", yearStr, StringComparison.OrdinalIgnoreCase)
+                    .Replace("{year}", yearStr, StringComparison.OrdinalIgnoreCase);
+            }
             await _context.SaveChangesAsync();
         }
     }
 
-    private async Task SeedEmploymentContractsDataAsync()
+        private async Task SeedEmploymentContractsDataAsync()
     {
         _logger.LogInformation("Seeding employment contracts data and permissions...");
         var now = DateTime.UtcNow;

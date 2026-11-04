@@ -868,7 +868,7 @@ else
 
     private async Task PrintDocument()
     {
-        await JS.InvokeVoidAsync("window.print");
+        await JS.InvokeVoidAsync("tradeflow.printDocument", "print-document-area", $"Hoa_Don_{_invoice?.InvoiceNumber ?? _orderDoc?.OrderCode ?? "Document"}");
     }
 
     private async Task ExportOrderPdf()

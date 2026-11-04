@@ -401,13 +401,13 @@
                                                     <circle cx="12" cy="12" r="3"/>
                                                 </svg>
                                             </a>
-                                            <a href="/api/contracts/@c.Id/export-pdf" target="_blank" class="tf-action-btn" title="Xuất PDF (Times New Roman)">
+                                            <button type="button" class="tf-action-btn" title="Tải xuống PDF" @onclick="() => DownloadContractPdf(c.Id, c.ContractNumber)">
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                                     <polyline points="7 10 12 15 17 10"/>
                                                     <line x1="12" y1="15" x2="12" y2="3"/>
                                                 </svg>
-                                            </a>
+                                            </button>
                                             @if (c.Status == ContractStatus.Draft)
                                             {
                                                 <button type="button" class="tf-action-btn tf-action-btn-danger" title="Xóa bản nháp" @onclick="() => DeleteContract(c.Id)">
@@ -758,13 +758,13 @@
                                                     <circle cx="12" cy="12" r="3"/>
                                                 </svg>
                                             </button>
-                                            <a href="/api/contracts/employment/@c.Id/export-pdf" target="_blank" class="tf-action-btn" title="Xuất PDF A4">
+                                            <button type="button" class="tf-action-btn" title="Tải xuống PDF" @onclick="() => DownloadEmploymentContractPdf(c.Id, c.ContractNumber)">
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                                     <polyline points="7 10 12 15 17 10"/>
                                                     <line x1="12" y1="15" x2="12" y2="3"/>
                                                 </svg>
-                                            </a>
+                                            </button>
                                             @if (c.Status == EmploymentContractStatus.Draft || c.Status == EmploymentContractStatus.PendingSignature)
                                             {
                                                 <button type="button" class="tf-action-btn" title="Chỉnh sửa" @onclick="() => OpenEditEmploymentContract(c.Id)">
@@ -1036,6 +1036,7 @@
         if (empDetailModal != null)
         {
             await empDetailModal.OpenAsync(id);
+            StateHasChanged();
         }
     }
 
@@ -1097,4 +1098,34 @@
         EmploymentContractStatus.Cancelled => "bg-light text-muted border",
         _ => "bg-light text-dark"
     };
+
+    private async Task DownloadContractPdf(int id, string? contractNumber)
+    {
+        try
+        {
+            var rawNumber = string.IsNullOrWhiteSpace(contractNumber) ? $"HD-{id}" : contractNumber.Trim();
+            var safeCode = string.Concat(rawNumber.Split(System.IO.Path.GetInvalidFileNameChars())).Replace(" ", "_");
+            var filename = $"Hop_dong_{safeCode}.pdf";
+            await JS.InvokeVoidAsync("tradeflow.downloadPdf", $"/api/contracts/{id}/export-pdf", filename);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Index.DownloadContractPdf] Error: {ex.Message}");
+        }
+    }
+
+    private async Task DownloadEmploymentContractPdf(int id, string? contractNumber)
+    {
+        try
+        {
+            var rawNumber = string.IsNullOrWhiteSpace(contractNumber) ? $"HDLD-{id}" : contractNumber.Trim();
+            var safeCode = string.Concat(rawNumber.Split(System.IO.Path.GetInvalidFileNameChars())).Replace(" ", "_");
+            var filename = $"Hop_dong_lao_dong_{safeCode}.pdf";
+            await JS.InvokeVoidAsync("tradeflow.downloadPdf", $"/api/contracts/employment/{id}/export-pdf", filename);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Index.DownloadEmploymentContractPdf] Error: {ex.Message}");
+        }
+    }
 }

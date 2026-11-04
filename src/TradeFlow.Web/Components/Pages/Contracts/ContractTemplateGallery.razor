@@ -1,3 +1,4 @@
+@using TradeFlow.Application.Common.Helpers
 @using TradeFlow.Application.Common.Interfaces
 @using TradeFlow.Application.Common.Models.Contracts
 @using TradeFlow.Domain.Enums
@@ -68,7 +69,7 @@
                 </div>
                 <div class="tf-empty-title">Không tìm thấy mẫu hợp đồng phù hợp</div>
                 <div class="tf-empty-sub">Vui lòng thử từ khóa tìm kiếm khác hoặc chọn lại "Tất cả mẫu".</div>
-                <button type="button" class="btn btn-sm btn-outline-secondary mt-3" @onclick="ResetFilters">
+                <button type="button" class="tf-btn tf-btn-sm tf-btn-secondary mt-3" @onclick="ResetFilters">
                     Đặt lại bộ lọc
                 </button>
             </div>
@@ -250,7 +251,7 @@
     <!-- 3. Full-Scale A4 Inspection Modal ("Xem mẫu hợp đồng") -->
     @if (inspectTemplate != null)
     {
-        <div class="modal fade show d-block tf-inspect-modal-backdrop"
+        <div class="@(IsEmbeddedInModal ? "tf-inspect-embedded-viewer" : "modal fade show d-block tf-inspect-modal-backdrop")"
              tabindex="-1"
              role="dialog"
              aria-modal="true"
@@ -258,143 +259,369 @@
              @onclick="HandleInspectBackdropClick"
              @onkeydown="HandleInspectKeyDown"
              @ref="_inspectBackdropRef">
-            <div class="modal-dialog modal-dialog-centered modal-xl tf-inspect-modal-dialog"
+            <div class="@(IsEmbeddedInModal ? "tf-inspect-embedded-inner" : "modal-dialog modal-dialog-centered modal-xl tf-inspect-modal-dialog")"
                  @onclick:stopPropagation="true">
-                <div class="modal-content tf-inspect-modal-content"
+                <div class="@(IsEmbeddedInModal ? "tf-inspect-embedded-content" : "modal-content tf-inspect-modal-content")"
                      @onclick:stopPropagation="true">
                     <!-- Modal Header -->
                     <div class="modal-header tf-inspect-header">
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="tf-inspect-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <div class="d-flex align-items-center gap-3 flex-grow-1" style="min-width: 0;">
+                            <div class="tf-inspect-icon flex-shrink-0">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                                     <polyline points="14 2 14 8 20 8"/>
                                     <line x1="16" y1="13" x2="8" y2="13"/>
                                     <line x1="16" y1="17" x2="8" y2="17"/>
                                 </svg>
                             </div>
-                            <div>
+                            <div style="min-width: 0; flex: 1 1 auto;">
                                 <div class="d-flex align-items-center gap-2 flex-wrap">
                                     <h5 id="tf-inspect-title" class="modal-title fw-bold text-dark mb-0">@inspectTemplate.Title</h5>
-                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle small">@inspectTemplate.Category</span>
-                                    <span class="badge bg-secondary-subtle text-secondary border small">@GetPartyBBadgeText(inspectTemplate.TargetPartyType)</span>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5 small">@inspectTemplate.Category</span>
+                                    <span class="badge bg-secondary-subtle text-secondary border px-2 py-0.5 small">@GetPartyBBadgeText(inspectTemplate.TargetPartyType)</span>
                                 </div>
-                                <div class="text-muted small mt-1">@inspectTemplate.LegalBasis</div>
+                                <div class="text-muted small mt-1 text-truncate" title="@inspectTemplate.LegalBasis">
+                                    Căn cứ pháp lý: @inspectTemplate.LegalBasis
+                                </div>
                             </div>
                         </div>
-                        <button type="button" class="btn-close" @onclick="CloseInspectModalAsync" aria-label="Đóng xem trước (Esc)" title="Đóng xem trước (Esc)"></button>
+                        <button type="button"
+                                class="tf-modal-close-btn flex-shrink-0 ms-3"
+                                @onclick="CloseInspectModalAsync"
+                                aria-label="Đóng xem trước (Esc)"
+                                title="Đóng xem trước (Esc)">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
                     </div>
 
-                    <!-- Modal Body: High-Resolution A4 Document Sheet -->
+                    <!-- Document Toolbar (Standard A4, Zoom Controls, Fit Width, Print & PDF, Legal Compliance) -->
+                    <div class="tf-inspect-toolbar">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 small fw-semibold d-inline-flex align-items-center gap-1.5">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                </svg>
+                                Khổ A4 (210 × 297 mm)
+                            </span>
+                            <span class="tf-toolbar-sep d-none d-sm-inline-block"></span>
+                            <button type="button"
+                                    class="tf-toolbar-btn @(_isFitWidth ? "is-active" : "")"
+                                    @onclick="ToggleFitWidth"
+                                    title="Vừa chiều ngang">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="4 14 10 14 10 20"></polyline>
+                                    <polyline points="20 10 14 10 14 4"></polyline>
+                                    <line x1="14" y1="10" x2="21" y2="3"></line>
+                                    <line x1="3" y1="21" x2="10" y2="14"></line>
+                                </svg>
+                                <span>Vừa chiều ngang</span>
+                            </button>
+                            <span class="tf-toolbar-sep d-none d-sm-inline-block"></span>
+                            <button type="button"
+                                    class="tf-toolbar-btn @(showCompliancePanel ? "is-active" : "")"
+                                    @onclick="ToggleCompliancePanel"
+                                    title="Xem đánh giá tuân thủ 8 tiêu chí pháp lý">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                    <polyline points="9 12 11 14 15 10"/>
+                                </svg>
+                                <span>Tuân thủ: @(inspectCompliance?.PassedCount ?? 8)/8 tiêu chuẩn</span>
+                            </button>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <!-- Zoom Controls -->
+                            <div class="tf-zoom-group">
+                                <button type="button"
+                                        class="tf-zoom-btn"
+                                        @onclick="ZoomOut"
+                                        disabled="@(_zoomLevel <= 60)"
+                                        title="Thu nhỏ (-10%)">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                </button>
+                                <span class="tf-zoom-level font-monospace" title="Tỷ lệ thu phóng">@($"{_zoomLevel}%")</span>
+                                <button type="button"
+                                        class="tf-zoom-btn"
+                                        @onclick="ZoomIn"
+                                        disabled="@(_zoomLevel >= 150)"
+                                        title="Phóng to (+10%)">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                </button>
+                                <button type="button"
+                                        class="tf-zoom-btn tf-zoom-reset"
+                                        @onclick="ResetZoom"
+                                        title="Đặt lại 100%">
+                                    100%
+                                </button>
+                            </div>
+
+                            <span class="tf-toolbar-sep d-none d-sm-inline-block"></span>
+
+                            <!-- Print Document -->
+                            <button type="button" class="tf-toolbar-action-btn" @onclick="PrintInspectDocument" title="In trực tiếp tài liệu chuẩn in ấn A4 (Mẹo: Bỏ chọn 'Headers and footers' trong hộp thoại in để tránh chèn URL trình duyệt)">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                                    <rect x="6" y="14" width="12" height="8"></rect>
+                                </svg>
+                                <span>In tài liệu</span>
+                            </button>
+
+                            <!-- Download PDF -->
+                            <button type="button" class="tf-toolbar-action-btn" @onclick="DownloadPdf" title="Tải trực tiếp file PDF chính thức về máy (Không có header/footer trình duyệt)">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                <span>Tải PDF</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Modal Body: High-Resolution Authentic Multi-Page A4 Document -->
                     <div class="modal-body tf-inspect-body">
-                        <div class="tf-inspect-a4-sheet">
-                            <!-- National Header -->
-                            <div class="text-center mb-4">
-                                <div class="fw-bold" style="font-size: 15px;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
-                                <div class="fw-bold" style="font-size: 14px;">Độc lập - Tự do - Hạnh phúc</div>
-                                <div class="mx-auto my-1" style="width: 140px; height: 1px; background-color: #333;"></div>
-                                <div class="fst-italic" style="font-size: 13px;">@signingLocation, ngày @DateTime.Now.ToString("dd") tháng @DateTime.Now.ToString("MM") năm @DateTime.Now.ToString("yyyy")</div>
+                        @if (showCompliancePanel && inspectCompliance != null)
+                        {
+                            <div class="tf-compliance-panel no-print mb-4">
+                                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge bg-success-subtle text-success border border-success px-2.5 py-1 fw-bold fs-7">
+                                            ✔ Hợp chuẩn Pháp lý 100% (@inspectCompliance.PassedCount/8 tiêu chí Đạt)
+                                        </span>
+                                        <span class="small text-muted">BLDS 2015, Luật Thương mại 2005 (Đ301), Luật BVQLNTD 2023 &amp; Luật GDĐT 2023</span>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-link text-muted p-0 text-decoration-none" @onclick="ToggleCompliancePanel">✕ Thu gọn</button>
+                                </div>
+                                <div class="row g-2">
+                                    @foreach (var check in inspectCompliance.Items)
+                                    {
+                                        <div class="col-md-6">
+                                            <div class="p-2.5 border rounded bg-white dark:bg-dark small h-100 shadow-2xs">
+                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                                    <span class="fw-bold text-dark">@check.Title</span>
+                                                    <span class="badge @(check.Status == LegalCheckItemStatus.Passed ? "bg-success-subtle text-success border border-success-subtle" : "bg-warning-subtle text-warning border border-warning-subtle") px-1.5 py-0.5">
+                                                        @(check.Status == LegalCheckItemStatus.Passed ? "Đạt" : "Cảnh báo")
+                                                    </span>
+                                                </div>
+                                                <div class="text-primary small fw-semibold" style="font-size: 0.8rem;">@check.LegalReference</div>
+                                                <div class="text-muted smaller mt-0.5" style="line-height: 1.4;">@check.Details</div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
                             </div>
+                        }
 
-                            <!-- Document Title & Number -->
-                            <div class="text-center mb-4">
-                                <div class="fw-bold fs-5 text-uppercase">@GetTemplateDocTitle(inspectTemplate.Code)</div>
-                                <div class="fw-semibold">Số: @GetSampleContractNumber(inspectTemplate.Code)</div>
-                            </div>
+                        <div class="tf-inspect-sheet-wrapper @(_isFitWidth ? "is-fit-width" : "")" style="transform: scale(@((double)_zoomLevel / 100.0)); transform-origin: top center;">
+                            <div id="tf-inspect-document-sheet" class="d-flex flex-column align-items-center w-100">
+                                
+                                <!-- PAGE 1 OF MULTI-PAGE CONTRACT -->
+                                <div class="tf-inspect-a4-sheet tf-a4-page tf-a4-page-1" role="document" aria-label="Trang 1 của mẫu hợp đồng" style="font-size: @(inspectTemplate.Code == "B2C_RETAIL" ? "16px" : "14.5px");">
+                                    <!-- National Header (Decree 30/2020/ND-CP Standard Block - PAGE 1 ONLY) -->
+                                    <div class="tf-doc-national-header text-center mb-4" style="display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%;">
+                                        <div class="tf-doc-nat-title fw-bold" style="font-size: 13pt; text-transform: uppercase; letter-spacing: 0.2pt; line-height: 1.25; margin: 0;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+                                        <div class="tf-doc-nat-motto fw-bold" style="font-size: 13pt; line-height: 1.25; margin-top: 3pt; margin-bottom: 0;">Độc lập - Tự do - Hạnh phúc</div>
+                                        <div class="tf-doc-nat-line" style="width: 140px; height: 1.5px; background-color: #000000; margin: 4pt auto 5pt auto;"></div>
+                                        <div class="tf-doc-nat-date fst-italic" style="font-size: 13pt; line-height: 1.25; margin: 0;">@signingLocation, ngày @DateTime.Now.ToString("dd") tháng @DateTime.Now.ToString("MM") năm @DateTime.Now.ToString("yyyy")</div>
+                                    </div>
 
-                            <!-- Legal Basis -->
-                            <div class="mb-3 fst-italic" style="font-size: 13.5px;">
-                                @foreach (var basis in GetLegalBasisLines(inspectTemplate.Code))
+                                    <!-- Document Title & Number (PAGE 1 ONLY) -->
+                                    <div class="text-center mb-4">
+                                        <div class="fw-bold fs-5 text-uppercase">@GetTemplateDocTitle(inspectTemplate.Code)</div>
+                                        <div class="fw-semibold">Số: @GetSampleContractNumber(inspectTemplate.Code)</div>
+                                    </div>
+
+                                    <!-- Legal Basis (PAGE 1 ONLY) -->
+                                    <div class="mb-3 fst-italic" style="font-size: 13px;">
+                                        @foreach (var basis in GetLegalBasisLines(inspectTemplate.Code))
+                                        {
+                                            <div>- @basis</div>
+                                        }
+                                    </div>
+
+                                    <div class="mb-3 fst-italic">
+                                        Hôm nay, ngày @DateTime.Now.ToString("dd/MM/yyyy"), tại Showroom Công ty TNHH Thiết bị Vệ sinh LACASA Việt Nam, chúng tôi gồm có:
+                                    </div>
+
+                                    <!-- Party A -->
+                                    <div class="mb-3 tf-doc-party-box">
+                                        <div class="fw-bold text-uppercase mb-1">BÊN A (BÊN BÁN): CÔNG TY TNHH THIẾT BỊ VỆ SINH LACASA VIỆT NAM</div>
+                                        <div>Địa chỉ: Số 123 Đường Nguyễn Văn Cừ, Phường An Khánh, Quận Ninh Kiều, TP. Cần Thơ</div>
+                                        <div>Mã số thuế: 0316899999 | Điện thoại: 0909 123 456 | Email: hopdong@lacasavietnam.vn</div>
+                                        <div>Người đại diện: <strong>Nguyễn Văn An</strong> - Chức vụ: Giám đốc (Người đại diện theo pháp luật)</div>
+                                        <div>Tài khoản ngân hàng: 0071000999888 tại Ngân hàng Ngoại thương Việt Nam (Vietcombank) - CN Cần Thơ</div>
+                                    </div>
+
+                                    <!-- Party B -->
+                                    <div class="mb-3 tf-doc-party-box">
+                                        <div class="fw-bold text-uppercase mb-1">@GetPartyBHeader(inspectTemplate.Code)</div>
+                                        <div>@GetPartyBDetail(inspectTemplate.Code)</div>
+                                    </div>
+
+                                    <div class="mb-3 fst-italic">
+                                        Hai bên cùng thống nhất ký kết hợp đồng theo các điều khoản cụ thể sau đây:
+                                    </div>
+
+                                    <!-- Sample Items Table -->
+                                    @if (HasItemsTable(inspectTemplate.Code))
+                                    {
+                                        <table class="table table-bordered table-sm mb-3 text-center" style="font-size: 13.5px;">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>STT</th>
+                                                    <th>Tên thiết bị / Hạng mục quy cách</th>
+                                                    <th>ĐVT</th>
+                                                    <th>SL</th>
+                                                    <th>Thành tiền (VNĐ)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var row in GetSampleItems(inspectTemplate.Code))
+                                                {
+                                                    <tr>
+                                                        <td>@row.Stt</td>
+                                                        <td class="text-start">@row.Name</td>
+                                                        <td>@row.Unit</td>
+                                                        <td>@row.Qty</td>
+                                                        <td class="text-end fw-semibold">@row.Total</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    }
+
+                                    <!-- Page 1 Clauses -->
+                                    @foreach (var clause in GetPage1Clauses(inspectTemplate.Code))
+                                    {
+                                        <div class="mb-3 tf-clause-item">
+                                            <div class="fw-bold clause-heading">@clause.Num: @clause.Title</div>
+                                            <div class="clause-paragraph" style="text-align: justify; white-space: pre-line;">@clause.Summary</div>
+                                        </div>
+                                    }
+
+                                    <!-- Page 1 Running Footer -->
+                                    <div class="tf-a4-page-footer">
+                                        <span>Hợp đồng số: @GetSampleContractNumber(inspectTemplate.Code)</span>
+                                        <span>Trang 1 / @GetTotalPages(inspectTemplate.Code)</span>
+                                    </div>
+                                </div>
+
+                                <!-- PAGE 2 (NO REPEATED NATIONAL HEADER, MOTTO OR TITLE) -->
+                                @if (GetTotalPages(inspectTemplate.Code) >= 2)
                                 {
-                                    <div>- @basis</div>
+                                    <div class="tf-a4-page-divider no-print">
+                                        <span class="tf-a4-page-badge">Sang trang 2</span>
+                                    </div>
+
+                                    <div class="tf-inspect-a4-sheet tf-a4-page tf-a4-page-2" role="document" aria-label="Trang 2 của mẫu hợp đồng" style="font-size: @(inspectTemplate.Code == "B2C_RETAIL" ? "16px" : "14.5px");">
+                                        <!-- Page 2 Clauses Continuation -->
+                                        @foreach (var clause in GetPage2Clauses(inspectTemplate.Code))
+                                        {
+                                            <div class="mb-3 tf-clause-item">
+                                                <div class="fw-bold clause-heading">@clause.Num: @clause.Title</div>
+                                                <div class="clause-paragraph" style="text-align: justify; white-space: pre-line;">@clause.Summary</div>
+                                            </div>
+                                        }
+
+                                        @if (GetTotalPages(inspectTemplate.Code) == 2)
+                                        {
+                                            <!-- Signatures Box for 2-page contracts -->
+                                            <div class="row mt-5 pt-4 text-center tf-signature-block" style="break-inside: avoid !important; page-break-inside: avoid !important;">
+                                                <div class="col-6">
+                                                    <div class="fw-bold text-uppercase">@GetPartyASigLabel(inspectTemplate.Code)</div>
+                                                    <div class="fst-italic small mb-2">@GetPartyASigSubLabel(inspectTemplate.Code)</div>
+                                                    <div style="height: 65px;"></div>
+                                                    <div class="fw-bold">Nguyễn Văn An</div>
+                                                    <div class="small text-muted">Giám đốc (Người đại diện pháp luật)</div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="fw-bold text-uppercase">@GetPartyBSigLabel(inspectTemplate.Code)</div>
+                                                    <div class="fst-italic small mb-2">@GetPartyBSigSubLabel(inspectTemplate.Code)</div>
+                                                    <div style="height: 65px;"></div>
+                                                    <div class="fw-bold">@GetPartyBSigName(inspectTemplate.Code)</div>
+                                                    @if (inspectTemplate.Code != "B2C_RETAIL")
+                                                    {
+                                                        <div class="small text-muted">@GetPartyBPosition(inspectTemplate.Code)</div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+
+                                        <!-- Page 2 Running Footer -->
+                                        <div class="tf-a4-page-footer">
+                                            <span>Hợp đồng số: @GetSampleContractNumber(inspectTemplate.Code)</span>
+                                            <span>Trang 2 / @GetTotalPages(inspectTemplate.Code)</span>
+                                        </div>
+                                    </div>
+                                }
+
+                                <!-- PAGE 3 (FOR 3-PAGE CONTRACTS E.G. B2B_SALE) -->
+                                @if (GetTotalPages(inspectTemplate.Code) >= 3)
+                                {
+                                    <div class="tf-a4-page-divider no-print">
+                                        <span class="tf-a4-page-badge">Sang trang 3</span>
+                                    </div>
+
+                                    <div class="tf-inspect-a4-sheet tf-a4-page tf-a4-page-3" role="document" aria-label="Trang 3 của mẫu hợp đồng" style="font-size: @(inspectTemplate.Code == "B2C_RETAIL" ? "16px" : "14.5px");">
+                                        <!-- Page 3 Clauses Continuation -->
+                                        @foreach (var clause in GetPage3Clauses(inspectTemplate.Code))
+                                        {
+                                            <div class="mb-3 tf-clause-item">
+                                                <div class="fw-bold clause-heading">@clause.Num: @clause.Title</div>
+                                                <div class="clause-paragraph" style="text-align: justify; white-space: pre-line;">@clause.Summary</div>
+                                            </div>
+                                        }
+
+                                        <!-- Signatures Box for 3-page contracts -->
+                                        <div class="row mt-5 pt-4 text-center tf-signature-block" style="break-inside: avoid !important; page-break-inside: avoid !important;">
+                                            <div class="col-6">
+                                                <div class="fw-bold text-uppercase">@GetPartyASigLabel(inspectTemplate.Code)</div>
+                                                <div class="fst-italic small mb-2">@GetPartyASigSubLabel(inspectTemplate.Code)</div>
+                                                <div style="height: 65px;"></div>
+                                                <div class="fw-bold">Nguyễn Văn An</div>
+                                                <div class="small text-muted">Giám đốc (Người đại diện pháp luật)</div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="fw-bold text-uppercase">@GetPartyBSigLabel(inspectTemplate.Code)</div>
+                                                <div class="fst-italic small mb-2">@GetPartyBSigSubLabel(inspectTemplate.Code)</div>
+                                                <div style="height: 65px;"></div>
+                                                <div class="fw-bold">@GetPartyBSigName(inspectTemplate.Code)</div>
+                                                @if (inspectTemplate.Code != "B2C_RETAIL")
+                                                {
+                                                    <div class="small text-muted">@GetPartyBPosition(inspectTemplate.Code)</div>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <!-- Page 3 Running Footer -->
+                                        <div class="tf-a4-page-footer">
+                                            <span>Hợp đồng số: @GetSampleContractNumber(inspectTemplate.Code)</span>
+                                            <span>Trang 3 / 3</span>
+                                        </div>
+                                    </div>
                                 }
                             </div>
-
-                            <div class="mb-3 fst-italic">
-                                Hôm nay, ngày @DateTime.Now.ToString("dd/MM/yyyy"), tại Showroom Công ty TNHH Thiết bị Vệ sinh LACASA Việt Nam, chúng tôi gồm có:
-                            </div>
-
-                            <!-- Party A -->
-                            <div class="mb-3 p-3 border rounded bg-light bg-opacity-50">
-                                <div class="fw-bold text-uppercase mb-1">BÊN A (BÊN BÁN): CÔNG TY TNHH THIẾT BỊ VỆ SINH LACASA VIỆT NAM</div>
-                                <div>Địa chỉ: Số 123 Đường Nguyễn Văn Cừ, Phường An Khánh, Quận Ninh Kiều, TP. Cần Thơ</div>
-                                <div>Mã số thuế: 0316899999 | Điện thoại: 0909 123 456 | Email: hopdong@lacasavietnam.vn</div>
-                                <div>Người đại diện: <strong>Nguyễn Văn An</strong> - Chức vụ: Giám đốc (Người đại diện theo pháp luật)</div>
-                                <div>Tài khoản ngân hàng: 0071000999888 tại Ngân hàng Ngoại thương Việt Nam (Vietcombank) - CN Cần Thơ</div>
-                            </div>
-
-                            <!-- Party B -->
-                            <div class="mb-3 p-3 border rounded bg-light bg-opacity-50">
-                                <div class="fw-bold text-uppercase mb-1">@GetPartyBHeader(inspectTemplate.Code)</div>
-                                <div>@GetPartyBDetail(inspectTemplate.Code)</div>
-                            </div>
-
-                            <div class="mb-3 fst-italic">
-                                Hai bên cùng thống nhất ký kết hợp đồng theo các điều khoản cụ thể sau đây:
-                            </div>
-
-                            <!-- Sample Items Table -->
-                            @if (HasItemsTable(inspectTemplate.Code))
-                            {
-                                <table class="table table-bordered table-sm mb-3 text-center" style="font-size: 13.5px;">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>STT</th>
-                                            <th>Tên thiết bị / Hạng mục quy cách</th>
-                                            <th>ĐVT</th>
-                                            <th>SL</th>
-                                            <th>Thành tiền (VNĐ)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var row in GetSampleItems(inspectTemplate.Code))
-                                        {
-                                            <tr>
-                                                <td>@row.Stt</td>
-                                                <td class="text-start">@row.Name</td>
-                                                <td>@row.Unit</td>
-                                                <td>@row.Qty</td>
-                                                <td class="text-end fw-semibold">@row.Total</td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            }
-
-                            <!-- Full Clauses -->
-                            @foreach (var clause in GetFullClauses(inspectTemplate.Code))
-                            {
-                                <div class="mb-3">
-                                    <div class="fw-bold">@clause.Num: @clause.Title</div>
-                                    <div style="text-align: justify;">@clause.Summary</div>
-                                </div>
-                            }
-
-                            <!-- Signatures Box -->
-                            <div class="row mt-5 pt-4 text-center" style="break-inside: avoid !important; page-break-inside: avoid !important;">
-                                <div class="col-6">
-                                    <div class="fw-bold">ĐẠI DIỆN BÊN A</div>
-                                    <div class="fst-italic small mb-2">(Ký, ghi rõ họ tên và đóng dấu)</div>
-                                    <div style="height: 70px;"></div>
-                                    <div class="fw-bold">Nguyễn Văn An</div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="fw-bold">@GetPartyBSigLabel(inspectTemplate.Code)</div>
-                                    <div class="fst-italic small mb-2">(Ký, ghi rõ họ tên)</div>
-                                    <div style="height: 70px;"></div>
-                                    <div class="fw-bold">@GetPartyBSigName(inspectTemplate.Code)</div>
-                                </div>
-                            </div>
                         </div>
                     </div>
-
-                    <!-- Modal Footer -->
+                    <!-- Single Clean Modal Footer -->
                     <div class="modal-footer tf-inspect-footer">
                         <div class="text-muted small me-auto d-none d-md-block">
                             <span>Văn bản mẫu chuẩn A4, phông Times New Roman theo thể thức NĐ 30/2020/NĐ-CP và BLDS 2015.</span>
                         </div>
-                        <button type="button" class="btn btn-sm btn-outline-secondary px-3" @onclick="CloseInspectModalAsync">Đóng xem trước</button>
-                        <button type="button" class="btn btn-sm btn-primary px-4 d-flex align-items-center gap-1" @onclick="() => HandleSelectTemplate(inspectTemplate)">
+                        <button type="button" class="tf-btn tf-btn-secondary" @onclick="CloseInspectModalAsync">
+                            Đóng xem trước
+                        </button>
+                        <button type="button" class="tf-btn tf-btn-primary d-inline-flex align-items-center gap-1.5" @onclick="() => HandleSelectTemplate(inspectTemplate)">
                             <span>Soạn hợp đồng từ mẫu này</span>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                                 <line x1="5" y1="12" x2="19" y2="12"/>
@@ -413,6 +640,8 @@
     [Parameter] public string? SelectedTemplateCode { get; set; }
     [Parameter] public EventCallback<ContractTemplateDto> OnSelect { get; set; }
     [Parameter] public string ActionButtonText { get; set; } = "Soạn hợp đồng";
+    [Parameter] public bool IsEmbeddedInModal { get; set; } = false;
+    [Parameter] public EventCallback<ContractTemplateDto?> OnInspectChanged { get; set; }
 
     private string? selectedCategory;
     private string searchQuery = string.Empty;
@@ -523,11 +752,122 @@
     private ElementReference _inspectBackdropRef;
     private bool _wasInspectOpen;
     private string? _lastInspectTriggerId;
+    private int _zoomLevel = 100;
+    private bool _isFitWidth = false;
+
+    private void ZoomIn() => _zoomLevel = Math.Min(150, _zoomLevel + 10);
+    private void ZoomOut() => _zoomLevel = Math.Max(60, _zoomLevel - 10);
+    private void ResetZoom()
+    {
+        _zoomLevel = 100;
+        _isFitWidth = false;
+    }
+
+    private void ToggleFitWidth()
+    {
+        _isFitWidth = !_isFitWidth;
+        if (_isFitWidth)
+        {
+            _zoomLevel = 100;
+        }
+    }
+
+    private async Task PrintInspectDocument()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("tradeflow.printDocument", "tf-inspect-document-sheet", inspectTemplate?.Title ?? "Mau_Hop_Dong");
+        }
+        catch { }
+    }
+
+    private async Task DownloadPdf()
+    {
+        if (inspectTemplate == null) return;
+        try
+        {
+            var code = inspectTemplate.Code;
+            var safeCode = string.Concat(code.Split(System.IO.Path.GetInvalidFileNameChars())).Replace(" ", "_");
+            var filename = $"Mau_hop_dong_{safeCode}.pdf";
+            await JS.InvokeVoidAsync("tradeflow.downloadPdf", $"/api/contracts/templates/{code}/export-pdf", filename);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ContractTemplateGallery.DownloadPdf] Error: {ex.Message}");
+        }
+    }
+
+    private bool showCompliancePanel = false;
+    private ContractLegalComplianceReportDto? inspectCompliance;
+
+    private void ToggleCompliancePanel()
+    {
+        showCompliancePanel = !showCompliancePanel;
+    }
+
+    private void UpdateInspectCompliance()
+    {
+        if (inspectTemplate == null)
+        {
+            inspectCompliance = null;
+            return;
+        }
+
+        var clausesList = GetFullClauses(inspectTemplate.Code)
+            .Select(c => new ContractClauseDto
+            {
+                ClauseNumber = c.Num,
+                Title = c.Title,
+                Content = c.Summary
+            }).ToList();
+
+        var sampleItems = GetSampleItems(inspectTemplate.Code)
+            .Select(it => new ContractItemDto
+            {
+                ProductName = it.Name,
+                Unit = it.Unit,
+                Quantity = decimal.TryParse(it.Qty, out var q) ? q : 1,
+                LineTotal = 100_000_000m
+            }).ToList();
+
+        inspectCompliance = ContractLegalComplianceEvaluator.EvaluateCommercialContract(
+            title: GetTemplateDocTitle(inspectTemplate.Code),
+            templateCode: inspectTemplate.Code,
+            partyBType: inspectTemplate.TargetPartyType ?? (inspectTemplate.Code == "B2C_RETAIL" ? ContractPartyBType.Individual : ContractPartyBType.Company),
+            partyAName: "CÔNG TY TNHH THIẾT BỊ VỆ SINH LACASA VIỆT NAM",
+            partyATaxCode: "0316899999",
+            partyAAddress: "123 Nguyễn Văn Cừ, Cần Thơ",
+            partyARepresentative: "Nguyễn Văn An",
+            partyAPosition: "Giám đốc",
+            partyAAuthority: "Người đại diện theo pháp luật",
+            partyBName: inspectTemplate.Code == "B2C_RETAIL" ? "Nguyễn Hoàng Long" : "CÔNG TY CP ĐẦU TƯ XÂY DỰNG MINH ĐỨC",
+            partyBTaxCode: inspectTemplate.Code == "B2C_RETAIL" ? "" : "0108998877",
+            partyBIdCardNumber: inspectTemplate.Code == "B2C_RETAIL" ? "079085012345" : "",
+            partyBAddress: "Biệt thự BT-12, KĐT Nam Cần Thơ",
+            partyBRepresentative: inspectTemplate.Code == "B2C_RETAIL" ? "Nguyễn Hoàng Long" : "Trần Minh Đức",
+            partyBPosition: inspectTemplate.Code == "B2C_RETAIL" ? "" : "Tổng Giám đốc",
+            partyBAuthority: inspectTemplate.Code == "B2C_RETAIL" ? "" : "Người đại diện theo pháp luật",
+            totalAmount: 307500000m,
+            amountInWords: "Ba trăm lẻ bảy triệu năm trăm nghìn đồng chẵn",
+            items: sampleItems,
+            clauses: clausesList,
+            executionMethod: ContractExecutionMethod.Both
+        );
+    }
 
     private async Task OpenPreviewModal(ContractTemplateDto t, string? triggerId = null)
     {
         _lastInspectTriggerId = triggerId;
         inspectTemplate = t;
+        _zoomLevel = 100;
+        _isFitWidth = false;
+        showCompliancePanel = false;
+        UpdateInspectCompliance();
+
+        if (OnInspectChanged.HasDelegate)
+        {
+            await OnInspectChanged.InvokeAsync(inspectTemplate);
+        }
         try
         {
             await JS.InvokeVoidAsync("TradeFlowMotion.lockScroll");
@@ -541,6 +881,12 @@
         {
             inspectTemplate = null;
             _wasInspectOpen = false;
+            _zoomLevel = 100;
+            _isFitWidth = false;
+            if (OnInspectChanged.HasDelegate)
+            {
+                await OnInspectChanged.InvokeAsync(null);
+            }
             try
             {
                 await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll");
@@ -820,71 +1166,134 @@
     {
         "B2B_SALE" => new[]
         {
-            new MiniClause("Điều 1", "Đối tượng hợp đồng và Danh mục hàng hóa", "Bên A đồng ý bán và Bên B đồng ý mua các thiết bị vệ sinh, phụ kiện và vật tư cao cấp LACASA theo danh mục, chủng loại, số lượng, quy cách và đơn giá chi tiết tại Bảng kê hàng hóa đính kèm."),
-            new MiniClause("Điều 2", "Giá trị hợp đồng và Phương thức thanh toán", "Giá trị hợp đồng đã bao gồm thuế GTGT (VAT) và chi phí vận chuyển đến chân công trình. Thanh toán chia làm 03 đợt: Đợt 1 đặt cọc 30% sau khi ký; Đợt 2 thanh toán 50% trước khi giao hàng; Đợt 3 thanh toán 20% còn lại trong vòng 07 ngày sau nghiệm thu."),
-            new MiniClause("Điều 3", "Thời gian, địa điểm và Quy cách giao nhận", "Bên A giao hàng trong vòng 07-15 ngày làm việc kể từ ngày nhận đủ tiền đợt 1. Địa điểm giao hàng tại công trình Bên B. Hai bên ký Biên bản giao nhận và phiếu kiểm định chất lượng."),
-            new MiniClause("Điều 4", "Tiêu chuẩn chất lượng và Xuất xứ hàng hóa", "Hàng hóa là hàng mới 100%, chính hãng LACASA, đạt tiêu chuẩn chất lượng TCVN và có đầy đủ chứng chỉ CO/CQ từ nhà sản xuất."),
-            new MiniClause("Điều 5", "Trách nhiệm và Bảo hành thiết bị", "Bên A bảo hành 10 năm cho phần men sứ Nano chống bám bẩn và 03 năm cho linh kiện phụ trợ van xả, sen vòi nóng lạnh. Mọi hư hỏng do lỗi sản xuất sẽ được đổi mới miễn phí trong vòng 48 giờ."),
-            new MiniClause("Điều 6", "Phạt vi phạm và Bồi thường thiệt hại", "Bên nào vi phạm nghĩa vụ hợp đồng sẽ phải chịu phạt vi phạm với mức 8% giá trị phần nghĩa vụ bị vi phạm theo đúng quy định tại Điều 301 Luật Thương mại 2005 và bồi thường thiệt hại thực tế phát sinh."),
-            new MiniClause("Điều 7", "Giải quyết tranh chấp và Điều khoản thi hành", "Mọi tranh chấp phát sinh sẽ được ưu tiên giải quyết thông qua thương lượng, hòa giải. Trường hợp không hòa giải được sẽ đưa ra Tòa án nhân dân có thẩm quyền nơi Bên A đặt trụ sở chính hoặc nơi thực hiện hợp đồng để giải quyết.")
+            new MiniClause("Điều 1", "Đối tượng và phạm vi hợp đồng", "1.1. Bên A đồng ý bán và Bên B đồng ý mua các thiết bị vệ sinh, phụ kiện và vật tư chuyên ngành cao cấp thương hiệu LACASA (bao gồm bồn cầu thông minh, bồn cầu liền khối men Nano kháng khuẩn, sen cây nhiệt độ, chậu lavabo, phụ kiện đồng bộ) theo danh mục, chủng loại, số lượng, quy cách và đơn giá chi tiết tại Bảng kê hàng hóa đính kèm Hợp đồng này.\n1.2. Hàng hóa cung cấp đi kèm tài liệu kỹ thuật, phiếu bảo hành chính hãng và các chứng từ xuất xưởng (CO/CQ)."),
+            new MiniClause("Điều 2", "Chất lượng và tiêu chuẩn hàng hóa", "2.1. Hàng hóa do Bên A cung cấp là hàng mới 100%, xuất xưởng chính hãng, đạt tiêu chuẩn chất lượng TCVN và quy chuẩn kỹ thuật nhà sản xuất. Bề mặt men sứ phủ Nano nung kháng khuẩn, chống bám bẩn; linh kiện van xả và sen vòi bằng đồng mạ Crom-Niken đa lớp chống ăn mòn.\n2.2. Quy cách đóng gói: Hàng hóa được đóng thùng carton chuyên dụng nguyên đai nguyên kiện, có chèn mút xốp định hình bảo vệ chống va đập.\n2.3. Hàng hóa lỗi: Trường hợp phát hiện lỗi kỹ thuật sản xuất hoặc nứt vỡ trong quá trình vận chuyển của Bên A, Bên A có trách nhiệm đổi mới 100% trong vòng 48 giờ làm việc kể từ thời điểm nhận thông báo."),
+            new MiniClause("Điều 3", "Giá trị hợp đồng và thuế", "3.1. Tổng giá trị hợp đồng đã bao gồm tiền hàng, thuế GTGT (VAT) theo tỷ lệ luật định, chi phí đóng gói tiêu chuẩn và chi phí vận chuyển, bốc xếp đến chân công trình hoặc kho Bên B theo thỏa thuận.\n3.2. Đơn giá hàng hóa là đơn giá cố định trong suốt thời hạn thực hiện Hợp đồng, không thay đổi trừ trường hợp hai bên có thỏa thuận điều chỉnh bằng văn bản phụ lục hợp đồng.\n3.3. Tổng số tiền thanh toán bằng số và bằng chữ được xác định chính xác theo Bảng kê danh mục hàng hóa đính kèm."),
+            new MiniClause("Điều 4", "Phương thức và thời hạn thanh toán", "4.1. Phương thức thanh toán: Chuyển khoản vào tài khoản ngân hàng chính thức của Bên A được ghi nhận tại phần thông tin các bên trong Hợp đồng này.\n4.2. Tiến độ thanh toán chia làm 03 đợt: Đợt 1 (Đặt cọc giữ hàng/sản xuất): 30% giá trị hợp đồng trong vòng 03 ngày làm việc sau khi ký kết; Đợt 2: 50% giá trị hợp đồng trước khi Bên A xuất hàng tập kết đến chân công trình; Đợt 3: 20% còn lại trong vòng 07 ngày làm việc sau khi hai bên hoàn thành giao nhận và ký Biên bản bàn giao.\n4.3. Xử lý chậm thanh toán: Trường hợp Bên B chậm thanh toán, Bên B phải trả tiền lãi trên số tiền chậm trả theo quy định tại Điều 306 Luật Thương mại 2005 căn cứ mức lãi suất nợ quá hạn trung bình trên thị trường tại thời điểm thanh toán tương ứng với thời gian chậm trả."),
+            new MiniClause("Điều 5", "Giao nhận hàng hóa và chuyển giao rủi ro", "5.1. Địa điểm giao hàng: Tại chân công trình hoặc kho của Bên B theo địa chỉ đã xác định trong Hợp đồng.\n5.2. Thời gian giao hàng: Trong vòng 07 - 15 ngày làm việc kể từ ngày Bên A nhận đủ tiền thanh toán Đợt 1. Bên A thông báo cho Bên B trước tối thiểu 24 giờ về thời điểm xe giao hàng cập bến.\n5.3. Người nhận hàng: Đại diện theo pháp luật của Bên B hoặc người được ủy quyền hợp pháp bằng văn bản/giấy giới thiệu có trách nhiệm tiếp nhận và ký Biên bản giao nhận.\n5.4. Chuyển giao rủi ro: Rủi ro về mất mát, hư hỏng hàng hóa được chuyển giao từ Bên A sang Bên B kể từ thời điểm Bên B ký Biên bản bàn giao nhận hàng tại địa điểm giao hàng đã thỏa thuận."),
+            new MiniClause("Điều 6", "Lắp đặt, hướng dẫn kỹ thuật và nghiệm thu", "6.1. Trường hợp hợp đồng bao gồm dịch vụ lắp đặt, Bên A bố trí đội ngũ kỹ thuật viên có chứng chỉ chuyên môn thực hiện lắp đặt đúng yêu cầu kỹ thuật và tiêu chuẩn an toàn cấp thoát nước TCVN 4513:1988.\n6.2. Sau khi lắp đặt hoàn thiện, hai bên tiến hành xả thử nước, kiểm tra độ kín nước và vận hành hệ thống trước khi ký Biên bản nghiệm thu kỹ thuật đưa vào sử dụng.\n6.3. Trường hợp Bên B tự tổ chức lắp đặt, Bên A cung cấp đầy đủ sơ đồ bản vẽ lắp đặt, tư vấn kỹ thuật và bàn giao biên bản giao nhận nguyên trạng."),
+            new MiniClause("Điều 7", "Chính sách bảo hành và hỗ trợ kỹ thuật", "7.1. Thời hạn bảo hành: Bảo hành chính hãng 10 năm đối với phần thân men sứ vệ sinh; bảo hành 03 năm đối với linh kiện phụ trợ van xả, nắp điện tử và sen vòi nóng lạnh kể từ ngày bàn giao.\n7.2. Phạm vi và điều kiện bảo hành: Bảo hành miễn phí các hư hỏng, rò rỉ hoặc lỗi men sứ do lỗi kỹ thuật của nhà sản xuất. Không bảo hành các trường hợp hư hại do va đập ngoại lực sau khi nhận hàng, sử dụng nguồn nước nhiễm phèn axit nặng vượt tiêu chuẩn hoặc tẩy rửa bằng hóa chất công nghiệp không đúng khuyến cáo.\n7.3. Thời gian xử lý: Bên A có mặt kiểm tra và xử lý trong vòng 24 giờ đối với khu vực nội thành và 48 giờ đối với khu vực ngoại tỉnh kể từ khi tiếp nhận thông tin bảo hành."),
+            new MiniClause("Điều 8", "Quyền và nghĩa vụ của các bên", "8.1. Quyền và nghĩa vụ của Bên A: Cung cấp hàng hóa đúng chủng loại, chất lượng, nguồn gốc và tiến độ đã cam kết; xuất hóa đơn GTGT hợp pháp; cung cấp hồ sơ CO/CQ và thực hiện nghĩa vụ bảo hành; có quyền tạm ngưng giao hàng nếu Bên B vi phạm nghĩa vụ thanh toán theo đợt thỏa thuận.\n8.2. Quyền và nghĩa vụ của Bên B: Chuẩn bị mặt bằng kho bãi tiếp nhận hàng hóa an toàn; bố trí nhân sự nghiệm thu đúng giờ; thanh toán đầy đủ, đúng hạn theo Điều 4; kiểm tra đối chiếu hàng hóa trước khi ký nhận."),
+            new MiniClause("Điều 9", "Vi phạm hợp đồng và bồi thường thiệt hại", "9.1. Phạt vi phạm: Bên nào có hành vi vi phạm nghĩa vụ hợp đồng sẽ phải chịu phạt vi phạm với mức tối đa 8% giá trị phần nghĩa vụ hợp đồng bị vi phạm theo đúng quy định tại Điều 301 Luật Thương mại 2005.\n9.2. Bồi thường thiệt hại: Bên vi phạm có nghĩa vụ bồi thường toàn bộ thiệt hại thực tế, trực tiếp mà bên bị vi phạm phải gánh chịu do hành vi vi phạm gây ra theo quy định từ Điều 302 đến Điều 305 Luật Thương mại 2005.\n9.3. Miễn phạt vi phạm trong trường hợp xảy ra sự kiện bất khả kháng được hai bên xác nhận theo Điều 10."),
+            new MiniClause("Điều 10", "Sự kiện bất khả kháng và miễn trách nhiệm", "10.1. Sự kiện bất khả kháng là sự kiện xảy ra một cách khách quan không thể lường trước được và không thể khắc phục được mặc dù đã áp dụng mọi biện pháp cần thiết trong khả năng cho phép (thiên tai, dịch bệnh, hỏa hoạn, chiến tranh hoặc thay đổi chính sách pháp luật quốc gia cấm lưu thông hàng hóa).\n10.2. Bên gặp sự kiện bất khả kháng phải thông báo bằng văn bản cho bên kia trong vòng 03 ngày làm việc kể từ ngày phát sinh sự kiện kèm theo xác nhận của cơ quan có thẩm quyền và áp dụng mọi biện pháp cần thiết để hạn chế tối đa thiệt hại."),
+            new MiniClause("Điều 11", "Sửa đổi, tạm ngừng và chấm dứt hợp đồng", "11.1. Mọi sửa đổi, bổ sung nội dung Hợp đồng này chỉ có giá trị pháp lý khi được lập thành văn bản phụ lục hợp đồng có chữ ký xác nhận của đại diện có thẩm quyền của hai bên (căn cứ Điều 403 Bộ luật Dân sự 2015).\n11.2. Hợp đồng chấm dứt khi: Hai bên hoàn thành toàn bộ nghĩa vụ và ký biên bản thanh lý hợp đồng; hoặc một bên có quyền đơn phương chấm dứt hợp đồng hợp pháp khi bên kia vi phạm nghiêm trọng nghĩa vụ hợp đồng và không khắc phục trong thời hạn 15 ngày kể từ ngày nhận thông báo bằng văn bản."),
+            new MiniClause("Điều 12", "Giải quyết tranh chấp", "12.1. Hai bên cam kết thực hiện nghiêm túc các điều khoản đã thỏa thuận. Mọi tranh chấp hoặc bất đồng phát sinh từ hoặc liên quan đến Hợp đồng này trước hết sẽ được giải quyết thông qua thương lượng, hòa giải trên tinh thần thiện chí, hợp tác.\n12.2. Trường hợp không đạt được thỏa thuận hòa giải trong vòng 30 ngày kể từ ngày phát sinh tranh chấp, một trong hai bên có quyền đưa vụ tranh chấp ra Tòa án nhân dân có thẩm quyền tại nơi Bên A đặt trụ sở chính hoặc nơi thực hiện hợp đồng để giải quyết theo quy định của pháp luật Việt Nam. Án phí và chi phí pháp lý do bên có lỗi chịu theo phán quyết của Tòa án."),
+            new MiniClause("Điều 13", "Hiệu lực và số bản hợp đồng", "13.1. Hợp đồng này có hiệu lực kể từ ngày đại diện có thẩm quyền của hai bên hoàn tất việc ký kết hợp pháp.\n13.2. Hợp đồng được lập thành 04 (bốn) bản chính bằng tiếng Việt có giá trị pháp lý như nhau, Bên A giữ 02 (hai) bản, Bên B giữ 02 (hai) bản để cùng lưu trữ và tổ chức thực hiện.")
         },
         "B2C_RETAIL" => new[]
         {
-            new MiniClause("Điều 1", "Hàng hóa đặt mua", "Bên A cung cấp cho Bên B các sản phẩm thiết bị vệ sinh LACASA chính hãng theo đơn đặt hàng chi tiết phục vụ hoàn thiện nhà ở."),
-            new MiniClause("Điều 2", "Giá cả và Thanh toán", "Bên B đặt cọc 30% khi xác nhận đơn và thanh toán 70% số tiền còn lại ngay khi nhận hàng và kiểm tra nguyên vẹn tại nhà."),
-            new MiniClause("Điều 3", "Giao hàng và Kiểm tra", "Bên A giao hàng tận nơi theo lịch hẹn trước với Bên B. Bên B có trách nhiệm kiểm tra ngoại quan men sứ, phụ kiện kèm theo trước khi ký biên bản giao nhận."),
-            new MiniClause("Điều 4", "Chính sách bảo hành và Đổi trả", "Áp dụng chính sách 1 đổi 1 trong vòng 30 ngày nếu phát hiện lỗi kỹ thuật từ nhà sản xuất. Bảo hành men sứ 10 năm theo số điện thoại kích hoạt bảo hành điện tử."),
-            new MiniClause("Điều 5", "Hiệu lực hợp đồng", "Hợp đồng có hiệu lực kể từ ngày ký và chấm dứt khi hai bên hoàn thành nghĩa vụ giao nhận, thanh toán.")
+            new MiniClause("Điều 1", "Hàng hóa đặt mua và Thông tin sản phẩm", "1.1. Bên A cung cấp cho Bên B các sản phẩm thiết bị vệ sinh LACASA chính hãng theo đơn đặt hàng chi tiết phục vụ nhu cầu sinh hoạt nhà ở của Bên B.\n1.2. Hàng hóa là hàng mới 100%, nguyên đai nguyên kiện, có tem chống hàng giả và tài liệu hướng dẫn sử dụng kèm theo."),
+            new MiniClause("Điều 2", "Giá niêm yết, thuế GTGT và Phương thức thanh toán", "2.1. Giá bán đã bao gồm thuế GTGT (VAT) và chi phí vận chuyển tận nhà. Bên A cam kết giữ nguyên giá niêm yết đã thỏa thuận, không tự ý điều chỉnh tăng giá.\n2.2. Phương thức thanh toán: Bên B thanh toán bằng chuyển khoản hoặc tiền mặt. Đợt 1 đặt cọc 20% - 30% khi xác nhận đơn hàng; số tiền còn lại thanh toán ngay khi Bên A giao hàng và Bên B kiểm tra nguyên vẹn tại nhà."),
+            new MiniClause("Điều 3", "Giao nhận, kiểm tra ngoại quan và Bàn giao tại nhà", "3.1. Bên A giao hàng tận nơi theo lịch hẹn đã thống nhất trước với Bên B.\n3.2. Bên B có quyền và trách nhiệm kiểm tra ngoại quan men sứ, phụ kiện kèm theo trước khi ký biên bản giao nhận.\n3.3. Bên A hướng dẫn Bên B quy trình kích hoạt bảo hành điện tử và bàn giao phiếu bảo hành chính hãng."),
+            new MiniClause("Điều 4", "Quyền đổi trả miễn phí và Chính sách bảo hành chính hãng", "4.1. Chính sách đổi trả: Áp dụng chính sách 1 đổi 1 miễn phí trong vòng 30 ngày kể từ ngày giao hàng nếu sản phẩm phát sinh lỗi kỹ thuật do nhà sản xuất.\n4.2. Chính sách bảo hành: Bảo hành thân sứ 10 năm, linh kiện phụ kiện 03 năm theo số điện thoại kích hoạt bảo hành điện tử.\n4.3. Bên A tiếp nhận và xử lý yêu cầu bảo hành tận nhà trong vòng 24 giờ kể từ khi nhận được thông báo từ Bên B."),
+            new MiniClause("Điều 5", "Quyền khiếu nại, hỗ trợ và Bảo vệ dữ liệu cá nhân", "5.1. Bên B có quyền phản ánh, khiếu nại về chất lượng sản phẩm và thái độ phục vụ qua đường dây nóng chăm sóc khách hàng của Bên A.\n5.2. Bên A cam kết bảo mật tuyệt đối thông tin định danh cá nhân của Bên B theo quy định pháp luật về bảo vệ dữ liệu cá nhân (Nghị định 13/2023/NĐ-CP)."),
+            new MiniClause("Điều 6", "Hiệu lực hợp đồng và Số bản", "6.1. Hợp đồng có hiệu lực kể từ ngày ký và chấm dứt khi hai bên hoàn thành nghĩa vụ giao nhận, thanh toán.\n6.2. Hợp đồng bằng văn bản giấy tuân thủ quy chuẩn cỡ chữ tối thiểu 12pt theo Nghị định 55/2024/NĐ-CP, được lập thành 02 bản, mỗi bên giữ 01 bản có giá trị pháp lý như nhau.")
         },
         "SUPPLY_INSTALL" => new[]
         {
             new MiniClause("Điều 1", "Phạm vi cung cấp và Thi công lắp đặt", "Bên A chịu trách nhiệm cung ứng toàn bộ thiết bị vệ sinh, phụ kiện đấu nối và bố trí đội ngũ kỹ thuật viên có chứng chỉ nghề thực hiện lắp đặt hoàn thiện theo bản vẽ thiết kế đã duyệt."),
-            new MiniClause("Điều 2", "Tiêu chuẩn kỹ thuật và Nghiệm thu thử áp lực nước", "Công tác lắp đặt tuân thủ TCVN 4513:1988. Sau khi lắp đặt hoàn thiện, hai bên thử áp lực nước tối thiểu 3-5 bar trong 30 phút, kiểm tra độ kín nước, chống rò rỉ và thoát nước êm trước khi ký Biên bản nghiệm thu kỹ thuật."),
-            new MiniClause("Điều 3", "An toàn lao động và Vệ sinh môi trường", "Bên A trang bị đầy đủ bảo hộ lao động cho công nhân, tuân thủ nội quy công trường và dọn dẹp sạch sẽ mặt bằng sau khi thi công."),
-            new MiniClause("Điều 4", "Giá trị hợp đồng và Nghiệm thu thanh toán", "Thanh toán theo 3 đợt: 30% tạm ứng, 40% khi tập kết vật tư đến chân công trình, 30% còn lại sau khi ký Biên bản nghiệm thu bàn giao đưa vào sử dụng."),
-            new MiniClause("Điều 5", "Bảo hành công trình và Thiết bị", "Bảo hành kỹ thuật lắp đặt 24 tháng; bảo hành thiết bị chính hãng theo tiêu chuẩn LACASA (10 năm men sứ, 03 năm sen vòi).")
+            new MiniClause("Điều 2", "Tiêu chuẩn kỹ thuật và Nghiệm thu thử áp lực nước", "Công tác lắp đặt phải tuân thủ nghiêm ngặt TCVN 4513:1988. Sau khi lắp đặt hoàn thiện, hai bên tiến hành thử áp lực nước tối thiểu 3-5 bar trong 30 phút, kiểm tra độ kín nước, chống rò rỉ và thoát nước êm trước khi ký Biên bản nghiệm thu kỹ thuật."),
+            new MiniClause("Điều 3", "An toàn lao động và Vệ sinh môi trường", "Bên A cam kết trang bị đầy đủ bảo hộ lao động cho công nhân, tuân thủ nội quy công trường và dọn dẹp sạch sẽ mặt bằng sau khi hoàn thành công việc."),
+            new MiniClause("Điều 4", "Giá trị hợp đồng và Phương thức nghiệm thu thanh toán", "Thanh toán theo 3 đợt: 30% tạm ứng, 40% khi tập kết vật tư đến công trường, 30% còn lại sau khi ký Biên bản nghiệm thu bàn giao và bàn giao phiếu bảo hành."),
+            new MiniClause("Điều 5", "Bảo hành công trình và Thiết bị", "Bảo hành kỹ thuật lắp đặt 24 tháng; bảo hành thiết bị chính hãng theo tiêu chuẩn LACASA (10 năm sứ, 03 năm sen vòi)."),
+            new MiniClause("Điều 6", "Phạt vi phạm và Giải quyết tranh chấp", "Phạt vi phạm áp dụng theo Điều 301 Luật Thương mại 2005 tối đa 8% giá trị phần nghĩa vụ bị vi phạm. Mọi tranh chấp thương lượng không thành sẽ được giải quyết tại Tòa án nhân dân có thẩm quyền."),
+            new MiniClause("Điều 7", "Hiệu lực và số bản hợp đồng", "Hợp đồng có hiệu lực từ ngày ký, được lập thành 04 bản chính, mỗi bên giữ 02 bản.")
         },
         "PRINCIPLE_AGREEMENT" => new[]
         {
             new MiniClause("Điều 1", "Nguyên tắc hợp tác và Đặt hàng", "Hợp đồng này xác định các nguyên tắc chung về việc Bên A cung cấp thiết bị vệ sinh cho Bên B. Từng lần mua bán cụ thể sẽ được thực hiện bằng Đơn đặt hàng (PO) được xác nhận bởi đại diện có thẩm quyền của hai bên."),
-            new MiniClause("Điều 2", "Chính sách giá và Chiết khấu thương mại", "Đơn giá được áp dụng theo Bảng giá niêm yết hiện hành của Bên A trừ đi tỷ lệ chiết khấu theo phân hạng Đại lý Cấp 1 quy định chi tiết trong phụ lục hợp tác."),
-            new MiniClause("Điều 3", "Hạn mức công nợ và Thời hạn thanh toán", "Bên A cấp cho Bên B hạn mức tín dụng công nợ tối đa là 500.000.000 VNĐ với thời hạn thanh toán không quá 30 ngày kể từ ngày xuất hóa đơn GTGT."),
-            new MiniClause("Điều 4", "Thời hạn hiệu lực của Hợp đồng nguyên tắc", "Hợp đồng này có hiệu lực 01 năm kể từ ngày ký và tự động gia hạn thêm 01 năm tiếp theo nếu không bên nào có văn bản chấm dứt trước 30 ngày.")
+            new MiniClause("Điều 2", "Chính sách giá và Chiết khấu thương mại", "Đơn giá được áp dụng theo Bảng giá niêm yết hiện hành của Bên A trừ đi tỷ lệ chiết khấu theo phân hạng đối tác được quy định chi tiết trong phụ lục hợp tác."),
+            new MiniClause("Điều 3", "Hạn mức công nợ và Thời hạn thanh toán", "Bên A cấp cho Bên B hạn mức tín dụng công nợ tối đa là 500.000.000 VNĐ với thời hạn thanh toán không quá 30 ngày kể từ ngày xuất hóa đơn GTGT. Tiền lãi chậm trả tính theo Điều 306 Luật Thương mại 2005."),
+            new MiniClause("Điều 4", "Thời hạn hiệu lực của Hợp đồng nguyên tắc", "Hợp đồng này có hiệu lực 01 năm kể từ ngày ký và tự động gia hạn thêm 01 năm tiếp theo nếu không bên nào có văn bản chấm dứt trước 30 ngày. Hợp đồng lập thành 04 bản, mỗi bên giữ 02 bản.")
         },
         "DEPOSIT_AGREEMENT" => new[]
         {
             new MiniClause("Điều 1", "Mục đích đặt cọc", "Bên B tự nguyện đặt cọc cho Bên A một khoản tiền để đảm bảo quyền ưu tiên mua và giữ giá lô thiết bị vệ sinh LACASA theo danh mục đính kèm trong thời gian chuẩn bị ký kết Hợp đồng mua bán chính thức."),
-            new MiniClause("Điều 2", "Số tiền đặt cọc và Phương thức giao nhận", "Số tiền đặt cọc được xác định tương ứng 20% tổng giá trị dự kiến của lô hàng, được chuyển khoản trực tiếp vào tài khoản ngân hàng của Bên A."),
+            new MiniClause("Điều 2", "Số tiền đặt cọc và Phương thức giao nhận", "Số tiền đặt cọc được xác định tương ứng 10% - 20% tổng giá trị dự kiến của lô hàng, được chuyển khoản trực tiếp vào tài khoản ngân hàng của Bên A."),
             new MiniClause("Điều 3", "Thời hạn đặt cọc và Ký hợp đồng chính thức", "Thời hạn đặt cọc có hiệu lực trong vòng 30 ngày kể từ ngày Bên A nhận được tiền cọc. Hai bên cam kết ký kết Hợp đồng mua bán chính thức trước khi hết hạn đặt cọc."),
-            new MiniClause("Điều 4", "Xử lý tiền đặt cọc (Theo Điều 328 Bộ luật Dân sự)", "Khi Hợp đồng chính thức được giao kết, tiền đặt cọc sẽ được cấn trừ vào đợt thanh toán đầu tiên. Nếu Bên B từ chối ký hợp đồng thì mất tiền đặt cọc; nếu Bên A từ chối bán hoặc không có hàng cung cấp theo thỏa thuận thì phải trả lại tiền đặt cọc và bồi thường một khoản tiền tương đương giá trị tiền cọc cho Bên B.")
+            new MiniClause("Điều 4", "Xử lý tiền đặt cọc (Theo Điều 328 Bộ luật Dân sự)", "Khi Hợp đồng chính thức được giao kết, tiền đặt cọc sẽ được cấn trừ vào đợt thanh toán đầu tiên. Nếu Bên B từ chối ký hợp đồng thì mất tiền đặt cọc; nếu Bên A từ chối bán hoặc không có hàng cung cấp theo thỏa thuận thì phải trả lại tiền đặt cọc và bồi thường một khoản tiền tương đương giá trị tiền cọc cho Bên B. Văn bản lập thành 02 bản, mỗi bên giữ 01 bản.")
         },
         "CONTRACT_LIQUIDATION" => new[]
         {
             new MiniClause("Điều 1", "Căn cứ và Phạm vi thanh lý", "Hai bên cùng xác nhận đã thực hiện đầy đủ nghĩa vụ cung cấp, lắp đặt và nghiệm thu toàn bộ khối lượng thiết bị vệ sinh theo Hợp đồng gốc đã ký kết."),
-            new MiniClause("Điều 2", "Quyết toán giá trị hợp đồng và Công nợ", "Tổng giá trị hợp đồng thực tế sau quyết toán là 307.500.000 VNĐ. Bên B đã thanh toán đầy đủ 100% giá trị hợp đồng cho Bên A. Hai bên xác nhận không còn bất kỳ tranh chấp công nợ nào."),
-            new MiniClause("Điều 3", "Nghĩa vụ bảo hành sau thanh lý", "Việc thanh lý hợp đồng không làm chấm dứt trách nhiệm bảo hành thiết bị của Bên A theo đúng thời hạn và chính sách bảo hành đã cam kết."),
-            new MiniClause("Điều 4", "Chấm dứt hiệu lực hợp đồng", "Kể từ ngày ký Biên bản này, Hợp đồng gốc chính thức hết hiệu lực thi hành, hai bên không còn bất kỳ khiếu nại hay ràng buộc pháp lý nào khác đối với nhau.")
+            new MiniClause("Điều 2", "Quyết toán giá trị hợp đồng và Công nợ", "Tổng giá trị hợp đồng thực tế sau quyết toán đã được thanh toán 100%. Hai bên xác nhận không còn bất kỳ khiếu nại hay tranh chấp công nợ nào."),
+            new MiniClause("Điều 3", "Nghĩa vụ bảo hành sau thanh lý", "Việc thanh lý hợp đồng không làm chấm dứt trách nhiệm bảo hành thiết bị của Bên A theo đúng thời hạn và chính sách bảo hành đã cam kết (men sứ 10 năm, phụ kiện 03 năm)."),
+            new MiniClause("Điều 4", "Chấm dứt hiệu lực hợp đồng", "Kể từ ngày ký Biên bản này, Hợp đồng gốc chính thức hết hiệu lực thi hành, hai bên được giải phóng khỏi các nghĩa vụ đã hoàn thành. Biên bản lập thành 04 bản, mỗi bên giữ 02 bản.")
         },
         "CONTRACT_APPENDIX" => new[]
         {
             new MiniClause("Điều 1", "Căn cứ lập phụ lục hợp đồng", "Phụ lục này được lập căn cứ theo Hợp đồng gốc đã ký kết giữa hai bên và nhu cầu thực tế về việc bổ sung chủng loại, số lượng thiết bị vệ sinh của Bên B."),
             new MiniClause("Điều 2", "Nội dung bổ sung và Điều chỉnh", "Bổ sung danh mục thiết bị và điều chỉnh khối lượng theo Bảng chi tiết đính kèm. Tiến độ giao hàng đối với phần khối lượng bổ sung là trong vòng 10 ngày kể từ ngày ký phụ lục này."),
             new MiniClause("Điều 3", "Giá trị phụ lục và Tiến độ thanh toán", "Giá trị phát sinh bổ sung theo Phụ lục này là 45.500.000 VNĐ. Bên B tiến hành thanh toán tương ứng theo tiến độ giao nhận phần hàng hóa bổ sung."),
-            new MiniClause("Điều 4", "Hiệu lực của Phụ lục", "Phụ lục này là một bộ phận cấu thành không thể tách rời của Hợp đồng gốc. Các điều khoản khác không được đề cập trong Phụ lục này vẫn giữ nguyên giá trị pháp lý.")
+            new MiniClause("Điều 4", "Hiệu lực của Phụ lục", "Phụ lục này là một bộ phận cấu thành không thể tách rời của Hợp đồng gốc. Các điều khoản khác không được đề cập trong Phụ lục này vẫn giữ nguyên giá trị pháp lý. Phụ lục lập thành 04 bản, mỗi bên giữ 02 bản.")
         },
         _ => Array.Empty<MiniClause>()
     };
 
+    private int GetTotalPages(string code) => code switch
+    {
+        "B2B_SALE" => 3,
+        _ => 2
+    };
+
+    private MiniClause[] GetPage1Clauses(string code)
+    {
+        var all = GetFullClauses(code);
+        return code switch
+        {
+            "B2B_SALE" => all.Take(3).ToArray(),
+            "B2C_RETAIL" => all.Take(2).ToArray(),
+            "SUPPLY_INSTALL" => all.Take(3).ToArray(),
+            _ => all.Take(2).ToArray()
+        };
+    }
+
+    private MiniClause[] GetPage2Clauses(string code)
+    {
+        var all = GetFullClauses(code);
+        return code switch
+        {
+            "B2B_SALE" => all.Skip(3).Take(5).ToArray(),
+            "B2C_RETAIL" => all.Skip(2).ToArray(),
+            "SUPPLY_INSTALL" => all.Skip(3).ToArray(),
+            _ => all.Skip(2).ToArray()
+        };
+    }
+
+    private MiniClause[] GetPage3Clauses(string code)
+    {
+        var all = GetFullClauses(code);
+        return code switch
+        {
+            "B2B_SALE" => all.Skip(8).ToArray(),
+            _ => Array.Empty<MiniClause>()
+        };
+    }
+
+    private string GetPartyASigLabel(string code) => code switch
+    {
+        "B2C_RETAIL" => "BÊN BÁN (BÊN A)",
+        _ => "ĐẠI DIỆN BÊN A"
+    };
+
+    private string GetPartyASigSubLabel(string code) => "(Ký, ghi rõ họ tên và đóng dấu)";
+
     private string GetPartyBSigLabel(string code) => code switch
     {
         "B2B_SALE" => "ĐẠI DIỆN BÊN B",
-        "B2C_RETAIL" => "ĐẠI DIỆN BÊN MUA",
+        "B2C_RETAIL" => "BÊN MUA / KHÁCH HÀNG",
         "SUPPLY_INSTALL" => "ĐẠI DIỆN CHỦ ĐẦU TƯ",
         "PRINCIPLE_AGREEMENT" => "ĐẠI DIỆN BÊN B",
         "DEPOSIT_AGREEMENT" => "BÊN ĐẶT CỌC (BÊN B)",
         "CONTRACT_LIQUIDATION" => "ĐẠI DIỆN BÊN B",
         "CONTRACT_APPENDIX" => "ĐẠI DIỆN BÊN B",
         _ => "ĐẠI DIỆN BÊN B"
+    };
+
+    private string GetPartyBSigSubLabel(string code) => code switch
+    {
+        "B2C_RETAIL" => "(Ký và ghi rõ họ tên)",
+        _ => "(Ký, ghi rõ họ tên và đóng dấu)"
     };
 
     private string GetPartyBSigName(string code) => code switch
@@ -897,6 +1306,16 @@
         "CONTRACT_LIQUIDATION" => "Trần Minh Đức",
         "CONTRACT_APPENDIX" => "Trần Minh Đức",
         _ => "Đại diện Bên B"
+    };
+
+    private string GetPartyBPosition(string code) => code switch
+    {
+        "B2B_SALE" => "Tổng Giám đốc",
+        "SUPPLY_INSTALL" => "Giám đốc Dự án",
+        "PRINCIPLE_AGREEMENT" => "Giám đốc Doanh nghiệp",
+        "CONTRACT_LIQUIDATION" => "Tổng Giám đốc",
+        "CONTRACT_APPENDIX" => "Tổng Giám đốc",
+        _ => "Đại diện có thẩm quyền"
     };
 
     private ElementReference galleryContainer;

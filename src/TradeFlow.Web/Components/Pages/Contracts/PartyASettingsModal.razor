@@ -36,7 +36,16 @@
                             </div>
                         </div>
                     </div>
-                    <button type="button" class="btn-close" @onclick="CloseAsync" aria-label="Đóng"></button>
+                    <button type="button"
+                            class="tf-modal-close-btn"
+                            @onclick="CloseAsync"
+                            aria-label="Đóng (Esc)"
+                            title="Đóng (Esc)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
                 </div>
 
                 <!-- Modal Body -->
@@ -191,8 +200,8 @@
 
                 <!-- Clean Light Modal Footer -->
                 <div class="modal-footer tf-party-a-modal-footer">
-                    <button type="button" class="btn btn-sm btn-outline-secondary px-3" @onclick="CloseAsync">Đóng</button>
-                    <button type="button" class="btn btn-sm btn-primary px-4 d-flex align-items-center gap-2" @onclick="SaveAsync" disabled="@isSaving">
+                    <button type="button" class="tf-btn tf-btn-sm tf-btn-secondary px-3" @onclick="CloseAsync">Hủy bỏ</button>
+                    <button type="button" class="tf-btn tf-btn-sm tf-btn-primary px-4 d-inline-flex align-items-center gap-2" @onclick="SaveAsync" disabled="@isSaving">
                         @if (isSaving)
                         {
                             <span class="spinner-border spinner-border-sm" role="status"></span>

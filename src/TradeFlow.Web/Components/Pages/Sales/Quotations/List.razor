@@ -172,7 +172,7 @@ else
                                     <a href="/ban-hang/bao-gia/chi-tiet/@item.Id" class="tf-btn tf-btn-sm tf-btn-outline-primary" style="padding:3px 8px;" title="Xem chi tiết">
                                         Chi tiết
                                     </a>
-                                    <a href="/api/quotations/@item.Id/export-pdf" target="_blank" class="tf-btn tf-btn-sm tf-btn-outline-secondary" style="padding:3px 8px;" title="Tải PDF">
+                                    <a href="/api/quotations/@item.Id/export-pdf" download class="tf-btn tf-btn-sm tf-btn-outline-secondary" style="padding:3px 8px;" title="Tải PDF">
                                         PDF
                                     </a>
                                     @if (item.Status != QuotationStatus.Converted && item.Status != QuotationStatus.Cancelled && !item.SalesOrderId.HasValue)

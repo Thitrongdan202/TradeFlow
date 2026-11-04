@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using TradeFlow.Application.Common.Constants;
 using TradeFlow.Application.Common.Interfaces;
 using TradeFlow.Domain.Entities.Settings;
@@ -87,12 +87,25 @@ public class SystemCodeGenerator : ISystemCodeGenerator
             pattern = "{Prefix}{Number:D6}";
         }
 
+        var now = DateTime.UtcNow;
+        var yearStr = now.Year.ToString();
+        var yyStr = now.ToString("yy");
+        var monthStr = now.ToString("MM");
+        var dayStr = now.ToString("dd");
+
         var formatted = pattern
-            .Replace("{Prefix}", prefix)
-            .Replace("{Number:D6}", number.ToString("D6"))
-            .Replace("{Number:D5}", number.ToString("D5"))
-            .Replace("{Number:D4}", number.ToString("D4"))
-            .Replace("{Number}", number.ToString("D6"));
+            .Replace("{Prefix}", prefix, StringComparison.OrdinalIgnoreCase)
+            .Replace("{Year}", yearStr, StringComparison.OrdinalIgnoreCase)
+            .Replace("{yyyy}", yearStr, StringComparison.OrdinalIgnoreCase)
+            .Replace("{yy}", yyStr, StringComparison.OrdinalIgnoreCase)
+            .Replace("{Month}", monthStr, StringComparison.OrdinalIgnoreCase)
+            .Replace("{MM}", monthStr, StringComparison.OrdinalIgnoreCase)
+            .Replace("{Day}", dayStr, StringComparison.OrdinalIgnoreCase)
+            .Replace("{dd}", dayStr, StringComparison.OrdinalIgnoreCase)
+            .Replace("{Number:D6}", number.ToString("D6"), StringComparison.OrdinalIgnoreCase)
+            .Replace("{Number:D5}", number.ToString("D5"), StringComparison.OrdinalIgnoreCase)
+            .Replace("{Number:D4}", number.ToString("D4"), StringComparison.OrdinalIgnoreCase)
+            .Replace("{Number}", number.ToString("D6"), StringComparison.OrdinalIgnoreCase);
 
         return formatted;
     }

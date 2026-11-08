@@ -18,6 +18,9 @@ public class ApplicationUserConfiguration : IEntityTypeConfiguration<Application
         builder.Property(x => x.CreatedBy)
             .HasMaxLength(256);
 
+        builder.Property(x => x.MustChangePassword)
+            .HasDefaultValue(false);
+
         builder.Property(x => x.EncryptedPassword)
             .HasMaxLength(1000);
 
@@ -28,5 +31,6 @@ public class ApplicationUserConfiguration : IEntityTypeConfiguration<Application
 
         builder.HasIndex(x => x.Status);
         builder.HasIndex(x => x.CreatedAt);
+        builder.HasIndex(x => x.EmployeeId);
     }
 }

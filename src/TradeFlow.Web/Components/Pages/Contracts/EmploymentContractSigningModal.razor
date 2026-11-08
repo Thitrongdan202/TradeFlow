@@ -56,14 +56,18 @@
                     {
                         <div class="mb-3">
                             <label class="form-label small fw-semibold text-secondary mb-1">Tư cách người ký</label>
-                            <div class="d-flex gap-3 mb-2">
+                            <div class="d-flex flex-wrap gap-3 mb-2">
                                 <label class="small form-check-label d-flex align-items-center gap-1 cursor-pointer">
                                     <input type="radio" name="signerRole" value="Employer" checked="@(signerRole == "Employer")" @onchange='() => signerRole = "Employer"' />
-                                    <span>Đại diện Bên A (Người sử dụng lao động)</span>
+                                    <span>Đại diện Bên A (@(string.IsNullOrWhiteSpace(employerRepName) ? "Người sử dụng lao động" : employerRepName))</span>
                                 </label>
                                 <label class="small form-check-label d-flex align-items-center gap-1 cursor-pointer">
                                     <input type="radio" name="signerRole" value="Employee" checked="@(signerRole == "Employee")" @onchange='() => signerRole = "Employee"' />
-                                    <span>Bên B (Người lao động)</span>
+                                    <span>Bên B (@(string.IsNullOrWhiteSpace(employeeFullName) ? "Người lao động" : employeeFullName))</span>
+                                </label>
+                                <label class="small form-check-label d-flex align-items-center gap-1 cursor-pointer">
+                                    <input type="radio" name="signerRole" value="Both" checked="@(signerRole == "Both")" @onchange='() => signerRole = "Both"' />
+                                    <span>Cả hai bên cùng xác nhận</span>
                                 </label>
                             </div>
 
@@ -86,7 +90,7 @@
                                     {
                                         <div class="text-success">
                                             <div class="fw-bold fs-5" style="font-family: 'Brush Script MT', cursive; transform: rotate(-3deg);">
-                                                @(signerRole == "Employer" ? "Nguyễn Văn An" : "Người Lao Động")
+                                                @(signerRole == "Employer" ? (!string.IsNullOrWhiteSpace(employerRepName) ? employerRepName : "Đại diện NSDLĐ") : (!string.IsNullOrWhiteSpace(employeeFullName) ? employeeFullName : "Người Lao Động"))
                                             </div>
                                             <div class="badge bg-success bg-opacity-10 text-success small mt-1">
                                                 ✓ Đã thu nhận mẫu chữ ký điện tử
@@ -166,10 +170,15 @@
     private bool isSubmitting = false;
     private string errorMessage = string.Empty;
 
-    public void Open(int contractId, string contractNumber)
+    private string employerRepName = string.Empty;
+    private string employeeFullName = string.Empty;
+
+    public void Open(int contractId, string contractNumber, string employerRep = "", string employeeName = "")
     {
         ContractId = contractId;
         ContractNumber = contractNumber;
+        employerRepName = employerRep;
+        employeeFullName = employeeName;
         signingMethod = EmploymentSigningMethod.InAppDrawnSignature;
         signerRole = "Employer";
         hasDrawnSignature = false;

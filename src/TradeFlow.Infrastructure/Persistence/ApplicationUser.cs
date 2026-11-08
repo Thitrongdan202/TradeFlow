@@ -24,10 +24,25 @@ public class ApplicationUser : IdentityUser
     public DateTime? LastLoginAt { get; set; }
 
     /// <summary>
-    /// Mật khẩu được mã hóa đảo ngược để quản trị viên xem được.
-    /// KHÔNG bao giờ lưu mật khẩu plaintext.
-    /// Key mã hóa phải đến từ cấu hình bảo mật, không lưu trong DB.
+    /// Mã định danh hồ sơ nhân viên liên kết (1-1 tùy chọn).
     /// </summary>
+    public int? EmployeeId { get; set; }
+
+    /// <summary>
+    /// Cờ bắt buộc đổi mật khẩu khi đăng nhập lần đầu hoặc sau khi được cấp lại mật khẩu.
+    /// </summary>
+    public bool MustChangePassword { get; set; } = false;
+
+    /// <summary>
+    /// Thời điểm đổi mật khẩu lần gần nhất (UTC).
+    /// </summary>
+    public DateTime? PasswordChangedAt { get; set; }
+
+    /// <summary>
+    /// Trường cũ - không còn sử dụng. Mật khẩu được bảo vệ bằng ASP.NET Core Identity one-way hashing.
+    /// Tuyệt đối KHÔNG lưu trữ plaintext hoặc mật khẩu đảo ngược.
+    /// </summary>
+    [Obsolete("Hệ thống áp dụng chuẩn one-way Identity PasswordHasher.")]
     public string? EncryptedPassword { get; set; }
 
     // Navigation

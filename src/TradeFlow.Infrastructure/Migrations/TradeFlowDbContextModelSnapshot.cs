@@ -4598,6 +4598,9 @@ namespace TradeFlow.Infrastructure.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("EmployeeId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("EncryptedPassword")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
@@ -4615,6 +4618,11 @@ namespace TradeFlow.Infrastructure.Migrations
                     b.Property<DateTimeOffset?>("LockoutEnd")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("MustChangePassword")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
@@ -4622,6 +4630,9 @@ namespace TradeFlow.Infrastructure.Migrations
                     b.Property<string>("NormalizedUserName")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<DateTime?>("PasswordChangedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text");
@@ -4650,6 +4661,8 @@ namespace TradeFlow.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAt");
+
+                    b.HasIndex("EmployeeId");
 
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");

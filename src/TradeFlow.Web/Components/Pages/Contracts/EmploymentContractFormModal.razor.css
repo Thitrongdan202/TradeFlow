@@ -380,3 +380,52 @@
     padding: 12px 6px;
   }
 }
+
+
+/* ============================================================
+   PRINT MEDIA RULES - ZERO GRAY BOXES & PERFECT A4 ISOLATION
+   ============================================================ */
+@media print {
+  .tf-modal-stepper,
+  .tf-preview-toolbar,
+  .modal-header,
+  .modal-footer,
+  .no-print,
+  .tf-a4-page-divider {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .tf-preview-viewport-scroll,
+  .tf-preview-zoom-wrapper {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    transform: none !important;
+  }
+
+  .tf-a4-preview-canvas,
+  .tf-printable-contract-canvas {
+    box-shadow: none !important;
+    margin: 0 auto !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .tf-signature-block,
+  .signature-block {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}

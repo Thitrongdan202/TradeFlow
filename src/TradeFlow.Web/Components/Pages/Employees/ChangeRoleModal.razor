@@ -1,0 +1,158 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Employees
+
+@inject IEmployeeAccountService EmployeeAccountService
+@inject AuthenticationStateProvider AuthStateProvider
+
+@if (IsOpen && Employee != null)
+{
+    <div class="tf-modal-backdrop" @onclick="CloseModal">
+        <div class="tf-modal-dialog" style="max-width: 480px;" @onclick:stopPropagation="true">
+            <div class="tf-modal-content">
+                @* Modal Header *@
+                <div class="tf-modal-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--tf-border); padding:16px 20px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div style="width:36px; height:36px; border-radius:8px; background:rgba(99,102,241,0.12); color:#6366f1; display:flex; align-items:center; justify-content:center;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 style="margin:0; font-size:16px; font-weight:700; color:var(--tf-text-primary);">Đổi vai trò &amp; Quyền hạn</h3>
+                            <div style="font-size:12.5px; color:var(--tf-text-secondary); margin-top:2px;">
+                                Tài khoản: <strong>@Employee.UserName</strong> — @Employee.FullName
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="tf-modal-close-btn" @onclick="CloseModal" aria-label="Đóng" style="background:none; border:none; color:var(--tf-text-muted); cursor:pointer; font-size:18px;">
+                        ✕
+                    </button>
+                </div>
+
+                @* Modal Body *@
+                <div class="tf-modal-body" style="padding:20px;">
+                    @if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <div class="tf-alert tf-alert-error tf-mb-4" style="background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.3); color:#ef4444; padding:10px 14px; border-radius:6px; font-size:13px; display:flex; align-items:center; gap:8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            <span>@_errorMessage</span>
+                        </div>
+                    }
+
+                    <div class="tf-form-group tf-mb-4">
+                        <label class="tf-label" style="font-weight:600; margin-bottom:6px; display:block;">
+                            Vai trò mới <span style="color:#ef4444;">*</span>
+                        </label>
+                        <select class="tf-input" @bind="_selectedRole" id="select-change-role">
+                            @foreach (var r in _assignableRoles)
+                            {
+                                <option value="@r">@r</option>
+                            }
+                        </select>
+                        <div style="font-size:12px; color:var(--tf-text-muted); margin-top:6px;">
+                            Vai trò hiện tại: <strong>@(Employee.AccountRole ?? "Employee")</strong>.
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; gap:10px;">
+                        <button type="button" class="tf-btn tf-btn-ghost" @onclick="CloseModal" disabled="@_isSubmitting">
+                            Hủy
+                        </button>
+                        <button type="button" class="tf-btn tf-btn-primary" @onclick="SubmitChangeRoleAsync" disabled="@_isSubmitting" id="btn-change-role-submit">
+                            @if (_isSubmitting)
+                            {
+                                <span class="tf-spinner" style="width:14px; height:14px; border-width:2px; display:inline-block; margin-right:6px;"></span>
+                                <span>Đang lưu...</span>
+                            }
+                            else
+                            {
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                                <span>Lưu vai trò</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    [Parameter]
+    public EmployeeDto? Employee { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback OnRoleChanged { get; set; }
+
+    private string _selectedRole = "Employee";
+    private List<string> _assignableRoles = [];
+    private bool _isSubmitting;
+    private string? _errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && Employee != null)
+        {
+            _errorMessage = null;
+            _selectedRole = Employee.AccountRole ?? "Employee";
+
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var currentUser = authState.User.Identity?.Name ?? "admin";
+            _assignableRoles = await EmployeeAccountService.GetAssignableRolesAsync(currentUser);
+
+            if (!_assignableRoles.Contains(_selectedRole) && _assignableRoles.Count > 0)
+            {
+                _selectedRole = _assignableRoles[0];
+            }
+        }
+    }
+
+    private async Task SubmitChangeRoleAsync()
+    {
+        if (_isSubmitting || Employee == null) return;
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var currentUser = authState.User.Identity?.Name ?? "admin";
+
+            bool success = await EmployeeAccountService.UpdateAccountRoleAsync(Employee.Id, _selectedRole, currentUser);
+            if (!success)
+            {
+                _errorMessage = "Không thể cập nhật vai trò.";
+            }
+            else
+            {
+                await OnRoleChanged.InvokeAsync();
+                await OnClose.InvokeAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task CloseModal()
+    {
+        await OnClose.InvokeAsync();
+    }
+}

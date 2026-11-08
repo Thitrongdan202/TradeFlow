@@ -3,6 +3,7 @@ using TradeFlow.Domain.Entities.Documents;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using TradeFlow.Application.Common.Models.Users;
 using TradeFlow.Application.Common.Constants;
@@ -22,6 +23,7 @@ public class EmployeeService : IEmployeeService
     private readonly IAuditService _auditService;
     private readonly ISecurityService _securityService;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IServiceScopeFactory? _scopeFactory;
     private readonly ILogger<EmployeeService> _logger;
     private readonly IMemoryCache? _cache;
 
@@ -37,7 +39,8 @@ public class EmployeeService : IEmployeeService
         ISecurityService securityService,
         UserManager<ApplicationUser> userManager,
         ILogger<EmployeeService> logger,
-        IMemoryCache? cache = null)
+        IMemoryCache? cache = null,
+        IServiceScopeFactory? scopeFactory = null)
     {
         _context = context;
         _codeGenerator = codeGenerator;
@@ -47,6 +50,7 @@ public class EmployeeService : IEmployeeService
         _userManager = userManager;
         _logger = logger;
         _cache = cache;
+        _scopeFactory = scopeFactory;
     }
 
     private void InvalidateDepartmentCache() => _cache?.Remove(CacheKeyDepartments);
@@ -111,17 +115,43 @@ public class EmployeeService : IEmployeeService
 
         // Map user accounts if linked
         var userIds = employees.Where(e => !string.IsNullOrEmpty(e.UserId)).Select(e => e.UserId!).Distinct().ToList();
-        var userMap = new Dictionary<string, string>();
+        var userMap = new Dictionary<string, EmployeeUserMetadata>();
         if (userIds.Count > 0)
         {
             var users = await _userManager.Users
                 .Where(u => userIds.Contains(u.Id))
-                .Select(u => new { u.Id, u.UserName })
+                .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
                 .ToListAsync(cancellationToken);
-            userMap = users.ToDictionary(u => u.Id, u => u.UserName ?? string.Empty);
+
+            userMap = users.ToDictionary(
+                u => u.Id,
+                u => new EmployeeUserMetadata
+                {
+                    UserName = u.UserName ?? string.Empty,
+                    Role = u.UserRoles.FirstOrDefault()?.Role?.Name,
+                    Status = u.Status,
+                    MustChangePassword = u.MustChangePassword,
+                    CreatedAt = u.CreatedAt,
+                    LastLoginAt = u.LastLoginAt
+                });
         }
 
-        return employees.Select(e => MapToDto(e, userMap)).ToList();
+        var result = employees.Select(e => MapToDto(e, userMap)).ToList();
+
+        if (filter != null)
+        {
+            if (filter.HasAccount.HasValue)
+            {
+                result = result.Where(e => e.HasAccount == filter.HasAccount.Value).ToList();
+            }
+            if (filter.AccountStatus.HasValue)
+            {
+                result = result.Where(e => e.AccountStatus == filter.AccountStatus.Value).ToList();
+            }
+        }
+
+        return result;
     }
 
     public async Task<int> GetEmployeeCountAsync(EmployeeStatus? status = null, CancellationToken cancellationToken = default)
@@ -143,16 +173,27 @@ public class EmployeeService : IEmployeeService
 
         if (employee == null) return null;
 
-        string? userName = null;
+        var userMap = new Dictionary<string, EmployeeUserMetadata>();
         if (!string.IsNullOrEmpty(employee.UserId))
         {
-            var user = await _userManager.FindByIdAsync(employee.UserId);
-            userName = user?.UserName;
-        }
+            var user = await _userManager.Users
+                .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(u => u.Id == employee.UserId, cancellationToken);
 
-        var userMap = !string.IsNullOrEmpty(employee.UserId) && !string.IsNullOrEmpty(userName)
-            ? new Dictionary<string, string> { [employee.UserId] = userName }
-            : new Dictionary<string, string>();
+            if (user != null)
+            {
+                userMap[employee.UserId] = new EmployeeUserMetadata
+                {
+                    UserName = user.UserName ?? string.Empty,
+                    Role = user.UserRoles.FirstOrDefault()?.Role?.Name,
+                    Status = user.Status,
+                    MustChangePassword = user.MustChangePassword,
+                    CreatedAt = user.CreatedAt,
+                    LastLoginAt = user.LastLoginAt
+                };
+            }
+        }
 
         return MapToDto(employee, userMap);
     }
@@ -320,16 +361,47 @@ public class EmployeeService : IEmployeeService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        // If employee has a linked login account, offboard and revoke security tokens
+        // If employee has a linked login account, offboard, terminate status and revoke security tokens
         if (!string.IsNullOrEmpty(employee.UserId))
         {
             try
             {
-                await _securityService.OffboardEmployeeAsync(
-                    employee.UserId,
-                    performedBy,
-                    $"Thôi việc nhân viên {employee.FullName} ({employee.Code}): {command.TerminationReason}",
-                    cancellationToken);
+                if (_scopeFactory != null)
+                {
+                    using var scope = _scopeFactory.CreateScope();
+                    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                    var securityService = scope.ServiceProvider.GetRequiredService<ISecurityService>();
+
+                    var user = await userManager.FindByIdAsync(employee.UserId);
+                    if (user != null)
+                    {
+                        user.Status = UserStatus.Terminated;
+                        await userManager.UpdateSecurityStampAsync(user);
+                        await userManager.UpdateAsync(user);
+                    }
+
+                    await securityService.OffboardEmployeeAsync(
+                        employee.UserId,
+                        $"Thôi việc nhân viên {employee.FullName} ({employee.Code}): {command.TerminationReason}",
+                        performedBy,
+                        cancellationToken);
+                }
+                else
+                {
+                    var user = await _userManager.FindByIdAsync(employee.UserId);
+                    if (user != null)
+                    {
+                        user.Status = UserStatus.Terminated;
+                        await _userManager.UpdateSecurityStampAsync(user);
+                        await _userManager.UpdateAsync(user);
+                    }
+
+                    await _securityService.OffboardEmployeeAsync(
+                        employee.UserId,
+                        $"Thôi việc nhân viên {employee.FullName} ({employee.Code}): {command.TerminationReason}",
+                        performedBy,
+                        cancellationToken);
+                }
             }
             catch (Exception ex)
             {
@@ -1151,12 +1223,22 @@ public class EmployeeService : IEmployeeService
         }
     }
 
-    private static EmployeeDto MapToDto(Employee e, Dictionary<string, string> userMap)
+    private class EmployeeUserMetadata
     {
-        string? userName = null;
-        if (!string.IsNullOrEmpty(e.UserId) && userMap.TryGetValue(e.UserId, out var name))
+        public string UserName { get; set; } = string.Empty;
+        public string? Role { get; set; }
+        public UserStatus Status { get; set; }
+        public bool MustChangePassword { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime? LastLoginAt { get; set; }
+    }
+
+    private static EmployeeDto MapToDto(Employee e, Dictionary<string, EmployeeUserMetadata> userMap)
+    {
+        EmployeeUserMetadata? meta = null;
+        if (!string.IsNullOrEmpty(e.UserId))
         {
-            userName = name;
+            userMap.TryGetValue(e.UserId, out meta);
         }
 
         return new EmployeeDto
@@ -1188,7 +1270,12 @@ public class EmployeeService : IEmployeeService
             DebtAndAdvance = e.DebtAndAdvance,
             Notes = e.Notes,
             UserId = e.UserId,
-            UserName = userName,
+            UserName = meta?.UserName,
+            AccountRole = meta?.Role,
+            AccountStatus = meta?.Status,
+            AccountMustChangePassword = meta?.MustChangePassword ?? false,
+            AccountCreatedAt = meta?.CreatedAt,
+            AccountLastLoginAt = meta?.LastLoginAt,
             CreatedAt = e.CreatedAt,
             CreatedBy = e.CreatedBy,
             UpdatedAt = e.UpdatedAt,

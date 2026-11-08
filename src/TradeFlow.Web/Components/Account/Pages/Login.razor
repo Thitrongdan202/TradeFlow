@@ -201,13 +201,14 @@
             if (user.Status == UserStatus.Locked)
             {
                 Logger.LogWarning("Attempt to log in to locked account: {Username}", loginInput);
-                RedirectManager.RedirectTo("Account/Lockout");
+                _errorMessage = "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được mở khóa.";
                 return;
             }
 
-            if (user.Status != UserStatus.Active)
+            if (user.Status == UserStatus.Terminated || user.Status == UserStatus.Disabled)
             {
-                _errorMessage = "Tài khoản của bạn đang bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.";
+                Logger.LogWarning("Attempt to log in to terminated/disabled account: {Username}", loginInput);
+                _errorMessage = "Tài khoản đã bị vô hiệu hóa: Tài khoản của bạn hiện không còn quyền truy cập hệ thống do trạng thái nhân sự đã được cập nhật. Vui lòng liên hệ bộ phận quản trị nếu cần hỗ trợ.";
                 return;
             }
 
@@ -218,6 +219,14 @@
             if (result.Succeeded)
             {
                 Logger.LogInformation("User {Username} logged in successfully.", user.UserName);
+
+                // First-time login interception or mandatory password change
+                if (user.MustChangePassword || user.Status == UserStatus.MustChangePassword)
+                {
+                    RedirectManager.RedirectTo("Account/ChangePassword");
+                    return;
+                }
+
                 RedirectManager.RedirectTo(ReturnUrl);
             }
             else if (result.RequiresTwoFactor)

@@ -15,6 +15,7 @@ public interface IEmploymentContractService
     Task<bool> CancelContractAsync(int id, string reason, string userId, string userName, CancellationToken cancellationToken = default);
     Task<bool> DeleteContractAsync(int id, string userId, string userName, CancellationToken cancellationToken = default);
     Task<byte[]> GeneratePdfAsync(int id, CancellationToken cancellationToken = default);
+    byte[] GeneratePdfFromDto(EmploymentContractDto dto);
     Task<EmploymentContractStatsDto> GetStatisticsAsync(CancellationToken cancellationToken = default);
 }
 

@@ -80,14 +80,15 @@
 
                     <div class="tf-form-group">
                         <label class="tf-label">Lý do thôi việc <span class="tf-text-danger">*</span></label>
-                        <InputTextArea class="tf-input" rows="3" @bind-Value="_model.TerminationReason" placeholder="Ví dụ: Nghỉ việc theo nguyện vọng cá nhân, hết hạn hợp đồng, chuyển công tác..." />
+                        <InputTextArea id="retire-reason" class="tf-input" rows="3" @bind-Value="_model.TerminationReason" placeholder="Ví dụ: Nghỉ việc theo nguyện vọng cá nhân, hết hạn hợp đồng, chuyển công tác..." />
                         <ValidationMessage For="@(() => _model.TerminationReason)" class="tf-field-error" />
                     </div>
                 </div>
 
                 <div class="tf-modal-footer">
                     <button type="button" class="tf-btn tf-btn-ghost" @onclick="Close" disabled="@_isSubmitting">Hủy</button>
-                    <LoadingButton Type="submit"
+                    <LoadingButton Id="btn-retire-confirm"
+                                   Type="submit"
                                    Class="tf-btn tf-btn-danger"
                                    IsLoading="@_isSubmitting"
                                    LoadingText="Đang xử lý...">

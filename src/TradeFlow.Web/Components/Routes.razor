@@ -10,7 +10,16 @@
                 </div>
             </Authorizing>
             <NotAuthorized>
-                <RedirectToLogin />
+                @if (context.User.Identity?.IsAuthenticated == true)
+                {
+                    <LayoutView Layout="typeof(Layout.MainLayout)">
+                        <TradeFlow.Web.Components.Pages.Error StatusCode="403" />
+                    </LayoutView>
+                }
+                else
+                {
+                    <RedirectToLogin />
+                }
             </NotAuthorized>
         </AuthorizeRouteView>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />

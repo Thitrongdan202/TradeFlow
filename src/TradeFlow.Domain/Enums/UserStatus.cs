@@ -10,5 +10,12 @@ public enum UserStatus
     Locked = 2,
 
     /// <summary>Vô hiệu hóa</summary>
-    Disabled = 3
+    Disabled = 3,
+
+    /// <summary>Chờ đổi mật khẩu lần đầu</summary>
+    MustChangePassword = 4,
+
+    /// <summary>Đã thôi việc / Chấm dứt hợp đồng</summary>
+    Terminated = 5
 }
+

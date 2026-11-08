@@ -37,6 +37,12 @@ public class EmployeeDto
 
     public string? UserId { get; set; }
     public string? UserName { get; set; }
+    public string? AccountRole { get; set; }
+    public UserStatus? AccountStatus { get; set; }
+    public bool AccountMustChangePassword { get; set; }
+    public DateTime? AccountCreatedAt { get; set; }
+    public DateTime? AccountLastLoginAt { get; set; }
+    public bool HasAccount => !string.IsNullOrEmpty(UserId);
 
     public DateTime CreatedAt { get; set; }
     public string? CreatedBy { get; set; }

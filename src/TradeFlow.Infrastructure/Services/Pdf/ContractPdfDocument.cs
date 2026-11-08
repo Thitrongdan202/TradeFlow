@@ -72,7 +72,7 @@ public class ContractPdfDocument : IDocument
 
                 headerCol.Item().PaddingTop(12).AlignCenter().Column(c =>
                 {
-                    c.Item().AlignCenter().Text(_model.Title.ToUpper()).FontSize(15f).Bold();
+                    c.Item().AlignCenter().Text(_model.Title.ToUpper()).FontSize(16f).Bold();
                     c.Item().AlignCenter().PaddingTop(3).Text($"Số: {_model.ContractNumber}").FontSize(13f).Bold();
 
                     if (_model.Status == ContractStatus.Draft)
@@ -184,11 +184,11 @@ public class ContractPdfDocument : IDocument
             col.Item().PaddingTop(4).Text("Hai bên cùng thỏa thuận và thống nhất ký kết hợp đồng với các điều khoản cụ thể sau đây:").Italic();
 
             // ==========================================
-            // BẢNG KÊ HÀNG HÓA NẾU CÓ
+            // BẢNG KÊ HÀNG HÓA NẾU CÓ (TỰ ĐỘNG PHÂN TRANG VÀ LẶP LẠI HEADER NẾU DÀI)
             // ==========================================
             if (_model.Items != null && _model.Items.Count > 0)
             {
-                col.Item().ShowEntire().PaddingTop(4).Element(ComposeItemsTable);
+                col.Item().PaddingTop(4).Element(ComposeItemsTable);
             }
 
             // ==========================================
@@ -324,36 +324,36 @@ public class ContractPdfDocument : IDocument
         {
             table.ColumnsDefinition(cols =>
             {
-                cols.ConstantColumn(28); // STT
-                cols.ConstantColumn(70); // Mã
-                cols.RelativeColumn();   // Tên thiết bị
-                cols.ConstantColumn(40); // ĐVT
-                cols.ConstantColumn(40); // SL
-                cols.ConstantColumn(75); // Đơn giá
-                cols.ConstantColumn(80); // Thành tiền
+                cols.ConstantColumn(26); // STT
+                cols.ConstantColumn(65); // Mã hàng
+                cols.RelativeColumn();   // Tên thiết bị & quy cách
+                cols.ConstantColumn(38); // ĐVT
+                cols.ConstantColumn(38); // SL
+                cols.ConstantColumn(72); // Đơn giá
+                cols.ConstantColumn(76); // Thành tiền
             });
 
             table.Header(header =>
             {
-                header.Cell().Border(0.5f).BorderColor(Colors.Black).Background(Colors.Grey.Lighten3).Padding(3).AlignCenter().Text("STT").Bold().FontSize(9.5f);
-                header.Cell().Border(0.5f).BorderColor(Colors.Black).Background(Colors.Grey.Lighten3).Padding(3).AlignCenter().Text("Mã hàng").Bold().FontSize(9.5f);
-                header.Cell().Border(0.5f).BorderColor(Colors.Black).Background(Colors.Grey.Lighten3).Padding(3).AlignCenter().Text("Tên hàng hóa, quy cách").Bold().FontSize(9.5f);
-                header.Cell().Border(0.5f).BorderColor(Colors.Black).Background(Colors.Grey.Lighten3).Padding(3).AlignCenter().Text("ĐVT").Bold().FontSize(9.5f);
-                header.Cell().Border(0.5f).BorderColor(Colors.Black).Background(Colors.Grey.Lighten3).Padding(3).AlignCenter().Text("SL").Bold().FontSize(9.5f);
-                header.Cell().Border(0.5f).BorderColor(Colors.Black).Background(Colors.Grey.Lighten3).Padding(3).AlignCenter().Text("Đơn giá").Bold().FontSize(9.5f);
-                header.Cell().Border(0.5f).BorderColor(Colors.Black).Background(Colors.Grey.Lighten3).Padding(3).AlignCenter().Text("Thành tiền").Bold().FontSize(9.5f);
+                header.Cell().Border(0.5f).BorderColor(Colors.Grey.Darken1).Background(Colors.Grey.Lighten4).Padding(3).AlignCenter().Text("STT").Bold().FontSize(9.5f);
+                header.Cell().Border(0.5f).BorderColor(Colors.Grey.Darken1).Background(Colors.Grey.Lighten4).Padding(3).AlignCenter().Text("Mã hàng").Bold().FontSize(9.5f);
+                header.Cell().Border(0.5f).BorderColor(Colors.Grey.Darken1).Background(Colors.Grey.Lighten4).Padding(3).AlignCenter().Text("Tên hàng hóa, quy cách").Bold().FontSize(9.5f);
+                header.Cell().Border(0.5f).BorderColor(Colors.Grey.Darken1).Background(Colors.Grey.Lighten4).Padding(3).AlignCenter().Text("ĐVT").Bold().FontSize(9.5f);
+                header.Cell().Border(0.5f).BorderColor(Colors.Grey.Darken1).Background(Colors.Grey.Lighten4).Padding(3).AlignCenter().Text("SL").Bold().FontSize(9.5f);
+                header.Cell().Border(0.5f).BorderColor(Colors.Grey.Darken1).Background(Colors.Grey.Lighten4).Padding(3).AlignCenter().Text("Đơn giá (đ)").Bold().FontSize(9.5f);
+                header.Cell().Border(0.5f).BorderColor(Colors.Grey.Darken1).Background(Colors.Grey.Lighten4).Padding(3).AlignCenter().Text("Thành tiền (đ)").Bold().FontSize(9.5f);
             });
 
             int index = 1;
             foreach (var item in _model.Items)
             {
-                table.Cell().Border(0.5f).BorderColor(Colors.Grey.Medium).Padding(3).AlignCenter().Text(index++.ToString()).FontSize(9f);
-                table.Cell().Border(0.5f).BorderColor(Colors.Grey.Medium).Padding(3).Text(item.ProductCode).FontSize(9f);
-                table.Cell().Border(0.5f).BorderColor(Colors.Grey.Medium).Padding(3).Text(item.ProductName).FontSize(9f);
-                table.Cell().Border(0.5f).BorderColor(Colors.Grey.Medium).Padding(3).AlignCenter().Text(item.Unit).FontSize(9f);
-                table.Cell().Border(0.5f).BorderColor(Colors.Grey.Medium).Padding(3).AlignRight().Text($"{item.Quantity:N0}").FontSize(9f);
-                table.Cell().Border(0.5f).BorderColor(Colors.Grey.Medium).Padding(3).AlignRight().Text($"{item.UnitPrice:N0}").FontSize(9f);
-                table.Cell().Border(0.5f).BorderColor(Colors.Grey.Medium).Padding(3).AlignRight().Text($"{item.LineTotal:N0}").FontSize(9f);
+                table.Cell().Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(3).AlignCenter().Text(index++.ToString()).FontSize(9f);
+                table.Cell().Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(3).AlignCenter().Text(item.ProductCode).FontSize(9f);
+                table.Cell().Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(3).AlignLeft().Text(item.ProductName).FontSize(9f);
+                table.Cell().Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(3).AlignCenter().Text(item.Unit).FontSize(9f);
+                table.Cell().Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(3).AlignCenter().Text($"{item.Quantity:N0}").FontSize(9f);
+                table.Cell().Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(3).AlignRight().Text($"{item.UnitPrice:N0}").FontSize(9f);
+                table.Cell().Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(3).AlignRight().Text($"{item.LineTotal:N0}").FontSize(9f);
             }
         });
     }

@@ -61,7 +61,7 @@ public class EmploymentContractPdfDocument : IDocument
 
                 headerCol.Item().PaddingTop(12).AlignCenter().Column(c =>
                 {
-                    c.Item().AlignCenter().Text(_contract.Title.ToUpper()).FontSize(15f).Bold();
+                    c.Item().AlignCenter().Text(_contract.Title.ToUpper()).FontSize(16f).Bold();
                     c.Item().AlignCenter().PaddingTop(3).Text($"Số: {_contract.ContractNumber}").FontSize(13f).Bold();
                     c.Item().AlignCenter().PaddingTop(2).Text("(Căn cứ Bộ luật Lao động - Văn bản hợp nhất số 18/VBHN-VPQH ngày 12/02/2026)").FontSize(10f).Italic().FontColor(Colors.Grey.Darken1);
 
@@ -90,65 +90,74 @@ public class EmploymentContractPdfDocument : IDocument
             // ==========================================
             // BÊN A: NGƯỜI SỬ DỤNG LAO ĐỘNG
             // ==========================================
-            col.Item().PaddingTop(4).Border(0.5f).BorderColor(Colors.Grey.Medium).Padding(8).Column(a =>
+            col.Item().PaddingTop(5).Column(a =>
             {
-                a.Item().Text("BÊN SỬ DỤNG LAO ĐỘNG (BÊN A):").FontSize(11.5f).Bold();
-                a.Item().PaddingTop(2).Text(t => { t.Span("Tên doanh nghiệp: ").Bold(); t.Span(_contract.EmployerName.ToUpper()); });
-                a.Item().PaddingTop(1).Row(r =>
+                a.Item().Text("BÊN A (NGƯỜI SỬ DỤNG LAO ĐỘNG):").FontSize(13f).Bold();
+                a.Item().PaddingLeft(10).Column(details =>
                 {
-                    r.RelativeItem().Text(t => { t.Span("Mã số thuế / MSDN: ").Bold(); t.Span(_contract.EmployerTaxCode); });
-                    if (!string.IsNullOrWhiteSpace(_contract.EmployerPhone))
-                        r.RelativeItem().Text(t => { t.Span("Điện thoại: ").Bold(); t.Span(_contract.EmployerPhone); });
+                    details.Item().Text(t => { t.Span("Tên doanh nghiệp: ").Bold(); t.Span(_contract.EmployerName.ToUpper()); });
+                    details.Item().Row(r =>
+                    {
+                        r.RelativeItem().Text(t => { t.Span("Mã số thuế / MSDN: ").Bold(); t.Span(_contract.EmployerTaxCode); });
+                        if (!string.IsNullOrWhiteSpace(_contract.EmployerPhone))
+                            r.RelativeItem().Text(t => { t.Span("Điện thoại: ").Bold(); t.Span(_contract.EmployerPhone); });
+                    });
+                    details.Item().Text(t => { t.Span("Địa chỉ trụ sở chính: ").Bold(); t.Span(_contract.EmployerAddress); });
+                    details.Item().Row(r =>
+                    {
+                        r.RelativeItem().Text(t => { t.Span("Người đại diện: ").Bold(); t.Span(_contract.EmployerRepresentativeName); });
+                        r.RelativeItem().Text(t => { t.Span("Chức vụ: ").Bold(); t.Span(_contract.EmployerRepresentativePosition); });
+                    });
+                    if (!string.IsNullOrWhiteSpace(_contract.EmployerRepresentativeAuthority))
+                    {
+                        details.Item().Text(t => { t.Span("Thẩm quyền giao kết: ").Bold(); t.Span(_contract.EmployerRepresentativeAuthority); });
+                    }
                 });
-                a.Item().PaddingTop(1).Text(t => { t.Span("Địa chỉ trụ sở chính: ").Bold(); t.Span(_contract.EmployerAddress); });
-                a.Item().PaddingTop(1).Row(r =>
-                {
-                    r.RelativeItem().Text(t => { t.Span("Người giao kết: ").Bold(); t.Span(_contract.EmployerRepresentativeName); });
-                    r.RelativeItem().Text(t => { t.Span("Chức danh: ").Bold(); t.Span(_contract.EmployerRepresentativePosition); });
-                });
-                a.Item().PaddingTop(1).Text(t => { t.Span("Thẩm quyền giao kết: ").Bold(); t.Span(_contract.EmployerRepresentativeAuthority ?? "Đại diện theo pháp luật hoặc Ủy quyền hợp pháp"); });
             });
 
             // ==========================================
             // BÊN B: NGƯỜI LAO ĐỘNG
             // ==========================================
-            col.Item().PaddingTop(4).Border(0.5f).BorderColor(Colors.Grey.Medium).Padding(8).Column(b =>
+            col.Item().PaddingTop(4).Column(b =>
             {
-                b.Item().Text("NGƯỜI LAO ĐỘNG (BÊN B):").FontSize(11.5f).Bold();
-                b.Item().PaddingTop(2).Row(r =>
+                b.Item().Text("BÊN B (NGƯỜI LAO ĐỘNG):").FontSize(13f).Bold();
+                b.Item().PaddingLeft(10).Column(details =>
                 {
-                    r.RelativeItem().Text(t => { t.Span("Họ và tên: ").Bold(); t.Span(_contract.EmployeeFullName.ToUpper()); });
-                    r.RelativeItem().Text(t => { t.Span("Mã nhân viên: ").Bold(); t.Span(_contract.EmployeeCode); });
+                    details.Item().Row(r =>
+                    {
+                        r.RelativeItem().Text(t => { t.Span("Họ và tên: ").Bold(); t.Span(_contract.EmployeeFullName.ToUpper()); });
+                        r.RelativeItem().Text(t => { t.Span("Mã nhân viên: ").Bold(); t.Span(_contract.EmployeeCode); });
+                    });
+                    details.Item().Row(r =>
+                    {
+                        r.RelativeItem().Text(t => { t.Span("Ngày sinh: ").Bold(); t.Span(_contract.EmployeeDateOfBirth.HasValue ? _contract.EmployeeDateOfBirth.Value.ToString("dd/MM/yyyy") : "Chưa cập nhật"); });
+                        r.RelativeItem().Text(t => { t.Span("Giới tính: ").Bold(); t.Span(_contract.EmployeeGender ?? "Không xác định"); });
+                    });
+                    details.Item().Row(r =>
+                    {
+                        r.RelativeItem().Text(t => { t.Span("Số CCCD/Hộ chiếu: ").Bold(); t.Span(_contract.EmployeeNationalId ?? "Chưa cập nhật"); });
+                        if (_contract.EmployeeNationalIdIssueDate.HasValue)
+                            r.RelativeItem().Text(t => { t.Span("Ngày cấp: ").Bold(); t.Span(_contract.EmployeeNationalIdIssueDate.Value.ToString("dd/MM/yyyy")); });
+                    });
+                    details.Item().Text(t => { t.Span("Địa chỉ nơi cư trú: ").Bold(); t.Span(_contract.EmployeeAddress ?? "Chưa cập nhật"); });
+                    details.Item().Row(r =>
+                    {
+                        if (!string.IsNullOrWhiteSpace(_contract.EmployeePhone))
+                            r.RelativeItem().Text(t => { t.Span("Điện thoại: ").Bold(); t.Span(_contract.EmployeePhone); });
+                        if (!string.IsNullOrWhiteSpace(_contract.EmployeeEmail))
+                            r.RelativeItem().Text(t => { t.Span("Email: ").Bold(); t.Span(_contract.EmployeeEmail); });
+                    });
+                    if (!string.IsNullOrWhiteSpace(_contract.EmployeeBankInformation))
+                    {
+                        details.Item().Text(t => { t.Span("Tài khoản nhận lương: ").Bold(); t.Span(_contract.EmployeeBankInformation); });
+                    }
                 });
-                b.Item().PaddingTop(1).Row(r =>
-                {
-                    r.RelativeItem().Text(t => { t.Span("Ngày sinh: ").Bold(); t.Span(_contract.EmployeeDateOfBirth.HasValue ? _contract.EmployeeDateOfBirth.Value.ToString("dd/MM/yyyy") : "Chưa cập nhật"); });
-                    r.RelativeItem().Text(t => { t.Span("Giới tính: ").Bold(); t.Span(_contract.EmployeeGender ?? "Không xác định"); });
-                });
-                b.Item().PaddingTop(1).Row(r =>
-                {
-                    r.RelativeItem().Text(t => { t.Span("Số CCCD/Hộ chiếu: ").Bold(); t.Span(_contract.EmployeeNationalId ?? "Chưa cập nhật"); });
-                    if (_contract.EmployeeNationalIdIssueDate.HasValue)
-                        r.RelativeItem().Text(t => { t.Span("Ngày cấp: ").Bold(); t.Span(_contract.EmployeeNationalIdIssueDate.Value.ToString("dd/MM/yyyy")); });
-                });
-                b.Item().PaddingTop(1).Text(t => { t.Span("Địa chỉ nơi cư trú: ").Bold(); t.Span(_contract.EmployeeAddress ?? "Chưa cập nhật"); });
-                b.Item().PaddingTop(1).Row(r =>
-                {
-                    if (!string.IsNullOrWhiteSpace(_contract.EmployeePhone))
-                        r.RelativeItem().Text(t => { t.Span("Điện thoại: ").Bold(); t.Span(_contract.EmployeePhone); });
-                    if (!string.IsNullOrWhiteSpace(_contract.EmployeeEmail))
-                        r.RelativeItem().Text(t => { t.Span("Email: ").Bold(); t.Span(_contract.EmployeeEmail); });
-                });
-                if (!string.IsNullOrWhiteSpace(_contract.EmployeeBankInformation))
-                {
-                    b.Item().PaddingTop(1).Text(t => { t.Span("Tài khoản nhận lương: ").Bold(); t.Span(_contract.EmployeeBankInformation); });
-                }
             });
 
-            col.Item().PaddingTop(4).Text("Hai bên cùng thỏa thuận và thống nhất ký kết Hợp đồng lao động với các điều khoản sau đây:").Italic();
+            col.Item().PaddingTop(4).Text("Hai bên cùng thỏa thuận và thống nhất ký kết Hợp đồng lao động với các điều khoản sau đây:").Italic().FontSize(12.5f);
 
             // ==========================================
-            // CÁC ĐIỀU KHOẢN HỢP ĐỒNG LAO ĐỘNG (SHOW ENTIRE TRÁNH CẮT)
+            // CÁC ĐIỀU KHOẢN HỢP ĐỒNG LAO ĐỘNG
             // ==========================================
             var clausesToRender = _contract.Clauses != null && _contract.Clauses.Any()
                 ? _contract.Clauses.OrderBy(c => c.DisplayOrder).ToList()
@@ -156,13 +165,13 @@ public class EmploymentContractPdfDocument : IDocument
 
             foreach (var clause in clausesToRender)
             {
-                col.Item().ShowEntire().Column(c =>
+                col.Item().PaddingTop(3).Column(c =>
                 {
                     var heading = string.IsNullOrWhiteSpace(clause.ArticleNumber)
                         ? clause.Title
                         : $"{clause.ArticleNumber}. {clause.Title}";
-                    c.Item().Text(heading).Bold().FontSize(11.5f);
-                    c.Item().PaddingTop(1).Text(clause.Content ?? string.Empty).FontSize(11f);
+                    c.Item().Text(heading).Bold().FontSize(13f);
+                    c.Item().PaddingTop(1).Text(clause.Content ?? string.Empty).FontSize(12.5f);
                 });
             }
 
@@ -174,8 +183,8 @@ public class EmploymentContractPdfDocument : IDocument
                 // Người lao động
                 sigRow.RelativeItem().AlignCenter().Column(sigCol =>
                 {
-                    sigCol.Item().Text("NGƯỜI LAO ĐỘNG").FontSize(11.5f).Bold();
-                    sigCol.Item().Text("(Ký và ghi rõ họ tên)").FontSize(9f).Italic();
+                    sigCol.Item().Text("NGƯỜI LAO ĐỘNG").FontSize(13.5f).Bold();
+                    sigCol.Item().Text("(Ký và ghi rõ họ tên)").FontSize(9.5f).Italic();
 
                     sigCol.Item().Height(65).AlignCenter().AlignMiddle().Element(sigBox =>
                     {
@@ -189,14 +198,14 @@ public class EmploymentContractPdfDocument : IDocument
                         }
                     });
 
-                    sigCol.Item().Text(_contract.EmployeeFullName).FontSize(11f).Bold();
+                    sigCol.Item().Text(_contract.EmployeeFullName).FontSize(13f).Bold();
                 });
 
                 // Người sử dụng lao động
                 sigRow.RelativeItem().AlignCenter().Column(sigCol =>
                 {
-                    sigCol.Item().Text("NGƯỜI SỬ DỤNG LAO ĐỘNG").FontSize(11.5f).Bold();
-                    sigCol.Item().Text("(Ký, ghi rõ họ tên và đóng dấu nếu có)").FontSize(9f).Italic();
+                    sigCol.Item().Text("NGƯỜI SỬ DỤNG LAO ĐỘNG").FontSize(13.5f).Bold();
+                    sigCol.Item().Text("(Ký, ghi rõ họ tên và đóng dấu nếu có)").FontSize(9.5f).Italic();
 
                     sigCol.Item().Height(65).AlignCenter().AlignMiddle().Element(sigBox =>
                     {
@@ -210,8 +219,8 @@ public class EmploymentContractPdfDocument : IDocument
                         }
                     });
 
-                    sigCol.Item().Text(_contract.EmployerRepresentativeName).FontSize(11f).Bold();
-                    sigCol.Item().Text(_contract.EmployerRepresentativePosition).FontSize(9.5f).Italic();
+                    sigCol.Item().Text(_contract.EmployerRepresentativeName).FontSize(13f).Bold();
+                    sigCol.Item().Text(_contract.EmployerRepresentativePosition).FontSize(10f).Italic();
                 });
             });
         });
@@ -224,7 +233,7 @@ public class EmploymentContractPdfDocument : IDocument
             col.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten1);
             col.Item().PaddingTop(3).Row(row =>
             {
-                row.RelativeItem().Text($"HĐLĐ số: {_contract.ContractNumber} — Chuẩn VBHN 18/VBHN-VPQH").FontSize(8f).FontColor(Colors.Grey.Darken1);
+                row.RelativeItem().Text($"{GetContractPrefixText()} — Chuẩn VBHN 18/VBHN-VPQH").FontSize(8f).FontColor(Colors.Grey.Darken1);
 
                 row.RelativeItem().AlignRight().Text(text =>
                 {
@@ -235,5 +244,17 @@ public class EmploymentContractPdfDocument : IDocument
                 });
             });
         });
+    }
+
+    private string GetContractPrefixText()
+    {
+        var num = _contract.ContractNumber ?? string.Empty;
+        if (num.StartsWith("HDTV", StringComparison.OrdinalIgnoreCase) || _contract.ContractType == EmploymentContractType.Probation)
+            return $"HĐTV số: {num}";
+        if (num.StartsWith("TTTT", StringComparison.OrdinalIgnoreCase) || _contract.ContractType == EmploymentContractType.Internship)
+            return $"TTTT số: {num}";
+        if (num.StartsWith("HDDT", StringComparison.OrdinalIgnoreCase) || _contract.ContractType == EmploymentContractType.VocationalTraining)
+            return $"HĐĐT số: {num}";
+        return $"HĐLĐ số: {num}";
     }
 }

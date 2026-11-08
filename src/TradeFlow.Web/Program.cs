@@ -176,6 +176,15 @@ app.MapGet("/api/contracts/{id:int}/export-pdf", async (int id, IContractService
     return Results.File(bytes, "application/pdf", fileName);
 }).RequireAuthorization("Permission:Contracts:View");
 
+app.MapPost("/api/contracts/employment/export-draft-pdf", (TradeFlow.Application.Common.Models.Contracts.EmploymentContractDto dto, IEmploymentContractService employmentContractService) =>
+{
+    var bytes = employmentContractService.GeneratePdfFromDto(dto);
+    var rawNumber = string.IsNullOrWhiteSpace(dto.ContractNumber) ? "HDLD-DRAFT" : dto.ContractNumber.Trim();
+    var safeCode = string.Concat(rawNumber.Split(System.IO.Path.GetInvalidFileNameChars())).Replace(" ", "_");
+    var fileName = $"Hop_dong_lao_dong_{safeCode}.pdf";
+    return Results.File(bytes, "application/pdf", fileName);
+}).RequireAuthorization("Permission:EmploymentContracts:View");
+
 app.MapGet("/api/contracts/employment/{id:int}/export-pdf", async (int id, IEmploymentContractService employmentContractService) =>
 {
     var contract = await employmentContractService.GetContractByIdAsync(id, canViewSensitiveData: true);

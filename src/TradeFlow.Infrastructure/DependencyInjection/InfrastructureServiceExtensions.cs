@@ -109,6 +109,7 @@ public static class InfrastructureServiceExtensions
 
         // Register Phase 8 Employee Management services
         services.AddScoped<IEmployeeService, Services.EmployeeService>();
+        services.AddScoped<IEmployeeAccountService, Services.EmployeeAccountService>();
 
         // Register Phase 9 Company Branding & Global Loading Screen services
         services.AddScoped<ICompanyBrandingService, Services.CompanyBrandingService>();

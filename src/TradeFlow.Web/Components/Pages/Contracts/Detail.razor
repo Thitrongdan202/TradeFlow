@@ -114,6 +114,37 @@
             </div>
         </div>
 
+        <style>
+            #tf-contract-sheet {
+                color: #000000 !important;
+                background-color: #ffffff !important;
+            }
+            #tf-contract-sheet, #tf-contract-sheet * {
+                box-sizing: border-box;
+            }
+            #tf-contract-sheet .table {
+                --bs-table-color: #000000 !important;
+                --bs-table-bg: #ffffff !important;
+                --bs-table-striped-bg: #f8fafc !important;
+                color: #000000 !important;
+                border-color: #333333 !important;
+            }
+            #tf-contract-sheet .table th,
+            #tf-contract-sheet .table td {
+                color: #000000 !important;
+                border-color: #4b5563 !important;
+                vertical-align: middle;
+            }
+            #tf-contract-sheet .table thead th {
+                background-color: #f1f5f9 !important;
+                color: #000000 !important;
+                font-weight: 700;
+            }
+            #tf-contract-sheet .tf-legal-summary-block {
+                border-color: #333333 !important;
+            }
+        </style>
+
         <div class="row g-4">
             <!-- Left: Document Preview (Times New Roman A4) -->
             <div class="col-12 col-lg-8">
@@ -129,7 +160,7 @@
                     </div>
 
                     <div class="tf-doc-title-block text-center mb-4" style="text-align: center; margin-top: 14pt; margin-bottom: 16pt;">
-                        <div class="fw-bold fs-5 text-uppercase" style="font-size: 15pt; line-height: 1.25; letter-spacing: 0.5pt;">@contract.Title</div>
+                        <div class="fw-bold fs-5 text-uppercase" style="font-size: 16pt; line-height: 1.25; letter-spacing: 0.5pt;">@contract.Title</div>
                         <div class="fw-semibold" style="font-size: 13pt; margin-top: 3pt;">Số: @contract.ContractNumber</div>
                     </div>
 
@@ -201,10 +232,10 @@
                                     var it = contract.Items[i];
                                     <tr>
                                         <td>@(i + 1)</td>
-                                        <td>@it.ProductCode</td>
+                                        <td class="text-center">@it.ProductCode</td>
                                         <td class="text-start">@it.ProductName</td>
-                                        <td>@it.Unit</td>
-                                        <td class="text-end">@it.Quantity.ToString("N0")</td>
+                                        <td class="text-center">@it.Unit</td>
+                                        <td class="text-center">@it.Quantity.ToString("N0")</td>
                                         <td class="text-end">@it.UnitPrice.ToString("N0")</td>
                                         <td class="text-end fw-semibold">@it.LineTotal.ToString("N0")</td>
                                     </tr>

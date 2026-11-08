@@ -1,10 +1,92 @@
-/* StocktakeList.razor.css - Stocktake List Theming */
+/* StocktakeList.razor.css - Modern ERP SaaS Design System for Stocktake */
+
+.tf-stocktake-modal-dialog {
+    background-color: var(--tf-surface-card, #ffffff);
+    border: 1px solid var(--tf-border, #e2e8f0);
+    border-radius: 14px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    max-width: 560px;
+    width: 100%;
+    overflow-y: auto;
+    position: relative;
+}
+
+.tf-modal-dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--tf-border, #e2e8f0);
+}
+
+.tf-modal-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tf-modal-icon-badge {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(37, 99, 235, 0.1);
+    color: #2563eb;
+}
+
+.tf-modal-title-text {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--tf-text-primary, #0f172a);
+    margin: 0;
+}
+
+.tf-modal-subtitle-text {
+    font-size: 12px;
+    color: var(--tf-text-muted, #64748b);
+    margin-top: 2px;
+}
+
+.tf-modal-dialog-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.tf-modal-dialog-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 20px;
+    border-top: 1px solid var(--tf-border, #e2e8f0);
+    background-color: #f8fafc;
+    border-bottom-left-radius: 14px;
+    border-bottom-right-radius: 14px;
+}
+
+/* Dark Mode Overrides */
+[data-theme="dark"] .tf-stocktake-modal-dialog,
+[data-bs-theme="dark"] .tf-stocktake-modal-dialog {
+    background-color: #1e222b !important;
+    border-color: #2e3542 !important;
+}
+
+[data-theme="dark"] .tf-modal-dialog-header,
+[data-bs-theme="dark"] .tf-modal-dialog-header,
+[data-theme="dark"] .tf-modal-dialog-footer,
+[data-bs-theme="dark"] .tf-modal-dialog-footer {
+    border-color: #2e3542 !important;
+    background-color: #181b22 !important;
+}
 
 [data-theme="dark"] .tw-bg-white,
 [data-bs-theme="dark"] .tw-bg-white {
     background-color: #1e222b !important;
-    border-color: #383e4b !important;
-    color: #f1f5f9 !important;
+    border-color: #2e3542 !important;
 }
 
 [data-theme="dark"] .tw-text-slate-900,
@@ -15,40 +97,19 @@
 [data-theme="dark"] .tw-text-slate-500,
 [data-bs-theme="dark"] .tw-text-slate-500,
 [data-theme="dark"] .tw-text-slate-600,
-[data-bs-theme="dark"] .tw-text-slate-600,
-[data-theme="dark"] .tw-text-slate-700,
-[data-bs-theme="dark"] .tw-text-slate-700 {
+[data-bs-theme="dark"] .tw-text-slate-600 {
     color: #94a3b8 !important;
 }
 
 [data-theme="dark"] .tw-bg-slate-50,
 [data-bs-theme="dark"] .tw-bg-slate-50 {
-    background-color: #17191f !important;
+    background-color: #181b22 !important;
     color: #cbd5e1 !important;
-}
-
-[data-theme="dark"] .tw-border-slate-200,
-[data-bs-theme="dark"] .tw-border-slate-200,
-[data-theme="dark"] .tw-border-slate-300,
-[data-bs-theme="dark"] .tw-border-slate-300 {
-    border-color: #383e4b !important;
-}
-
-[data-theme="dark"] .tw-divide-slate-100 > :not([hidden]) ~ :not([hidden]),
-[data-bs-theme="dark"] .tw-divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
-    border-color: #2b313e !important;
 }
 
 [data-theme="dark"] .tf-form-control,
 [data-bs-theme="dark"] .tf-form-control {
-    background-color: #17191f !important;
-    border-color: #383e4b !important;
-    color: #f1f5f9 !important;
-}
-
-[data-theme="dark"] .tf-modal-confirm-box,
-[data-bs-theme="dark"] .tf-modal-confirm-box {
-    background-color: #1e222b !important;
-    border-color: #383e4b !important;
+    background-color: #181b22 !important;
+    border-color: #383f4f !important;
     color: #f1f5f9 !important;
 }

@@ -3956,6 +3956,12 @@ input[type="checkbox"].tf-checkbox:active {
 
 }
 
+/* --- Global Animation System: Anti-Collision Ownership Rules --- */
+[data-tf-owner="motion"],
+[data-tf-owner="gsap"] {
+  animation: none !important;
+}
+
 /* --- Coordinated Bootstrap Modal Centering & Viewport Hierarchy --- */
 
 .modal.fade.show.d-block {
@@ -9300,7 +9306,7 @@ button.tf-search-spinner {
 
   size: A4 portrait;
 
-  margin: 20mm 20mm 20mm 30mm;
+  margin: 0;
 
 }
 
@@ -9489,6 +9495,8 @@ button.tf-search-spinner {
   .modal-body,
 
   .tf-contract-modal-dialog,
+  .tf-contract-modal-body,
+  .tf-contract-modal-container,
 
   .tf-inspect-modal-dialog,
 
@@ -17922,6 +17930,46 @@ body.tf-modal-open .tf-page-body,
 
 }
 
+/* Document Paper Isolation — preserve crisp print ink in dark mode */
+.tf-document-paper,
+.a4-contract-page,
+.a4-contract-sheet,
+.tf-a4-page,
+.tf-a4-sheet,
+.tf-inspect-a4-sheet,
+#tf-contract-sheet,
+.voucher-a4-sheet,
+.invoice-print-sheet {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+[data-bs-theme="dark"] .tf-document-paper .table td,
+[data-theme="dark"] .tf-document-paper .table td,
+[data-bs-theme="dark"] .a4-contract-page .table td,
+[data-theme="dark"] .a4-contract-page .table td,
+[data-bs-theme="dark"] #tf-contract-sheet .table td,
+[data-theme="dark"] #tf-contract-sheet .table td,
+[data-bs-theme="dark"] .tf-a4-sheet .table td,
+[data-theme="dark"] .tf-a4-sheet .table td {
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  background-color: transparent !important;
+}
+
+[data-bs-theme="dark"] .tf-document-paper .table th,
+[data-theme="dark"] .tf-document-paper .table th,
+[data-bs-theme="dark"] .a4-contract-page .table th,
+[data-theme="dark"] .a4-contract-page .table th,
+[data-bs-theme="dark"] #tf-contract-sheet .table th,
+[data-theme="dark"] #tf-contract-sheet .table th,
+[data-bs-theme="dark"] .tf-a4-sheet .table th,
+[data-theme="dark"] .tf-a4-sheet .table th {
+  color: #0f172a !important;
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
 /* Badge Contrast Tokens */
 
 [data-bs-theme="dark"] .badge.bg-light.text-dark,
@@ -18518,3 +18566,30 @@ body.tf-modal-open .tf-page-body,
 
 }
 
+
+
+/* Guaranteed A4 Contract Running Footer & Page Breaks */
+.tf-a4-page-footer {
+  font-size: 9pt !important;
+  color: #64748b !important;
+  border-top: 1px solid #cbd5e1 !important;
+  margin-top: auto !important;
+  padding-top: 4pt !important;
+}
+@media print {
+  .tf-contract-modal-body,
+  .tf-preview-viewport-scroll,
+  .tf-preview-zoom-wrapper,
+  .modal-body {
+    background: transparent !important;
+    background-color: transparent !important;
+  }
+  .tf-a4-page-1, .tf-a4-page-2 {
+    break-after: page !important;
+    page-break-after: always !important;
+  }
+  .tf-a4-page-2, .tf-a4-page-3 {
+    break-before: page !important;
+    page-break-before: always !important;
+  }
+}

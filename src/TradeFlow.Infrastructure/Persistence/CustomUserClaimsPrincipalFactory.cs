@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 
@@ -30,6 +30,18 @@ public class CustomUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<Appli
 
         // Include Status
         identity.AddClaim(new Claim("Status", user.Status.ToString()));
+
+        // Include MustChangePassword flag
+        if (user.MustChangePassword)
+        {
+            identity.AddClaim(new Claim("MustChangePassword", "true"));
+        }
+
+        // Include EmployeeId if linked
+        if (user.EmployeeId.HasValue)
+        {
+            identity.AddClaim(new Claim("EmployeeId", user.EmployeeId.Value.ToString()));
+        }
 
         return identity;
     }

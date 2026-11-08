@@ -1,5 +1,5 @@
 @page "/cai-dat"
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Administrator,Manager")]
 @rendermode InteractiveServer
 
 <PageTitle>Trung tâm Cài đặt & Quản trị — TradeFlow</PageTitle>

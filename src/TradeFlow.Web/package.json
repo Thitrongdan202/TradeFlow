@@ -11,6 +11,7 @@
     "tailwindcss": "^3.4.17"
   },
   "dependencies": {
-    "gsap": "^3.15.0"
+    "gsap": "^3.15.0",
+    "motion": "^14.10.1"
   }
 }

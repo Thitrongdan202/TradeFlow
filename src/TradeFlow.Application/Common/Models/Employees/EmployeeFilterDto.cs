@@ -8,6 +8,8 @@ public class EmployeeFilterDto
     public EmployeeStatus? Status { get; set; } = EmployeeStatus.Active;
     public int? DepartmentId { get; set; }
     public int? PositionId { get; set; }
+    public UserStatus? AccountStatus { get; set; }
+    public bool? HasAccount { get; set; }
     public int PageIndex { get; set; } = 1;
     public int PageSize { get; set; } = 50;
 }

@@ -21,567 +21,596 @@
 
 <WarehouseNavTabs ActiveTab="stock" />
 
-<div class="tf-page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
-    <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+<div class="tf-stock-page">
+    <!-- Header: Compact & Action-oriented -->
+    <div class="tf-page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 0;">
         <div>
-            <h1 class="tf-page-title" style="margin: 0; font-size: 20px;">Tồn kho thực tế &amp; Tổng quan Đa kho</h1>
-            <p class="tf-page-subtitle" style="margin: 2px 0 0; font-size: 12px;">Số dư tồn kho chi tiết, phẩm chất hàng hóa và đối chiếu số lượng giữa các kho bãi LACASA</p>
+            <h1 class="tf-page-title" style="margin: 0; font-size: 20px; font-weight: 700;">Tồn kho thực tế &amp; Tổng quan Đa kho</h1>
+            <p class="tf-page-subtitle" style="margin: 3px 0 0; font-size: 12.5px; color: var(--tf-text-secondary, #64748b);">
+                Số dư tồn kho chi tiết, phẩm chất hàng hóa và đối chiếu số lượng giữa các kho bãi LACASA
+            </p>
+        </div>
+        <div class="tf-page-actions" style="display: flex; align-items: center; gap: 8px;">
+            <a href="/api/warehouses/stock/export-excel@(BuildExportQuery())" target="_blank" class="tf-btn tf-btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; height: 36px; white-space: nowrap;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                <span>Xuất Excel</span>
+            </a>
+            <AuthorizeView Policy="Permission:Warehouses:Create">
+                <a href="/kho/phieu-kho" class="tf-btn tf-btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; height: 36px; white-space: nowrap;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    <span>Phiếu kho</span>
+                </a>
+                <a href="/kho/kiem-kho" class="tf-btn tf-btn-primary" style="display: inline-flex; align-items: center; gap: 6px; height: 36px; white-space: nowrap;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                    <span>Đợt kiểm kê mới</span>
+                </a>
+            </AuthorizeView>
         </div>
     </div>
-    <div class="tf-page-actions tw-flex tw-gap-2">
-        <a href="/api/warehouses/stock/export-excel@(BuildExportQuery())" target="_blank" class="tf-btn tf-btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; height: 36px; white-space: nowrap;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            <span>Xuất Excel tồn kho</span>
-        </a>
-        <AuthorizeView Policy="Permission:Warehouses:Create">
-            <a href="/kho/phieu-kho" class="tf-btn tf-btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; height: 36px; white-space: nowrap;">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-                </svg>
-                <span>Phiếu kho</span>
-            </a>
-            <a href="/kho/kiem-kho" class="tf-btn tf-btn-primary" style="display: inline-flex; align-items: center; gap: 6px; height: 36px; white-space: nowrap;">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
-                <span>Đợt kiểm kê mới</span>
-            </a>
-        </AuthorizeView>
-    </div>
-</div>
 
-<!-- KPI Cards: Do NOT sum heterogeneous units of measure -->
-<div class="tw-grid tw-grid-cols-1 sm:tw-grid-cols-2 lg:tw-grid-cols-4 tw-gap-4 tw-mb-4">
-    <!-- Card 1: Kho hàng hoạt động -->
-    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-xl tw-p-4 tw-shadow-2xs tw-transition-all tw-duration-200 hover:-tw-translate-y-0.5 hover:tw-shadow-sm">
-        <div class="tw-flex tw-justify-between tw-items-center tw-mb-1.5">
-            <span class="tw-text-xs tw-font-bold tw-text-slate-500 tw-uppercase tw-tracking-wide">Kho đang hoạt động</span>
-            <div class="tw-w-8 tw-h-8 tw-rounded-lg tw-bg-blue-50 tw-flex tw-items-center tw-justify-center tw-text-blue-600 tw-border tw-border-blue-100/60">
-                <svg class="tw-w-4 tw-h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <!-- Executive Metrics Strip (Streamlined) -->
+    <div class="tf-stock-metrics-strip">
+        <div class="tf-metric-item">
+            <div class="tf-metric-header">
+                <span class="tf-metric-label">Kho đang hoạt động</span>
+                <div class="tf-metric-icon" style="background: rgba(37, 99, 235, 0.1); color: #2563eb;">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                </div>
+            </div>
+            <div class="tf-metric-value-wrap">
+                <span class="tf-metric-val">@(_warehouses.Count(w => w.IsActive))</span>
+                <span style="font-size: 12px; font-weight: 500; color: var(--tf-text-muted, #94a3b8);">/ @_warehouses.Count kho</span>
+            </div>
+            <span class="tf-metric-sub">Mạng lưới kho bãi phân phối</span>
+        </div>
+
+        <div class="tf-metric-item">
+            <div class="tf-metric-header">
+                <span class="tf-metric-label" style="color: #059669;">Mặt hàng (SKU) có tồn</span>
+                <div class="tf-metric-icon" style="background: rgba(16, 185, 129, 0.1); color: #059669;">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                </div>
+            </div>
+            <div class="tf-metric-value-wrap">
+                <span class="tf-metric-val" style="color: #059669;">@(_items.Where(i => i.Quantity > 0).Select(i => i.ProductId).Distinct().Count())</span>
+                <span style="font-size: 12px; font-weight: 500; color: var(--tf-text-muted, #94a3b8);">SKU</span>
+            </div>
+            <span class="tf-metric-sub">Mã SP đang có số dư tồn > 0</span>
+        </div>
+
+        <div class="tf-metric-item">
+            <div class="tf-metric-header">
+                <span class="tf-metric-label" style="color: #d97706;">Cảnh báo tồn thấp (&lt; 15)</span>
+                <div class="tf-metric-icon" style="background: rgba(245, 158, 11, 0.1); color: #d97706;">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+            </div>
+            <div class="tf-metric-value-wrap">
+                <span class="tf-metric-val" style="color: #d97706;">@(_items.Where(i => i.Condition == StockCondition.Saleable && i.Quantity > 0 && i.Quantity < 15).Select(i => i.ProductId).Distinct().Count())</span>
+                <span style="font-size: 12px; font-weight: 500; color: var(--tf-text-muted, #94a3b8);">SKU</span>
+            </div>
+            <span class="tf-metric-sub">Cần lập kế hoạch nhập bổ sung</span>
+        </div>
+
+        <div class="tf-metric-item">
+            <div class="tf-metric-header">
+                <span class="tf-metric-label" style="color: #7c3aed;">Tổng giá trị tồn ước tính</span>
+                <div class="tf-metric-icon" style="background: rgba(124, 58, 237, 0.1); color: #7c3aed;">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+            </div>
+            <div class="tf-metric-value-wrap">
+                <span class="tf-metric-val" style="color: #7c3aed;">@(_totalStockValue.ToString("N0")) <span style="font-size: 14px; font-weight: 600;">đ</span></span>
+            </div>
+            <span class="tf-metric-sub">Theo giá vốn bình quân kiểm toán</span>
+        </div>
+    </div>
+
+    <!-- Warehouse Selector Strip (Sleek Horizontal Selection) -->
+    <div class="tf-wh-strip-card">
+        <div class="tf-wh-strip-header">
+            <span class="tf-wh-strip-title">
+                <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: #2563eb;">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
-            </div>
+                <span>Kho bãi trong hệ thống (@_warehouseOverviews.Count kho)</span>
+            </span>
+            @if (_selectedWarehouseId.HasValue)
+            {
+                <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" style="color: #2563eb; font-weight: 600; padding: 2px 8px;" @onclick="() => SelectWarehouse(null)">
+                    <span>✕ Xem tất cả kho bãi</span>
+                </button>
+            }
         </div>
-        <div class="tw-text-2xl tw-font-bold tw-text-slate-900">@(_warehouses.Count(w => w.IsActive)) <span class="tw-text-xs tw-font-semibold tw-text-slate-500">/ @_warehouses.Count kho</span></div>
-        <div class="tw-text-xs tw-text-slate-500 tw-mt-1">Mạng lưới kho bãi phân phối</div>
-    </div>
-
-    <!-- Card 2: Tổng số mã hàng (SKU) -->
-    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-xl tw-p-4 tw-shadow-2xs tw-transition-all tw-duration-200 hover:-tw-translate-y-0.5 hover:tw-shadow-sm">
-        <div class="tw-flex tw-justify-between tw-items-center tw-mb-1.5">
-            <span class="tw-text-xs tw-font-bold tw-text-emerald-700 tw-uppercase tw-tracking-wide">Mặt hàng (SKU) lưu kho</span>
-            <div class="tw-w-8 tw-h-8 tw-rounded-lg tw-bg-emerald-50 tw-flex tw-items-center tw-justify-center tw-text-emerald-600 tw-border tw-border-emerald-100/60">
-                <svg class="tw-w-4 tw-h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-            </div>
-        </div>
-        <div class="tw-text-2xl tw-font-bold tw-text-emerald-700">@(_items.Where(i => i.Quantity > 0).Select(i => i.ProductId).Distinct().Count())</div>
-        <div class="tw-text-xs tw-text-slate-500 tw-mt-1">Số mã sản phẩm đang có số dư tồn > 0</div>
-    </div>
-
-    <!-- Card 3: Cảnh báo tồn thấp -->
-    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-xl tw-p-4 tw-shadow-2xs tw-transition-all tw-duration-200 hover:-tw-translate-y-0.5 hover:tw-shadow-sm">
-        <div class="tw-flex tw-justify-between tw-items-center tw-mb-1.5">
-            <span class="tw-text-xs tw-font-bold tw-text-amber-700 tw-uppercase tw-tracking-wide">Cảnh báo tồn thấp (&lt; 15)</span>
-            <div class="tw-w-8 tw-h-8 tw-rounded-lg tw-bg-amber-50 tw-flex tw-items-center tw-justify-center tw-text-amber-600 tw-border tw-border-amber-100/60">
-                <svg class="tw-w-4 tw-h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-            </div>
-        </div>
-        <div class="tw-text-2xl tw-font-bold tw-text-amber-700">@(_items.Where(i => i.Condition == StockCondition.Saleable && i.Quantity > 0 && i.Quantity < 15).Select(i => i.ProductId).Distinct().Count()) <span class="tw-text-xs tw-font-normal tw-text-amber-600">SKU</span></div>
-        <div class="tw-text-xs tw-text-slate-500 tw-mt-1">Cần lập kế hoạch nhập bổ sung</div>
-    </div>
-
-    <!-- Card 4: Tổng giá trị tồn kho -->
-    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-xl tw-p-4 tw-shadow-2xs tw-transition-all tw-duration-200 hover:-tw-translate-y-0.5 hover:tw-shadow-sm">
-        <div class="tw-flex tw-justify-between tw-items-center tw-mb-1.5">
-            <span class="tw-text-xs tw-font-bold tw-text-purple-700 tw-uppercase tw-tracking-wide">Tổng giá trị tồn ước tính</span>
-            <div class="tw-w-8 tw-h-8 tw-rounded-lg tw-bg-purple-50 tw-flex tw-items-center tw-justify-center tw-text-purple-600 tw-border tw-border-purple-100/60">
-                <svg class="tw-w-4 tw-h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-            </div>
-        </div>
-        <div class="tw-text-2xl tw-font-bold tw-text-purple-700">@(_totalStockValue.ToString("N0")) đ</div>
-        <div class="tw-text-xs tw-text-slate-500 tw-mt-1">Theo giá vốn bình quân kiểm toán</div>
-    </div>
-</div>
-
-<!-- Multi-Warehouse Overview Cards Section -->
-<div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-xl tw-p-4 tw-mb-4 tw-shadow-2xs">
-    <div class="tw-flex tw-justify-between tw-items-center tw-mb-3.5">
-        <div>
-            <h2 class="tw-text-sm tw-font-bold tw-text-slate-800 tw-uppercase tw-tracking-wider tw-flex tw-items-center tw-gap-2">
-                <svg class="tw-w-4 tw-h-4 tw-text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-                <span>Tổng quan các kho hàng trong hệ thống (@_warehouseOverviews.Count kho)</span>
-            </h2>
-            <p class="tw-text-xs tw-text-slate-500 tw-mt-0.5">Nhấp vào kho để lọc danh mục sản phẩm và kiểm tra số dư tồn kho của kho đó</p>
-        </div>
-        @if (_selectedWarehouseId.HasValue)
-        {
-            <button type="button" class="tw-text-xs tw-font-semibold tw-text-blue-700 hover:tw-text-blue-900 tw-flex tw-items-center tw-gap-1 tw-bg-blue-50 tw-border tw-border-blue-200 tw-px-3 tw-py-1.5 tw-rounded-lg tw-transition-colors" @onclick="() => SelectWarehouse(null)">
-                <span>Đang lọc: @_warehouses.FirstOrDefault(w => w.Id == _selectedWarehouseId)?.Name</span>
-                <span class="tw-font-bold ms-1">× Bỏ lọc</span>
+        <div class="tf-wh-pills-row">
+            <button type="button"
+                    class="tf-wh-pill-btn @(!_selectedWarehouseId.HasValue ? "is-active" : "")"
+                    @onclick="() => SelectWarehouse(null)">
+                <div class="tf-wh-pill-top">
+                    <span class="tf-wh-pill-name">Tất cả kho bãi</span>
+                    <span class="tf-wh-pill-code">TOÀN HỆ THỐNG</span>
+                </div>
+                <div class="tf-wh-pill-stats">
+                    <span>@(_items.Where(i => i.Quantity > 0).Select(i => i.ProductId).Distinct().Count()) SKU lưu kho</span>
+                    <span class="tf-wh-pill-val">@(_totalStockValue.ToString("N0")) đ</span>
+                </div>
             </button>
-        }
+
+            @foreach (var wh in _warehouseOverviews)
+            {
+                var isSelected = _selectedWarehouseId == wh.WarehouseId;
+                <button type="button"
+                        class="tf-wh-pill-btn @(isSelected ? "is-active" : "")"
+                        @onclick="() => SelectWarehouse(wh.WarehouseId)">
+                    <div class="tf-wh-pill-top">
+                        <span class="tf-wh-pill-name" title="@wh.WarehouseName">@wh.WarehouseName</span>
+                        <span class="tf-wh-pill-code">@wh.WarehouseCode</span>
+                    </div>
+                    <div class="tf-wh-pill-stats">
+                        <span>@wh.DistinctSkuCount SKU @(wh.LowStockSkuCount > 0 ? $"({wh.LowStockSkuCount} tồn thấp)" : "")</span>
+                        <span class="tf-wh-pill-val">@wh.TotalValuation.ToString("N0") đ</span>
+                    </div>
+                </button>
+            }
+        </div>
     </div>
 
-    <div class="tw-grid tw-grid-cols-1 @(_warehouseOverviews.Count == 2 ? "md:tw-grid-cols-2" : (_warehouseOverviews.Count == 1 ? "md:tw-grid-cols-1" : "md:tw-grid-cols-2 lg:tw-grid-cols-3")) tw-gap-3.5">
-        @foreach (var wh in _warehouseOverviews)
-        {
-            var isSelected = _selectedWarehouseId == wh.WarehouseId;
-            <div class="tf-wh-card @(isSelected ? "is-selected" : "") tf-card-interactive">
-                <div class="tw-flex tw-justify-between tw-items-start tw-mb-2.5">
-                    <div>
-                        <div class="tw-flex tw-items-center tw-gap-2">
-                            <span class="tw-font-bold tw-text-sm sm:tw-text-base tw-text-slate-900">@wh.WarehouseName</span>
-                            <span class="tw-font-mono tw-text-2xs tw-font-bold tw-bg-slate-100 tw-text-slate-700 tw-border tw-border-slate-200 tw-px-1.5 tw-py-0.5 tw-rounded">@wh.WarehouseCode</span>
-                        </div>
-                        <div class="tw-text-xs tw-text-slate-500 tw-mt-1 tw-flex tw-items-center tw-gap-1 tw-truncate" title="@wh.Address">
-                            <svg class="tw-w-3.5 tw-h-3.5 tw-text-slate-400 tw-flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            <span class="tw-truncate">@(string.IsNullOrEmpty(wh.Address) ? "Chưa cập nhật địa chỉ" : wh.Address)</span>
-                        </div>
-                    </div>
-                    <span class="tw-inline-flex tw-items-center tw-px-2.5 tw-py-0.5 tw-rounded-full tw-text-2xs tw-font-semibold @(wh.IsActive ? "tw-bg-emerald-50 tw-text-emerald-700 tw-border tw-border-emerald-200" : "tw-bg-slate-100 tw-text-slate-600 tw-border tw-border-slate-200")">
-                        @(wh.IsActive ? "Đang hoạt động" : "Tạm ngưng")
-                    </span>
-                </div>
+    <!-- View Switcher Segmented Control -->
+    <div class="tf-stock-view-switch">
+        <div class="tf-segmented-tabs">
+            <button type="button" class="tf-segmented-tab @(_activeView == "detail" ? "is-active" : "")"
+                    @onclick='() => SwitchStockView("detail")'>
+                <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+                <span>Tồn kho chi tiết theo kho</span>
+                <span>@FilteredItems.Count()</span>
+            </button>
 
-                <div class="tw-grid tw-grid-cols-2 tw-gap-2.5 tw-py-2.5 tw-border-t tw-border-b tw-border-slate-100 tw-my-2.5 tw-text-xs">
-                    <div class="tw-bg-slate-50/70 tw-p-2 tw-rounded-md">
-                        <div class="tw-text-slate-500 tw-text-2xs">Mặt hàng lưu:</div>
-                        <div class="tw-font-bold tw-text-slate-800 tw-text-sm tw-mt-0.5">@wh.DistinctSkuCount <span class="tw-font-normal tw-text-xs tw-text-slate-500">SKU</span></div>
-                    </div>
-                    <div class="tw-bg-slate-50/70 tw-p-2 tw-rounded-md">
-                        <div class="tw-text-slate-500 tw-text-2xs">Tồn thấp (&lt; 15):</div>
-                        <div class="tw-font-bold @(wh.LowStockSkuCount > 0 ? "tw-text-amber-600" : "tw-text-slate-800") tw-text-sm tw-mt-0.5">@wh.LowStockSkuCount <span class="tw-font-normal tw-text-xs tw-text-slate-500">SKU</span></div>
-                    </div>
-                    <div class="tw-bg-slate-50/70 tw-p-2 tw-rounded-md">
-                        <div class="tw-text-slate-500 tw-text-2xs">Hàng lỗi / Cách ly:</div>
-                        <div class="tw-font-bold @(wh.DefectiveItemCount > 0 ? "tw-text-rose-600" : "tw-text-slate-800") tw-text-sm tw-mt-0.5">@wh.DefectiveItemCount <span class="tw-font-normal tw-text-xs tw-text-slate-500">SP</span></div>
-                    </div>
-                    <div class="tw-bg-slate-50/70 tw-p-2 tw-rounded-md">
-                        <div class="tw-text-slate-500 tw-text-2xs">Tổng giá trị tồn:</div>
-                        <div class="tw-font-bold tw-text-purple-700 tw-text-sm tw-mt-0.5">@wh.TotalValuation.ToString("N0") <span class="tw-font-normal tw-text-xs tw-text-purple-500">đ</span></div>
-                    </div>
-                </div>
-
-                <div class="tw-flex tw-justify-between tw-items-center tw-text-2xs tw-text-slate-400 tw-mt-1">
-                    <span>Biến động gần nhất: <strong>@(wh.LatestMovementAt?.ToString("dd/MM/yyyy HH:mm") ?? "Chưa có")</strong></span>
-                    @if (isSelected)
-                    {
-                        <button type="button" class="tw-inline-flex tw-items-center tw-gap-1 tw-text-xs tw-font-bold tw-text-blue-700 tw-bg-blue-100/70 tw-px-3 tw-py-1.5 tw-rounded-md" @onclick="() => SelectWarehouse(null)">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-                            <span>Đang chọn kho này</span>
-                        </button>
-                    }
-                    else
-                    {
-                        <button type="button" class="tw-inline-flex tw-items-center tw-gap-1 tw-text-xs tw-font-semibold tw-text-blue-600 hover:tw-text-blue-800 hover:tw-bg-blue-50 tw-border tw-border-blue-200 tw-px-3 tw-py-1.5 tw-rounded-md tw-transition-colors" @onclick="() => SelectWarehouse(wh.WarehouseId)">
-                            <span>Xem tồn kho</span>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-                        </button>
-                    }
-                </div>
-            </div>
-        }
+            <button type="button" class="tf-segmented-tab @(_activeView == "matrix" ? "is-active" : "")"
+                    @onclick='() => SwitchStockView("matrix")'>
+                <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                </svg>
+                <span>So sánh tồn kho đa kho (Ma trận)</span>
+                <span>@_matrixItems.Count</span>
+            </button>
+        </div>
     </div>
-</div>
 
-<!-- View Switcher Tabs (Segmented Control) -->
-<div class="tw-flex tw-items-center tw-justify-between tw-mb-4 tw-border-b tw-border-slate-200 tw-pb-3">
-    <div class="tf-segmented-tabs">
-        <button type="button" class="tf-segmented-tab @(_activeView == "detail" ? "is-active" : "")"
-                @onclick='() => SwitchStockView("detail")'>
-            <svg class="tw-w-4 tw-h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-            </svg>
-            <span>Tồn kho chi tiết theo kho</span>
-            <span class="tw-ml-1.5 tw-text-2xs tw-px-1.5 tw-py-0.5 tw-rounded-full @(_activeView == "detail" ? "tw-bg-blue-100 tw-text-blue-700 tw-font-bold" : "tw-bg-slate-200/80 tw-text-slate-600")">@FilteredItems.Count()</span>
-        </button>
-
-        <button type="button" class="tf-segmented-tab @(_activeView == "matrix" ? "is-active" : "")"
-                @onclick='() => SwitchStockView("matrix")'>
-            <svg class="tw-w-4 tw-h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-            </svg>
-            <span>So sánh tồn kho đa kho (Ma trận)</span>
-            <span class="tw-ml-1.5 tw-text-2xs tw-px-1.5 tw-py-0.5 tw-rounded-full @(_activeView == "matrix" ? "tw-bg-blue-100 tw-text-blue-700 tw-font-bold" : "tw-bg-slate-200/80 tw-text-slate-600")">@_matrixItems.Count</span>
-        </button>
-    </div>
-</div>
-
-<div id="stock-content-view">
-@if (_activeView == "detail")
-{
-    <!-- ========================================== -->
-    <!-- VIEW 1: TỒN KHO CHI TIẾT THEO KHO          -->
-    <!-- ========================================== -->
-    <div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-4 tw-gap-4">
-        <!-- Filter Sidebar -->
-        <div class="lg:tw-col-span-1">
-            <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-xl tw-p-4 tw-shadow-2xs tw-space-y-4">
-                <div class="tw-flex tw-justify-between tw-items-center tw-border-b tw-border-slate-100 tw-pb-2.5">
-                    <span class="tw-font-bold tw-text-sm tw-text-slate-800 tw-flex tw-items-center tw-gap-1.5">
-                        <svg class="tw-w-4 tw-h-4 tw-text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                        </svg>
-                        <span>Bộ lọc tồn kho</span>
-                    </span>
-                    @if (HasActiveFilters)
+    <div id="stock-content-view">
+    @if (_activeView == "detail")
+    {
+        <!-- ========================================== -->
+        <!-- VIEW 1: TỒN KHO CHI TIẾT THEO KHO          -->
+        <!-- ========================================== -->
+        
+        <!-- Modern Horizontal Filter & Action Toolbar -->
+        <div class="tf-stock-toolbar-card">
+            <div class="tf-stock-toolbar-row">
+                <!-- Search Box -->
+                <div class="tf-stock-search-wrap">
+                    <svg class="tf-stock-search-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input type="text"
+                           class="tf-stock-search-input"
+                           placeholder="Tìm mã sản phẩm, tên sản phẩm..."
+                           @bind="_searchTerm"
+                           @bind:event="oninput" />
+                    @if (!string.IsNullOrEmpty(_searchTerm))
                     {
-                        <button class="tw-text-xs tw-font-semibold tw-text-blue-600 hover:tw-text-blue-800 hover:tw-underline" @onclick="ClearFilters">Xóa bộ lọc</button>
+                        <button type="button" class="tf-stock-search-clear" @onclick="() => _searchTerm = string.Empty" title="Xóa từ khóa">✕</button>
                     }
                 </div>
 
-                <!-- Warehouse Filter -->
-                <div>
-                    <label class="tw-block tw-text-xs tw-font-semibold tw-text-slate-700 tw-mb-1.5">Kho lưu trữ</label>
-                    <select class="tf-custom-select tw-w-full" @bind="_selectedWarehouseId">
-                        <option value="">-- Tất cả kho bãi --</option>
-                        @foreach (var wh in _warehouses)
-                        {
-                            <option value="@wh.Id">@wh.Name (@wh.Code)</option>
-                        }
-                    </select>
-                </div>
+                <!-- Warehouse Select -->
+                <select class="tf-stock-select" @bind="_selectedWarehouseId" style="min-width: 180px;">
+                    <option value="">-- Tất cả kho bãi --</option>
+                    @foreach (var wh in _warehouses)
+                    {
+                        <option value="@wh.Id">@wh.Name (@wh.Code)</option>
+                    }
+                </select>
 
                 <!-- Condition Filter -->
-                <div>
-                    <label class="tw-block tw-text-xs tw-font-semibold tw-text-slate-700 tw-mb-1.5">Phẩm chất hàng hóa</label>
-                    <div class="tw-space-y-1">
-                        <label class="tw-flex tw-items-center tw-gap-2.5 tw-text-sm tw-text-slate-700 tw-cursor-pointer tw-p-1.5 tw-rounded-lg hover:tw-bg-slate-50 tw-transition-colors">
-                            <input type="radio" name="stockCond" class="tf-filter-radio" checked="@(_selectedCondition == null)" @onchange="() => _selectedCondition = null" />
-                            <span>Tất cả phẩm chất</span>
-                        </label>
-                        <label class="tw-flex tw-items-center tw-gap-2.5 tw-text-sm tw-text-slate-700 tw-cursor-pointer tw-p-1.5 tw-rounded-lg hover:tw-bg-slate-50 tw-transition-colors">
-                            <input type="radio" name="stockCond" class="tf-filter-radio" checked="@(_selectedCondition == StockCondition.Saleable)" @onchange="() => _selectedCondition = StockCondition.Saleable" />
-                            <span class="tw-inline-block tw-w-2.5 tw-h-2.5 tw-rounded-full tw-bg-emerald-500"></span>
-                            <span>Hàng tốt khả dụng</span>
-                        </label>
-                        <label class="tw-flex tw-items-center tw-gap-2.5 tw-text-sm tw-text-slate-700 tw-cursor-pointer tw-p-1.5 tw-rounded-lg hover:tw-bg-slate-50 tw-transition-colors">
-                            <input type="radio" name="stockCond" class="tf-filter-radio" checked="@(_selectedCondition == StockCondition.Usable)" @onchange="() => _selectedCondition = StockCondition.Usable" />
-                            <span class="tw-inline-block tw-w-2.5 tw-h-2.5 tw-rounded-full tw-bg-blue-500"></span>
-                            <span>Hàng dùng được / Cũ</span>
-                        </label>
-                        <label class="tw-flex tw-items-center tw-gap-2.5 tw-text-sm tw-text-slate-700 tw-cursor-pointer tw-p-1.5 tw-rounded-lg hover:tw-bg-slate-50 tw-transition-colors">
-                            <input type="radio" name="stockCond" class="tf-filter-radio" checked="@(_selectedCondition == StockCondition.Defective)" @onchange="() => _selectedCondition = StockCondition.Defective" />
-                            <span class="tw-inline-block tw-w-2.5 tw-h-2.5 tw-rounded-full tw-bg-rose-500"></span>
-                            <span>Hàng lỗi / Cách ly</span>
-                        </label>
-                    </div>
-                </div>
+                <select class="tf-stock-select" value="@ConditionSelectValue" @onchange="OnConditionSelectChanged" style="min-width: 170px;">
+                    <option value="all">Tất cả phẩm chất</option>
+                    <option value="Saleable">Hàng tốt khả dụng</option>
+                    <option value="Usable">Hàng dùng được / Cũ</option>
+                    <option value="Defective">Hàng lỗi / Cách ly</option>
+                </select>
 
                 <!-- Stock Level Filter -->
-                <div>
-                    <label class="tw-block tw-text-xs tw-font-semibold tw-text-slate-700 tw-mb-1.5">Mức tồn kho</label>
-                    <div class="tw-space-y-1">
-                        <label class="tw-flex tw-items-center tw-gap-2.5 tw-text-sm tw-text-slate-700 tw-cursor-pointer tw-p-1.5 tw-rounded-lg hover:tw-bg-slate-50 tw-transition-colors">
-                            <input type="radio" name="stockLvl" class="tf-filter-radio" checked="@(_stockLevelFilter == "all")" @onchange='() => _stockLevelFilter = "all"' />
-                            <span>Tất cả mức tồn</span>
-                        </label>
-                        <label class="tw-flex tw-items-center tw-gap-2.5 tw-text-sm tw-text-slate-700 tw-cursor-pointer tw-p-1.5 tw-rounded-lg hover:tw-bg-slate-50 tw-transition-colors">
-                            <input type="radio" name="stockLvl" class="tf-filter-radio" checked="@(_stockLevelFilter == "low")" @onchange='() => _stockLevelFilter = "low"' />
-                            <span class="tw-text-amber-700 tw-font-medium">Tồn thấp (&lt; 15)</span>
-                        </label>
-                        <label class="tw-flex tw-items-center tw-gap-2.5 tw-text-sm tw-text-slate-700 tw-cursor-pointer tw-p-1.5 tw-rounded-lg hover:tw-bg-slate-50 tw-transition-colors">
-                            <input type="radio" name="stockLvl" class="tf-filter-radio" checked="@(_stockLevelFilter == "zero")" @onchange='() => _stockLevelFilter = "zero"' />
-                            <span class="tw-text-rose-700 tw-font-medium">Hết hàng (= 0)</span>
-                        </label>
-                    </div>
-                </div>
+                <select class="tf-stock-select" @bind="_stockLevelFilter" style="min-width: 160px;">
+                    <option value="all">Tất cả mức tồn</option>
+                    <option value="low">Tồn thấp (&lt; 15)</option>
+                    <option value="zero">Hết hàng (= 0)</option>
+                </select>
 
-                <!-- Zero-Stock Toggle -->
-                <div class="tw-border-t tw-border-slate-100 tw-pt-3">
-                    <label class="tw-flex tw-items-center tw-gap-2.5 tw-cursor-pointer">
-                        <input type="checkbox" class="tf-filter-checkbox" @bind="_hideZeroStock" />
-                        <span class="tw-text-xs tw-font-medium tw-text-slate-700">Ẩn mục hết hàng (tồn &le; 0)</span>
-                    </label>
-                </div>
+                <!-- Hide Zero Stock Checkbox -->
+                <label class="tf-stock-checkbox-label">
+                    <input type="checkbox" @bind="_hideZeroStock" />
+                    <span>Ẩn hết hàng</span>
+                </label>
             </div>
+
+            <!-- Active Filter Chips Row -->
+            @if (HasActiveFilters)
+            {
+                <div class="tf-stock-chips-row">
+                    <span style="font-size: 11.5px; font-weight: 600; color: var(--tf-text-muted, #64748b);">Bộ lọc đang áp dụng:</span>
+                    
+                    @if (!string.IsNullOrWhiteSpace(_searchTerm))
+                    {
+                        <span class="tf-filter-chip">
+                            <span>Từ khóa: "@_searchTerm"</span>
+                            <button type="button" class="tf-chip-remove" @onclick="() => _searchTerm = string.Empty">×</button>
+                        </span>
+                    }
+
+                    @if (_selectedWarehouseId.HasValue)
+                    {
+                        var whName = _warehouses.FirstOrDefault(w => w.Id == _selectedWarehouseId.Value)?.Name ?? "Kho đã chọn";
+                        <span class="tf-filter-chip">
+                            <span>Kho: @whName</span>
+                            <button type="button" class="tf-chip-remove" @onclick="() => _selectedWarehouseId = null">×</button>
+                        </span>
+                    }
+
+                    @if (_selectedCondition.HasValue)
+                    {
+                        var condLabel = _selectedCondition.Value switch
+                        {
+                            StockCondition.Saleable => "Hàng tốt khả dụng",
+                            StockCondition.Usable => "Hàng dùng được / Cũ",
+                            StockCondition.Defective => "Hàng lỗi / Cách ly",
+                            _ => ""
+                        };
+                        <span class="tf-filter-chip">
+                            <span>Phẩm chất: @condLabel</span>
+                            <button type="button" class="tf-chip-remove" @onclick="() => _selectedCondition = null">×</button>
+                        </span>
+                    }
+
+                    @if (_stockLevelFilter == "low")
+                    {
+                        <span class="tf-filter-chip">
+                            <span>Mức tồn: Tồn thấp (&lt; 15)</span>
+                            <button type="button" class="tf-chip-remove" @onclick='() => _stockLevelFilter = "all"'>×</button>
+                        </span>
+                    }
+                    else if (_stockLevelFilter == "zero")
+                    {
+                        <span class="tf-filter-chip">
+                            <span>Mức tồn: Hết hàng (= 0)</span>
+                            <button type="button" class="tf-chip-remove" @onclick='() => _stockLevelFilter = "all"'>×</button>
+                        </span>
+                    }
+
+                    @if (_hideZeroStock)
+                    {
+                        <span class="tf-filter-chip">
+                            <span>Đã ẩn mặt hàng hết hàng</span>
+                            <button type="button" class="tf-chip-remove" @onclick="() => _hideZeroStock = false">×</button>
+                        </span>
+                    }
+
+                    <button type="button" class="tf-btn-clear-all" @onclick="ClearFilters">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                        <span>Đặt lại tất cả</span>
+                    </button>
+                </div>
+            }
         </div>
 
-        <!-- Main Stock Table -->
-        <div class="lg:tw-col-span-3">
-            <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-xl tw-shadow-2xs tw-overflow-hidden">
-                <!-- Search toolbar inside table container -->
-                <div class="tw-p-3.5 tw-border-b tw-border-slate-100 tw-flex tw-justify-between tw-items-center tw-gap-3">
-                    <div class="tw-relative tw-w-72">
-                        <input type="text"
-                               class="tw-w-full tw-h-9 tw-pl-9 tw-pr-3 tw-text-xs tw-rounded-lg tw-border tw-border-slate-300 focus:tw-border-blue-500 focus:tw-ring-2 focus:tw-ring-blue-100 focus:tw-outline-none"
-                               placeholder="Tìm mã SP, tên sản phẩm..."
-                               @bind="_searchTerm"
-                               @bind:event="oninput" />
-                        <svg class="tw-w-4 tw-h-4 tw-text-slate-400 tw-absolute tw-left-3 tw-top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </div>
-                    <div class="tw-text-xs tw-text-slate-500">
-                        Hiển thị <strong>@FilteredItems.Count()</strong> bản ghi
-                    </div>
+        <!-- Full-Width Data Table -->
+        <div class="tf-stock-table-card">
+            <div class="tf-table-header-info">
+                <div>
+                    Hiển thị <strong>@((_currentPage - 1) * _pageSize + (FilteredItems.Any() ? 1 : 0))</strong> - 
+                    <strong>@(Math.Min(_currentPage * _pageSize, FilteredItems.Count()))</strong> trong tổng số 
+                    <strong>@FilteredItems.Count()</strong> bản ghi tồn kho
                 </div>
-
-                <div class="tw-overflow-x-auto">
-                    <table class="tf-table tw-w-full">
-                        <thead>
-                            <tr class="tw-bg-slate-50 tw-border-b tw-border-slate-200 tw-text-left tw-text-xs tw-font-bold tw-text-slate-600 tw-uppercase tw-tracking-wider">
-                                <th class="tw-p-3" style="min-width: 110px;">Mã SP</th>
-                                <th class="tw-p-3" style="min-width: 200px;">Tên sản phẩm</th>
-                                <th class="tw-p-3" style="min-width: 140px;">Kho hàng</th>
-                                <th class="tw-p-3" style="min-width: 110px; text-align: center;">Phẩm chất</th>
-                                <th class="tw-p-3" style="text-align: right; min-width: 110px;">Tồn thực tế</th>
-                                <th class="tw-p-3" style="text-align: right; min-width: 110px;">Giá vốn</th>
-                                <th class="tw-p-3" style="text-align: right; min-width: 120px;">Tổng giá trị</th>
-                                <th class="tw-p-3" style="text-align: right; min-width: 90px;">Thao tác</th>
-                            </tr>
-                        </thead>
-                        <tbody class="tw-divide-y tw-divide-slate-100 tw-text-sm">
-                            @if (_isLoading)
-                            {
-                                <tr>
-                                    <td colspan="8" class="tw-p-8 tw-text-center tw-text-slate-500">
-                                        <div class="tw-inline-block tw-animate-spin tw-rounded-full tw-h-6 tw-w-6 tw-border-b-2 tw-border-blue-600 tw-mr-2"></div>
-                                        <span>Đang tải số liệu tồn kho...</span>
-                                    </td>
-                                </tr>
-                            }
-                            else if (!FilteredItems.Any())
-                            {
-                                <tr>
-                                    <td colspan="8" class="tw-p-8 tw-text-center tw-text-slate-500">
-                                        <div class="tw-text-base tw-font-bold tw-text-slate-700 tw-mb-1">Không tìm thấy bản ghi tồn kho nào</div>
-                                        <p class="tw-text-xs tw-text-slate-400">Hãy thử điều chỉnh lại bộ lọc hoặc từ khóa tìm kiếm</p>
-                                    </td>
-                                </tr>
-                            }
-                            else
-                            {
-                                @foreach (var item in PagedItems)
-                                {
-                                    var unitCost = GetProductUnitCost(item.ProductId);
-                                    var totalVal = item.Quantity * unitCost;
-                                    <tr class="hover:tw-bg-slate-50/70 tw-transition-colors">
-                                        <td class="tw-p-3">
-                                            <span class="tw-font-mono tw-font-bold tw-text-slate-800 tw-bg-slate-100 tw-border tw-border-slate-200 tw-px-2 tw-py-0.5 tw-rounded tw-text-xs">
-                                                @item.ProductCode
-                                            </span>
-                                        </td>
-                                        <td class="tw-p-3">
-                                            <div class="tw-font-semibold tw-text-slate-900">@item.ProductName</div>
-                                            <div class="tw-text-xs tw-text-slate-400">@item.CategoryName</div>
-                                        </td>
-                                        <td class="tw-p-3">
-                                            <span class="tw-text-slate-700 tw-font-medium">@item.WarehouseName</span>
-                                        </td>
-                                        <td class="tw-p-3" style="text-align: center;">
-                                            @if (item.Condition == StockCondition.Saleable)
-                                            {
-                                                <span class="tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded-full tw-text-2xs tw-font-semibold tw-bg-emerald-50 tw-text-emerald-700 tw-border tw-border-emerald-200">
-                                                    Hàng tốt
-                                                </span>
-                                            }
-                                            else if (item.Condition == StockCondition.Usable)
-                                            {
-                                                <span class="tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded-full tw-text-2xs tw-font-semibold tw-bg-blue-50 tw-text-blue-700 tw-border tw-border-blue-200">
-                                                    Hàng dùng được
-                                                </span>
-                                            }
-                                            else
-                                            {
-                                                <span class="tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded-full tw-text-2xs tw-font-semibold tw-bg-rose-50 tw-text-rose-700 tw-border tw-border-rose-200">
-                                                    Lỗi/Cách ly
-                                                </span>
-                                            }
-                                        </td>
-                                        <td class="tw-p-3" style="text-align: right;">
-                                            <span class="tw-font-bold @(item.Quantity <= 0 ? "tw-text-rose-600" : (item.Quantity < 15 ? "tw-text-amber-600" : "tw-text-slate-900"))">
-                                                @item.Quantity.ToString("N0")
-                                            </span>
-                                            <span class="tw-text-xs tw-text-slate-400 tw-ml-1">@item.UnitName</span>
-                                        </td>
-                                        <td class="tw-p-3" style="text-align: right;">
-                                            <span class="tw-text-slate-600">@unitCost.ToString("N0")</span>
-                                        </td>
-                                        <td class="tw-p-3" style="text-align: right;">
-                                            <span class="tw-font-bold tw-text-purple-700">@totalVal.ToString("N0") đ</span>
-                                        </td>
-                                        <td class="tw-p-3" style="text-align: right;">
-                                            <a href="/kho/the-kho?warehouseId=@item.WarehouseId&productId=@item.ProductId" class="tw-inline-flex tw-items-center tw-gap-1 tw-text-xs tw-font-semibold tw-text-blue-600 hover:tw-text-blue-800 hover:tw-underline" title="Xem lịch sử biến động thẻ kho">
-                                                <span>Thẻ kho</span>
-                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                }
-                            }
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Pagination -->
                 @if (TotalPages > 1)
                 {
-                    <div class="tw-p-3 tw-border-t tw-border-slate-100 tw-flex tw-justify-between tw-items-center tw-text-xs">
-                        <span class="tw-text-slate-500">Trang @_currentPage / @TotalPages</span>
-                        <div class="tw-flex tw-gap-1">
-                            <button class="tw-px-2.5 tw-py-1 tw-rounded-md tw-border tw-border-slate-200 hover:tw-bg-slate-50 disabled:tw-opacity-50 tw-font-medium" disabled="@(_currentPage == 1)" @onclick="() => _currentPage--">
-                                Trước
-                            </button>
-                            <button class="tw-px-2.5 tw-py-1 tw-rounded-md tw-border tw-border-slate-200 hover:tw-bg-slate-50 disabled:tw-opacity-50 tw-font-medium" disabled="@(_currentPage >= TotalPages)" @onclick="() => _currentPage++">
-                                Tiếp
-                            </button>
-                        </div>
+                    <div style="font-weight: 600;">
+                        Trang @_currentPage / @TotalPages
                     </div>
                 }
             </div>
-        </div>
-    </div>
-}
-else
-{
-    <!-- ========================================== -->
-    <!-- VIEW 2: SO SÁNH TỒN KHO ĐA KHO (MA TRẬN)    -->
-    <!-- ========================================== -->
-    <div class="tw-bg-white tw-border tw-border-slate-200 tw-rounded-xl tw-shadow-2xs tw-overflow-hidden">
-        <div class="tw-p-3.5 tw-border-b tw-border-slate-100 tw-flex tw-flex-wrap tw-justify-between tw-items-center tw-gap-3">
-            <div>
-                <h3 class="tw-text-sm tw-font-bold tw-text-slate-800">Ma trận phân bổ tồn kho khả dụng đa kho</h3>
-                <p class="tw-text-xs tw-text-slate-500">Đối chiếu số lượng tồn khả dụng (hàng tốt) của từng sản phẩm trên toàn bộ hệ thống kho bãi</p>
-            </div>
-            <div class="tw-flex tw-items-center tw-gap-2">
-                <input type="text"
-                       class="tw-w-64 tw-h-9 tw-px-3 tw-text-xs tw-rounded-lg tw-border tw-border-slate-300 focus:tw-border-blue-500 focus:tw-ring-2 focus:tw-ring-blue-100 focus:tw-outline-none"
-                       placeholder="Tìm mã hoặc tên sản phẩm..."
-                       @bind="_matrixSearchTerm"
-                       @bind:event="oninput" />
-            </div>
-        </div>
 
-        <div class="tw-overflow-x-auto">
-            <table class="tf-table tw-w-full">
-                <thead>
-                    <tr class="tw-bg-slate-50 tw-border-b tw-border-slate-200 tw-text-left tw-text-xs tw-font-bold tw-text-slate-600 tw-uppercase tw-tracking-wider">
-                        <th class="tw-p-3" style="min-width: 100px;">Mã SP</th>
-                        <th class="tw-p-3" style="min-width: 220px;">Tên sản phẩm</th>
-                        <th class="tw-p-3" style="min-width: 70px; text-align: center;">ĐVT</th>
-                        @foreach (var wh in _warehouses)
+            <div style="overflow-x: auto;">
+                <table class="tf-stock-table">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 120px;">Mã SP</th>
+                            <th style="min-width: 240px;">Tên sản phẩm</th>
+                            <th style="min-width: 160px;">Kho hàng</th>
+                            <th style="min-width: 120px; text-align: center;">Phẩm chất</th>
+                            <th style="min-width: 120px; text-align: right;">Tồn thực tế</th>
+                            <th style="min-width: 120px; text-align: right;">Giá vốn</th>
+                            <th style="min-width: 140px; text-align: right;">Tổng giá trị</th>
+                            <th style="min-width: 100px; text-align: right;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (_isLoading)
                         {
-                            <th class="tw-p-3" style="text-align: right; min-width: 120px;">
-                                <div>@wh.Name</div>
-                                <div class="tw-text-2xs tw-font-normal tw-text-slate-400">@wh.Code</div>
-                            </th>
+                            <tr>
+                                <td colspan="8" style="padding: 40px; text-align: center; color: var(--tf-text-muted, #94a3b8);">
+                                    <div class="tw-inline-block tw-animate-spin tw-rounded-full tw-h-6 tw-w-6 tw-border-b-2 tw-border-blue-600 tw-mr-2"></div>
+                                    <span>Đang đồng bộ số liệu tồn kho...</span>
+                                </td>
+                            </tr>
                         }
-                        <th class="tw-p-3" style="text-align: right; min-width: 130px; background-color: #f8fafc;">Tổng toàn hệ thống</th>
-                        <th class="tw-p-3" style="text-align: right; min-width: 120px;">Giá vốn</th>
-                        <th class="tw-p-3" style="text-align: right; min-width: 130px;">Tổng giá trị</th>
-                        <th class="tw-p-3" style="text-align: center; min-width: 100px;">Trạng thái</th>
-                    </tr>
-                </thead>
-                <tbody class="tw-divide-y tw-divide-slate-100 tw-text-sm">
-                    @if (_isMatrixLoading)
-                    {
-                        <tr>
-                            <td colspan="@(7 + _warehouses.Count)" class="tw-p-8 tw-text-center tw-text-slate-500">
-                                <div class="tw-inline-block tw-animate-spin tw-rounded-full tw-h-6 tw-w-6 tw-border-b-2 tw-border-blue-600 tw-mr-2"></div>
-                                <span>Đang tổng hợp ma trận phân bổ tồn kho...</span>
-                            </td>
-                        </tr>
-                    }
-                    else if (!FilteredMatrixItems.Any())
-                    {
-                        <tr>
-                            <td colspan="@(7 + _warehouses.Count)" class="tw-p-8 tw-text-center tw-text-slate-500">
-                                Không tìm thấy mặt hàng nào phù hợp với từ khóa
-                            </td>
-                        </tr>
-                    }
-                    else
-                    {
-                        @foreach (var p in FilteredMatrixItems)
+                        else if (!FilteredItems.Any())
                         {
-                            <tr class="hover:tw-bg-slate-50/70 tw-transition-colors">
-                                <td class="tw-p-3">
-                                    <span class="tw-font-mono tw-font-bold tw-text-slate-800 tw-bg-slate-100 tw-border tw-border-slate-200 tw-px-2 tw-py-0.5 tw-rounded tw-text-xs">
-                                        @p.ProductCode
-                                    </span>
-                                </td>
-                                <td class="tw-p-3">
-                                    <div class="tw-font-semibold tw-text-slate-900">@p.ProductName</div>
-                                    <div class="tw-text-xs tw-text-slate-400">@p.CategoryName</div>
-                                </td>
-                                <td class="tw-p-3" style="text-align: center;">
-                                    <span class="tw-text-slate-600">@p.UnitName</span>
-                                </td>
-
-                                <!-- Columns for each warehouse -->
-                                @foreach (var wh in _warehouses)
-                                {
-                                    var whQty = p.WarehouseQuantities.TryGetValue(wh.Id, out var q) ? q : 0m;
-                                    <td class="tw-p-3" style="text-align: right;">
-                                        @if (whQty > 0)
-                                        {
-                                            <span class="tw-font-semibold tw-text-slate-800">@whQty.ToString("N0")</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="tw-text-slate-300">-</span>
-                                        }
-                                    </td>
-                                }
-
-                                <!-- Total system column -->
-                                <td class="tw-p-3" style="text-align: right; background-color: #f8fafc;">
-                                    <span class="tw-font-bold @(p.IsOutOfStock ? "tw-text-rose-600" : (p.IsLowStock ? "tw-text-amber-600" : "tw-text-emerald-700"))">
-                                        @p.TotalQuantity.ToString("N0")
-                                    </span>
-                                    <span class="tw-text-2xs tw-text-slate-400 tw-ml-0.5">@p.UnitName</span>
-                                </td>
-
-                                <td class="tw-p-3" style="text-align: right;">
-                                    <span class="tw-text-slate-600">@p.EstimatedCost.ToString("N0")</span>
-                                </td>
-                                <td class="tw-p-3" style="text-align: right;">
-                                    <span class="tw-font-bold tw-text-purple-700">@p.TotalValuation.ToString("N0") đ</span>
-                                </td>
-                                <td class="tw-p-3" style="text-align: center;">
-                                    @if (p.IsOutOfStock)
+                            <tr>
+                                <td colspan="8" style="padding: 48px; text-align: center;">
+                                    <div style="font-size: 15px; font-weight: 700; color: var(--tf-text-primary, #0f172a); margin-bottom: 4px;">
+                                        Không tìm thấy bản ghi tồn kho nào
+                                    </div>
+                                    <p style="font-size: 12.5px; color: var(--tf-text-muted, #94a3b8); margin: 0 0 12px;">
+                                        Hãy thử điều chỉnh lại bộ lọc hoặc từ khóa tìm kiếm
+                                    </p>
+                                    @if (HasActiveFilters)
                                     {
-                                        <span class="tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded-full tw-text-2xs tw-font-semibold tw-bg-rose-50 tw-text-rose-700 tw-border tw-border-rose-200">
-                                            Hết hàng
-                                        </span>
-                                    }
-                                    else if (p.IsLowStock)
-                                    {
-                                        <span class="tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded-full tw-text-2xs tw-font-semibold tw-bg-amber-50 tw-text-amber-700 tw-border tw-border-amber-200">
-                                            Tồn thấp
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="tw-inline-flex tw-items-center tw-px-2 tw-py-0.5 tw-rounded-full tw-text-2xs tw-font-semibold tw-bg-emerald-50 tw-text-emerald-700 tw-border tw-border-emerald-200">
-                                            Sẵn sàng
-                                        </span>
+                                        <button type="button" class="tf-btn tf-btn-secondary tf-btn-sm" @onclick="ClearFilters">
+                                            Đặt lại bộ lọc
+                                        </button>
                                     }
                                 </td>
                             </tr>
                         }
-                    }
-                </tbody>
-            </table>
+                        else
+                        {
+                            @foreach (var item in PagedItems)
+                            {
+                                var unitCost = GetProductUnitCost(item.ProductId);
+                                var totalVal = item.Quantity * unitCost;
+                                <tr>
+                                    <td>
+                                        <span class="tf-prod-code-badge">@item.ProductCode</span>
+                                    </td>
+                                    <td>
+                                        <div class="tf-prod-name">@item.ProductName</div>
+                                        <div class="tf-prod-cat">@item.CategoryName</div>
+                                    </td>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 6px; font-weight: 500; color: var(--tf-text-primary, #0f172a);">
+                                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: var(--tf-text-muted, #94a3b8); flex-shrink: 0;">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                            </svg>
+                                            <span>@item.WarehouseName</span>
+                                        </div>
+                                    </td>
+                                    <td style="text-align: center;">
+                                        @if (item.Condition == StockCondition.Saleable)
+                                        {
+                                            <span class="tf-stock-cond-badge tf-cond-saleable">
+                                                <span style="width: 6px; height: 6px; border-radius: 50%; background-color: #10b981;"></span>
+                                                <span>Hàng tốt</span>
+                                            </span>
+                                        }
+                                        else if (item.Condition == StockCondition.Usable)
+                                        {
+                                            <span class="tf-stock-cond-badge tf-cond-usable">
+                                                <span style="width: 6px; height: 6px; border-radius: 50%; background-color: #3b82f6;"></span>
+                                                <span>Dùng được</span>
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="tf-stock-cond-badge tf-cond-defective">
+                                                <span style="width: 6px; height: 6px; border-radius: 50%; background-color: #f43f5e;"></span>
+                                                <span>Lỗi/Cách ly</span>
+                                            </span>
+                                        }
+                                    </td>
+                                    <td style="text-align: right;">
+                                        <span class="tf-qty-text @(item.Quantity <= 0 ? "tf-qty-zero" : (item.Quantity < 15 ? "tf-qty-low" : "tf-qty-ok"))">
+                                            @item.Quantity.ToString("N0")
+                                        </span>
+                                        <span class="tf-unit-text">@item.UnitName</span>
+                                    </td>
+                                    <td style="text-align: right; color: var(--tf-text-secondary, #475569); font-variant-numeric: tabular-nums;">
+                                        @unitCost.ToString("N0")
+                                    </td>
+                                    <td style="text-align: right;">
+                                        <span class="tf-money-text">@totalVal.ToString("N0") đ</span>
+                                    </td>
+                                    <td style="text-align: right;">
+                                        <a href="/kho/the-kho?warehouseId=@item.WarehouseId&productId=@item.ProductId" class="tf-action-btn-link" title="Xem sổ thẻ kho chi tiết">
+                                            <span>Thẻ kho</span>
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                                            </svg>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Standardized Pagination -->
+            @if (TotalPages > 1)
+            {
+                <div style="padding: 12px 18px; border-top: 1px solid var(--tf-border, #f1f5f9); display: flex; justify-content: space-between; align-items: center; font-size: 12.5px;">
+                    <div style="color: var(--tf-text-muted, #64748b);">
+                        Trang <strong>@_currentPage</strong> trên tổng <strong>@TotalPages</strong> trang
+                    </div>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="tf-btn tf-btn-secondary tf-btn-sm" disabled="@(_currentPage <= 1)" @onclick="() => _currentPage--">
+                            Trang trước
+                        </button>
+                        <button class="tf-btn tf-btn-secondary tf-btn-sm" disabled="@(_currentPage >= TotalPages)" @onclick="() => _currentPage++">
+                            Trang sau
+                        </button>
+                    </div>
+                </div>
+            }
         </div>
+    }
+    else
+    {
+        <!-- ========================================== -->
+        <!-- VIEW 2: SO SÁNH TỒN KHO ĐA KHO (MA TRẬN)    -->
+        <!-- ========================================== -->
+        <div class="tf-stock-table-card">
+            <div style="padding: 14px 18px; border-bottom: 1px solid var(--tf-border, #f1f5f9); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div>
+                    <h3 style="margin: 0; font-size: 14.5px; font-weight: 700; color: var(--tf-text-primary, #0f172a);">
+                        Ma trận phân bổ tồn kho khả dụng đa kho
+                    </h3>
+                    <p style="margin: 2px 0 0; font-size: 12px; color: var(--tf-text-secondary, #64748b);">
+                        Đối chiếu số lượng tồn khả dụng (hàng tốt) của từng sản phẩm trên toàn bộ hệ thống kho bãi LACASA
+                    </p>
+                </div>
+                <div class="tf-stock-search-wrap" style="max-width: 280px;">
+                    <svg class="tf-stock-search-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input type="text"
+                           class="tf-stock-search-input"
+                           placeholder="Tìm mã hoặc tên sản phẩm..."
+                           @bind="_matrixSearchTerm"
+                           @bind:event="oninput" />
+                    @if (!string.IsNullOrEmpty(_matrixSearchTerm))
+                    {
+                        <button type="button" class="tf-stock-search-clear" @onclick="() => _matrixSearchTerm = string.Empty" title="Xóa từ khóa">✕</button>
+                    }
+                </div>
+            </div>
+
+            <div class="tf-matrix-table-wrap">
+                <table class="tf-stock-table tf-matrix-table">
+                    <thead>
+                        <tr>
+                            <th class="tf-matrix-sticky-col-1" style="min-width: 110px;">Mã SP</th>
+                            <th class="tf-matrix-sticky-col-2" style="min-width: 240px;">Tên sản phẩm</th>
+                            <th style="min-width: 70px; text-align: center;">ĐVT</th>
+                            @foreach (var wh in _warehouses)
+                            {
+                                <th style="text-align: right; min-width: 130px;">
+                                    <div>@wh.Name</div>
+                                    <div style="font-size: 10px; font-weight: 500; color: var(--tf-text-muted, #94a3b8); text-transform: none;">@wh.Code</div>
+                                </th>
+                            }
+                            <th class="tf-matrix-total-col" style="text-align: right; min-width: 140px;">Tổng toàn hệ thống</th>
+                            <th style="text-align: right; min-width: 110px;">Giá vốn</th>
+                            <th style="text-align: right; min-width: 130px;">Tổng giá trị</th>
+                            <th style="text-align: center; min-width: 110px;">Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (_isMatrixLoading)
+                        {
+                            <tr>
+                                <td colspan="@(7 + _warehouses.Count)" style="padding: 40px; text-align: center; color: var(--tf-text-muted, #94a3b8);">
+                                    <div class="tw-inline-block tw-animate-spin tw-rounded-full tw-h-6 tw-w-6 tw-border-b-2 tw-border-blue-600 tw-mr-2"></div>
+                                    <span>Đang tổng hợp ma trận phân bổ tồn kho...</span>
+                                </td>
+                            </tr>
+                        }
+                        else if (!FilteredMatrixItems.Any())
+                        {
+                            <tr>
+                                <td colspan="@(7 + _warehouses.Count)" style="padding: 48px; text-align: center; color: var(--tf-text-muted, #94a3b8);">
+                                    Không tìm thấy mặt hàng nào phù hợp với từ khóa
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var p in FilteredMatrixItems)
+                            {
+                                <tr>
+                                    <td class="tf-matrix-sticky-col-1">
+                                        <span class="tf-prod-code-badge">@p.ProductCode</span>
+                                    </td>
+                                    <td class="tf-matrix-sticky-col-2">
+                                        <div class="tf-prod-name">@(string.IsNullOrWhiteSpace(p.ProductName) || p.ProductName == "#REF!" ? $"Sản phẩm {p.ProductCode}" : p.ProductName)</div>
+                                        <div class="tf-prod-cat">@p.CategoryName</div>
+                                    </td>
+                                    <td style="text-align: center; color: var(--tf-text-muted, #64748b);">
+                                        @p.UnitName
+                                    </td>
+
+                                    <!-- Columns for each warehouse -->
+                                    @foreach (var wh in _warehouses)
+                                    {
+                                        var whQty = p.WarehouseQuantities.TryGetValue(wh.Id, out var q) ? q : 0m;
+                                        <td style="text-align: right;">
+                                            @if (whQty > 0)
+                                            {
+                                                <span style="font-weight: 600; color: var(--tf-text-primary, #0f172a); font-variant-numeric: tabular-nums;">@whQty.ToString("N0")</span>
+                                            }
+                                            else
+                                            {
+                                                <span style="color: var(--tf-text-muted, #cbd5e1); font-weight: 500;">-</span>
+                                            }
+                                        </td>
+                                    }
+
+                                    <!-- Total system column -->
+                                    <td class="tf-matrix-total-col" style="text-align: right;">
+                                        <span class="tf-qty-text @(p.IsOutOfStock ? "tf-qty-zero" : (p.IsLowStock ? "tf-qty-low" : "tf-qty-ok"))">
+                                            @p.TotalQuantity.ToString("N0")
+                                        </span>
+                                        <span class="tf-unit-text">@p.UnitName</span>
+                                    </td>
+
+                                    <td style="text-align: right; color: var(--tf-text-secondary, #475569); font-variant-numeric: tabular-nums;">
+                                        @p.EstimatedCost.ToString("N0")
+                                    </td>
+                                    <td style="text-align: right;">
+                                        <span class="tf-money-text">@p.TotalValuation.ToString("N0") đ</span>
+                                    </td>
+                                    <td style="text-align: center;">
+                                        @if (p.IsOutOfStock)
+                                        {
+                                            <span class="tf-stock-cond-badge tf-cond-defective">Hết hàng</span>
+                                        }
+                                        else if (p.IsLowStock)
+                                        {
+                                            <span class="tf-stock-cond-badge" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); color: #d97706;">Tồn thấp</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="tf-stock-cond-badge tf-cond-saleable">Sẵn sàng</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
     </div>
-}
 </div>
 
 @code {
@@ -606,6 +635,27 @@ else
 
     // Matrix view filter
     private string _matrixSearchTerm = string.Empty;
+
+    private string ConditionSelectValue => _selectedCondition switch
+    {
+        StockCondition.Saleable => "Saleable",
+        StockCondition.Usable => "Usable",
+        StockCondition.Defective => "Defective",
+        _ => "all"
+    };
+
+    private void OnConditionSelectChanged(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        _selectedCondition = val switch
+        {
+            "Saleable" => StockCondition.Saleable,
+            "Usable" => StockCondition.Usable,
+            "Defective" => StockCondition.Defective,
+            _ => null
+        };
+        _currentPage = 1;
+    }
 
     private bool HasActiveFilters => !string.IsNullOrEmpty(_searchTerm) || _selectedWarehouseId.HasValue || _selectedCondition.HasValue || _stockLevelFilter != "all" || _hideZeroStock;
 

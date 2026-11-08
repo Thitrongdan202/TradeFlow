@@ -219,9 +219,17 @@ public class EmploymentContractService : IEmploymentContractService
         var employerName = !string.IsNullOrWhiteSpace(dto.EmployerName) ? dto.EmployerName : (partyASettings?.CompanyName ?? "CÔNG TY TNHH THIẾT BỊ VỆ SINH LACASA VIỆT NAM");
         var employerTaxCode = !string.IsNullOrWhiteSpace(dto.EmployerTaxCode) ? dto.EmployerTaxCode : (partyASettings?.TaxCode ?? "0316899999");
         var employerAddress = !string.IsNullOrWhiteSpace(dto.EmployerAddress) ? dto.EmployerAddress : (partyASettings?.RegisteredAddress ?? "Số 123 Đường Nguyễn Văn Cừ, Phường An Khánh, Quận Ninh Kiều, TP. Cần Thơ");
-        var employerRepName = !string.IsNullOrWhiteSpace(dto.EmployerRepresentativeName) ? dto.EmployerRepresentativeName : (partyASettings?.RepresentativeName ?? "Nguyễn Văn An");
-        var employerRepPosition = !string.IsNullOrWhiteSpace(dto.EmployerRepresentativePosition) ? dto.EmployerRepresentativePosition : (partyASettings?.RepresentativePosition ?? "Giám đốc");
+        var employerRepName = !string.IsNullOrWhiteSpace(dto.EmployerRepresentativeName) ? dto.EmployerRepresentativeName : (partyASettings?.RepresentativeName ?? "Trần Thị Mai Phương");
+        var employerRepPosition = !string.IsNullOrWhiteSpace(dto.EmployerRepresentativePosition) ? dto.EmployerRepresentativePosition : (partyASettings?.RepresentativePosition ?? "Chủ tịch Hội đồng thành viên");
         var employerRepAuth = partyASettings?.RepresentativeAuthority ?? "Đại diện theo pháp luật";
+
+        // Ngăn xung đột lợi ích: Người lao động không được tự ký hợp đồng với chính mình
+        if (string.Equals(employee.FullName?.Trim(), employerRepName?.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            employerRepName = "Trần Thị Mai Phương";
+            employerRepPosition = "Chủ tịch Hội đồng thành viên";
+            employerRepAuth = "Người đại diện theo pháp luật";
+        }
         var employerPhone = partyASettings?.Phone ?? "0909 123 456";
 
         var defaultTitle = dto.ContractType switch
@@ -377,6 +385,37 @@ public class EmploymentContractService : IEmploymentContractService
         }
 
         contract.Title = dto.Title;
+        if (!string.IsNullOrWhiteSpace(dto.EmployerName)) contract.EmployerName = dto.EmployerName;
+        if (!string.IsNullOrWhiteSpace(dto.EmployerTaxCode)) contract.EmployerTaxCode = dto.EmployerTaxCode;
+        if (!string.IsNullOrWhiteSpace(dto.EmployerAddress)) contract.EmployerAddress = dto.EmployerAddress;
+        if (!string.IsNullOrWhiteSpace(dto.EmployerRepresentativeName)) contract.EmployerRepresentativeName = dto.EmployerRepresentativeName;
+        if (!string.IsNullOrWhiteSpace(dto.EmployerRepresentativePosition)) contract.EmployerRepresentativePosition = dto.EmployerRepresentativePosition;
+
+        if (dto.EmployeeId > 0 && dto.EmployeeId != contract.EmployeeId)
+        {
+            var newEmp = await _context.Employees.FirstOrDefaultAsync(e => e.Id == dto.EmployeeId, cancellationToken);
+            if (newEmp != null)
+            {
+                contract.EmployeeId = newEmp.Id;
+                contract.EmployeeCode = newEmp.Code;
+                contract.EmployeeFullName = newEmp.FullName;
+                contract.EmployeeDateOfBirth = newEmp.DateOfBirth;
+                contract.EmployeeGender = newEmp.Gender;
+                contract.EmployeeNationalId = newEmp.NationalId;
+                contract.EmployeeAddress = newEmp.Address;
+                contract.EmployeePhone = newEmp.Phone;
+                contract.EmployeeEmail = newEmp.Email;
+                contract.EmployeeBankInformation = newEmp.BankInformation;
+            }
+        }
+
+        if (string.Equals(contract.EmployeeFullName?.Trim(), contract.EmployerRepresentativeName?.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            contract.EmployerRepresentativeName = "Trần Thị Mai Phương";
+            contract.EmployerRepresentativePosition = "Chủ tịch Hội đồng thành viên";
+            contract.EmployerRepresentativeAuthority = "Người đại diện theo pháp luật";
+        }
+
         contract.ContractType = dto.ContractType;
         contract.ContractDate = dto.ContractDate;
         contract.ContractPlace = dto.ContractPlace;
@@ -496,9 +535,23 @@ public class EmploymentContractService : IEmploymentContractService
         if (dto.SigningMethod == EmploymentSigningMethod.PaperSigned)
         {
             contract.PaperScanAttachmentPath = dto.PaperScanAttachmentPath;
-            contract.EmployerSignedAt = now;
-            contract.EmployeeSignedAt = now;
-            contract.Status = EmploymentContractStatus.Active;
+            if (dto.SignerRole == "Employee")
+            {
+                contract.EmployeeSignedAt = now;
+            }
+            else if (dto.SignerRole == "Employer")
+            {
+                contract.EmployerSignedAt = now;
+            }
+            else
+            {
+                contract.EmployerSignedAt = now;
+                contract.EmployeeSignedAt = now;
+            }
+
+            contract.Status = (contract.EmployeeSignedAt.HasValue && contract.EmployerSignedAt.HasValue)
+                ? EmploymentContractStatus.Active
+                : EmploymentContractStatus.PendingSignature;
         }
         else if (dto.SigningMethod == EmploymentSigningMethod.InAppDrawnSignature)
         {
@@ -507,20 +560,22 @@ public class EmploymentContractService : IEmploymentContractService
                 contract.EmployeeSignatureData = dto.SignatureData;
                 contract.EmployeeSignedAt = now;
             }
-            else
+            else if (dto.SignerRole == "Employer")
             {
                 contract.EmployerSignatureData = dto.SignatureData;
                 contract.EmployerSignedAt = now;
             }
-
-            if (contract.EmployeeSignedAt.HasValue && contract.EmployerSignedAt.HasValue)
-            {
-                contract.Status = EmploymentContractStatus.Active;
-            }
             else
             {
-                contract.Status = EmploymentContractStatus.PendingSignature;
+                contract.EmployeeSignatureData = dto.SignatureData;
+                contract.EmployerSignatureData = dto.SignatureData;
+                contract.EmployeeSignedAt = now;
+                contract.EmployerSignedAt = now;
             }
+
+            contract.Status = (contract.EmployeeSignedAt.HasValue && contract.EmployerSignedAt.HasValue)
+                ? EmploymentContractStatus.Active
+                : EmploymentContractStatus.PendingSignature;
         }
         else if (dto.SigningMethod == EmploymentSigningMethod.InternalDigitalSignature)
         {
@@ -530,16 +585,48 @@ public class EmploymentContractService : IEmploymentContractService
             var hashBytes = sha.ComputeHash(Encoding.UTF8.GetBytes(contentToHash));
             contract.DigitalSignatureHash = Convert.ToHexString(hashBytes);
 
-            contract.EmployerSignedAt = now;
-            contract.EmployeeSignedAt = now;
-            contract.Status = EmploymentContractStatus.Active;
+            if (dto.SignerRole == "Employee")
+            {
+                contract.EmployeeSignatureData = "DIGITAL_SIGNATURE_SHA256";
+                contract.EmployeeSignedAt = now;
+            }
+            else if (dto.SignerRole == "Employer")
+            {
+                contract.EmployerSignatureData = "DIGITAL_SIGNATURE_SHA256";
+                contract.EmployerSignedAt = now;
+            }
+            else
+            {
+                contract.EmployerSignatureData = "DIGITAL_SIGNATURE_SHA256";
+                contract.EmployeeSignatureData = "DIGITAL_SIGNATURE_SHA256";
+                contract.EmployerSignedAt = now;
+                contract.EmployeeSignedAt = now;
+            }
+
+            contract.Status = (contract.EmployeeSignedAt.HasValue && contract.EmployerSignedAt.HasValue)
+                ? EmploymentContractStatus.Active
+                : EmploymentContractStatus.PendingSignature;
         }
         else if (dto.SigningMethod == EmploymentSigningMethod.NationalPlatform)
         {
             contract.NationalPlatformReference = dto.NationalPlatformReference;
-            contract.EmployerSignedAt = now;
-            contract.EmployeeSignedAt = now;
-            contract.Status = EmploymentContractStatus.Active;
+            if (dto.SignerRole == "Employee")
+            {
+                contract.EmployeeSignedAt = now;
+            }
+            else if (dto.SignerRole == "Employer")
+            {
+                contract.EmployerSignedAt = now;
+            }
+            else
+            {
+                contract.EmployerSignedAt = now;
+                contract.EmployeeSignedAt = now;
+            }
+
+            contract.Status = (contract.EmployeeSignedAt.HasValue && contract.EmployerSignedAt.HasValue)
+                ? EmploymentContractStatus.Active
+                : EmploymentContractStatus.PendingSignature;
         }
 
         contract.UpdatedAt = now;
@@ -799,6 +886,11 @@ public class EmploymentContractService : IEmploymentContractService
             throw new InvalidOperationException($"Không tìm thấy hợp đồng ID {id}");
 
         var dto = MapToDto(contract, true);
+        return GeneratePdfFromDto(dto);
+    }
+
+    public byte[] GeneratePdfFromDto(EmploymentContractDto dto)
+    {
         var document = new EmploymentContractPdfDocument(dto);
         return document.GeneratePdf();
     }

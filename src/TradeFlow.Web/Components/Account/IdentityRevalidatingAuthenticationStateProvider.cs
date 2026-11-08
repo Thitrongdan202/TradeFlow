@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.Identity;
@@ -33,7 +33,15 @@ internal sealed class IdentityRevalidatingAuthenticationStateProvider(
         {
             return false;
         }
-        else if (!userManager.SupportsUserSecurityStamp)
+        // Tự động thu hồi phiên nếu tài khoản bị khóa, vô hiệu hóa hoặc đã thôi việc
+        if (user.Status == TradeFlow.Domain.Enums.UserStatus.Terminated ||
+            user.Status == TradeFlow.Domain.Enums.UserStatus.Disabled ||
+            user.Status == TradeFlow.Domain.Enums.UserStatus.Locked)
+        {
+            return false;
+        }
+
+        if (!userManager.SupportsUserSecurityStamp)
         {
             return true;
         }

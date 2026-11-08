@@ -113,6 +113,9 @@
 </div>
 
 @code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthStateCascade { get; set; }
+
     private bool _sidebarOpen;
     private bool _sidebarCollapsed;
     private DotNetObjectReference<MainLayout>? _dotNetRef;
@@ -121,6 +124,32 @@
     protected override void OnInitialized()
     {
         Nav.LocationChanged += OnLocationChanged;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await CheckMandatoryPasswordChangeAsync();
+    }
+
+    private async Task CheckMandatoryPasswordChangeAsync()
+    {
+        if (AuthStateCascade != null)
+        {
+            var authState = await AuthStateCascade;
+            var user = authState.User;
+            if (user.Identity?.IsAuthenticated == true)
+            {
+                var mustChange = user.FindFirst("MustChangePassword")?.Value;
+                if (string.Equals(mustChange, "true", StringComparison.OrdinalIgnoreCase))
+                {
+                    var relative = Nav.ToBaseRelativePath(Nav.Uri).ToLowerInvariant();
+                    if (!relative.StartsWith("account/changepassword") && !relative.StartsWith("account/logout"))
+                    {
+                        Nav.NavigateTo("Account/ChangePassword", forceLoad: true);
+                    }
+                }
+            }
+        }
     }
 
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)

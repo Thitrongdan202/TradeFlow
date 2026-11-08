@@ -102,6 +102,24 @@
     private bool _showDirtyConfirm = false;
     private bool _isClosing = false;
     private bool _wasOpen = false;
+    private bool _hasAnimatedEnter = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsOpen && !_hasAnimatedEnter)
+        {
+            _hasAnimatedEnter = true;
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.animateModalEnter", ".tf-modal", ".tf-modal-overlay");
+            }
+            catch { }
+        }
+        else if (!IsOpen)
+        {
+            _hasAnimatedEnter = false;
+        }
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -119,6 +137,7 @@
         else if (!IsOpen && _wasOpen)
         {
             _wasOpen = false;
+            _hasAnimatedEnter = false;
             try
             {
                 await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll");
@@ -213,11 +232,17 @@
         {
             _isClosing = true;
             StateHasChanged();
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.animateModalExit", ".tf-modal", ".tf-modal-overlay");
+            }
+            catch { }
             await Task.Delay(160);
         }
 
         _isClosing = false;
         _wasOpen = false;
+        _hasAnimatedEnter = false;
         try
         {
             await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll");

@@ -1001,21 +1001,23 @@
 
 .tf-inspect-sheet-wrapper.is-fit-width .tf-inspect-a4-sheet {
     max-width: 100% !important;
-    padding: 36px 32px;
+    padding: 20mm 20mm 20mm 30mm;
 }
 
 .tf-inspect-a4-sheet {
     background: #ffffff;
     width: 100%;
-    max-width: 760px;
+    max-width: 210mm;
     margin: 0 auto;
-    padding: 48px 44px;
+    padding: 20mm 20mm 20mm 30mm;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     border: 1px solid #e2e8f0;
     font-family: 'Times New Roman', Times, serif;
-    font-size: 14.5px;
-    line-height: 1.5;
+    font-size: 13pt;
+    line-height: 1.25;
     color: #000000;
+    text-align: justify;
+    box-sizing: border-box;
 }
 
 .tf-inspect-footer {

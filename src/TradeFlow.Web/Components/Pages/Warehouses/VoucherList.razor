@@ -225,24 +225,24 @@
          @onkeydown="HandleModalKeyDown"
          tabindex="-1"
          role="presentation">
-        <div class="tw-bg-white tw-rounded-xl tw-shadow-2xl tw-max-w-2xl tw-w-full tw-p-6 tw-overflow-y-auto tw-max-h-[90vh] tw-relative tw-border tw-border-slate-200"
+        <div class="tf-voucher-modal-dialog"
              role="dialog"
              aria-modal="true"
              aria-labelledby="voucher-create-modal-title"
              @onclick:stopPropagation="true">
 
-            <div class="tw-flex tw-justify-between tw-items-center tw-border-b tw-border-slate-200 tw-pb-3.5 tw-mb-4">
-                <div class="tw-flex tw-items-center tw-gap-2.5">
-                    <div class="tw-w-8 tw-h-8 tw-rounded-lg tw-bg-blue-100 tw-text-blue-700 tw-flex tw-items-center tw-justify-center">
-                        <svg class="tw-w-4 tw-h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="tf-modal-dialog-header">
+                <div class="tf-modal-header-left">
+                    <div class="tf-modal-icon-badge">
+                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                     </div>
                     <div>
-                        <h3 id="voucher-create-modal-title" class="tw-text-base tw-font-bold tw-text-slate-900 tw-m-0">
+                        <h3 id="voucher-create-modal-title" class="tf-modal-title-text">
                             @(_newVoucherType == WarehouseVoucherType.InboundReceipt ? "Lập Phiếu Nhập Kho (Mẫu 01-VT)" : "Lập Phiếu Xuất Kho (Mẫu 02-VT)")
                         </h3>
-                        <div class="tw-text-xs tw-text-slate-500">
+                        <div class="tf-modal-subtitle-text">
                             Theo chế độ kế toán và hóa đơn chứng từ Bộ Tài chính
                         </div>
                     </div>
@@ -260,6 +260,8 @@
                     </svg>
                 </button>
             </div>
+
+            <div class="tf-modal-dialog-body">
 
             @if (!string.IsNullOrEmpty(_saveError))
             {
@@ -371,8 +373,9 @@
                     }
                 </div>
             </div>
+            </div>
 
-            <div class="tw-flex tw-justify-end tw-gap-2.5 tw-border-t tw-border-slate-200 tw-pt-4 tw-mt-5">
+            <div class="tf-modal-dialog-footer">
                 <button type="button"
                         class="tf-btn tf-btn-secondary"
                         @onclick="RequestCloseCreateModal"

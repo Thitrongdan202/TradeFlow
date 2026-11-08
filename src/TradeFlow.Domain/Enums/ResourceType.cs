@@ -90,5 +90,13 @@ public enum ResourceType
     Contracts = 50,
 
     /// <summary>Hợp đồng lao động & Phụ lục nhân sự</summary>
-    EmploymentContracts = 51
+    EmploymentContracts = 51,
+
+    // === Phân hệ Nhân viên & Tự phục vụ ===
+
+    /// <summary>Chấm công & Điểm danh nhân viên</summary>
+    Attendance = 60,
+
+    /// <summary>Quản lý tài khoản nhân viên & Đăng nhập</summary>
+    Accounts = 61
 }

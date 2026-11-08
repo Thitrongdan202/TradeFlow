@@ -45,6 +45,7 @@ public class DatabaseSeeder
         ("Purchase",      "Nhân viên mua hàng",                   false),
         ("Warehouse",     "Nhân viên kho",                        false),
         ("Import-Export", "Nhân viên xuất nhập khẩu",             false),
+        ("Employee",      "Nhân viên tiêu chuẩn (tự phục vụ)",     false),
     ];
 
     public DatabaseSeeder(
@@ -989,8 +990,8 @@ public class DatabaseSeeder
                 BusinessRegistrationNumber = "0316899999",
                 RegisteredAddress = "Số 123 Đường Nguyễn Văn Cừ, Phường An Khánh, Quận Ninh Kiều, TP. Cần Thơ",
                 ContactAddress = "Showroom LACASA: Số 123 Đường Nguyễn Văn Cừ, Phường An Khánh, Quận Ninh Kiều, TP. Cần Thơ",
-                RepresentativeName = "Nguyễn Văn An",
-                RepresentativePosition = "Giám đốc",
+                RepresentativeName = "Trần Thị Mai Phương",
+                RepresentativePosition = "Chủ tịch Hội đồng thành viên",
                 RepresentativeAuthority = "Người đại diện theo pháp luật",
                 Phone = "0909 123 456",
                 Email = "hopdong@lacasavietnam.vn",
@@ -1272,6 +1273,14 @@ public class DatabaseSeeder
                 (ResourceType.EmploymentContracts, PermissionAction.Edit),
                 (ResourceType.EmploymentContracts, PermissionAction.Approve),
                 (ResourceType.EmploymentContracts, PermissionAction.Export),
+                (ResourceType.Employees, PermissionAction.View),
+                (ResourceType.Employees, PermissionAction.Create),
+                (ResourceType.Employees, PermissionAction.Edit),
+                (ResourceType.Employees, PermissionAction.Export),
+                (ResourceType.Users, PermissionAction.View),
+                (ResourceType.Accounts, PermissionAction.View),
+                (ResourceType.Accounts, PermissionAction.Create),
+                (ResourceType.Accounts, PermissionAction.Edit),
             };
             foreach (var (res, act) in empPerms)
             {
@@ -1294,8 +1303,8 @@ public class DatabaseSeeder
             var employerName = partyA?.CompanyName ?? "CÔNG TY TNHH THIẾT BỊ VỆ SINH LACASA VIỆT NAM";
             var employerTaxCode = partyA?.TaxCode ?? "0316899999";
             var employerAddress = partyA?.RegisteredAddress ?? "Số 123 Đường Nguyễn Văn Cừ, Phường An Khánh, Quận Ninh Kiều, TP. Cần Thơ";
-            var employerRep = partyA?.RepresentativeName ?? "Nguyễn Văn An";
-            var employerPos = partyA?.RepresentativePosition ?? "Giám đốc";
+            var employerRep = partyA?.RepresentativeName ?? "Trần Thị Mai Phương";
+            var employerPos = partyA?.RepresentativePosition ?? "Chủ tịch Hội đồng thành viên";
 
             if (empAn != null)
             {
@@ -1472,6 +1481,30 @@ public class DatabaseSeeder
 
             await _context.SaveChangesAsync();
             _logger.LogInformation("Sample employment contracts seeded successfully.");
+        }
+
+        // Đảm bảo không bao giờ tồn tại hợp đồng có Người lao động trùng tên với Người đại diện Bên A (ngăn xung đột lợi ích)
+        var conflictContracts = await _context.EmploymentContracts
+            .Where(c => c.EmployeeFullName == c.EmployerRepresentativeName)
+            .ToListAsync();
+        foreach (var c in conflictContracts)
+        {
+            c.EmployerRepresentativeName = "Trần Thị Mai Phương";
+            c.EmployerRepresentativePosition = "Chủ tịch Hội đồng thành viên";
+            c.EmployerRepresentativeAuthority = "Người đại diện theo pháp luật";
+        }
+
+        var currentPartyA = await _context.ContractPartyASettings.FirstOrDefaultAsync();
+        if (currentPartyA != null && currentPartyA.RepresentativeName == "Nguyễn Văn An")
+        {
+            currentPartyA.RepresentativeName = "Trần Thị Mai Phương";
+            currentPartyA.RepresentativePosition = "Chủ tịch Hội đồng thành viên";
+            currentPartyA.RepresentativeAuthority = "Người đại diện theo pháp luật";
+        }
+
+        if (conflictContracts.Any() || (currentPartyA != null && currentPartyA.RepresentativeName == "Trần Thị Mai Phương"))
+        {
+            await _context.SaveChangesAsync();
         }
     }
 

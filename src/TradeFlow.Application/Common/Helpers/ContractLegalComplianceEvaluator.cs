@@ -291,6 +291,34 @@ public static class ContractLegalComplianceEvaluator
         return report;
     }
 
+        public static ContractLegalComplianceReportDto EvaluateEmploymentContract(EmploymentContractDto dto)
+    {
+        return EvaluateEmploymentContract(
+            dto.ContractType,
+            dto.EmployerName ?? string.Empty,
+            dto.EmployerTaxCode ?? string.Empty,
+            dto.EmployerAddress ?? string.Empty,
+            dto.EmployerRepresentativeName ?? string.Empty,
+            dto.EmployerRepresentativePosition ?? string.Empty,
+            dto.EmployerRepresentativeAuthority ?? string.Empty,
+            dto.EmployeeFullName ?? string.Empty,
+            dto.EmployeeNationalId ?? string.Empty,
+            dto.EmployeeDateOfBirth,
+            dto.EmployeeAddress ?? string.Empty,
+            dto.StartDate,
+            dto.EndDate,
+            dto.JobTitle ?? string.Empty,
+            dto.Workplace ?? string.Empty,
+            dto.BasicSalary,
+            dto.SalaryType ?? "Lương gộp (Gross)",
+            dto.WorkingHoursPerWeek,
+            dto.AnnualLeaveDays,
+            dto.SocialInsuranceRate,
+            dto.Clauses,
+            dto.Status
+        );
+    }
+
     public static ContractLegalComplianceReportDto EvaluateEmploymentContract(
         EmploymentContractType contractType,
         string employerName,

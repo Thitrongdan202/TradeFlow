@@ -3,24 +3,23 @@
 @using TradeFlow.Application.Common.Models.Contracts
 @using TradeFlow.Domain.Enums
 @inject IEmploymentContractService EmploymentContractService
-@inject AuthenticationStateProvider AuthStateProvider
-@inject NavigationManager Nav
 @inject IJSRuntime JS
-@implements IAsyncDisposable
 
-@if (IsOpen && contract != null)
+@if (isOpen && contract != null)
 {
-    <div class="modal fade show d-block" style="background-color: rgba(15, 23, 42, 0.6); z-index: 1050;" tabindex="-1" role="dialog" aria-modal="true" @onclick="CloseAsync" @onkeydown="HandleKeyDown">
-        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" @onclick:stopPropagation="true">
-            <div class="modal-content shadow-lg border-0 rounded-3">
-                <!-- Modal Action Header -->
-                <div class="modal-header border-bottom px-4 py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <span class="badge @GetStatusBadgeClass(contract.Status) px-2.5 py-1.5 fw-semibold fs-7">
-                            @contract.StatusName
+    <div class="modal fade show d-block tf-contract-modal-backdrop" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.65); z-index: 1055; backdrop-filter: blur(4px);">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-width: 960px; height: 92vh;">
+            <div class="modal-content border-0 shadow-lg rounded-3 overflow-hidden d-flex flex-column h-100">
+                
+                <!-- Modal Header -->
+                <div class="modal-header bg-white border-bottom px-4 py-3 d-flex align-items-center justify-content-between flex-shrink-0">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge @GetStatusBadgeClass(contract.Status) px-2.5 py-1.5 fw-semibold font-monospace">
+                            @GetStatusDisplayText(contract.Status)
                         </span>
-                        <span class="fw-bold fs-5" style="color: var(--tf-text-primary);">@contract.ContractNumber</span>
-                        <span class="text-secondary small">(@contract.ContractTypeName)</span>
+                        <h5 class="modal-title fw-bold text-dark mb-0 fs-6">
+                            Chi tiết hợp đồng: @contract.ContractNumber
+                        </h5>
                     </div>
 
                     <!-- Actions -->
@@ -46,23 +45,24 @@
                             }
                         </button>
 
-                        <button type="button" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1.5" @onclick="PrintDocument" title="In trực tiếp ra máy in giấy (Mẹo: Bỏ chọn 'Headers and footers' trong hộp thoại in để tránh chèn URL trình duyệt)">
+                        <button type="button" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1.5" @onclick="PrintDocument" title="In trực tiếp ra máy in giấy">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="6 9 6 2 18 2 18 9"/>
                                 <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
                                 <rect x="6" y="14" width="12" height="8"/>
                             </svg>
-                            <span>In văn bản</span>
+                            <span>In</span>
                         </button>
 
                         @if (contract.Status == EmploymentContractStatus.Draft)
                         {
                             <AuthorizeView Policy="Permission:EmploymentContracts:Edit">
-                                <button type="button" class="btn btn-outline-primary btn-sm" @onclick="() => OnEdit.InvokeAsync(contract.Id)">
-                                    Chỉnh sửa
-                                </button>
-                                <button type="button" class="btn btn-primary btn-sm" @onclick="FinalizeContractAsync">
-                                    Chốt nội dung (Chờ ký)
+                                <button type="button" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1.5" @onclick="() => OnEdit.InvokeAsync(contract.Id)">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                    </svg>
+                                    <span>Sửa</span>
                                 </button>
                             </AuthorizeView>
                         }
@@ -94,18 +94,14 @@
 
                         @if (contract.Status == EmploymentContractStatus.Active)
                         {
-                            <AuthorizeView Policy="Permission:EmploymentContracts:Edit">
-                                <button type="button" class="btn btn-outline-danger btn-sm" @onclick="PromptTermination">
-                                    Chấm dứt HĐ
-                                </button>
-                            </AuthorizeView>
-                        }
-
-                        @if (contract.Status == EmploymentContractStatus.Draft || contract.Status == EmploymentContractStatus.PendingSignature)
-                        {
                             <AuthorizeView Policy="Permission:EmploymentContracts:Delete">
-                                <button type="button" class="btn btn-outline-danger btn-sm" @onclick="CancelContractAsync">
-                                    Hủy bỏ
+                                <button type="button" class="btn btn-outline-danger btn-sm d-flex align-items-center gap-1.5" @onclick="OpenTerminateModal">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                        <line x1="9" y1="9" x2="15" y2="15"/>
+                                        <line x1="15" y1="9" x2="9" y2="15"/>
+                                    </svg>
+                                    <span>Chấm dứt HĐ</span>
                                 </button>
                             </AuthorizeView>
                         }
@@ -114,16 +110,18 @@
                     </div>
                 </div>
 
-                <!-- Modal Body: Multi-Page A4 Paper Preview Container -->
-                <div class="modal-body p-4 bg-secondary bg-opacity-10 d-flex justify-content-center overflow-auto">
-                    <div id="print-employment-contract" class="d-flex flex-column align-items-center w-100" style="max-width: 820px;">
+                <!-- Modal Body (3-Page Continuous Viewport) -->
+                <div class="modal-body p-4 bg-light overflow-auto flex-grow-1 tf-contract-modal-body">
+                    <div id="print-employment-contract" class="d-flex flex-column align-items-center w-100" style="max-width: 820px; margin: 0 auto;">
                         
-                        <!-- PAGE 1 OF EMPLOYMENT CONTRACT -->
+                        <!-- ======================================================== -->
+                        <!-- PAGE 1 OF EMPLOYMENT CONTRACT (A4 Standard)               -->
+                        <!-- ======================================================== -->
                         <div class="bg-white tf-document-paper a4-contract-sheet tf-a4-page tf-a4-page-1 shadow-sm rounded-2 mb-4 w-100"
-                             style="font-family: 'Times New Roman', Times, serif; font-size: 13pt; line-height: 1.25; color: #000000; padding: 20mm 20mm 20mm 30mm; max-width: 210mm; box-sizing: border-box; text-align: justify;">
+                             style="font-family: 'Times New Roman', Times, serif; font-size: 13pt; line-height: 1.25; color: #000000; padding: 15mm 20mm 15mm 30mm; max-width: 210mm; min-height: 297mm; box-sizing: border-box; text-align: justify; display: flex; flex-direction: column;">
                             
                             <!-- National Header (Decree 30/2020/ND-CP Standard Block - PAGE 1 ONLY) -->
-                            <div class="tf-doc-national-header text-center mb-4" style="display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%;">
+                            <div class="tf-doc-national-header text-center mb-2" style="display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%;">
                                 <div class="tf-doc-nat-title fw-bold" style="font-size: 13pt; text-transform: uppercase; letter-spacing: 0.2pt; line-height: 1.25; margin: 0;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
                                 <div class="tf-doc-nat-motto fw-bold" style="font-size: 13pt; line-height: 1.25; margin-top: 3pt; margin-bottom: 0;">Độc lập - Tự do - Hạnh phúc</div>
                                 <div class="tf-doc-nat-line" style="width: 140px; height: 1.5px; background-color: #000000; margin: 4pt auto 5pt auto;"></div>
@@ -133,9 +131,9 @@
                             </div>
 
                             <!-- Document Title & Number (PAGE 1 ONLY) -->
-                            <div class="text-center my-4">
-                                <h4 class="fw-bold text-uppercase mb-1" style="font-size: 18px; letter-spacing: 0.5px;">@contract.Title</h4>
-                                <div class="fw-bold" style="font-size: 14px;">Số: @contract.ContractNumber</div>
+                            <div class="text-center my-2">
+                                <h4 class="fw-bold text-uppercase mb-1" style="font-size: 15pt; letter-spacing: 0.5px;">@contract.Title</h4>
+                                <div class="fw-bold" style="font-size: 12.5pt;">Số: @contract.ContractNumber</div>
                                 <div class="fst-italic text-muted small mt-1">
                                     (Quy chuẩn theo Bộ luật Lao động - Văn bản hợp nhất số 18/VBHN-VPQH ngày 12/02/2026)
                                 </div>
@@ -151,85 +149,99 @@
 
                             <!-- Party A -->
                             <div class="mb-3">
-                                <div class="fw-bold text-uppercase" style="font-size: 14.5px;">BÊN A - NGƯỜI SỬ DỤNG LAO ĐỘNG:</div>
+                                <div class="fw-bold text-uppercase" style="font-size: 13pt;">BÊN A - NGƯỜI SỬ DỤNG LAO ĐỘNG:</div>
                                 <div class="ps-3 mt-1">
                                     <div><strong>Tên doanh nghiệp:</strong> @contract.EmployerName</div>
                                     <div><strong>Mã số doanh nghiệp / MST:</strong> @contract.EmployerTaxCode</div>
                                     <div><strong>Địa chỉ trụ sở chính:</strong> @contract.EmployerAddress</div>
                                     <div><strong>Điện thoại:</strong> @contract.EmployerPhone</div>
                                     <div>
-                                        <strong>Người đại diện:</strong> @contract.EmployerRepresentativeName &nbsp;&nbsp;&nbsp;&nbsp;
-                                        <strong>Chức vụ:</strong> @contract.EmployerRepresentativePosition (@contract.EmployerRepresentativeAuthority)
+                                        <strong>Đại diện bởi:</strong> @contract.EmployerRepresentativeName
+                                        <span class="ms-3"><strong>Chức vụ:</strong> @contract.EmployerRepresentativePosition</span>
                                     </div>
+                                    @if (!string.IsNullOrWhiteSpace(contract.EmployerRepresentativeAuthority))
+                                    {
+                                        <div><strong>Thẩm quyền giao kết:</strong> @contract.EmployerRepresentativeAuthority</div>
+                                    }
                                 </div>
                             </div>
 
                             <!-- Party B -->
                             <div class="mb-3">
-                                <div class="fw-bold text-uppercase" style="font-size: 14.5px;">BÊN B - NGƯỜI LAO ĐỘNG:</div>
+                                <div class="fw-bold text-uppercase" style="font-size: 13pt;">BÊN B - NGƯỜI LAO ĐỘNG:</div>
                                 <div class="ps-3 mt-1">
                                     <div>
-                                        <strong>Họ và tên:</strong> @contract.EmployeeFullName &nbsp;&nbsp;&nbsp;&nbsp;
-                                        <strong>Mã nhân viên:</strong> @contract.EmployeeCode
+                                        <strong>Họ và tên:</strong> <span class="text-uppercase fw-bold">@contract.EmployeeFullName</span>
+                                        <span class="ms-3"><strong>Mã nhân viên:</strong> @contract.EmployeeCode</span>
                                     </div>
                                     <div>
-                                        <strong>Ngày sinh:</strong> @(contract.EmployeeDateOfBirth?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật") &nbsp;&nbsp;&nbsp;&nbsp;
-                                        <strong>Giới tính:</strong> @(contract.EmployeeGender ?? "Không xác định")
+                                        <strong>Ngày sinh:</strong> @(contract.EmployeeDateOfBirth.HasValue ? contract.EmployeeDateOfBirth.Value.ToString("dd/MM/yyyy") : "—")
+                                        <span class="ms-3"><strong>Giới tính:</strong> @contract.EmployeeGender</span>
+                                        <span class="ms-3"><strong>Quốc tịch:</strong> Việt Nam</span>
                                     </div>
                                     <div>
-                                        <strong>Số CCCD / Hộ chiếu:</strong> @contract.EmployeeNationalId &nbsp;&nbsp;&nbsp;&nbsp;
-                                        <strong>Nơi cấp:</strong> @contract.EmployeeNationalIdIssuePlace
+                                        <strong>Số CCCD/Hộ chiếu:</strong> @contract.EmployeeNationalId
+                                        @if (contract.EmployeeNationalIdIssueDate.HasValue)
+                                        {
+                                            <span class="ms-3"><strong>Ngày cấp:</strong> @contract.EmployeeNationalIdIssueDate.Value.ToString("dd/MM/yyyy")</span>
+                                        }
                                     </div>
-                                    <div><strong>Địa chỉ nơi cư trú:</strong> @contract.EmployeeAddress</div>
+                                    <div><strong>Địa chỉ thường trú:</strong> @contract.EmployeeAddress</div>
                                     <div>
-                                        <strong>Điện thoại:</strong> @contract.EmployeePhone &nbsp;&nbsp;&nbsp;&nbsp;
-                                        <strong>Email:</strong> @contract.EmployeeEmail
+                                        <strong>Điện thoại:</strong> @contract.EmployeePhone
+                                        <span class="ms-3"><strong>Email:</strong> @contract.EmployeeEmail</span>
                                     </div>
-                                    @if (!string.IsNullOrEmpty(contract.EmployeeBankInformation))
+                                    @if (!string.IsNullOrWhiteSpace(contract.EmployeeBankInformation))
                                     {
                                         <div><strong>Tài khoản nhận lương:</strong> @contract.EmployeeBankInformation</div>
                                     }
                                 </div>
                             </div>
 
-                            <div class="fst-italic my-3">
-                                Hai bên thống nhất ký kết Hợp đồng lao động với các điều khoản và điều kiện sau đây:
-                            </div>
+                            <div class="fst-italic my-2">Hai bên thống nhất thỏa thuận giao kết hợp đồng với các điều khoản và điều kiện sau đây:</div>
 
                             <!-- Điều 1 -->
                             <div class="mb-3">
-                                <div class="clause-heading fw-bold" style="break-after: avoid-page !important; page-break-after: avoid !important;">Điều 1. Loại hợp đồng, thời hạn và địa điểm làm việc</div>
+                                <div class="clause-heading fw-bold" style="break-after: avoid-page !important; page-break-after: avoid !important;">Điều 1. Thời hạn hợp đồng, vị trí chức danh và địa điểm làm việc</div>
                                 <div class="ps-3 mt-1">
-                                    <div><strong>1.1. Loại hợp đồng:</strong> @contract.ContractTypeName.</div>
+                                    <div><strong>1.1. Loại hợp đồng:</strong> @GetContractTypeDisplayText(contract.ContractType).</div>
                                     <div>
-                                        <strong>1.2. Thời hạn hợp đồng:</strong>
-                                        @if (contract.ContractType == EmploymentContractType.IndefiniteTerm)
+                                        <strong>1.2. Thời hạn hiệu lực:</strong> Từ ngày @contract.StartDate.ToString("dd/MM/yyyy")
+                                        @if (contract.EndDate.HasValue)
                                         {
-                                            <span>Không xác định thời hạn, bắt đầu có hiệu lực từ ngày @contract.StartDate.ToString("dd/MM/yyyy").</span>
+                                            <span> đến hết ngày @contract.EndDate.Value.ToString("dd/MM/yyyy").</span>
                                         }
                                         else
                                         {
-                                            <span>Từ ngày @contract.StartDate.ToString("dd/MM/yyyy") đến ngày @(contract.EndDate?.ToString("dd/MM/yyyy") ?? "...")</span>
-                                            if (contract.ContractType == EmploymentContractType.Probation && contract.ProbationDurationDays.HasValue)
-                                            {
-                                                <span> (Thời gian thử việc: @contract.ProbationDurationDays.Value ngày làm việc theo Điều 25 BLLĐ).</span>
-                                            }
-                                            else
-                                            {
-                                                <span>.</span>
-                                            }
+                                            <span> (Hợp đồng lao động không xác định thời hạn).</span>
                                         }
                                     </div>
-                                    <div><strong>1.3. Chức danh công việc:</strong> @contract.JobTitle - <strong>Phòng ban:</strong> @contract.DepartmentName.</div>
+                                    <div><strong>1.3. Chức danh công việc / Vị trí:</strong> @contract.JobTitle - Phòng ban: @contract.DepartmentName.</div>
                                     <div><strong>1.4. Địa điểm làm việc:</strong> @contract.Workplace.</div>
-                                    @if (!string.IsNullOrWhiteSpace(contract.JobDescription))
-                                    {
-                                        <div><strong>1.5. Nhiệm vụ chính:</strong> @contract.JobDescription.</div>
-                                    }
+                                    <div><strong>1.5. Mô tả nhiệm vụ:</strong> @contract.JobDescription</div>
                                 </div>
                             </div>
 
-                            <!-- Điều 2 -->
+
+
+                            <!-- Page 1 Running Footer (Pinned at Bottom) -->
+                            <div class="tf-a4-page-footer d-flex justify-content-between text-muted border-top pt-2 mt-auto" style="font-size: 9pt;">
+                                <span>@GetContractPrefixText()</span>
+                                <span>Trang 1 / 3</span>
+                            </div>
+                        </div>
+
+                        <!-- ======================================================== -->
+                        <!-- PAGE 2 OF EMPLOYMENT CONTRACT (A4 Standard)               -->
+                        <!-- ======================================================== -->
+                        <div class="tf-a4-page-divider no-print">
+                            <span class="tf-a4-page-badge">Sang trang 2</span>
+                        </div>
+
+                        <div class="bg-white tf-document-paper a4-contract-sheet tf-a4-page tf-a4-page-2 shadow-sm rounded-2 mb-4 w-100"
+                             style="font-family: 'Times New Roman', Times, serif; font-size: 13pt; line-height: 1.25; color: #000000; padding: 15mm 20mm 15mm 30mm; max-width: 210mm; min-height: 297mm; box-sizing: border-box; text-align: justify; display: flex; flex-direction: column;">
+                            
+                                                        <!-- Điều 2 -->
                             <div class="mb-3">
                                 <div class="clause-heading fw-bold" style="break-after: avoid-page !important; page-break-after: avoid !important;">Điều 2. Thời giờ làm việc và thời giờ nghỉ ngơi</div>
                                 <div class="ps-3 mt-1">
@@ -238,21 +250,6 @@
                                 </div>
                             </div>
 
-                            <!-- Page 1 Running Footer -->
-                            <div class="tf-a4-page-footer">
-                                <span>HĐLĐ số: @contract.ContractNumber</span>
-                                <span>Trang 1 / 2</span>
-                            </div>
-                        </div>
-
-                        <!-- PAGE 2 OF EMPLOYMENT CONTRACT -->
-                        <div class="tf-a4-page-divider no-print">
-                            <span class="tf-a4-page-badge">Sang trang 2</span>
-                        </div>
-
-                        <div class="bg-white tf-document-paper a4-contract-sheet tf-a4-page tf-a4-page-2 shadow-sm rounded-2 mb-4 w-100"
-                             style="font-family: 'Times New Roman', Times, serif; font-size: 13pt; line-height: 1.25; color: #000000; padding: 20mm 20mm 20mm 30mm; max-width: 210mm; box-sizing: border-box; text-align: justify;">
-                            
                             <!-- Điều 3 -->
                             <div class="mb-3">
                                 <div class="clause-heading fw-bold" style="break-after: avoid-page !important; page-break-after: avoid !important;">Điều 3. Tiền lương, phụ cấp và hình thức chi trả</div>
@@ -305,92 +302,151 @@
 
                             <!-- Điều 4 -->
                             <div class="mb-3">
-                                <div class="clause-heading fw-bold" style="break-after: avoid-page !important; page-break-after: avoid !important;">Điều 4. Bảo hộ lao động và chế độ bảo hiểm</div>
+                                <div class="clause-heading fw-bold" style="break-after: avoid-page !important; page-break-after: avoid !important;">Điều 4. Trang bị bảo hộ lao động và an toàn vệ sinh lao động</div>
                                 <div class="ps-3 mt-1">
-                                    <div><strong>4.1. Bảo hộ lao động:</strong> @contract.LaborProtection.</div>
-                                    <div><strong>4.2. Bảo hiểm:</strong> Hai bên thực hiện nghĩa vụ đóng BHXH, BHYT, BHTN theo tỷ lệ luật định (tổng cộng @contract.SocialInsuranceRate% tiền lương làm căn cứ đóng BHXH).</div>
+                                    <div><strong>4.1. Trang bị bảo hộ lao động:</strong> @(!string.IsNullOrWhiteSpace(contract.LaborProtection) ? contract.LaborProtection : "Được cấp phát trang thiết bị bảo hộ lao động đầy đủ phù hợp theo tiêu chuẩn vị trí làm việc và quy chuẩn an toàn lao động.").</div>
+                                    <div><strong>4.2. Khám sức khỏe định kỳ:</strong> Người lao động được tổ chức khám sức khỏe định kỳ ít nhất 01 lần/năm theo quy định của Luật An toàn, vệ sinh lao động.</div>
                                 </div>
                             </div>
 
                             <!-- Điều 5 -->
-                            @if (contract.HasNonDisclosureAgreement || contract.HasTrainingReimbursement || contract.HasSpecialBenefits || !string.IsNullOrWhiteSpace(contract.CustomTerms))
+                            <div class="mb-3">
+                                <div class="clause-heading fw-bold" style="break-after: avoid-page !important; page-break-after: avoid !important;">Điều 5. Bảo hiểm xã hội, bảo hiểm y tế và bảo hiểm thất nghiệp</div>
+                                <div class="ps-3 mt-1">
+                                    <div><strong>5.1. Chế độ bảo hiểm:</strong> Hai bên thực hiện nghiêm túc nghĩa vụ đóng BHXH, BHYT, BHTN theo tỷ lệ luật định (tổng cộng @contract.SocialInsuranceRate% tiền lương làm căn cứ đóng BHXH theo Luật BHXH hiện hành).</div>
+                                    <div><strong>5.2. Quyền lợi hưởng bảo hiểm:</strong> Các chế độ ốm đau, thai sản, tai nạn lao động, bệnh nghề nghiệp, hưu trí do cơ quan BHXH chi trả theo luật định.</div>
+                                </div>
+                            </div>
+
+                            <!-- Điều 6 -->
+                            <div class="mb-3">
+                                <div class="clause-heading fw-bold" style="break-after: avoid-page !important; page-break-after: avoid !important;">Điều 6. Đào tạo, bồi dưỡng, nâng cao trình độ và kỹ năng nghề</div>
+                                <div class="ps-3 mt-1">
+                                    <div><strong>6.1. Trách nhiệm đào tạo:</strong> Người sử dụng lao động có trách nhiệm xây dựng kế hoạch và tổ chức đào tạo, bồi dưỡng kỹ năng nghề cho người lao động theo quy định tại Điều 60, Điều 62 Bộ luật Lao động.</div>
+                                    @if (contract.HasTrainingReimbursement && !string.IsNullOrWhiteSpace(contract.TrainingClauseDetails))
+                                    {
+                                        <div><strong>6.2. Cam kết hoàn trả chi phí đào tạo:</strong> @contract.TrainingClauseDetails.</div>
+                                    }
+                                </div>
+                            </div>
+
+                            <!-- Page 2 Running Footer (Pinned at Bottom) -->
+                            <div class="tf-a4-page-footer d-flex justify-content-between text-muted border-top pt-2 mt-auto" style="font-size: 9pt;">
+                                <span>@GetContractPrefixText()</span>
+                                <span>Trang 2 / 3</span>
+                            </div>
+                        </div>
+
+                        <!-- ======================================================== -->
+                        <!-- PAGE 3 OF EMPLOYMENT CONTRACT (A4 Standard)               -->
+                        <!-- ======================================================== -->
+                        <div class="tf-a4-page-divider no-print">
+                            <span class="tf-a4-page-badge">Sang trang 3</span>
+                        </div>
+
+                        <div class="bg-white tf-document-paper a4-contract-sheet tf-a4-page tf-a4-page-3 shadow-sm rounded-2 mb-4 w-100"
+                             style="font-family: 'Times New Roman', Times, serif; font-size: 13pt; line-height: 1.25; color: #000000; padding: 15mm 20mm 15mm 30mm; max-width: 210mm; min-height: 297mm; box-sizing: border-box; text-align: justify; display: flex; flex-direction: column;">
+                            
+                            <!-- Điều 7 -->
+                            <div class="mb-3">
+                                <div class="clause-heading fw-bold" style="break-after: avoid-page !important; page-break-after: avoid !important;">Điều 7. Quyền và nghĩa vụ của các bên</div>
+                                <div class="ps-3 mt-1">
+                                    <div><strong>7.1. Quyền và nghĩa vụ của Người lao động:</strong> Thực hiện công việc theo thỏa thuận; tuân thủ nội quy lao động, quy trình an toàn lao động và sự điều hành hợp pháp của Người sử dụng lao động; được hưởng đầy đủ tiền lương và các chế độ đãi ngộ theo hợp đồng.</div>
+                                    <div><strong>7.2. Quyền và nghĩa vụ của Người sử dụng lao động:</strong> Quản lý, điều hành người lao động theo nội quy; thanh toán đầy đủ, đúng hạn tiền lương và các quyền lợi liên quan; bảo đảm điều kiện làm việc an toàn, vệ sinh lao động.</div>
+                                </div>
+                            </div>
+
+                            <!-- Điều 8 (NDA & Cam kết bảo mật nếu có) -->
+                            @if (contract.HasNonDisclosureAgreement || !string.IsNullOrWhiteSpace(contract.NdaClauseDetails))
                             {
                                 <div class="mb-3">
-                                    <div class="clause-heading fw-bold" style="break-after: avoid-page !important; page-break-after: avoid !important;">Điều 5. Đào tạo nghề, bảo vệ bí mật kinh doanh và chế độ phúc lợi</div>
+                                    <div class="clause-heading fw-bold" style="break-after: avoid-page !important; page-break-after: avoid !important;">Điều 8. Thỏa thuận bảo vệ bí mật kinh doanh và bí mật công nghệ</div>
                                     <div class="ps-3 mt-1">
-                                        <div><strong>5.1. Đào tạo, bồi dưỡng kỹ năng nghề:</strong> Người sử dụng lao động có trách nhiệm xây dựng kế hoạch và tổ chức đào tạo, bồi dưỡng, nâng cao trình độ, kỹ năng nghề cho người lao động theo quy định tại Điều 21 và Điều 60, Điều 62 Bộ luật Lao động.</div>
-                                        @if (contract.HasNonDisclosureAgreement && !string.IsNullOrWhiteSpace(contract.NdaClauseDetails))
-                                        {
-                                            <div><strong>5.2. Thỏa thuận bảo vệ bí mật kinh doanh &amp; NDA:</strong> @contract.NdaClauseDetails. Cam kết không áp dụng biện pháp phạt tiền hoặc trừ lương trái Điều 127 BLLĐ.</div>
-                                        }
-                                        @if (contract.HasTrainingReimbursement && !string.IsNullOrWhiteSpace(contract.TrainingClauseDetails))
-                                        {
-                                            <div><strong>5.3. Cam kết hoàn trả chi phí đào tạo:</strong> @contract.TrainingClauseDetails.</div>
-                                        }
+                                        <div>@(!string.IsNullOrWhiteSpace(contract.NdaClauseDetails) ? contract.NdaClauseDetails : "Người lao động có trách nhiệm bảo mật thông tin, tài liệu kinh doanh và công nghệ của Doanh nghiệp theo đúng quy định tại khoản 2 Điều 21 Bộ luật Lao động."). Cam kết tuyệt đối không áp dụng biện pháp phạt tiền hoặc trừ lương trái Điều 127 BLLĐ.</div>
+                                    </div>
+                                </div>
+                            }
+
+                            <!-- Điều 9 (Phúc lợi & Thỏa thuận khác nếu có) -->
+                            @if (contract.HasSpecialBenefits || !string.IsNullOrWhiteSpace(contract.SpecialBenefitsDetails) || !string.IsNullOrWhiteSpace(contract.CustomTerms))
+                            {
+                                <div class="mb-3">
+                                    <div class="clause-heading fw-bold" style="break-after: avoid-page !important; page-break-after: avoid !important;">Điều 9. Chế độ phúc lợi nội bộ và thỏa thuận bổ sung</div>
+                                    <div class="ps-3 mt-1">
                                         @if (contract.HasSpecialBenefits && !string.IsNullOrWhiteSpace(contract.SpecialBenefitsDetails))
                                         {
-                                            <div><strong>5.4. Chế độ phúc lợi nội bộ LACASA:</strong> @contract.SpecialBenefitsDetails.</div>
+                                            <div><strong>Chế độ phúc lợi nội bộ:</strong> @contract.SpecialBenefitsDetails</div>
                                         }
                                         @if (!string.IsNullOrWhiteSpace(contract.CustomTerms))
                                         {
-                                            <div><strong>5.5. Điều khoản thỏa thuận khác:</strong> @contract.CustomTerms.</div>
+                                            <div><strong>Thỏa thuận khác:</strong> @contract.CustomTerms</div>
                                         }
                                     </div>
                                 </div>
                             }
 
-                            <!-- Điều 6 -->
+                            <!-- Điều khoản thi hành (Điều 10) -->
                             <div class="mb-4">
-                                <div class="clause-heading fw-bold" style="break-after: avoid-page !important; page-break-after: avoid !important;">Điều 6. Điều khoản thi hành</div>
+                                <div class="clause-heading fw-bold" style="break-after: avoid-page !important; page-break-after: avoid !important;">Điều 10. Điều khoản thi hành và hiệu lực hợp đồng</div>
                                 <div class="ps-3 mt-1">
-                                    <div>6.1. Hợp đồng này có hiệu lực thi hành kể từ ngày hai bên hoàn tất việc ký kết hợp pháp.</div>
-                                    <div>6.2. Hợp đồng được lập thành 02 (hai) bản chính bằng tiếng Việt có giá trị pháp lý như nhau, Người sử dụng lao động giữ 01 bản, Người lao động giữ 01 bản theo đúng quy định tại Điều 14 Bộ luật Lao động.</div>
+                                    <div>10.1. Hợp đồng này có hiệu lực thi hành kể từ ngày hai bên hoàn tất việc ký kết hợp pháp.</div>
+                                    <div>10.2. Hợp đồng được lập thành 02 (hai) bản chính bằng tiếng Việt có giá trị pháp lý ngang nhau, Người sử dụng lao động giữ 01 bản, Người lao động giữ 01 bản theo đúng quy định tại Điều 14 Bộ luật Lao động.</div>
+                                    <div>10.3. Trường hợp ký kết bằng phương tiện điện tử dưới hình thức thông điệp dữ liệu, văn bản có giá trị pháp lý như văn bản giấy theo Luật Giao dịch điện tử số 20/2023/QH15 và Điều 14 Bộ luật Lao động.</div>
                                 </div>
                             </div>
 
-                            <!-- Khối chữ ký chuẩn -->
-                            <div class="row pt-3 signature-block tf-signature-block" style="break-inside: avoid !important; page-break-inside: avoid !important;">
+                            <!-- Khối chữ ký hai bên (Balanced 50%-50%, Non-split) -->
+                            <div class="row pt-3 signature-block tf-signature-block mt-3" style="break-inside: avoid !important; page-break-inside: avoid !important;">
                                 <div class="col-6 text-center">
-                                    <div class="fw-bold text-uppercase">NGƯỜI LAO ĐỘNG</div>
+                                    <div class="fw-bold text-uppercase" style="font-size: 13pt;">NGƯỜI LAO ĐỘNG</div>
                                     <div class="fst-italic small text-muted">(Ký và ghi rõ họ tên)</div>
-                                    <div style="height: 70px;" class="d-flex align-items-center justify-content-center">
+                                    <div style="height: 48px;" class="d-flex align-items-center justify-content-center">
                                         @if (contract.EmployeeSignedAt.HasValue)
                                         {
-                                            <div class="text-success small fw-bold">
-                                                <div>[ĐÃ KÝ ĐIỆN TỬ]</div>
-                                                <div class="text-muted" style="font-size: 10px;">@contract.EmployeeSignedAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
+                                            <div class="border border-success bg-success-subtle px-3 py-1.5 rounded text-success text-center">
+                                                <div class="fw-bold small">[ĐÃ KÝ ĐIỆN TỬ]</div>
+                                                <div class="text-muted" style="font-size: 9.5px;">@contract.EmployeeSignedAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
                                             </div>
                                         }
+                                        else
+                                        {
+                                            <span class="text-muted fst-italic smaller">(Chưa ký)</span>
+                                        }
                                     </div>
-                                    <div class="fw-bold">@contract.EmployeeFullName</div>
+                                    <div class="fw-bold text-uppercase" style="font-size: 12.5pt;">@contract.EmployeeFullName</div>
                                 </div>
 
                                 <div class="col-6 text-center">
-                                    <div class="fw-bold text-uppercase">BÊN SỬ DỤNG LAO ĐỘNG</div>
+                                    <div class="fw-bold text-uppercase" style="font-size: 13pt;">BÊN SỬ DỤNG LAO ĐỘNG</div>
                                     <div class="fst-italic small text-muted">(Ký, ghi rõ họ tên và đóng dấu)</div>
-                                    <div style="height: 70px;" class="d-flex align-items-center justify-content-center">
+                                    <div style="height: 48px;" class="d-flex align-items-center justify-content-center">
                                         @if (contract.EmployerSignedAt.HasValue)
                                         {
-                                            <div class="text-success small fw-bold">
-                                                <div>[ĐÃ KÝ ĐIỆN TỬ &amp; ĐÓNG DẤU]</div>
-                                                <div class="text-muted" style="font-size: 10px;">@contract.EmployerSignedAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
+                                            <div class="border border-primary bg-primary-subtle px-3 py-1.5 rounded text-primary text-center">
+                                                <div class="fw-bold small">[ĐÃ KÝ ĐIỆN TỬ &amp; ĐÓNG DẤU]</div>
+                                                <div class="text-muted" style="font-size: 9.5px;">@contract.EmployerSignedAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
                                             </div>
                                         }
+                                        else
+                                        {
+                                            <span class="text-muted fst-italic smaller">(Chờ ký và đóng dấu)</span>
+                                        }
                                     </div>
-                                    <div class="fw-bold">@contract.EmployerRepresentativeName</div>
-                                    <div class="fst-italic small">@contract.EmployerRepresentativePosition</div>
+                                    <div class="fw-bold text-uppercase" style="font-size: 12.5pt;">@contract.EmployerRepresentativeName</div>
+                                    <div class="fst-italic small text-muted">@contract.EmployerRepresentativePosition</div>
                                 </div>
                             </div>
 
-                            <!-- Page 2 Running Footer -->
-                            <div class="tf-a4-page-footer">
-                                <span>HĐLĐ số: @contract.ContractNumber</span>
-                                <span>Trang 2 / 2</span>
+                            <!-- Page 3 Running Footer (Pinned at Bottom) -->
+                            <div class="tf-a4-page-footer d-flex justify-content-between text-muted border-top pt-2 mt-auto" style="font-size: 9pt;">
+                                <span>@GetContractPrefixText()</span>
+                                <span>Trang 3 / 3</span>
                             </div>
                         </div>
                     </div>
                 </div>
-                <!-- Footer -->
+
+                <!-- Footer Actions -->
                 <div class="modal-footer border-top px-4 py-2.5">
                     <button type="button" class="tf-btn tf-btn-sm tf-btn-secondary px-3" @onclick="CloseAsync">
                         Đóng
@@ -401,131 +457,66 @@
     </div>
 }
 
-<!-- Child Modals -->
-<EmploymentContractSigningModal @ref="signingModal" OnSigned="ReloadContractAsync" />
-<EmploymentContractRenewModal @ref="renewModal" OnRenewed="ReloadContractAsync" />
+<!-- Nested Modals -->
+<EmploymentContractSigningModal @ref="signingModal" OnSigned="HandleSignedAsync" />
+<EmploymentContractRenewModal @ref="renewModal" OnRenewed="HandleRenewedAsync" />
 
 @code {
-    [Parameter] public bool IsOpen { get; set; }
-    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
     [Parameter] public EventCallback<int> OnEdit { get; set; }
     [Parameter] public EventCallback OnStatusChanged { get; set; }
 
+    private bool isOpen = false;
+    private bool isDownloading = false;
     private EmploymentContractDto? contract;
+    private ContractLegalComplianceReportDto? empCompliance;
+
     private EmploymentContractSigningModal? signingModal;
     private EmploymentContractRenewModal? renewModal;
 
-    private ContractLegalComplianceReportDto? empCompliance;
-
     public async Task OpenAsync(int contractId)
     {
-        contract = await EmploymentContractService.GetContractByIdAsync(contractId, canViewSensitiveData: true);
-        EvaluateDetailCompliance();
-        IsOpen = true;
-        await IsOpenChanged.InvokeAsync(true);
+        try
+        {
+            contract = await EmploymentContractService.GetContractByIdAsync(contractId, canViewSensitiveData: true);
+            if (contract != null)
+            {
+                empCompliance = ContractLegalComplianceEvaluator.EvaluateEmploymentContract(contract);
+                isOpen = true;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[EmploymentContractDetailModal.OpenAsync] Error: {ex.Message}");
+        }
+    }
+
+    public void CloseAsync()
+    {
+        isOpen = false;
+        contract = null;
         StateHasChanged();
     }
 
-    private void EvaluateDetailCompliance()
+    private string GetContractPrefixText()
     {
-        if (contract == null) return;
-        empCompliance = ContractLegalComplianceEvaluator.EvaluateEmploymentContract(
-            contractType: contract.ContractType,
-            employerName: contract.EmployerName,
-            employerTaxCode: contract.EmployerTaxCode,
-            employerAddress: contract.EmployerAddress,
-            employerRepresentative: contract.EmployerRepresentativeName,
-            employerPosition: contract.EmployerRepresentativePosition,
-            employerAuthority: contract.EmployerRepresentativeAuthority,
-            employeeFullName: contract.EmployeeFullName,
-            employeeNationalId: contract.EmployeeNationalId,
-            employeeDob: contract.EmployeeDateOfBirth,
-            employeeAddress: contract.EmployeeAddress,
-            startDate: contract.StartDate,
-            endDate: contract.EndDate,
-            jobTitle: contract.JobTitle,
-            workplace: contract.Workplace,
-            basicSalary: contract.BasicSalary,
-            salaryType: contract.SalaryType,
-            workingHoursPerWeek: contract.WorkingHoursPerWeek,
-            annualLeaveDays: contract.AnnualLeaveDays,
-            socialInsuranceRate: contract.SocialInsuranceRate,
-            clauses: null,
-            status: contract.Status
-        );
+        if (contract == null) return "HĐLĐ số: -";
+        var num = contract.ContractNumber ?? string.Empty;
+        if (num.StartsWith("HDTV", StringComparison.OrdinalIgnoreCase) || contract.ContractType == EmploymentContractType.Probation)
+            return $"HĐTV số: {num}";
+        if (num.StartsWith("TTTT", StringComparison.OrdinalIgnoreCase) || contract.ContractType == EmploymentContractType.Internship)
+            return $"TTTT số: {num}";
+        if (num.StartsWith("HDDT", StringComparison.OrdinalIgnoreCase) || contract.ContractType == EmploymentContractType.VocationalTraining)
+            return $"HĐĐT số: {num}";
+        return $"HĐLĐ số: {num}";
     }
-
-    private async Task ReloadContractAsync()
-    {
-        if (contract != null)
-        {
-            contract = await EmploymentContractService.GetContractByIdAsync(contract.Id, canViewSensitiveData: true);
-            await OnStatusChanged.InvokeAsync();
-        }
-    }
-
-    private void OpenSigningModal()
-    {
-        if (contract != null && signingModal != null)
-        {
-            signingModal.Open(contract.Id, contract.ContractNumber);
-        }
-    }
-
-    private void OpenRenewModal()
-    {
-        if (contract != null && renewModal != null)
-        {
-            renewModal.Open(contract);
-        }
-    }
-
-    private async Task FinalizeContractAsync()
-    {
-        if (contract == null) return;
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var userName = authState.User.Identity?.Name ?? "system";
-        var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0";
-
-        var ok = await EmploymentContractService.FinalizeContractAsync(contract.Id, userId, userName);
-        if (ok)
-        {
-            await ReloadContractAsync();
-        }
-    }
-
-    private async Task PromptTermination()
-    {
-        if (contract == null) return;
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var userName = authState.User.Identity?.Name ?? "system";
-        var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0";
-
-        // Call service to terminate
-        await EmploymentContractService.TerminateContractAsync(contract.Id, DateTime.UtcNow.Date, "Thỏa thuận chấm dứt hợp đồng lao động", userId, userName);
-        await ReloadContractAsync();
-    }
-
-    private async Task CancelContractAsync()
-    {
-        if (contract == null) return;
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var userName = authState.User.Identity?.Name ?? "system";
-        var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0";
-
-        await EmploymentContractService.CancelContractAsync(contract.Id, "Hủy bản hợp đồng theo yêu cầu", userId, userName);
-        await ReloadContractAsync();
-    }
-
-    private bool isDownloading = false;
 
     private async Task DownloadPdfAsync()
     {
         if (contract == null || isDownloading) return;
+        isDownloading = true;
         try
         {
-            isDownloading = true;
-            StateHasChanged();
             var rawNumber = string.IsNullOrWhiteSpace(contract.ContractNumber) ? $"HDLD-{contract.Id}" : contract.ContractNumber.Trim();
             var safeCode = string.Concat(rawNumber.Split(System.IO.Path.GetInvalidFileNameChars())).Replace(" ", "_");
             var filename = $"Hop_dong_lao_dong_{safeCode}.pdf";
@@ -547,46 +538,80 @@
         if (contract == null) return;
         var rawNumber = string.IsNullOrWhiteSpace(contract.ContractNumber) ? $"HDLD-{contract.Id}" : contract.ContractNumber.Trim();
         var safeCode = string.Concat(rawNumber.Split(System.IO.Path.GetInvalidFileNameChars())).Replace(" ", "_");
-        await JS.InvokeVoidAsync("tradeflow.printDocument", "print-employment-contract", $"Hop_Dong_Lao_Dong_{safeCode}");
+        await JS.InvokeVoidAsync("tradeflow.printDocument", "print-employment-contract", $"Hop_dong_lao_dong_{safeCode}");
     }
 
-    private async Task HandleKeyDown(KeyboardEventArgs e)
+    private void OpenSigningModal()
     {
-        if (e.Key == "Escape")
+        if (contract == null) return;
+        signingModal?.Open(contract.Id, contract.ContractNumber, contract.EmployerRepresentativeName, contract.EmployeeFullName);
+    }
+
+    private void OpenRenewModal()
+    {
+        if (contract == null) return;
+        renewModal?.Open(contract);
+    }
+
+    private async Task OpenTerminateModal()
+    {
+        if (contract == null) return;
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn tiến hành thủ tục chấm dứt hợp đồng lao động này?");
+        if (confirmed)
         {
-            await CloseAsync();
+            await EmploymentContractService.TerminateContractAsync(contract.Id, DateTime.UtcNow, "Chấm dứt theo thỏa thuận", "admin", "Admin");
+            await OpenAsync(contract.Id);
+            await OnStatusChanged.InvokeAsync();
         }
     }
 
-    private async Task CloseAsync()
+    private async Task HandleSignedAsync()
     {
-        IsOpen = false;
-        await IsOpenChanged.InvokeAsync(false);
-        try
+        if (contract != null)
         {
-            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+            await OpenAsync(contract.Id);
+            await OnStatusChanged.InvokeAsync();
         }
-        catch { }
     }
 
-    private static string GetStatusBadgeClass(EmploymentContractStatus status) => status switch
+    private async Task HandleRenewedAsync()
     {
-        EmploymentContractStatus.Draft => "bg-secondary text-white",
-        EmploymentContractStatus.PendingSignature => "bg-warning text-dark",
-        EmploymentContractStatus.Active => "bg-success text-white",
-        EmploymentContractStatus.ExpiringSoon => "bg-warning bg-opacity-75 text-dark border border-warning",
-        EmploymentContractStatus.Expired => "bg-danger text-white",
-        EmploymentContractStatus.Terminated => "bg-dark text-white",
-        EmploymentContractStatus.Cancelled => "bg-light text-muted border",
-        _ => "bg-light text-dark"
+        if (contract != null)
+        {
+            await OpenAsync(contract.Id);
+            await OnStatusChanged.InvokeAsync();
+        }
+    }
+
+    private string GetStatusBadgeClass(EmploymentContractStatus status) => status switch
+    {
+        EmploymentContractStatus.Draft => "bg-secondary-subtle text-secondary border border-secondary-subtle",
+        EmploymentContractStatus.PendingSignature => "bg-warning-subtle text-warning border border-warning-subtle",
+        EmploymentContractStatus.Active => "bg-success-subtle text-success border border-success-subtle",
+        EmploymentContractStatus.ExpiringSoon => "bg-danger-subtle text-danger border border-danger-subtle",
+        EmploymentContractStatus.Expired => "bg-dark-subtle text-dark border border-dark-subtle",
+        EmploymentContractStatus.Terminated => "bg-body-secondary text-muted border",
+        _ => "bg-secondary"
     };
 
-    public async ValueTask DisposeAsync()
+    private string GetStatusDisplayText(EmploymentContractStatus status) => status switch
     {
-        try
-        {
-            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
-        }
-        catch { }
-    }
+        EmploymentContractStatus.Draft => "Bản dự thảo",
+        EmploymentContractStatus.PendingSignature => "Chờ ký kết",
+        EmploymentContractStatus.Active => "Đang hiệu lực",
+        EmploymentContractStatus.ExpiringSoon => "Sắp hết hạn",
+        EmploymentContractStatus.Expired => "Đã hết hạn",
+        EmploymentContractStatus.Terminated => "Đã chấm dứt",
+        _ => status.ToString()
+    };
+
+    private string GetContractTypeDisplayText(EmploymentContractType type) => type switch
+    {
+        EmploymentContractType.IndefiniteTerm => "Hợp đồng lao động không xác định thời hạn",
+        EmploymentContractType.FixedTerm => "Hợp đồng lao động xác định thời hạn",
+        EmploymentContractType.Probation => "Hợp đồng thử việc",
+        EmploymentContractType.Internship => "Hợp đồng thực tập sinh",
+        EmploymentContractType.VocationalTraining => "Hợp đồng đào tạo nghề",
+        _ => type.ToString()
+    };
 }

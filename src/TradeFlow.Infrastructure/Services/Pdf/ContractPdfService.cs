@@ -12,9 +12,9 @@ public class ContractPdfService : IContractPdfService
         QuestPDF.Settings.License = LicenseType.Community;
     }
 
-    public byte[] GeneratePdf(ContractDto contract, ContractPartyASettingsDto? partyASettings)
+    public byte[] GeneratePdf(ContractDto contract, ContractPartyASettingsDto? partyASettings, bool includeSignatures = true)
     {
-        var document = new ContractPdfDocument(contract, partyASettings);
+        var document = new ContractPdfDocument(contract, partyASettings, includeSignatures);
         return document.GeneratePdf();
     }
 }

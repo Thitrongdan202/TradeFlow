@@ -4,5 +4,5 @@ namespace TradeFlow.Application.Common.Interfaces;
 
 public interface IContractPdfService
 {
-    byte[] GeneratePdf(ContractDto contract, ContractPartyASettingsDto? partyASettings);
+    byte[] GeneratePdf(ContractDto contract, ContractPartyASettingsDto? partyASettings, bool includeSignatures = true);
 }

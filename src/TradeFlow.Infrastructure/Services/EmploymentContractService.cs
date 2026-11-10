@@ -876,7 +876,10 @@ public class EmploymentContractService : IEmploymentContractService
         return true;
     }
 
-    public async Task<byte[]> GeneratePdfAsync(int id, CancellationToken cancellationToken = default)
+    public Task<byte[]> GeneratePdfAsync(int id, CancellationToken cancellationToken = default)
+        => GeneratePdfAsync(id, includeSignatures: true, cancellationToken);
+
+    public async Task<byte[]> GeneratePdfAsync(int id, bool includeSignatures, CancellationToken cancellationToken = default)
     {
         var contract = await _context.EmploymentContracts
             .Include(c => c.Employee)
@@ -886,12 +889,12 @@ public class EmploymentContractService : IEmploymentContractService
             throw new InvalidOperationException($"Không tìm thấy hợp đồng ID {id}");
 
         var dto = MapToDto(contract, true);
-        return GeneratePdfFromDto(dto);
+        return GeneratePdfFromDto(dto, includeSignatures);
     }
 
-    public byte[] GeneratePdfFromDto(EmploymentContractDto dto)
+    public byte[] GeneratePdfFromDto(EmploymentContractDto dto, bool includeSignatures = true)
     {
-        var document = new EmploymentContractPdfDocument(dto);
+        var document = new EmploymentContractPdfDocument(dto, includeSignatures);
         return document.GeneratePdf();
     }
 

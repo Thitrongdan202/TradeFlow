@@ -28,19 +28,22 @@
     }
     else
     {
+        var isSignedContract = contract.IsDigitallySigned;
+        var canExportSelectedVersion = selectedVersion == "unsigned" || isSignedContract;
+
         <!-- Action Toolbar -->
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4 tf-card p-3 rounded shadow-sm border no-print">
             <div class="d-flex align-items-center gap-2">
-                <a href="/hop-dong" class="btn btn-sm btn-outline-secondary">
+                <a href="/hop-dong" class="btn btn-sm btn-outline-secondary" title="Quay lại danh sách hợp đồng">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="15 18 9 12 15 6"/>
                     </svg>
                 </a>
                 <div>
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
                         <span class="fs-5 fw-bold font-monospace" style="color:var(--tf-text-primary, #0f172a);">@contract.ContractNumber</span>
                         <span class="badge @GetStatusBadgeClass(contract.Status)">@GetStatusVietnamese(contract.Status)</span>
-                        @if (contract.ExecutionMethod == ContractExecutionMethod.Electronic)
+                        @if (contract.ExecutionMethod == ContractExecutionMethod.Electronic || contract.IsDigitallySigned)
                         {
                             <span class="badge bg-primary-subtle text-primary border small">Ký điện tử (Luật GDĐT 2023)</span>
                         }
@@ -53,8 +56,42 @@
                 </div>
             </div>
 
-            <div class="d-flex flex-wrap gap-2">
-                <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-1.5 shadow-xs" @onclick="DownloadPdfAsync" disabled="@isDownloading" title="Tải trực tiếp file PDF chính thức về máy (Không có header/footer của trình duyệt)">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <!-- Bộ chuyển đổi 2 phiên bản: Bản chưa ký & Bản đã ký số -->
+                <div class="btn-group btn-group-sm me-1" role="group" aria-label="Chọn phiên bản hợp đồng">
+                    <button type="button"
+                            class="btn @(selectedVersion == "unsigned" ? "btn-primary fw-semibold" : "btn-outline-secondary")"
+                            @onclick='() => SelectVersion("unsigned")'>
+                        Bản chưa ký
+                    </button>
+                    <button type="button"
+                            class="btn @(selectedVersion == "signed" ? "btn-primary fw-semibold" : "btn-outline-secondary")"
+                            @onclick='() => SelectVersion("signed")'>
+                        Bản đã ký số
+                        @if (isSignedContract)
+                        {
+                            <span class="ms-1 badge bg-success-subtle text-success border-0" style="font-size: 0.65rem;">✓</span>
+                        }
+                    </button>
+                </div>
+
+                <!-- Nút mở Popup Xem trước chuẩn A4 -->
+                <button type="button"
+                        class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1.5"
+                        @onclick="() => showPreviewModal = true"
+                        title="Mở cửa sổ Xem trước hợp đồng chuẩn A4">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <span>Xem trước A4</span>
+                </button>
+
+                <button type="button"
+                        class="btn btn-sm btn-primary d-flex align-items-center gap-1.5 shadow-xs"
+                        @onclick="DownloadPdfAsync"
+                        disabled="@(isDownloading || !canExportSelectedVersion)"
+                        title="Tải xuống PDF đúng phiên bản đang chọn">
                     @if (isDownloading)
                     {
                         <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -67,16 +104,29 @@
                             <polyline points="7 10 12 15 17 10"/>
                             <line x1="12" y1="15" x2="12" y2="3"/>
                         </svg>
-                        <span>Tải xuống PDF</span>
+                        <span>@(selectedVersion == "unsigned" ? "Tải PDF (Chưa ký)" : "Tải PDF (Đã ký số)")</span>
                     }
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1.5" @onclick="PrintContractAsync" title="In trực tiếp ra máy in giấy (Mẹo: Bỏ chọn 'Headers and footers' trong hộp thoại in để tránh chèn URL trình duyệt)">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                        <rect x="6" y="14" width="12" height="8"></rect>
-                    </svg>
-                    <span>In hợp đồng</span>
+
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1.5"
+                        @onclick="PrintContractAsync"
+                        disabled="@(isPrinting || !canExportSelectedVersion)"
+                        title="In trực tiếp ra khổ A4 chuẩn (không dính URL trình duyệt)">
+                    @if (isPrinting)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>Đang in...</span>
+                    }
+                    else
+                    {
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                        <span>@(selectedVersion == "unsigned" ? "In Bản chưa ký" : "In Bản đã ký số")</span>
+                    }
                 </button>
 
                 @if (contract.Status == ContractStatus.Draft)
@@ -114,216 +164,74 @@
             </div>
         </div>
 
-        <style>
-            #tf-contract-sheet {
-                color: #000000 !important;
-                background-color: #ffffff !important;
-            }
-            #tf-contract-sheet, #tf-contract-sheet * {
-                box-sizing: border-box;
-            }
-            #tf-contract-sheet .table {
-                --bs-table-color: #000000 !important;
-                --bs-table-bg: #ffffff !important;
-                --bs-table-striped-bg: #f8fafc !important;
-                color: #000000 !important;
-                border-color: #333333 !important;
-            }
-            #tf-contract-sheet .table th,
-            #tf-contract-sheet .table td {
-                color: #000000 !important;
-                border-color: #4b5563 !important;
-                vertical-align: middle;
-            }
-            #tf-contract-sheet .table thead th {
-                background-color: #f1f5f9 !important;
-                color: #000000 !important;
-                font-weight: 700;
-            }
-            #tf-contract-sheet .tf-legal-summary-block {
-                border-color: #333333 !important;
-            }
-        </style>
-
         <div class="row g-4">
-            <!-- Left: Document Preview (Times New Roman A4) -->
+            <!-- Left: Multi-page A4 Document Workspace -->
             <div class="col-12 col-lg-8">
-                <div id="tf-contract-sheet" class="rounded-3 border-0 shadow-sm bg-white tf-document-paper a4-contract-page tf-a4-page"
-                     style="font-family: 'Times New Roman', Times, serif; font-size: 13pt; line-height: 1.25; color: #000000; padding: 20mm 20mm 20mm 30mm; max-width: 210mm; margin: 0 auto; box-sizing: border-box; text-align: justify;">
-                    
-                    <!-- National Header (Decree 30/2020/ND-CP Standard Block) -->
-                    <div class="tf-doc-national-header text-center mb-4" style="display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%;">
-                        <div class="tf-doc-nat-title fw-bold" style="font-size: 13pt; text-transform: uppercase; letter-spacing: 0.2pt; line-height: 1.25; margin: 0;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
-                        <div class="tf-doc-nat-motto fw-bold" style="font-size: 13pt; line-height: 1.25; margin-top: 3pt; margin-bottom: 0;">Độc lập - Tự do - Hạnh phúc</div>
-                        <div class="tf-doc-nat-line" style="width: 140px; height: 1.5px; background-color: #000000; margin: 4pt auto 5pt auto;"></div>
-                        <div class="tf-doc-nat-date fst-italic" style="font-size: 13pt; line-height: 1.25; margin: 0;">@(!string.IsNullOrWhiteSpace(contract.ContractPlace) ? contract.ContractPlace : "Cần Thơ"), ngày @contract.ContractDate.ToString("dd") tháng @contract.ContractDate.ToString("MM") năm @contract.ContractDate.ToString("yyyy")</div>
-                    </div>
-
-                    <div class="tf-doc-title-block text-center mb-4" style="text-align: center; margin-top: 14pt; margin-bottom: 16pt;">
-                        <div class="fw-bold fs-5 text-uppercase" style="font-size: 16pt; line-height: 1.25; letter-spacing: 0.5pt;">@contract.Title</div>
-                        <div class="fw-semibold" style="font-size: 13pt; margin-top: 3pt;">Số: @contract.ContractNumber</div>
-                    </div>
-
-                    <div class="mb-3 fst-italic" style="font-size: 13px;">
-                        <div>- Căn cứ Bộ luật Dân sự số 91/2015/QH13 được Quốc hội ban hành ngày 24/11/2015;</div>
-                        <div>- Căn cứ Luật Thương mại số 36/2005/QH11 được Quốc hội ban hành ngày 14/06/2005;</div>
-                        <div>- Căn cứ Luật Giao dịch điện tử số 20/2023/QH15 có hiệu lực thi hành từ ngày 01/07/2024;</div>
-                        <div>- Căn cứ vào năng lực và nhu cầu thực tế của hai bên.</div>
-                    </div>
-
-                    <div class="mb-3 fst-italic">
-                        Hôm nay, ngày @contract.ContractDate.ToString("dd/MM/yyyy"), tại @contract.ContractPlace, chúng tôi gồm có:
-                    </div>
-
-                    <!-- Party A -->
-                    <div class="mb-3 tf-doc-party-box tf-legal-party-block">
-                        <div class="fw-bold text-uppercase mb-1">BÊN A (BÊN BÁN): @contract.PartyAName</div>
-                        <div class="ps-3">
-                            <div>Địa chỉ: @contract.PartyAAddress</div>
-                            <div>Mã số thuế: @contract.PartyATaxCode | Điện thoại: @contract.PartyAPhone</div>
-                            <div>Đại diện: <strong>@contract.PartyARepresentative</strong> - Chức vụ: @contract.PartyAPosition (@contract.PartyAAuthority)</div>
-                            <div>Tài khoản ngân hàng: @contract.PartyABankAccount tại @contract.PartyABankName @contract.PartyABankBranch</div>
-                        </div>
-                    </div>
-
-                    <!-- Party B -->
-                    <div class="mb-3 tf-doc-party-box tf-legal-party-block">
-                        <div class="fw-bold text-uppercase mb-1">BÊN B (BÊN MUA): @contract.PartyBName</div>
-                        <div class="ps-3">
-                            <div>Địa chỉ: @(string.IsNullOrWhiteSpace(contract.PartyBAddress) ? "Trụ sở / Địa chỉ liên hệ của Bên B" : contract.PartyBAddress)</div>
-                            @if (contract.PartyBType == ContractPartyBType.Company)
-                            {
-                                <div>Mã số thuế: @(string.IsNullOrWhiteSpace(contract.PartyBTaxCode) ? "[Đang cập nhật]" : contract.PartyBTaxCode) | Điện thoại: @(string.IsNullOrWhiteSpace(contract.PartyBPhone) ? "[Đang cập nhật]" : contract.PartyBPhone)</div>
-                                <div>Người đại diện: <strong>@(string.IsNullOrWhiteSpace(contract.PartyBRepresentative) ? "Người đại diện theo pháp luật" : contract.PartyBRepresentative)</strong> - Chức vụ: @(string.IsNullOrWhiteSpace(contract.PartyBPosition) ? "Giám đốc" : contract.PartyBPosition)</div>
-                            }
-                            else
-                            {
-                                <div>Số CCCD/CMND: @(string.IsNullOrWhiteSpace(contract.PartyBIdCardNumber) ? "[Đang cập nhật]" : contract.PartyBIdCardNumber) | Điện thoại: @(string.IsNullOrWhiteSpace(contract.PartyBPhone) ? "[Đang cập nhật]" : contract.PartyBPhone)</div>
-                            }
-                            @if (!string.IsNullOrEmpty(contract.PartyBDeliveryAddress))
-                            {
-                                <div>Địa điểm giao nhận hàng: @contract.PartyBDeliveryAddress</div>
-                            }
-                        </div>
-                    </div>
-
-                    <div class="mb-3 fst-italic">
-                        Hai bên cùng thỏa thuận và thống nhất ký kết hợp đồng với các điều khoản cụ thể sau đây:
-                    </div>
-
-                    <!-- Line items table if any -->
-                    @if (contract.Items.Count > 0)
+                <div class="p-3 p-md-4 rounded-3 border" style="background: var(--tf-bg-subtle, #e2e8f0);">
+                    @if (selectedVersion == "signed" && !isSignedContract)
                     {
-                        <table class="table table-bordered table-sm mb-3 text-center" style="font-size: 13px;">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>STT</th>
-                                    <th>Mã hàng</th>
-                                    <th>Tên hàng hóa &amp; Quy cách</th>
-                                    <th>ĐVT</th>
-                                    <th>SL</th>
-                                    <th>Đơn giá (đ)</th>
-                                    <th>Thành tiền (đ)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @for (int i = 0; i < contract.Items.Count; i++)
+                        <div class="card border-0 shadow-sm p-4 text-center mx-auto my-4" style="max-width: 580px; background: var(--tf-bg-card, #ffffff);">
+                            <div class="mx-auto mb-3 d-flex align-items-center justify-content-center rounded-circle"
+                                 style="width: 52px; height: 52px; background: rgba(245, 158, 11, 0.14); color: #d97706;">
+                                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                            </div>
+                            <h5 class="fw-bold mb-2" style="color: var(--tf-text-primary, #0f172a);">Hợp đồng này chưa có Bản đã ký số</h5>
+                            <p class="text-muted small mb-3">
+                                Hợp đồng <strong>@contract.ContractNumber</strong> hiện chưa được ký số / ký điện tử.
+                                Hệ thống không tạo chữ ký số giả khi hợp đồng chưa ký.
+                                Vui lòng chuyển sang <strong>Bản chưa ký</strong> để xem, in văn bản ký tay hoặc bấm <strong>Ký điện tử</strong>.
+                            </p>
+                            <div class="d-flex justify-content-center gap-2 flex-wrap">
+                                <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" @onclick='() => SelectVersion("unsigned")'>
+                                    Xem Bản chưa ký
+                                </button>
+                                @if (contract.Status == ContractStatus.Draft || contract.Status == ContractStatus.PendingSignature)
                                 {
-                                    var it = contract.Items[i];
-                                    <tr>
-                                        <td>@(i + 1)</td>
-                                        <td class="text-center">@it.ProductCode</td>
-                                        <td class="text-start">@it.ProductName</td>
-                                        <td class="text-center">@it.Unit</td>
-                                        <td class="text-center">@it.Quantity.ToString("N0")</td>
-                                        <td class="text-end">@it.UnitPrice.ToString("N0")</td>
-                                        <td class="text-end fw-semibold">@it.LineTotal.ToString("N0")</td>
-                                    </tr>
+                                    <button type="button" class="btn btn-sm btn-success fw-semibold" @onclick="() => showSignModal = true">
+                                        Thực hiện Ký điện tử
+                                    </button>
                                 }
-                            </tbody>
-                        </table>
+                            </div>
+                        </div>
                     }
-
-                    <!-- Financial Summary -->
-                    <div class="mb-3 py-2 px-3 border-top border-bottom tf-legal-summary-block">
-                        <div class="fw-bold fs-6">Tổng giá trị hợp đồng: @contract.TotalAmount.ToString("N0") @contract.CurrencyCode</div>
-                        @if (contract.DepositAmount > 0)
-                        {
-                            <div>Số tiền đặt cọc: @contract.DepositAmount.ToString("N0") @contract.CurrencyCode</div>
-                        }
-                        <div class="fst-italic">Bằng chữ: @contract.AmountInWords</div>
-                    </div>
-
-                    <!-- Clauses (Anti-orphan Heading Protection) -->
-                    @foreach (var cl in contract.Clauses)
+                    else
                     {
-                        <div class="mb-3 tf-clause-item">
-                            <div class="clause-heading fw-bold mt-2 mb-1" style="break-after: avoid-page; page-break-after: avoid;">@cl.ClauseNumber: @cl.Title</div>
-                            <div class="clause-paragraph" style="text-align: justify; text-justify: inter-word; white-space: pre-line; orphans: 3; widows: 3;">@cl.Content</div>
-                        </div>
+                        <ContractA4DocumentView Contract="@contract"
+                                                IncludeSignatures="@(selectedVersion == "signed")"
+                                                ContainerId="tf-contract-sheet" />
                     }
-
-                    <!-- Signatures Box (Anti-break Protection) -->
-                    <div class="row mt-5 pt-4 text-center tf-signature-block" style="break-inside: avoid !important; page-break-inside: avoid !important;">
-                        <!-- Party A Signature -->
-                        <div class="col-6">
-                            <div class="fw-bold">ĐẠI DIỆN BÊN A</div>
-                            <div class="fst-italic small mb-2">(Ký, ghi rõ họ tên và đóng dấu)</div>
-
-                            @if (contract.PartyASignedAt.HasValue)
-                            {
-                                <div class="p-2 border border-primary rounded bg-primary-subtle bg-opacity-10 d-inline-block text-center my-2" style="min-width: 200px;">
-                                    <div class="text-primary fw-bold small">ĐÃ KÝ ĐIỆN TỬ</div>
-                                    @if (!string.IsNullOrEmpty(contract.PartyASignatureData) && contract.PartyASignatureData.StartsWith("data:image"))
-                                    {
-                                        <img src="@contract.PartyASignatureData" alt="Chữ ký Bên A" style="max-height: 50px; max-width: 160px; object-fit: contain;" />
-                                    }
-                                    <div class="fw-bold small text-dark mt-1">@contract.PartyASignedBy</div>
-                                    <div class="text-muted" style="font-size: 0.7rem;">@contract.PartyASignedAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
-                                </div>
-                            }
-                            else
-                            {
-                                <div style="height: 80px;"></div>
-                                <div class="fw-bold">@contract.PartyARepresentative</div>
-                            }
-                        </div>
-
-                        <!-- Party B Signature -->
-                        <div class="col-6">
-                            <div class="fw-bold">ĐẠI DIỆN BÊN B</div>
-                            <div class="fst-italic small mb-2">(Ký, ghi rõ họ tên và đóng dấu)</div>
-
-                            @if (contract.PartyBSignedAt.HasValue)
-                            {
-                                <div class="p-2 border border-success rounded bg-success-subtle bg-opacity-10 d-inline-block text-center my-2" style="min-width: 200px;">
-                                    <div class="text-success fw-bold small">ĐÃ KÝ ĐIỆN TỬ</div>
-                                    @if (!string.IsNullOrEmpty(contract.PartyBSignatureData) && contract.PartyBSignatureData.StartsWith("data:image"))
-                                    {
-                                        <img src="@contract.PartyBSignatureData" alt="Chữ ký Bên B" style="max-height: 50px; max-width: 160px; object-fit: contain;" />
-                                    }
-                                    <div class="fw-bold small text-dark mt-1">@contract.PartyBSignedBy</div>
-                                    <div class="text-muted" style="font-size: 0.7rem;">@contract.PartyBSignedAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
-                                </div>
-                            }
-                            else
-                            {
-                                <div style="height: 80px;"></div>
-                                <div class="fw-bold">@(contract.PartyBRepresentative ?? contract.PartyBName)</div>
-                            }
-                        </div>
-                    </div>
-
-                    <!-- Document Running Footer -->
-                    <div class="tf-contract-running-footer d-flex justify-content-between text-muted small mt-4 pt-2 border-top no-print">
-                        <span>Hợp đồng số: @contract.ContractNumber</span>
-                        <span>Trang chuẩn thể thức văn bản A4 — NĐ 30/2020/NĐ-CP</span>
-                    </div>
                 </div>
             </div>
 
             <!-- Right: Meta, Legal & Audit Trail -->
             <div class="col-lg-4 no-print">
+                <!-- Phiên bản tài liệu Card -->
+                <div class="card border-0 shadow-sm p-3 mb-3 tf-card" style="background-color:var(--tf-bg-card, #ffffff); border:1px solid var(--tf-border, #e2e8f0) !important;">
+                    <h6 class="fw-bold border-bottom pb-2 mb-3 d-flex align-items-center justify-content-between" style="color:var(--tf-text-primary, #0f172a);">
+                        <span>Phiên bản tài liệu A4</span>
+                        <span class="badge @(selectedVersion == "unsigned" ? "bg-secondary-subtle text-secondary border" : "bg-success-subtle text-success border")">
+                            @(selectedVersion == "unsigned" ? "Bản chưa ký" : "Bản đã ký số")
+                        </span>
+                    </h6>
+                    <div class="small text-muted mb-3">
+                        @if (selectedVersion == "unsigned")
+                        {
+                            <span>Hiển thị văn bản hợp đồng sạch, chưa chèn con dấu ký số, dùng để kiểm tra nội dung trước khi ký hoặc in ra giấy ký tay.</span>
+                        }
+                        else
+                        {
+                            <span>Hiển thị văn bản hợp đồng kèm thông tin chữ ký điện tử, người ký, thời điểm ký và mã băm xác thực toàn vẹn SHA-256.</span>
+                        }
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-primary w-100 fw-semibold" @onclick="() => showPreviewModal = true">
+                        Mở cửa sổ Xem trước &amp; In chuẩn A4
+                    </button>
+                </div>
+
                 <!-- Integrity & Security Card -->
                 <div class="card border-0 shadow-sm p-3 mb-3 tf-card" style="background-color:var(--tf-bg-card, #ffffff); border:1px solid var(--tf-border, #e2e8f0) !important;">
                     <h6 class="fw-bold border-bottom pb-2 mb-3 d-flex align-items-center gap-1" style="color:var(--tf-text-primary, #0f172a);">
@@ -340,9 +248,9 @@
                         </div>
                     </div>
                     <div class="small mb-2">
-                        <span class="text-secondary fw-semibold">Tuân thủ:</span>
+                        <span class="text-secondary fw-semibold">Tuân thủ pháp luật:</span>
                         <div class="text-muted mt-1">
-                            Điều 12, Điều 13 Luật Giao dịch điện tử 20/2023/QH15; Điều 301 Luật Thương mại 2005.
+                            Bộ luật Dân sự 2015; Luật Thương mại 2005 (Điều 301, 306); Luật Giao dịch điện tử 20/2023/QH15; Nghị định 23/2025/NĐ-CP.
                         </div>
                     </div>
                     <div class="small">
@@ -407,7 +315,7 @@
                         {
                             <li class="mb-2 pb-2 border-bottom">
                                 <div class="text-secondary fw-semibold">In ấn văn bản giấy:</div>
-                                <div class="text-dark">Bởi @contract.PrintedBy lúc @contract.PrintedAt?.ToString("dd/MM/yyyy HH:mm")</div>
+                                <div style="color:var(--tf-text-primary, #0f172a);">Bởi @contract.PrintedBy lúc @contract.PrintedAt?.ToString("dd/MM/yyyy HH:mm")</div>
                             </li>
                         }
                     </ul>
@@ -418,6 +326,11 @@
 </div>
 
 <!-- Modals -->
+<ContractPreviewModal @bind-IsOpen="showPreviewModal"
+                      Contract="@contract"
+                      InitialVersion="@selectedVersion"
+                      OnRequestSign="() => showSignModal = true" />
+
 <ElectronicSignatureModal @bind-IsOpen="showSignModal"
                           ContractId="@(contract?.Id ?? 0)"
                           ContractNumber="@(contract?.ContractNumber ?? "")"
@@ -434,8 +347,11 @@
     [Parameter] public int Id { get; set; }
 
     private ContractDto? contract;
+    private string selectedVersion = "unsigned";
     private bool isLoading = true;
     private bool isDownloading = false;
+    private bool isPrinting = false;
+    private bool showPreviewModal = false;
     private bool showSignModal = false;
     private bool showLiquidationModal = false;
 
@@ -444,17 +360,25 @@
         await LoadContractAsync();
     }
 
+    private void SelectVersion(string version)
+    {
+        selectedVersion = version;
+    }
+
     private async Task DownloadPdfAsync()
     {
         if (contract == null || isDownloading) return;
+        if (selectedVersion == "signed" && !contract.IsDigitallySigned) return;
+
         try
         {
             isDownloading = true;
             StateHasChanged();
             var rawNumber = string.IsNullOrWhiteSpace(contract.ContractNumber) ? $"HD-{contract.Id}" : contract.ContractNumber.Trim();
             var safeCode = string.Concat(rawNumber.Split(System.IO.Path.GetInvalidFileNameChars())).Replace(" ", "_");
-            var filename = $"Hop_dong_{safeCode}.pdf";
-            await JS.InvokeVoidAsync("tradeflow.downloadPdf", $"/api/contracts/{contract.Id}/export-pdf", filename);
+            var suffix = selectedVersion == "unsigned" ? "_Ban_chua_ky" : "_Ban_da_ky_so";
+            var filename = $"Hop_dong_{safeCode}{suffix}.pdf";
+            await JS.InvokeVoidAsync("tradeflow.downloadPdf", $"/api/contracts/{contract.Id}/export-pdf?version={selectedVersion}", filename);
         }
         catch (Exception ex)
         {
@@ -469,15 +393,22 @@
 
     private async Task PrintContractAsync()
     {
-        if (contract == null) return;
+        if (contract == null || isPrinting) return;
+        if (selectedVersion == "signed" && !contract.IsDigitallySigned) return;
+
         try
         {
-            var rawNumber = string.IsNullOrWhiteSpace(contract.ContractNumber) ? $"HD-{contract.Id}" : contract.ContractNumber.Trim();
-            var safeCode = string.Concat(rawNumber.Split(System.IO.Path.GetInvalidFileNameChars())).Replace(" ", "_");
-            var docTitle = $"Hop_Dong_{safeCode}";
-            await JS.InvokeVoidAsync("tradeflow.printDocument", "tf-contract-sheet", docTitle);
+            isPrinting = true;
+            StateHasChanged();
+            var pdfUrl = $"/api/contracts/{contract.Id}/export-pdf?version={selectedVersion}&inline=true";
+            await JS.InvokeVoidAsync("tradeflow.printPdfUrl", pdfUrl);
         }
         catch { }
+        finally
+        {
+            isPrinting = false;
+            StateHasChanged();
+        }
     }
 
     private async Task LoadContractAsync()
@@ -486,6 +417,10 @@
         try
         {
             contract = await ContractService.GetContractByIdAsync(Id);
+            if (contract != null)
+            {
+                selectedVersion = contract.IsDigitallySigned ? "signed" : "unsigned";
+            }
         }
         catch (Exception) { }
         finally

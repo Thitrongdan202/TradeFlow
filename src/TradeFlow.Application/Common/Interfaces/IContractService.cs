@@ -28,4 +28,5 @@ public interface IContractService
     Task<ContractDto> CancelContractAsync(int id, string reason, string userId, string userName, CancellationToken cancellationToken = default);
 
     Task<byte[]> GenerateContractPdfAsync(int id, CancellationToken cancellationToken = default);
+    Task<byte[]> GenerateContractPdfAsync(int id, bool includeSignatures, CancellationToken cancellationToken = default);
 }

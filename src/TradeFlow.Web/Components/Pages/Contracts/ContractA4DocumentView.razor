@@ -1,0 +1,787 @@
+@using TradeFlow.Application.Common.Helpers
+@using TradeFlow.Application.Common.Models.Contracts
+@using TradeFlow.Domain.Enums
+
+@if (Contract != null)
+{
+    var isB2C = Contract.PartyBType == ContractPartyBType.Individual ||
+                (!string.IsNullOrWhiteSpace(Contract.TemplateCode) && Contract.TemplateCode.Equals("B2C_RETAIL", StringComparison.OrdinalIgnoreCase));
+    var hasThirdParty = ContractRichTextFormatter.TryExtractThirdParty(Contract, out var thirdParty);
+    var allPages = ContractA4PreviewPaginator.PaginateCommercialContract(Contract, isB2C, hasThirdParty);
+    var allowedPageNumbers = ParsePageRange(PageRange, allPages.Count);
+    var pages = allowedPageNumbers != null && allowedPageNumbers.Count > 0
+        ? allPages.Where(p => allowedPageNumbers.Contains(p.PageNumber)).ToList()
+        : allPages;
+    var signingPlace = !string.IsNullOrWhiteSpace(Contract.ContractPlace) ? Contract.ContractPlace : "TP. Cần Thơ";
+    var partyARep = !string.IsNullOrWhiteSpace(Contract.PartyARepresentative) ? Contract.PartyARepresentative : "Trần Thị Mai Phương";
+    var partyAPos = !string.IsNullOrWhiteSpace(Contract.PartyAPosition) ? Contract.PartyAPosition : "Chủ tịch Hội đồng thành viên";
+    var partyAAuth = !string.IsNullOrWhiteSpace(Contract.PartyAAuthority) ? Contract.PartyAAuthority : "Người đại diện theo pháp luật";
+    var partyBDisplayName = (!isB2C && !string.IsNullOrWhiteSpace(Contract.PartyBRepresentative))
+        ? Contract.PartyBRepresentative!
+        : Contract.PartyBName;
+    bool showSignedA = IncludeSignatures && Contract.PartyASignedAt.HasValue;
+    bool showSignedB = IncludeSignatures && Contract.PartyBSignedAt.HasValue;
+
+    <div id="@ContainerId"
+         class="@($"tf-a4-stage-wrapper {(ScaleMode == "fit" ? "tf-a4-scale-fit" : "")}")"
+         data-pdf-url="@($"/api/contracts/{Contract.Id}/export-pdf?version={(IncludeSignatures ? "signed" : "unsigned")}&inline=true")">
+
+        @foreach (var pageItem in pages)
+        {
+            <article class="@($"tf-a4-page {(IsLandscape ? "tf-a4-landscape" : "")} {(MarginMode == "minimum" ? "tf-a4-margin-min" : "")}")"
+                     data-page-number="@pageItem.PageNumber"
+                     data-total-pages="@pageItem.TotalPages">
+                <div class="tf-a4-page-body">
+                    @foreach (var block in pageItem.Blocks)
+                    {
+                        @switch (block.Kind)
+                        {
+                            case ContractPreviewBlockKind.DocumentHeaderAndParties:
+                                <!-- Quốc hiệu, Tiêu ngữ, Địa điểm & ngày tháng (Chỉ Trang 1) -->
+                                <header class="tf-doc-header-p1">
+                                    <div class="tf-doc-nat-country">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+                                    <div class="tf-doc-nat-motto">Độc lập - Tự do - Hạnh phúc</div>
+                                    <div class="tf-doc-nat-divider"></div>
+                                    <div class="tf-doc-place-date">
+                                        @signingPlace, ngày @Contract.ContractDate.ToString("dd") tháng @Contract.ContractDate.ToString("MM") năm @Contract.ContractDate.ToString("yyyy")
+                                    </div>
+
+                                    <div class="tf-doc-title-area">
+                                        <div class="tf-doc-main-title" style="color: #000000 !important;">@(string.IsNullOrWhiteSpace(Contract.Title) ? "HỢP ĐỒNG MUA BÁN HÀNG HÓA" : Contract.Title.Trim().ToUpperInvariant())</div>
+                                        <div class="tf-doc-contract-no">Số: @Contract.ContractNumber</div>
+                                    </div>
+                                </header>
+
+                                <!-- Căn cứ pháp lý (In nghiêng chuẩn văn bản pháp lý) -->
+                                <section class="tf-doc-legal-basis">
+                                    <div class="tf-doc-basis-line">- Căn cứ Bộ luật Dân sự số 91/2015/QH13 được Quốc hội nước Cộng hòa xã hội chủ nghĩa Việt Nam thông qua ngày 24/11/2015;</div>
+                                    @if (isB2C)
+                                    {
+                                        <div class="tf-doc-basis-line">- Căn cứ Luật Bảo vệ quyền lợi người tiêu dùng số 19/2023/QH15 và Nghị định số 55/2024/NĐ-CP quy định chi tiết thi hành;</div>
+                                    }
+                                    else
+                                    {
+                                        <div class="tf-doc-basis-line">- Căn cứ Luật Thương mại số 36/2005/QH11 được Quốc hội nước Cộng hòa xã hội chủ nghĩa Việt Nam thông qua ngày 14/06/2005;</div>
+                                    }
+                                    <div class="tf-doc-basis-line">- Căn cứ Luật Giao dịch điện tử số 20/2023/QH15 và các văn bản hướng dẫn thi hành;</div>
+                                    <div class="tf-doc-basis-line">- Căn cứ vào nhu cầu và năng lực thực tế, sự thỏa thuận tự nguyện của các bên.</div>
+                                </section>
+
+                                <div class="tf-doc-opening-line">
+                                    Hôm nay, ngày @Contract.ContractDate.ToString("dd") tháng @Contract.ContractDate.ToString("MM") năm @Contract.ContractDate.ToString("yyyy"), tại @signingPlace, chúng tôi gồm có:
+                                </div>
+
+                                <!-- BÊN A -->
+                                <section class="tf-doc-party-section">
+                                    <div class="tf-doc-party-heading">
+                                        <span>BÊN A (BÊN BÁN / BÊN CUNG CẤP): </span>
+                                        <strong>@(string.IsNullOrWhiteSpace(Contract.PartyAName) ? "CÔNG TY TNHH THIẾT BỊ VỆ SINH LACASA VIỆT NAM" : Contract.PartyAName.ToUpperInvariant())</strong>
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(Contract.PartyAAddress))
+                                    {
+                                        <div class="tf-doc-party-row">- Địa chỉ trụ sở: @Contract.PartyAAddress</div>
+                                    }
+                                    <div class="tf-doc-party-row tf-doc-party-split">
+                                        @if (!string.IsNullOrWhiteSpace(Contract.PartyATaxCode))
+                                        {
+                                            <span>- Mã số thuế: <strong>@Contract.PartyATaxCode</strong></span>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(Contract.PartyAPhone))
+                                        {
+                                            <span>Điện thoại: @Contract.PartyAPhone</span>
+                                        }
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(Contract.PartyABankAccount))
+                                    {
+                                        <div class="tf-doc-party-row">
+                                            - Tài khoản số: <strong>@Contract.PartyABankAccount</strong>
+                                            @if (!string.IsNullOrWhiteSpace(Contract.PartyABankName))
+                                            {
+                                                <span> tại @Contract.PartyABankName</span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(Contract.PartyABankBranch))
+                                            {
+                                                <span> - @Contract.PartyABankBranch</span>
+                                            }
+                                        </div>
+                                    }
+                                    <div class="tf-doc-party-row tf-doc-party-split">
+                                        <span>- Đại diện bởi: <strong>@partyARep</strong></span>
+                                        <span>Chức vụ: @partyAPos</span>
+                                    </div>
+                                    <div class="tf-doc-party-row">- Căn cứ đại diện: <em>@partyAAuth</em></div>
+                                </section>
+
+                                <!-- BÊN B -->
+                                <section class="tf-doc-party-section">
+                                    <div class="tf-doc-party-heading">
+                                        <span>@(isB2C ? "BÊN B (BÊN MUA / KHÁCH HÀNG): " : "BÊN B (BÊN MUA / ĐỐI TÁC): ")</span>
+                                        <strong>@(string.IsNullOrWhiteSpace(Contract.PartyBName) ? "................................................................" : Contract.PartyBName.ToUpperInvariant())</strong>
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(Contract.PartyBAddress))
+                                    {
+                                        <div class="tf-doc-party-row">@(isB2C ? "- Địa chỉ thường trú / Liên hệ: " : "- Địa chỉ trụ sở: ")@Contract.PartyBAddress</div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(Contract.PartyBDeliveryAddress) &&
+                                         !string.Equals(Contract.PartyBDeliveryAddress, Contract.PartyBAddress, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <div class="tf-doc-party-row">- Địa điểm giao nhận: @Contract.PartyBDeliveryAddress</div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(Contract.PartyBTaxCode) || !string.IsNullOrWhiteSpace(Contract.PartyBIdCardNumber) || !string.IsNullOrWhiteSpace(Contract.PartyBPhone))
+                                    {
+                                        <div class="tf-doc-party-row tf-doc-party-split">
+                                            @if (!string.IsNullOrWhiteSpace(Contract.PartyBTaxCode))
+                                            {
+                                                <span>- Mã số thuế: <strong>@Contract.PartyBTaxCode</strong></span>
+                                            }
+                                            else if (!string.IsNullOrWhiteSpace(Contract.PartyBIdCardNumber))
+                                            {
+                                                <span>- Số CCCD/CMND: <strong>@Contract.PartyBIdCardNumber</strong></span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(Contract.PartyBPhone))
+                                            {
+                                                <span>Điện thoại: @Contract.PartyBPhone</span>
+                                            }
+                                        </div>
+                                    }
+                                    @if (!isB2C && !string.IsNullOrWhiteSpace(Contract.PartyBRepresentative))
+                                    {
+                                        <div class="tf-doc-party-row tf-doc-party-split">
+                                            <span>- Đại diện bởi: <strong>@Contract.PartyBRepresentative</strong></span>
+                                            @if (!string.IsNullOrWhiteSpace(Contract.PartyBPosition))
+                                            {
+                                                <span>Chức vụ: @Contract.PartyBPosition</span>
+                                            }
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(Contract.PartyBAuthority))
+                                        {
+                                            <div class="tf-doc-party-row">- Căn cứ đại diện: <em>@Contract.PartyBAuthority</em></div>
+                                        }
+                                    }
+                                </section>
+
+                                <!-- BÊN C (Nếu Hợp đồng có 3 bên ký) -->
+                                @if (hasThirdParty && thirdParty != null)
+                                {
+                                    <section class="tf-doc-party-section">
+                                        <div class="tf-doc-party-heading">
+                                            <span>@thirdParty.PartyLabel: </span>
+                                            <strong>@thirdParty.Name.ToUpperInvariant()</strong>
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(thirdParty.Address))
+                                        {
+                                            <div class="tf-doc-party-row">- Địa chỉ: @thirdParty.Address</div>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(thirdParty.TaxCode))
+                                        {
+                                            <div class="tf-doc-party-row">- Mã số thuế: <strong>@thirdParty.TaxCode</strong></div>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(thirdParty.Representative))
+                                        {
+                                            <div class="tf-doc-party-row tf-doc-party-split">
+                                                <span>- Đại diện bởi: <strong>@thirdParty.Representative</strong></span>
+                                                @if (!string.IsNullOrWhiteSpace(thirdParty.Position))
+                                                {
+                                                    <span>Chức vụ: @thirdParty.Position</span>
+                                                }
+                                            </div>
+                                        }
+                                    </section>
+                                }
+
+                                <div class="tf-doc-transition-line">
+                                    @(hasThirdParty
+                                        ? "Các bên cùng thống nhất thỏa thuận và ký kết hợp đồng với các điều khoản cụ thể sau đây:"
+                                        : "Sau khi bàn bạc, hai bên cùng thống nhất thỏa thuận và ký kết hợp đồng với các điều khoản cụ thể sau đây:")
+                                </div>
+                                break;
+
+                            case ContractPreviewBlockKind.ItemsTableAndSummary:
+                                @if (block.TableItems != null && block.TableItems.Count > 0)
+                                {
+                                    <div class="tf-doc-table-wrap">
+                                        <table class="tf-doc-items-table">
+                                            <thead>
+                                                <tr>
+                                                    <th style="width: 34px;">STT</th>
+                                                    <th style="width: 82px;">Mã hàng</th>
+                                                    <th>Tên hàng hóa, quy cách</th>
+                                                    <th style="width: 52px;">ĐVT</th>
+                                                    <th style="width: 54px;">Số lượng</th>
+                                                    <th style="width: 96px;">Đơn giá</th>
+                                                    <th style="width: 106px;">Thành tiền</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @for (int i = 0; i < block.TableItems.Count; i++)
+                                                {
+                                                    var it = block.TableItems[i];
+                                                    var rowIndex = block.StartItemIndex + i + 1;
+                                                    var prodDisplay = string.IsNullOrWhiteSpace(it.Specifications)
+                                                        ? it.ProductName
+                                                        : $"{it.ProductName} ({it.Specifications})";
+                                                    <tr>
+                                                        <td class="text-center">@rowIndex</td>
+                                                        <td class="text-center">@(string.IsNullOrWhiteSpace(it.ProductCode) ? "-" : it.ProductCode)</td>
+                                                        <td class="text-start">@prodDisplay</td>
+                                                        <td class="text-center">@(string.IsNullOrWhiteSpace(it.Unit) ? "Bộ" : it.Unit)</td>
+                                                        <td class="text-center">@it.Quantity.ToString("N0")</td>
+                                                        <td class="text-end">@it.UnitPrice.ToString("N0")</td>
+                                                        <td class="text-end fw-bold">@it.LineTotal.ToString("N0")</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+
+                                @if (block.IncludeFinancialSummary && ((Contract.Items != null && Contract.Items.Count > 0) || Contract.TotalAmount > 0))
+                                {
+                                    <div class="tf-doc-financial-summary">
+                                        @if (Contract.SubTotal > 0 && (Contract.TaxAmount > 0 || Contract.TotalDiscount > 0))
+                                        {
+                                            <div class="tf-doc-fin-row">
+                                                <span>- Cộng tiền hàng (chưa thuế): <strong>@Contract.SubTotal.ToString("N0") @Contract.CurrencyCode</strong></span>
+                                                @if (Contract.TotalDiscount > 0)
+                                                {
+                                                    <span>Chiết khấu: <strong>@Contract.TotalDiscount.ToString("N0") @Contract.CurrencyCode</strong></span>
+                                                }
+                                                @if (Contract.TaxAmount > 0)
+                                                {
+                                                    <span>Thuế GTGT (@Contract.TaxRate.ToString("0.#")%): <strong>@Contract.TaxAmount.ToString("N0") @Contract.CurrencyCode</strong></span>
+                                                }
+                                            </div>
+                                        }
+                                        <div class="tf-doc-fin-row">
+                                            <span>- Tổng giá trị hợp đồng thanh toán: <strong>@Contract.TotalAmount.ToString("N0") @Contract.CurrencyCode</strong></span>
+                                            @if (Contract.DepositAmount > 0)
+                                            {
+                                                <span>Tiền đặt cọc: <strong>@Contract.DepositAmount.ToString("N0") @Contract.CurrencyCode</strong></span>
+                                            }
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(Contract.AmountInWords))
+                                        {
+                                            <div class="tf-doc-fin-words">
+                                                - Số tiền viết bằng chữ: <strong><em>@Contract.AmountInWords</em></strong>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                break;
+
+                            case ContractPreviewBlockKind.ClauseHeadingAndFirstParagraph:
+                                <div class="tf-doc-clause-head-first">
+                                    <div class="tf-doc-clause-title">@block.ClauseHeading</div>
+                                    @if (block.Paragraph != null)
+                                    {
+                                        @((MarkupString)ContractRichTextFormatter.RenderParagraphBlockHtml(block.Paragraph))
+                                    }
+                                </div>
+                                break;
+
+                            case ContractPreviewBlockKind.ClauseContinuationParagraph:
+                                @if (block.Paragraph != null)
+                                {
+                                    @((MarkupString)ContractRichTextFormatter.RenderParagraphBlockHtml(block.Paragraph))
+                                }
+                                break;
+
+                            case ContractPreviewBlockKind.ClosingCopiesNote:
+                                <div class="tf-doc-closing-copies">
+                                    <em>@block.CopiesText</em>
+                                </div>
+                                break;
+
+                            case ContractPreviewBlockKind.SignatureSection:
+                                <section class="tf-doc-sig-section">
+                                    <div class="tf-doc-sig-grid @(hasThirdParty ? "tf-doc-sig-grid-3" : "tf-doc-sig-grid-2")">
+                                        <!-- Cột 1: ĐẠI DIỆN BÊN A -->
+                                        <div class="tf-doc-sig-col">
+                                            <div class="tf-doc-sig-title">ĐẠI DIỆN BÊN A</div>
+                                            <div class="tf-doc-sig-note">(Ký, ghi rõ họ tên và đóng dấu)</div>
+
+                                            @if (showSignedA)
+                                            {
+                                                <div class="tf-doc-sig-stamp tf-doc-sig-stamp-a">
+                                                    <div class="tf-doc-sig-stamp-badge">ĐÃ KÝ SỐ / ĐIỆN TỬ HỢP LỆ</div>
+                                                    @if (!string.IsNullOrWhiteSpace(Contract.PartyASignatureData) && Contract.PartyASignatureData.StartsWith("data:image"))
+                                                    {
+                                                        <img src="@Contract.PartyASignatureData" alt="Chữ ký Bên A" class="tf-doc-sig-img" />
+                                                    }
+                                                    <div class="tf-doc-sig-signer">@(Contract.PartyASignedBy ?? partyARep)</div>
+                                                    <div class="tf-doc-sig-time">Ký ngày: @Contract.PartyASignedAt!.Value.ToString("dd/MM/yyyy HH:mm")</div>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="tf-doc-sig-blank-space"></div>
+                                                <div class="tf-doc-sig-printed-name">@partyARep</div>
+                                            }
+                                        </div>
+
+                                        <!-- Cột 2: ĐẠI DIỆN BÊN B -->
+                                        <div class="tf-doc-sig-col">
+                                            <div class="tf-doc-sig-title">@(isB2C ? "ĐẠI DIỆN BÊN B (KHÁCH HÀNG)" : "ĐẠI DIỆN BÊN B")</div>
+                                            <div class="tf-doc-sig-note">@(isB2C ? "(Ký và ghi rõ họ tên)" : "(Ký, ghi rõ họ tên và đóng dấu)")</div>
+
+                                            @if (showSignedB)
+                                            {
+                                                <div class="tf-doc-sig-stamp tf-doc-sig-stamp-b">
+                                                    <div class="tf-doc-sig-stamp-badge">ĐÃ KÝ SỐ / ĐIỆN TỬ HỢP LỆ</div>
+                                                    @if (!string.IsNullOrWhiteSpace(Contract.PartyBSignatureData) && Contract.PartyBSignatureData.StartsWith("data:image"))
+                                                    {
+                                                        <img src="@Contract.PartyBSignatureData" alt="Chữ ký Bên B" class="tf-doc-sig-img" />
+                                                    }
+                                                    <div class="tf-doc-sig-signer">@(Contract.PartyBSignedBy ?? partyBDisplayName)</div>
+                                                    <div class="tf-doc-sig-time">Ký ngày: @Contract.PartyBSignedAt!.Value.ToString("dd/MM/yyyy HH:mm")</div>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="tf-doc-sig-blank-space"></div>
+                                                <div class="tf-doc-sig-printed-name">@partyBDisplayName</div>
+                                            }
+                                        </div>
+
+                                        <!-- Cột 3 (nếu Hợp đồng 3 bên): ĐẠI DIỆN BÊN C -->
+                                        @if (hasThirdParty && thirdParty != null)
+                                        {
+                                            <div class="tf-doc-sig-col">
+                                                <div class="tf-doc-sig-title">@thirdParty.HeadingTitle</div>
+                                                <div class="tf-doc-sig-note">(Ký, ghi rõ họ tên và đóng dấu)</div>
+                                                <div class="tf-doc-sig-blank-space"></div>
+                                                <div class="tf-doc-sig-printed-name">@(!string.IsNullOrWhiteSpace(thirdParty.Representative) ? thirdParty.Representative : thirdParty.Name)</div>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    @if (IncludeSignatures && (showSignedA || showSignedB) && !string.IsNullOrWhiteSpace(Contract.DocumentHash))
+                                    {
+                                        <div class="tf-doc-hash-verification">
+                                            <strong>Chứng thực chữ ký điện tử &amp; toàn vẹn dữ liệu (SHA-256):</strong>
+                                            <span>@Contract.DocumentHash</span>
+                                        </div>
+                                    }
+                                </section>
+                                break;
+                        }
+                    }
+                </div>
+
+                <!-- Footer chuẩn: Bên trái Mã hợp đồng, Bên phải Trang X / Y, cỡ 9 - 9.5pt -->
+                @if (ShowDocumentFooter)
+                {
+                    <footer class="tf-a4-page-footer">
+                        <span class="tf-a4-footer-left">@Contract.ContractNumber</span>
+                        <span class="tf-a4-footer-right">Trang @pageItem.PageNumber / @pageItem.TotalPages</span>
+                    </footer>
+                }
+            </article>
+        }
+    </div>
+}
+
+<style>
+    .tf-a4-stage-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 24px;
+        width: 100%;
+        padding: 4px 0 16px 0;
+        transition: transform 0.2s ease;
+    }
+
+    .tf-a4-stage-wrapper.tf-a4-scale-fit {
+        transform: scale(0.85);
+        transform-origin: top center;
+        margin-bottom: -10%;
+    }
+
+    .tf-a4-page {
+        width: 210mm;
+        max-width: 100%;
+        min-height: 297mm;
+        padding: 20mm 20mm 18mm 28mm;
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.14), 0 0 0 1px rgba(15, 23, 42, 0.08);
+        border-radius: 2px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        font-family: "Times New Roman", Times, serif !important;
+        font-size: 12.5pt;
+        line-height: 1.22;
+        text-align: justify;
+        position: relative;
+    }
+
+    .tf-a4-page.tf-a4-landscape {
+        width: 297mm !important;
+        min-height: 210mm !important;
+    }
+
+    .tf-a4-page.tf-a4-margin-min {
+        padding: 15mm 15mm 15mm 15mm !important;
+    }
+
+    .tf-a4-page, .tf-a4-page * {
+        font-family: "Times New Roman", Times, serif !important;
+        color: #000000 !important;
+        box-sizing: border-box;
+    }
+
+    .tf-a4-page-body {
+        flex: 1 1 auto;
+    }
+
+    .tf-doc-header-p1 {
+        text-align: center;
+        margin-bottom: 10px;
+    }
+
+    .tf-doc-nat-country {
+        font-size: 12.5pt;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.2pt;
+    }
+
+    .tf-doc-nat-motto {
+        font-size: 13pt;
+        font-weight: 700;
+        margin-top: 2px;
+    }
+
+    .tf-doc-nat-divider {
+        width: 145px;
+        height: 1px;
+        background-color: #000000;
+        margin: 4px auto 6px auto;
+    }
+
+    .tf-doc-place-date {
+        text-align: center;
+        font-size: 12pt;
+        font-style: italic;
+        margin-top: 4px;
+    }
+
+    .tf-doc-title-area {
+        margin-top: 12px;
+        margin-bottom: 8px;
+        text-align: center;
+    }
+
+    .tf-doc-main-title {
+        font-size: 15pt;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin: 0;
+        line-height: 1.25;
+        color: #000000 !important;
+    }
+
+    .tf-doc-contract-no {
+        font-size: 12.5pt;
+        font-weight: 700;
+        margin-top: 3px;
+    }
+
+    .tf-doc-legal-basis {
+        font-size: 12pt;
+        font-style: italic;
+        margin-bottom: 8px;
+    }
+
+    .tf-doc-basis-line {
+        margin-bottom: 2px;
+        text-align: justify;
+    }
+
+    .tf-doc-opening-line {
+        margin: 6px 0;
+        text-align: justify;
+    }
+
+    .tf-doc-party-section {
+        margin-top: 6px;
+        margin-bottom: 6px;
+    }
+
+    .tf-doc-party-heading {
+        font-size: 12.5pt;
+        font-weight: 700;
+        margin-bottom: 2px;
+    }
+
+    .tf-doc-party-row {
+        margin-bottom: 2px;
+        text-align: justify;
+    }
+
+    .tf-doc-party-split {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .tf-doc-transition-line {
+        font-style: italic;
+        margin: 6px 0;
+    }
+
+    .tf-doc-table-wrap {
+        margin: 8px 0 6px 0;
+    }
+
+    .tf-doc-items-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 10.5pt !important;
+        line-height: 1.2;
+    }
+
+    .tf-doc-items-table th,
+    .tf-doc-items-table td {
+        border: 1px solid #1e293b !important;
+        padding: 4px 5px;
+        vertical-align: middle;
+        font-size: 10.5pt !important;
+    }
+
+    .tf-doc-items-table thead th {
+        background-color: #f1f5f9 !important;
+        font-weight: 700;
+        text-align: center;
+    }
+
+    .tf-doc-financial-summary {
+        margin: 6px 0 8px 0;
+        font-size: 12pt;
+    }
+
+    .tf-doc-fin-row {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 2px;
+    }
+
+    .tf-doc-fin-words {
+        margin-top: 2px;
+    }
+
+    .tf-doc-clause-head-first {
+        margin-top: 8px;
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    .tf-doc-clause-title {
+        font-size: 12.5pt;
+        font-weight: 700;
+        margin-bottom: 3px;
+        text-align: left;
+    }
+
+    .tf-doc-para {
+        font-size: 12.5pt;
+        line-height: 1.22;
+        text-align: justify;
+        margin-bottom: 3px;
+    }
+
+    .tf-doc-indent-1 {
+        padding-left: 16px;
+    }
+
+    .tf-doc-indent-2 {
+        padding-left: 28px;
+    }
+
+    .tf-doc-subnum {
+        font-weight: 700;
+    }
+
+    .tf-doc-bullet {
+        font-weight: 600;
+    }
+
+    .tf-doc-closing-copies {
+        margin-top: 8px;
+        text-align: justify;
+    }
+
+    .tf-doc-sig-section {
+        margin-top: 18px;
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    .tf-doc-sig-grid {
+        display: grid;
+        gap: 16px;
+        align-items: start;
+        text-align: center;
+    }
+
+    .tf-doc-sig-grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .tf-doc-sig-grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .tf-doc-sig-col {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .tf-doc-sig-title {
+        font-size: 12.5pt;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .tf-doc-sig-note {
+        font-size: 10pt;
+        font-style: italic;
+        margin-top: 1px;
+    }
+
+    .tf-doc-sig-blank-space {
+        height: 76px;
+    }
+
+    .tf-doc-sig-printed-name {
+        font-size: 12pt;
+        font-weight: 700;
+    }
+
+    .tf-doc-sig-stamp {
+        margin-top: 8px;
+        padding: 6px 10px;
+        border-radius: 3px;
+        min-width: 185px;
+        max-width: 240px;
+    }
+
+    .tf-doc-sig-stamp-a {
+        border: 1px solid #1d4ed8;
+        background-color: #eff6ff !important;
+    }
+
+    .tf-doc-sig-stamp-b {
+        border: 1px solid #15803d;
+        background-color: #f0fdf4 !important;
+    }
+
+    .tf-doc-sig-stamp-badge {
+        font-size: 9.5pt;
+        font-weight: 700;
+        letter-spacing: 0.2pt;
+    }
+
+    .tf-doc-sig-stamp-a .tf-doc-sig-stamp-badge {
+        color: #1e40af !important;
+    }
+
+    .tf-doc-sig-stamp-b .tf-doc-sig-stamp-badge {
+        color: #166534 !important;
+    }
+
+    .tf-doc-sig-img {
+        max-height: 44px;
+        max-width: 150px;
+        object-fit: contain;
+        margin: 4px auto;
+        display: block;
+    }
+
+    .tf-doc-sig-signer {
+        font-size: 11pt;
+        font-weight: 700;
+        margin-top: 2px;
+    }
+
+    .tf-doc-sig-time {
+        font-size: 9.5pt;
+        font-style: italic;
+        color: #334155 !important;
+    }
+
+    .tf-doc-hash-verification {
+        margin-top: 12px;
+        padding: 5px 10px;
+        border: 1px solid #cbd5e1;
+        background-color: #f8fafc !important;
+        font-size: 9.5pt;
+        color: #334155 !important;
+        text-align: left;
+        word-break: break-all;
+    }
+
+    .tf-a4-page-footer {
+        margin-top: 14px;
+        padding-top: 5px;
+        border-top: 0.5px solid #94a3b8;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 9.2pt !important;
+        color: #475569 !important;
+    }
+
+    .tf-a4-footer-left,
+    .tf-a4-footer-right {
+        font-size: 9.2pt !important;
+        color: #475569 !important;
+    }
+</style>
+
+@code {
+    [Parameter] public ContractDto? Contract { get; set; }
+    [Parameter] public bool IncludeSignatures { get; set; } = true;
+    [Parameter] public string ContainerId { get; set; } = "tf-contract-sheet";
+    [Parameter] public string PageRange { get; set; } = "all";
+    [Parameter] public bool IsLandscape { get; set; } = false;
+    [Parameter] public string MarginMode { get; set; } = "default";
+    [Parameter] public bool ShowDocumentFooter { get; set; } = true;
+    [Parameter] public string ScaleMode { get; set; } = "100";
+
+    private static HashSet<int>? ParsePageRange(string? range, int totalPages)
+    {
+        if (string.IsNullOrWhiteSpace(range) || range.Trim().Equals("all", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var result = new HashSet<int>();
+        var parts = range.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var part in parts)
+        {
+            var trimmed = part.Trim();
+            if (trimmed.Contains('-'))
+            {
+                var bounds = trimmed.Split('-');
+                if (bounds.Length == 2 && int.TryParse(bounds[0], out int start) && int.TryParse(bounds[1], out int end))
+                {
+                    for (int i = Math.Max(1, start); i <= Math.Min(totalPages, end); i++)
+                        result.Add(i);
+                }
+            }
+            else if (int.TryParse(trimmed, out int single) && single >= 1 && single <= totalPages)
+            {
+                result.Add(single);
+            }
+        }
+
+        return result.Count > 0 ? result : null;
+    }
+}

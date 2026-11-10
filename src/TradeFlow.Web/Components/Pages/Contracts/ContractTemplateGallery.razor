@@ -248,391 +248,10 @@
         }
     </div>
 
-    <!-- 3. Full-Scale A4 Inspection Modal ("Xem mẫu hợp đồng") -->
-    @if (inspectTemplate != null)
-    {
-        <div class="@(IsEmbeddedInModal ? "tf-inspect-embedded-viewer" : "modal fade show d-block tf-inspect-modal-backdrop")"
-             tabindex="-1"
-             role="dialog"
-             aria-modal="true"
-             aria-labelledby="tf-inspect-title"
-             @onclick="HandleInspectBackdropClick"
-             @onkeydown="HandleInspectKeyDown"
-             @ref="_inspectBackdropRef">
-            <div class="@(IsEmbeddedInModal ? "tf-inspect-embedded-inner" : "modal-dialog modal-dialog-centered modal-xl tf-inspect-modal-dialog")"
-                 @onclick:stopPropagation="true">
-                <div class="@(IsEmbeddedInModal ? "tf-inspect-embedded-content" : "modal-content tf-inspect-modal-content")"
-                     @onclick:stopPropagation="true">
-                    <!-- Modal Header -->
-                    <div class="modal-header tf-inspect-header">
-                        <div class="d-flex align-items-center gap-3 flex-grow-1" style="min-width: 0;">
-                            <div class="tf-inspect-icon flex-shrink-0">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                    <polyline points="14 2 14 8 20 8"/>
-                                    <line x1="16" y1="13" x2="8" y2="13"/>
-                                    <line x1="16" y1="17" x2="8" y2="17"/>
-                                </svg>
-                            </div>
-                            <div style="min-width: 0; flex: 1 1 auto;">
-                                <div class="d-flex align-items-center gap-2 flex-wrap">
-                                    <h5 id="tf-inspect-title" class="modal-title fw-bold text-dark mb-0">@inspectTemplate.Title</h5>
-                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5 small">@inspectTemplate.Category</span>
-                                    <span class="badge bg-secondary-subtle text-secondary border px-2 py-0.5 small">@GetPartyBBadgeText(inspectTemplate.TargetPartyType)</span>
-                                </div>
-                                <div class="text-muted small mt-1 text-truncate" title="@inspectTemplate.LegalBasis">
-                                    Căn cứ pháp lý: @inspectTemplate.LegalBasis
-                                </div>
-                            </div>
-                        </div>
-                        <button type="button"
-                                class="tf-modal-close-btn flex-shrink-0 ms-3"
-                                @onclick="CloseInspectModalAsync"
-                                aria-label="Đóng xem trước (Esc)"
-                                title="Đóng xem trước (Esc)">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <line x1="18" y1="6" x2="6" y2="18"></line>
-                                <line x1="6" y1="6" x2="18" y2="18"></line>
-                            </svg>
-                        </button>
-                    </div>
-
-                    <!-- Document Toolbar (Standard A4, Zoom Controls, Fit Width, Print & PDF, Legal Compliance) -->
-                    <div class="tf-inspect-toolbar">
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 small fw-semibold d-inline-flex align-items-center gap-1.5">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                    <polyline points="14 2 14 8 20 8"></polyline>
-                                </svg>
-                                Khổ A4 (210 × 297 mm)
-                            </span>
-                            <span class="tf-toolbar-sep d-none d-sm-inline-block"></span>
-                            <button type="button"
-                                    class="tf-toolbar-btn @(_isFitWidth ? "is-active" : "")"
-                                    @onclick="ToggleFitWidth"
-                                    title="Vừa chiều ngang">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="4 14 10 14 10 20"></polyline>
-                                    <polyline points="20 10 14 10 14 4"></polyline>
-                                    <line x1="14" y1="10" x2="21" y2="3"></line>
-                                    <line x1="3" y1="21" x2="10" y2="14"></line>
-                                </svg>
-                                <span>Vừa chiều ngang</span>
-                            </button>
-                            <span class="tf-toolbar-sep d-none d-sm-inline-block"></span>
-                            <button type="button"
-                                    class="tf-toolbar-btn @(showCompliancePanel ? "is-active" : "")"
-                                    @onclick="ToggleCompliancePanel"
-                                    title="Xem đánh giá tuân thủ 8 tiêu chí pháp lý">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                                    <polyline points="9 12 11 14 15 10"/>
-                                </svg>
-                                <span>Tuân thủ: @(inspectCompliance?.PassedCount ?? 8)/8 tiêu chuẩn</span>
-                            </button>
-                        </div>
-
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <!-- Zoom Controls -->
-                            <div class="tf-zoom-group">
-                                <button type="button"
-                                        class="tf-zoom-btn"
-                                        @onclick="ZoomOut"
-                                        disabled="@(_zoomLevel <= 60)"
-                                        title="Thu nhỏ (-10%)">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                                    </svg>
-                                </button>
-                                <span class="tf-zoom-level font-monospace" title="Tỷ lệ thu phóng">@($"{_zoomLevel}%")</span>
-                                <button type="button"
-                                        class="tf-zoom-btn"
-                                        @onclick="ZoomIn"
-                                        disabled="@(_zoomLevel >= 150)"
-                                        title="Phóng to (+10%)">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                                    </svg>
-                                </button>
-                                <button type="button"
-                                        class="tf-zoom-btn tf-zoom-reset"
-                                        @onclick="ResetZoom"
-                                        title="Đặt lại 100%">
-                                    100%
-                                </button>
-                            </div>
-
-                            <span class="tf-toolbar-sep d-none d-sm-inline-block"></span>
-
-                            <!-- Print Document -->
-                            <button type="button" class="tf-toolbar-action-btn" @onclick="PrintInspectDocument" title="In trực tiếp tài liệu chuẩn in ấn A4 (Mẹo: Bỏ chọn 'Headers and footers' trong hộp thoại in để tránh chèn URL trình duyệt)">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                                    <rect x="6" y="14" width="12" height="8"></rect>
-                                </svg>
-                                <span>In tài liệu</span>
-                            </button>
-
-                            <!-- Download PDF -->
-                            <button type="button" class="tf-toolbar-action-btn" @onclick="DownloadPdf" title="Tải trực tiếp file PDF chính thức về máy (Không có header/footer trình duyệt)">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                    <polyline points="7 10 12 15 17 10"></polyline>
-                                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                                </svg>
-                                <span>Tải PDF</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Modal Body: High-Resolution Authentic Multi-Page A4 Document -->
-                    <div class="modal-body tf-inspect-body">
-                        @if (showCompliancePanel && inspectCompliance != null)
-                        {
-                            <div class="tf-compliance-panel no-print mb-4">
-                                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="badge bg-success-subtle text-success border border-success px-2.5 py-1 fw-bold fs-7">
-                                            ✔ Hợp chuẩn Pháp lý 100% (@inspectCompliance.PassedCount/8 tiêu chí Đạt)
-                                        </span>
-                                        <span class="small text-muted">BLDS 2015, Luật Thương mại 2005 (Đ301), Luật BVQLNTD 2023 &amp; Luật GDĐT 2023</span>
-                                    </div>
-                                    <button type="button" class="btn btn-sm btn-link text-muted p-0 text-decoration-none" @onclick="ToggleCompliancePanel">✕ Thu gọn</button>
-                                </div>
-                                <div class="row g-2">
-                                    @foreach (var check in inspectCompliance.Items)
-                                    {
-                                        <div class="col-md-6">
-                                            <div class="p-2.5 border rounded bg-white dark:bg-dark small h-100 shadow-2xs">
-                                                <div class="d-flex align-items-center justify-content-between mb-1">
-                                                    <span class="fw-bold text-dark">@check.Title</span>
-                                                    <span class="badge @(check.Status == LegalCheckItemStatus.Passed ? "bg-success-subtle text-success border border-success-subtle" : "bg-warning-subtle text-warning border border-warning-subtle") px-1.5 py-0.5">
-                                                        @(check.Status == LegalCheckItemStatus.Passed ? "Đạt" : "Cảnh báo")
-                                                    </span>
-                                                </div>
-                                                <div class="text-primary small fw-semibold" style="font-size: 0.8rem;">@check.LegalReference</div>
-                                                <div class="text-muted smaller mt-0.5" style="line-height: 1.4;">@check.Details</div>
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        }
-
-                        <div class="tf-inspect-sheet-wrapper @(_isFitWidth ? "is-fit-width" : "")" style="transform: scale(@((double)_zoomLevel / 100.0)); transform-origin: top center;">
-                            <div id="tf-inspect-document-sheet" class="d-flex flex-column align-items-center w-100">
-                                
-                                <!-- PAGE 1 OF MULTI-PAGE CONTRACT -->
-                                <div class="tf-inspect-a4-sheet tf-a4-page tf-a4-page-1" role="document" aria-label="Trang 1 của mẫu hợp đồng" style="font-size: @(inspectTemplate.Code == "B2C_RETAIL" ? "16px" : "14.5px");">
-                                    <!-- National Header (Decree 30/2020/ND-CP Standard Block - PAGE 1 ONLY) -->
-                                    <div class="tf-doc-national-header text-center mb-4" style="display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%;">
-                                        <div class="tf-doc-nat-title fw-bold" style="font-size: 13pt; text-transform: uppercase; letter-spacing: 0.2pt; line-height: 1.25; margin: 0;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
-                                        <div class="tf-doc-nat-motto fw-bold" style="font-size: 13pt; line-height: 1.25; margin-top: 3pt; margin-bottom: 0;">Độc lập - Tự do - Hạnh phúc</div>
-                                        <div class="tf-doc-nat-line" style="width: 140px; height: 1.5px; background-color: #000000; margin: 4pt auto 5pt auto;"></div>
-                                        <div class="tf-doc-nat-date fst-italic" style="font-size: 13pt; line-height: 1.25; margin: 0;">@signingLocation, ngày @DateTime.Now.ToString("dd") tháng @DateTime.Now.ToString("MM") năm @DateTime.Now.ToString("yyyy")</div>
-                                    </div>
-
-                                    <!-- Document Title & Number (PAGE 1 ONLY) -->
-                                    <div class="text-center mb-4">
-                                        <div class="fw-bold fs-5 text-uppercase">@GetTemplateDocTitle(inspectTemplate.Code)</div>
-                                        <div class="fw-semibold">Số: @GetSampleContractNumber(inspectTemplate.Code)</div>
-                                    </div>
-
-                                    <!-- Legal Basis (PAGE 1 ONLY) -->
-                                    <div class="mb-3 fst-italic" style="font-size: 13px;">
-                                        @foreach (var basis in GetLegalBasisLines(inspectTemplate.Code))
-                                        {
-                                            <div>- @basis</div>
-                                        }
-                                    </div>
-
-                                    <div class="mb-3 fst-italic">
-                                        Hôm nay, ngày @DateTime.Now.ToString("dd/MM/yyyy"), tại Showroom Công ty TNHH Thiết bị Vệ sinh LACASA Việt Nam, chúng tôi gồm có:
-                                    </div>
-
-                                    <!-- Party A -->
-                                    <div class="mb-3 tf-doc-party-box">
-                                        <div class="fw-bold text-uppercase mb-1">BÊN A (BÊN BÁN): CÔNG TY TNHH THIẾT BỊ VỆ SINH LACASA VIỆT NAM</div>
-                                        <div>Địa chỉ: Số 123 Đường Nguyễn Văn Cừ, Phường An Khánh, Quận Ninh Kiều, TP. Cần Thơ</div>
-                                        <div>Mã số thuế: 0316899999 | Điện thoại: 0909 123 456 | Email: hopdong@lacasavietnam.vn</div>
-                                        <div>Người đại diện: <strong>Nguyễn Văn An</strong> - Chức vụ: Giám đốc (Người đại diện theo pháp luật)</div>
-                                        <div>Tài khoản ngân hàng: 0071000999888 tại Ngân hàng Ngoại thương Việt Nam (Vietcombank) - CN Cần Thơ</div>
-                                    </div>
-
-                                    <!-- Party B -->
-                                    <div class="mb-3 tf-doc-party-box">
-                                        <div class="fw-bold text-uppercase mb-1">@GetPartyBHeader(inspectTemplate.Code)</div>
-                                        <div>@GetPartyBDetail(inspectTemplate.Code)</div>
-                                    </div>
-
-                                    <div class="mb-3 fst-italic">
-                                        Hai bên cùng thống nhất ký kết hợp đồng theo các điều khoản cụ thể sau đây:
-                                    </div>
-
-                                    <!-- Sample Items Table -->
-                                    @if (HasItemsTable(inspectTemplate.Code))
-                                    {
-                                        <table class="table table-bordered table-sm mb-3 text-center" style="font-size: 13.5px;">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th>STT</th>
-                                                    <th>Tên thiết bị / Hạng mục quy cách</th>
-                                                    <th>ĐVT</th>
-                                                    <th>SL</th>
-                                                    <th>Thành tiền (VNĐ)</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach (var row in GetSampleItems(inspectTemplate.Code))
-                                                {
-                                                    <tr>
-                                                        <td>@row.Stt</td>
-                                                        <td class="text-start">@row.Name</td>
-                                                        <td>@row.Unit</td>
-                                                        <td>@row.Qty</td>
-                                                        <td class="text-end fw-semibold">@row.Total</td>
-                                                    </tr>
-                                                }
-                                            </tbody>
-                                        </table>
-                                    }
-
-                                    <!-- Page 1 Clauses -->
-                                    @foreach (var clause in GetPage1Clauses(inspectTemplate.Code))
-                                    {
-                                        <div class="mb-3 tf-clause-item">
-                                            <div class="fw-bold clause-heading">@clause.Num: @clause.Title</div>
-                                            <div class="clause-paragraph" style="text-align: justify; white-space: pre-line;">@clause.Summary</div>
-                                        </div>
-                                    }
-
-                                    <!-- Page 1 Running Footer -->
-                                    <div class="tf-a4-page-footer">
-                                        <span>Hợp đồng số: @GetSampleContractNumber(inspectTemplate.Code)</span>
-                                        <span>Trang 1 / @GetTotalPages(inspectTemplate.Code)</span>
-                                    </div>
-                                </div>
-
-                                <!-- PAGE 2 (NO REPEATED NATIONAL HEADER, MOTTO OR TITLE) -->
-                                @if (GetTotalPages(inspectTemplate.Code) >= 2)
-                                {
-                                    <div class="tf-a4-page-divider no-print">
-                                        <span class="tf-a4-page-badge">Sang trang 2</span>
-                                    </div>
-
-                                    <div class="tf-inspect-a4-sheet tf-a4-page tf-a4-page-2" role="document" aria-label="Trang 2 của mẫu hợp đồng" style="font-size: @(inspectTemplate.Code == "B2C_RETAIL" ? "16px" : "14.5px");">
-                                        <!-- Page 2 Clauses Continuation -->
-                                        @foreach (var clause in GetPage2Clauses(inspectTemplate.Code))
-                                        {
-                                            <div class="mb-3 tf-clause-item">
-                                                <div class="fw-bold clause-heading">@clause.Num: @clause.Title</div>
-                                                <div class="clause-paragraph" style="text-align: justify; white-space: pre-line;">@clause.Summary</div>
-                                            </div>
-                                        }
-
-                                        @if (GetTotalPages(inspectTemplate.Code) == 2)
-                                        {
-                                            <!-- Signatures Box for 2-page contracts -->
-                                            <div class="row mt-5 pt-4 text-center tf-signature-block" style="break-inside: avoid !important; page-break-inside: avoid !important;">
-                                                <div class="col-6">
-                                                    <div class="fw-bold text-uppercase">@GetPartyASigLabel(inspectTemplate.Code)</div>
-                                                    <div class="fst-italic small mb-2">@GetPartyASigSubLabel(inspectTemplate.Code)</div>
-                                                    <div style="height: 65px;"></div>
-                                                    <div class="fw-bold">Nguyễn Văn An</div>
-                                                    <div class="small text-muted">Giám đốc (Người đại diện pháp luật)</div>
-                                                </div>
-                                                <div class="col-6">
-                                                    <div class="fw-bold text-uppercase">@GetPartyBSigLabel(inspectTemplate.Code)</div>
-                                                    <div class="fst-italic small mb-2">@GetPartyBSigSubLabel(inspectTemplate.Code)</div>
-                                                    <div style="height: 65px;"></div>
-                                                    <div class="fw-bold">@GetPartyBSigName(inspectTemplate.Code)</div>
-                                                    @if (inspectTemplate.Code != "B2C_RETAIL")
-                                                    {
-                                                        <div class="small text-muted">@GetPartyBPosition(inspectTemplate.Code)</div>
-                                                    }
-                                                </div>
-                                            </div>
-                                        }
-
-                                        <!-- Page 2 Running Footer -->
-                                        <div class="tf-a4-page-footer">
-                                            <span>Hợp đồng số: @GetSampleContractNumber(inspectTemplate.Code)</span>
-                                            <span>Trang 2 / @GetTotalPages(inspectTemplate.Code)</span>
-                                        </div>
-                                    </div>
-                                }
-
-                                <!-- PAGE 3 (FOR 3-PAGE CONTRACTS E.G. B2B_SALE) -->
-                                @if (GetTotalPages(inspectTemplate.Code) >= 3)
-                                {
-                                    <div class="tf-a4-page-divider no-print">
-                                        <span class="tf-a4-page-badge">Sang trang 3</span>
-                                    </div>
-
-                                    <div class="tf-inspect-a4-sheet tf-a4-page tf-a4-page-3" role="document" aria-label="Trang 3 của mẫu hợp đồng" style="font-size: @(inspectTemplate.Code == "B2C_RETAIL" ? "16px" : "14.5px");">
-                                        <!-- Page 3 Clauses Continuation -->
-                                        @foreach (var clause in GetPage3Clauses(inspectTemplate.Code))
-                                        {
-                                            <div class="mb-3 tf-clause-item">
-                                                <div class="fw-bold clause-heading">@clause.Num: @clause.Title</div>
-                                                <div class="clause-paragraph" style="text-align: justify; white-space: pre-line;">@clause.Summary</div>
-                                            </div>
-                                        }
-
-                                        <!-- Signatures Box for 3-page contracts -->
-                                        <div class="row mt-5 pt-4 text-center tf-signature-block" style="break-inside: avoid !important; page-break-inside: avoid !important;">
-                                            <div class="col-6">
-                                                <div class="fw-bold text-uppercase">@GetPartyASigLabel(inspectTemplate.Code)</div>
-                                                <div class="fst-italic small mb-2">@GetPartyASigSubLabel(inspectTemplate.Code)</div>
-                                                <div style="height: 65px;"></div>
-                                                <div class="fw-bold">Nguyễn Văn An</div>
-                                                <div class="small text-muted">Giám đốc (Người đại diện pháp luật)</div>
-                                            </div>
-                                            <div class="col-6">
-                                                <div class="fw-bold text-uppercase">@GetPartyBSigLabel(inspectTemplate.Code)</div>
-                                                <div class="fst-italic small mb-2">@GetPartyBSigSubLabel(inspectTemplate.Code)</div>
-                                                <div style="height: 65px;"></div>
-                                                <div class="fw-bold">@GetPartyBSigName(inspectTemplate.Code)</div>
-                                                @if (inspectTemplate.Code != "B2C_RETAIL")
-                                                {
-                                                    <div class="small text-muted">@GetPartyBPosition(inspectTemplate.Code)</div>
-                                                }
-                                            </div>
-                                        </div>
-
-                                        <!-- Page 3 Running Footer -->
-                                        <div class="tf-a4-page-footer">
-                                            <span>Hợp đồng số: @GetSampleContractNumber(inspectTemplate.Code)</span>
-                                            <span>Trang 3 / 3</span>
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Single Clean Modal Footer -->
-                    <div class="modal-footer tf-inspect-footer">
-                        <div class="text-muted small me-auto d-none d-md-block">
-                            <span>Văn bản mẫu chuẩn A4, phông Times New Roman theo thể thức NĐ 30/2020/NĐ-CP và BLDS 2015.</span>
-                        </div>
-                        <button type="button" class="tf-btn tf-btn-secondary" @onclick="CloseInspectModalAsync">
-                            Đóng xem trước
-                        </button>
-                        <button type="button" class="tf-btn tf-btn-primary d-inline-flex align-items-center gap-1.5" @onclick="() => HandleSelectTemplate(inspectTemplate)">
-                            <span>Soạn hợp đồng từ mẫu này</span>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                <line x1="5" y1="12" x2="19" y2="12"/>
-                                <polyline points="12 5 19 12 12 19"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
+    <!-- 3. Unified In-Place Google Chrome Print Preview Modal -->
+    <ContractPreviewModal IsOpen="@isPreviewModalOpen"
+                          IsOpenChanged="@((bool open) => { isPreviewModalOpen = open; if (!open) { previewModalContract = null; inspectTemplate = null; } })"
+                          Contract="@previewModalContract" />
 </div>
 
 @code {
@@ -774,9 +393,11 @@
 
     private async Task PrintInspectDocument()
     {
+        if (inspectTemplate == null) return;
         try
         {
-            await JS.InvokeVoidAsync("tradeflow.printDocument", "tf-inspect-document-sheet", inspectTemplate?.Title ?? "Mau_Hop_Dong");
+            var pdfUrl = $"/api/contracts/templates/{inspectTemplate.Code}/export-pdf?inline=true";
+            await JS.InvokeVoidAsync("tradeflow.printPdfUrl", pdfUrl);
         }
         catch { }
     }
@@ -855,52 +476,95 @@
         );
     }
 
+    private ContractDto? previewModalContract;
+    private bool isPreviewModalOpen = false;
+
+    private ContractDto BuildSampleContractDto(ContractTemplateDto t)
+    {
+        var clausesList = GetFullClauses(t.Code)
+            .Select(c => new ContractClauseDto
+            {
+                ClauseNumber = c.Num,
+                Title = c.Title,
+                Content = c.Summary
+            }).ToList();
+
+        var sampleItems = GetSampleItems(t.Code)
+            .Select(it => new ContractItemDto
+            {
+                ProductName = it.Name,
+                Unit = it.Unit,
+                Quantity = decimal.TryParse(it.Qty, out var q) ? q : 1,
+                UnitPrice = 15_000_000m,
+                LineTotal = 15_000_000m * (decimal.TryParse(it.Qty, out var q2) ? q2 : 1)
+            }).ToList();
+
+        decimal subtotal = sampleItems.Sum(it => it.LineTotal);
+        decimal vat = subtotal * 0.10m;
+        decimal total = subtotal + vat;
+
+        return new ContractDto
+        {
+            Id = 0,
+            ContractNumber = GetSampleContractNumber(t.Code),
+            Title = GetTemplateDocTitle(t.Code),
+            TemplateCode = t.Code,
+            Status = ContractStatus.Draft,
+            ContractDate = DateTime.Today,
+            ContractPlace = signingLocation,
+            PartyBType = t.TargetPartyType ?? (t.Code == "B2C_RETAIL" ? ContractPartyBType.Individual : ContractPartyBType.Company),
+            PartyAName = "CÔNG TY TNHH THIẾT BỊ VỆ SINH LACASA VIỆT NAM",
+            PartyATaxCode = "0316899999",
+            PartyAAddress = "123 Nguyễn Văn Cừ, P. An Khánh, Q. Ninh Kiều, TP. Cần Thơ",
+            PartyARepresentative = "Nguyễn Văn An",
+            PartyAPosition = "Giám đốc",
+            PartyAAuthority = "Người đại diện theo pháp luật",
+            PartyAPhone = "0292.3888.999",
+            PartyAEmail = "contact@lacasa.vn",
+            PartyABankName = "Ngân hàng TMCP Ngoại thương Việt Nam (Vietcombank) - CN Cần Thơ",
+            PartyABankAccount = "0111000888999",
+            PartyBName = t.Code == "B2C_RETAIL" ? "Nguyễn Hoàng Long" : "CÔNG TY CP ĐẦU TƯ XÂY DỰNG MINH ĐỨC",
+            PartyBTaxCode = t.Code == "B2C_RETAIL" ? "" : "0108998877",
+            PartyBIdCardNumber = t.Code == "B2C_RETAIL" ? "079085012345" : "",
+            PartyBIdCardDate = t.Code == "B2C_RETAIL" ? "12/05/2021" : "",
+            PartyBIdCardPlace = t.Code == "B2C_RETAIL" ? "Cục CSQLHC về TTXH" : "",
+            PartyBAddress = t.Code == "B2C_RETAIL" ? "Biệt thự BT-12, KĐT Nam Cần Thơ, TP. Cần Thơ" : "Số 45, Đường 30/4, P. An Phú, Q. Ninh Kiều, TP. Cần Thơ",
+            PartyBRepresentative = t.Code == "B2C_RETAIL" ? "Nguyễn Hoàng Long" : "Trần Minh Đức",
+            PartyBPosition = t.Code == "B2C_RETAIL" ? "" : "Tổng Giám đốc",
+            PartyBAuthority = t.Code == "B2C_RETAIL" ? "" : "Người đại diện theo pháp luật",
+            PartyBPhone = "0912.345.678",
+            PartyBEmail = "khachhang@tradeflow.vn",
+            SubTotal = subtotal,
+            TaxAmount = vat,
+            TotalAmount = total,
+            AmountInWords = "Năm mươi triệu đồng chẵn",
+            Items = sampleItems,
+            Clauses = clausesList,
+            ExecutionMethod = ContractExecutionMethod.Both
+        };
+    }
+
     private async Task OpenPreviewModal(ContractTemplateDto t, string? triggerId = null)
     {
         _lastInspectTriggerId = triggerId;
         inspectTemplate = t;
-        _zoomLevel = 100;
-        _isFitWidth = false;
-        showCompliancePanel = false;
-        UpdateInspectCompliance();
+        previewModalContract = BuildSampleContractDto(t);
+        isPreviewModalOpen = true;
 
         if (OnInspectChanged.HasDelegate)
         {
             await OnInspectChanged.InvokeAsync(inspectTemplate);
         }
-        try
-        {
-            await JS.InvokeVoidAsync("TradeFlowMotion.lockScroll");
-        }
-        catch { }
     }
 
     private async Task CloseInspectModalAsync()
     {
-        if (inspectTemplate != null)
+        inspectTemplate = null;
+        previewModalContract = null;
+        isPreviewModalOpen = false;
+        if (OnInspectChanged.HasDelegate)
         {
-            inspectTemplate = null;
-            _wasInspectOpen = false;
-            _zoomLevel = 100;
-            _isFitWidth = false;
-            if (OnInspectChanged.HasDelegate)
-            {
-                await OnInspectChanged.InvokeAsync(null);
-            }
-            try
-            {
-                await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll");
-            }
-            catch { }
-
-            if (!string.IsNullOrEmpty(_lastInspectTriggerId))
-            {
-                try
-                {
-                    await JS.InvokeVoidAsync("TradeFlowMotion.restoreFocus", $"#{_lastInspectTriggerId}");
-                }
-                catch { }
-            }
+            await OnInspectChanged.InvokeAsync(null);
         }
     }
 

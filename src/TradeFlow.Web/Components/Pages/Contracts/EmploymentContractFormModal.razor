@@ -591,9 +591,9 @@
                                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                             <polyline points="14 2 14 8 20 8"></polyline>
                                         </svg>
-                                        Khổ giấy chuẩn A4 (210 x 297 mm) — 3 Trang
+                                        Khổ giấy chuẩn A4 (210 × 297 mm) — Bản chưa ký
                                     </span>
-                                    <span class="text-muted smaller d-none d-md-inline">Xem trước văn bản đa trang, ngắt trang độc lập</span>
+                                    <span class="text-muted smaller d-none d-md-inline">Xem trước văn bản đa trang chuẩn A4, ngắt trang tự động</span>
                                 </div>
                                 <div class="d-flex align-items-center gap-1.5">
                                     <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2 rounded-2" @onclick="ZoomOut" title="Thu nhỏ (-10%)" disabled="@(_previewZoom <= 0.8)">
@@ -625,170 +625,9 @@
 
                             <div class="tf-preview-viewport-scroll">
                                 <div class="tf-preview-zoom-wrapper" style="transform: scale(@_previewZoom); transform-origin: top center;">
-                                    <div class="d-flex flex-column align-items-center w-100" id="print-employment-contract" style="max-width: 820px; margin: 0 auto;">
-                                        
-                                        <!-- PAGE 1 OF EMPLOYMENT CONTRACT -->
-                                        <div class="tf-a4-preview-canvas tf-printable-contract-canvas tf-a4-page tf-a4-page-1 mb-4 bg-white shadow-sm"
-                                             style="width: 100%; max-width: 210mm; min-height: 297mm; font-family: 'Times New Roman', Times, serif; font-size: 13pt; line-height: 1.25; color: #000000; padding: 15mm 20mm 15mm 30mm; box-sizing: border-box; text-align: justify; display: flex; flex-direction: column;">
-                                            
-                                            <!-- National Header (PAGE 1 ONLY) -->
-                                            <div class="tf-doc-national-header text-center mb-2" style="display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%;">
-                                                <div class="tf-doc-nat-title fw-bold" style="font-size: 13pt; text-transform: uppercase; letter-spacing: 0.2pt; line-height: 1.25; margin: 0;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
-                                                <div class="tf-doc-nat-motto fw-bold" style="font-size: 13pt; line-height: 1.25; margin-top: 3pt; margin-bottom: 0;">Độc lập - Tự do - Hạnh phúc</div>
-                                                <div class="tf-doc-nat-line" style="width: 140px; height: 1.5px; background-color: #000000; margin: 4pt auto 5pt auto;"></div>
-                                                <div class="tf-doc-nat-date fst-italic" style="font-size: 13pt; line-height: 1.25; margin: 0;">
-                                                    @(string.IsNullOrWhiteSpace(model.ContractPlace) ? GetDefaultCity() : model.ContractPlace), ngày @model.ContractDate.ToString("dd") tháng @model.ContractDate.ToString("MM") năm @model.ContractDate.ToString("yyyy")
-                                                </div>
-                                            </div>
-
-                                            <div class="text-center my-2">
-                                                <div class="fw-bold text-uppercase mb-1" style="font-size: 15pt; letter-spacing: 0.5px;">@model.Title</div>
-                                                <div class="fw-bold" style="font-size: 12.5pt;">Số: @(string.IsNullOrEmpty(ContractNumber) ? "HDLD-2026-DRAFT (Dự thảo)" : ContractNumber)</div>
-                                                <div class="fst-italic text-muted small mt-1">(Quy chuẩn Bộ luật Lao động - Văn bản hợp nhất số 18/VBHN-VPQH ngày 12/02/2026)</div>
-                                            </div>
-
-                                            <!-- Parties Preview -->
-                                            <div class="mb-3">
-                                                <div class="fw-bold text-uppercase" style="font-size: 13pt;">BÊN A - NGƯỜI SỬ DỤNG LAO ĐỘNG:</div>
-                                                <div class="ps-3 mt-1">
-                                                    <div><strong>Tên doanh nghiệp:</strong> @(!string.IsNullOrWhiteSpace(model.EmployerName) ? model.EmployerName : (partyASettings?.CompanyName ?? "CÔNG TY TNHH THIẾT BỊ VỆ SINH LACASA VIỆT NAM"))</div>
-                                                    <div><strong>Mã số doanh nghiệp / MST:</strong> @(!string.IsNullOrWhiteSpace(model.EmployerTaxCode) ? model.EmployerTaxCode : (partyASettings?.TaxCode ?? "0316899999"))</div>
-                                                    <div><strong>Địa chỉ trụ sở chính:</strong> @(!string.IsNullOrWhiteSpace(model.EmployerAddress) ? model.EmployerAddress : (partyASettings?.RegisteredAddress ?? "Số 123 Đường Nguyễn Văn Cừ, Phường An Khánh, Quận Ninh Kiều, TP. Cần Thơ"))</div>
-                                                    <div>
-                                                        <strong>Người đại diện:</strong> @GetEmployerRepName()
-                                                        <span class="ms-3"><strong>Chức vụ:</strong> @GetEmployerRepPosition()</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="mb-3">
-                                                <div class="fw-bold text-uppercase" style="font-size: 13pt;">BÊN B - NGƯỜI LAO ĐỘNG:</div>
-                                                <div class="ps-3 mt-1">
-                                                    <div>
-                                                        <strong>Họ và tên:</strong> <span class="text-uppercase fw-bold">@GetEmployeeName()</span>
-                                                        <span class="ms-3"><strong>Mã nhân viên:</strong> @GetEmployeeCode()</span>
-                                                    </div>
-                                                    <div>
-                                                        <strong>Ngày sinh:</strong> @GetEmployeeDob()
-                                                        <span class="ms-3"><strong>Giới tính:</strong> @GetEmployeeGender()</span>
-                                                        <span class="ms-3"><strong>Quốc tịch:</strong> Việt Nam</span>
-                                                    </div>
-                                                    <div><strong>Số CCCD / Hộ chiếu:</strong> @GetEmployeeNationalId()</div>
-                                                    <div><strong>Địa chỉ nơi cư trú:</strong> @GetEmployeeAddress()</div>
-                                                    <div>
-                                                        <strong>Điện thoại:</strong> @GetEmployeePhone()
-                                                        <span class="ms-3"><strong>Email:</strong> @GetEmployeeEmail()</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="fst-italic my-2">Hai bên thống nhất thỏa thuận giao kết hợp đồng với các điều khoản và điều kiện sau đây:</div>
-
-                                            <!-- Page 1 Clauses (Articles 1-2) -->
-                                            @foreach (var clause in GetEmpFormClausesPage1())
-                                            {
-                                                <div class="mb-3">
-                                                    <div class="clause-heading fw-bold" style="break-after: avoid-page !important; page-break-after: avoid !important;">@clause.ArticleNumber. @clause.Title</div>
-                                                    <div class="ps-3 mt-1" style="white-space: pre-line;">@clause.Content</div>
-                                                </div>
-                                            }
-
-                                            <!-- Page 1 Running Footer (Pinned at Bottom) -->
-                                            <div class="tf-a4-page-footer d-flex justify-content-between text-muted border-top pt-2 mt-auto" style="font-size: 9pt;">
-                                                <span>@GetContractPrefixText()</span>
-                                                <span>Trang 1 / 3</span>
-                                            </div>
-                                        </div>
-
-                                        <!-- PAGE 2 OF EMPLOYMENT CONTRACT -->
-                                        <div class="tf-a4-page-divider no-print">
-                                            <span class="tf-a4-page-badge">Sang trang 2</span>
-                                        </div>
-
-                                        <div class="tf-a4-preview-canvas tf-printable-contract-canvas tf-a4-page tf-a4-page-2 mb-4 bg-white shadow-sm"
-                                             style="width: 100%; max-width: 210mm; min-height: 297mm; font-family: 'Times New Roman', Times, serif; font-size: 13pt; line-height: 1.25; color: #000000; padding: 15mm 20mm 15mm 30mm; box-sizing: border-box; text-align: justify; display: flex; flex-direction: column;">
-                                            
-                                            <!-- Page 2 Clauses Continuation (Articles 3-6) -->
-                                            @foreach (var clause in GetEmpFormClausesPage2())
-                                            {
-                                                <div class="mb-3">
-                                                    <div class="clause-heading fw-bold" style="break-after: avoid-page !important; page-break-after: avoid !important;">@clause.ArticleNumber. @clause.Title</div>
-                                                    <div class="ps-3 mt-1" style="white-space: pre-line;">@clause.Content</div>
-                                                </div>
-                                            }
-
-                                            <!-- Page 2 Running Footer (Pinned at Bottom) -->
-                                            <div class="tf-a4-page-footer d-flex justify-content-between text-muted border-top pt-2 mt-auto" style="font-size: 9pt;">
-                                                <span>@GetContractPrefixText()</span>
-                                                <span>Trang 2 / 3</span>
-                                            </div>
-                                        </div>
-
-                                        <!-- PAGE 3 OF EMPLOYMENT CONTRACT -->
-                                        <div class="tf-a4-page-divider no-print">
-                                            <span class="tf-a4-page-badge">Sang trang 3</span>
-                                        </div>
-
-                                        <div class="tf-a4-preview-canvas tf-printable-contract-canvas tf-a4-page tf-a4-page-3 mb-4 bg-white shadow-sm"
-                                             style="width: 100%; max-width: 210mm; min-height: 297mm; font-family: 'Times New Roman', Times, serif; font-size: 13pt; line-height: 1.25; color: #000000; padding: 15mm 20mm 15mm 30mm; box-sizing: border-box; text-align: justify; display: flex; flex-direction: column;">
-                                            
-                                            <!-- Page 3 Clauses Continuation (Articles 7-10) -->
-                                            @foreach (var clause in GetEmpFormClausesPage3())
-                                            {
-                                                <div class="mb-3">
-                                                    <div class="clause-heading fw-bold" style="break-after: avoid-page !important; page-break-after: avoid !important;">@clause.ArticleNumber. @clause.Title</div>
-                                                    <div class="ps-3 mt-1" style="white-space: pre-line;">@clause.Content</div>
-                                                </div>
-                                            }
-
-                                            <!-- Signatures block preview (Balanced 50%-50%, Non-split) -->
-                                            <div class="row pt-2 mt-auto border-top tf-signature-block" style="break-inside: avoid !important; page-break-inside: avoid !important;">
-                                                <div class="col-6 text-center">
-                                                    <div class="fw-bold text-uppercase" style="font-size: 13pt;">NGƯỜI LAO ĐỘNG</div>
-                                                    <div class="fst-italic smaller text-muted">(Ký và ghi rõ họ tên)</div>
-                                                    <div style="height: 48px;" class="d-flex align-items-center justify-content-center">
-                                                        @if (existingContract?.EmployeeSignedAt.HasValue == true)
-                                                        {
-                                                            <div class="border border-success bg-success-subtle px-3 py-1.5 rounded text-success text-center">
-                                                                <div class="fw-bold small">[ĐÃ KÝ ĐIỆN TỬ]</div>
-                                                                <div class="text-muted" style="font-size: 9.5px;">@existingContract.EmployeeSignedAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
-                                                            </div>
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="text-muted fst-italic smaller">(Chưa ký)</span>
-                                                        }
-                                                    </div>
-                                                    <div class="fw-bold text-uppercase" style="font-size: 12.5pt;">@GetEmployeeName()</div>
-                                                </div>
-                                                <div class="col-6 text-center">
-                                                    <div class="fw-bold text-uppercase" style="font-size: 13pt;">BÊN SỬ DỤNG LAO ĐỘNG</div>
-                                                    <div class="fst-italic smaller text-muted">(Ký, ghi rõ họ tên và đóng dấu)</div>
-                                                    <div style="height: 48px;" class="d-flex align-items-center justify-content-center">
-                                                        @if (existingContract?.EmployerSignedAt.HasValue == true)
-                                                        {
-                                                            <div class="border border-primary bg-primary-subtle px-3 py-1.5 rounded text-primary text-center">
-                                                                <div class="fw-bold small">[ĐÃ KÝ ĐIỆN TỬ &amp; ĐÓNG DẤU]</div>
-                                                                <div class="text-muted" style="font-size: 9.5px;">@existingContract.EmployerSignedAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
-                                                            </div>
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="text-muted fst-italic smaller">(Chờ ký và đóng dấu)</span>
-                                                        }
-                                                    </div>
-                                                    <div class="fw-bold text-uppercase" style="font-size: 12.5pt;">@GetEmployerRepName()</div>
-                                                    <div class="fst-italic smaller text-muted">@GetEmployerRepPosition()</div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Page 3 Running Footer (Pinned at Bottom) -->
-                                            <div class="tf-a4-page-footer d-flex justify-content-between text-muted border-top pt-2 mt-auto" style="font-size: 9pt;">
-                                                <span>@GetContractPrefixText()</span>
-                                                <span>Trang 3 / 3</span>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <EmploymentContractA4DocumentView Contract="@BuildDraftDto()"
+                                                                      IncludeSignatures="false"
+                                                                      ContainerId="print-employment-contract" />
                                 </div>
                             </div>
                         </div>
@@ -1025,7 +864,15 @@
     {
         try
         {
-            await JS.InvokeVoidAsync("tradeflow.printDocument", "print-employment-contract", $"Hop_Dong_Lao_Dong_{(string.IsNullOrWhiteSpace(ContractNumber) ? "HDLD-2026-DRAFT" : ContractNumber.Trim())}");
+            if ((EditContractId ?? 0) > 0)
+            {
+                await JS.InvokeVoidAsync("tradeflow.printPdfUrl", $"/api/contracts/employment/{EditContractId.Value}/export-pdf?version=unsigned&inline=true");
+            }
+            else
+            {
+                var dto = BuildDraftDto();
+                await JS.InvokeVoidAsync("tradeflow.printPdfFromPost", "/api/contracts/employment/export-draft-pdf?version=unsigned", dto);
+            }
         }
         catch { }
     }

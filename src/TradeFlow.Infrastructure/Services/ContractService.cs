@@ -54,8 +54,8 @@ public class ContractService : IContractService
                 TaxCode = "0316899999",
                 RegisteredAddress = "Số 123 Đường Nguyễn Văn Cừ, Phường An Khánh, Quận Ninh Kiều, TP. Cần Thơ",
                 ContactAddress = "Số 123 Đường Nguyễn Văn Cừ, Phường An Khánh, Quận Ninh Kiều, TP. Cần Thơ",
-                RepresentativeName = "Nguyễn Văn An",
-                RepresentativePosition = "Giám đốc",
+                RepresentativeName = "Trần Thị Mai Phương",
+                RepresentativePosition = "Chủ tịch Hội đồng thành viên",
                 RepresentativeAuthority = "Người đại diện theo pháp luật",
                 Phone = "0909 123 456",
                 Email = "hopdong@lacasavietnam.vn",
@@ -692,14 +692,17 @@ public class ContractService : IContractService
         return MapContractToDto(contract);
     }
 
-    public async Task<byte[]> GenerateContractPdfAsync(int id, CancellationToken cancellationToken = default)
+    public Task<byte[]> GenerateContractPdfAsync(int id, CancellationToken cancellationToken = default)
+        => GenerateContractPdfAsync(id, includeSignatures: true, cancellationToken);
+
+    public async Task<byte[]> GenerateContractPdfAsync(int id, bool includeSignatures, CancellationToken cancellationToken = default)
     {
         var contract = await GetContractByIdAsync(id, cancellationToken);
         if (contract == null)
             throw new KeyNotFoundException($"Không tìm thấy hợp đồng ID {id}");
 
         var partyASettings = await GetPartyASettingsAsync(cancellationToken);
-        return _pdfService.GeneratePdf(contract, partyASettings);
+        return _pdfService.GeneratePdf(contract, partyASettings, includeSignatures);
     }
 
     // ==========================================

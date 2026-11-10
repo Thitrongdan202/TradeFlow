@@ -171,38 +171,65 @@ app.MapGet("/api/quotations/{id:int}/export-pdf", async (int id, IQuotationServi
     return Results.File(bytes, "application/pdf", $"BaoGia_{quotation.Code}.pdf");
 }).RequireAuthorization("Permission:Quotations:View");
 
-app.MapGet("/api/contracts/{id:int}/export-pdf", async (int id, IContractService contractService) =>
+app.MapGet("/api/contracts/{id:int}/export-pdf", async (int id, string? version, bool? inline, HttpContext httpContext, IContractService contractService) =>
 {
     var contract = await contractService.GetContractByIdAsync(id);
     if (contract == null) return Results.NotFound();
-    var bytes = await contractService.GenerateContractPdfAsync(id);
+
+    bool includeSignatures = !string.Equals(version, "unsigned", StringComparison.OrdinalIgnoreCase);
+    var bytes = await contractService.GenerateContractPdfAsync(id, includeSignatures);
+
     var rawNumber = string.IsNullOrWhiteSpace(contract.ContractNumber) ? $"HD-{id}" : contract.ContractNumber.Trim();
     var safeCode = string.Concat(rawNumber.Split(System.IO.Path.GetInvalidFileNameChars())).Replace(" ", "_");
-    var fileName = $"Hop_dong_{safeCode}.pdf";
+    var suffix = string.Equals(version, "unsigned", StringComparison.OrdinalIgnoreCase)
+        ? "_Ban_chua_ky"
+        : (string.Equals(version, "signed", StringComparison.OrdinalIgnoreCase) ? "_Ban_da_ky_so" : string.Empty);
+    var fileName = $"Hop_dong_{safeCode}{suffix}.pdf";
+
+    if (inline == true)
+    {
+        httpContext.Response.Headers["Content-Disposition"] = $"inline; filename=\"{fileName}\"";
+        return Results.File(bytes, "application/pdf");
+    }
+
     return Results.File(bytes, "application/pdf", fileName);
 }).RequireAuthorization("Permission:Contracts:View");
 
-app.MapPost("/api/contracts/employment/export-draft-pdf", (TradeFlow.Application.Common.Models.Contracts.EmploymentContractDto dto, IEmploymentContractService employmentContractService) =>
+app.MapPost("/api/contracts/employment/export-draft-pdf", (TradeFlow.Application.Common.Models.Contracts.EmploymentContractDto dto, string? version, IEmploymentContractService employmentContractService) =>
 {
-    var bytes = employmentContractService.GeneratePdfFromDto(dto);
+    bool includeSignatures = !string.Equals(version, "unsigned", StringComparison.OrdinalIgnoreCase);
+    var bytes = employmentContractService.GeneratePdfFromDto(dto, includeSignatures);
     var rawNumber = string.IsNullOrWhiteSpace(dto.ContractNumber) ? "HDLD-DRAFT" : dto.ContractNumber.Trim();
     var safeCode = string.Concat(rawNumber.Split(System.IO.Path.GetInvalidFileNameChars())).Replace(" ", "_");
     var fileName = $"Hop_dong_lao_dong_{safeCode}.pdf";
     return Results.File(bytes, "application/pdf", fileName);
 }).RequireAuthorization("Permission:EmploymentContracts:View");
 
-app.MapGet("/api/contracts/employment/{id:int}/export-pdf", async (int id, IEmploymentContractService employmentContractService) =>
+app.MapGet("/api/contracts/employment/{id:int}/export-pdf", async (int id, string? version, bool? inline, HttpContext httpContext, IEmploymentContractService employmentContractService) =>
 {
     var contract = await employmentContractService.GetContractByIdAsync(id, canViewSensitiveData: true);
     if (contract == null) return Results.NotFound();
-    var bytes = await employmentContractService.GeneratePdfAsync(id);
+
+    bool includeSignatures = !string.Equals(version, "unsigned", StringComparison.OrdinalIgnoreCase);
+    var bytes = await employmentContractService.GeneratePdfAsync(id, includeSignatures);
+
     var rawNumber = string.IsNullOrWhiteSpace(contract.ContractNumber) ? $"HDLD-{id}" : contract.ContractNumber.Trim();
     var safeCode = string.Concat(rawNumber.Split(System.IO.Path.GetInvalidFileNameChars())).Replace(" ", "_");
-    var fileName = $"Hop_dong_lao_dong_{safeCode}.pdf";
+    var suffix = string.Equals(version, "unsigned", StringComparison.OrdinalIgnoreCase)
+        ? "_Ban_chua_ky"
+        : (string.Equals(version, "signed", StringComparison.OrdinalIgnoreCase) ? "_Ban_da_ky_so" : string.Empty);
+    var fileName = $"Hop_dong_lao_dong_{safeCode}{suffix}.pdf";
+
+    if (inline == true)
+    {
+        httpContext.Response.Headers["Content-Disposition"] = $"inline; filename=\"{fileName}\"";
+        return Results.File(bytes, "application/pdf");
+    }
+
     return Results.File(bytes, "application/pdf", fileName);
 }).RequireAuthorization("Permission:EmploymentContracts:View");
 
-app.MapGet("/api/contracts/templates/{code}/export-pdf", async (string code, IContractService contractService, IEmploymentContractService empService) =>
+app.MapGet("/api/contracts/templates/{code}/export-pdf", async (string code, bool? inline, HttpContext httpContext, IContractService contractService, IContractPdfService pdfService, IEmploymentContractService empService) =>
 {
     var safeCode = string.Concat(code.Split(System.IO.Path.GetInvalidFileNameChars())).Replace(" ", "_");
     if (code.Equals("LABOR_CONTRACT", StringComparison.OrdinalIgnoreCase) || code.StartsWith("LABOR_", StringComparison.OrdinalIgnoreCase))
@@ -210,22 +237,65 @@ app.MapGet("/api/contracts/templates/{code}/export-pdf", async (string code, ICo
         var empContracts = await empService.GetContractsAsync(new TradeFlow.Application.Common.Models.Contracts.EmploymentContractFilterDto());
         if (empContracts.Any())
         {
-            var bytes = await empService.GeneratePdfAsync(empContracts.First().Id);
-            return Results.File(bytes, "application/pdf", $"Mau_hop_dong_lao_dong_{safeCode}.pdf");
+            var bytes = await empService.GeneratePdfAsync(empContracts.First().Id, includeSignatures: false);
+            var fileName = $"Mau_hop_dong_lao_dong_{safeCode}.pdf";
+            if (inline == true)
+            {
+                httpContext.Response.Headers["Content-Disposition"] = $"inline; filename=\"{fileName}\"";
+                return Results.File(bytes, "application/pdf");
+            }
+            return Results.File(bytes, "application/pdf", fileName);
         }
     }
     else
     {
+        var tpl = await contractService.GetTemplateByCodeAsync(code);
+        var partyA = await contractService.GetPartyASettingsAsync();
+        if (tpl != null)
+        {
+            var sampleDto = new TradeFlow.Application.Common.Models.Contracts.ContractDto
+            {
+                ContractNumber = $"HĐ-MẪU/{DateTime.UtcNow.Year}/{tpl.Code}",
+                Title = tpl.Title,
+                TemplateCode = tpl.Code,
+                ContractDate = DateTime.UtcNow,
+                ContractPlace = partyA.DefaultSigningLocation ?? "TP. Cần Thơ",
+                PartyBType = tpl.TargetPartyType ?? ContractPartyBType.Company,
+                PartyAName = partyA.CompanyName,
+                PartyATaxCode = partyA.TaxCode,
+                PartyAAddress = partyA.RegisteredAddress,
+                PartyARepresentative = partyA.RepresentativeName,
+                PartyAPosition = partyA.RepresentativePosition,
+                PartyAAuthority = partyA.RepresentativeAuthority,
+                PartyAPhone = partyA.Phone,
+                PartyABankName = partyA.BankName,
+                PartyABankAccount = partyA.BankAccount,
+                PartyABankBranch = partyA.BankBranch,
+                PartyBName = tpl.TargetPartyType == ContractPartyBType.Individual
+                    ? "Ông/Bà: ................................................................"
+                    : "CÔNG TY / ĐỐI TÁC: ................................................",
+                PartyBTaxCode = tpl.TargetPartyType == ContractPartyBType.Individual ? null : "................................",
+                PartyBIdCardNumber = tpl.TargetPartyType == ContractPartyBType.Individual ? "................................" : null,
+                PartyBAddress = "........................................................................................",
+                PartyBPhone = "................................",
+                PartyBRepresentative = tpl.TargetPartyType == ContractPartyBType.Individual ? null : "................................",
+                PartyBPosition = tpl.TargetPartyType == ContractPartyBType.Individual ? null : "Giám đốc",
+                Clauses = tpl.Clauses
+            };
+            var bytes = pdfService.GeneratePdf(sampleDto, partyA, includeSignatures: false);
+            var fileName = $"Mau_hop_dong_{safeCode}.pdf";
+            if (inline == true)
+            {
+                httpContext.Response.Headers["Content-Disposition"] = $"inline; filename=\"{fileName}\"";
+                return Results.File(bytes, "application/pdf");
+            }
+            return Results.File(bytes, "application/pdf", fileName);
+        }
+
         var contracts = await contractService.GetContractsAsync(new TradeFlow.Application.Common.Models.Contracts.ContractFilterDto { TemplateCode = code });
         if (contracts.Any())
         {
-            var bytes = await contractService.GenerateContractPdfAsync(contracts.First().Id);
-            return Results.File(bytes, "application/pdf", $"Mau_hop_dong_{safeCode}.pdf");
-        }
-        var allContracts = await contractService.GetContractsAsync(null);
-        if (allContracts.Any())
-        {
-            var bytes = await contractService.GenerateContractPdfAsync(allContracts.First().Id);
+            var bytes = await contractService.GenerateContractPdfAsync(contracts.First().Id, includeSignatures: false);
             return Results.File(bytes, "application/pdf", $"Mau_hop_dong_{safeCode}.pdf");
         }
     }

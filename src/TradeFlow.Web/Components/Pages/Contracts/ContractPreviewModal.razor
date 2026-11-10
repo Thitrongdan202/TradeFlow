@@ -1,0 +1,870 @@
+@using TradeFlow.Application.Common.Helpers
+@using TradeFlow.Application.Common.Models.Contracts
+@using TradeFlow.Domain.Enums
+@inject IJSRuntime JS
+
+@if (IsOpen && Contract != null)
+{
+    var isSignedContract = Contract.IsDigitallySigned;
+    var canExportCurrentVersion = SelectedVersion == "unsigned" || isSignedContract;
+    var isB2C = Contract.PartyBType == ContractPartyBType.Individual ||
+                (!string.IsNullOrWhiteSpace(Contract.TemplateCode) && Contract.TemplateCode.Equals("B2C_RETAIL", StringComparison.OrdinalIgnoreCase));
+    var hasThirdParty = ContractRichTextFormatter.TryExtractThirdParty(Contract, out _);
+    var allPages = ContractA4PreviewPaginator.PaginateCommercialContract(Contract, isB2C, hasThirdParty);
+    int totalPages = allPages.Count;
+    int visiblePages = GetVisiblePageCount(totalPages);
+
+    <div class="tf-contract-preview-backdrop tf-modal-overlay no-print" @onclick="CloseAsync">
+        <div id="tf-contract-preview-modal"
+             class="tf-contract-preview-dialog tf-chrome-dialog"
+             @onclick:stopPropagation="true"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="tf-contract-preview-title">
+
+            <!-- 1. Header nhỏ gọn phong cách Chrome Print Preview -->
+            <header class="tf-chrome-header">
+                <div class="tf-chrome-header-left">
+                    <div class="tf-chrome-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                    </div>
+                    <div class="tf-chrome-title-wrap">
+                        <span id="tf-contract-preview-title" class="tf-chrome-main-title">In hợp đồng</span>
+                        <span class="tf-chrome-sep">·</span>
+                        <span class="tf-chrome-code font-monospace">@Contract.ContractNumber</span>
+                        <span class="tf-chrome-docname text-truncate d-none d-md-inline" title="@Contract.Title">(@Contract.Title)</span>
+                        <span class="badge @GetStatusBadgeClass(Contract.Status) ms-1">@GetStatusVietnamese(Contract.Status)</span>
+                    </div>
+                </div>
+
+                <div class="tf-chrome-header-right">
+                    <button type="button" class="tf-chrome-close-btn" @onclick="CloseAsync" title="Đóng cửa sổ in (Esc)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- 2. Bố cục hai phần: Cột trái (Thiết lập in) + Cột phải (Vùng xem trước A4) -->
+            <div class="tf-chrome-content-split">
+                <!-- Cột trái: Bảng điều khiển thiết lập in (Sidebar 280px) -->
+                <aside class="tf-chrome-sidebar">
+                    <div class="tf-sidebar-section-title">THIẾT LẬP IN</div>
+
+                    <!-- 1. Đích đến / Máy in -->
+                    <div class="tf-setting-group">
+                        <label class="tf-setting-label" for="selDestination">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                                <rect x="6" y="14" width="12" height="8"></rect>
+                            </svg>
+                            <span>Đích đến (Destination)</span>
+                        </label>
+                        <select id="selDestination" class="form-select form-select-sm" @bind="Destination">
+                            <option value="printer">Máy in hệ thống</option>
+                            <option value="pdf">Lưu dưới dạng PDF</option>
+                        </select>
+                    </div>
+
+                    <!-- 2. Phiên bản hợp đồng -->
+                    <div class="tf-setting-group">
+                        <label class="tf-setting-label" for="selVersion">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                            <span>Phiên bản (Version)</span>
+                        </label>
+                        <select id="selVersion" class="form-select form-select-sm" @bind="SelectedVersion" @bind:after="OnVersionChanged">
+                            <option value="unsigned">Bản chưa ký (Văn bản sạch)</option>
+                            <option value="signed">Bản đã ký số @(isSignedContract ? "✔" : "(Chưa ký)")</option>
+                        </select>
+                        @if (SelectedVersion == "signed" && !isSignedContract)
+                        {
+                            <div class="tf-setting-warn">⚠ Hợp đồng chưa có chữ ký số điện tử</div>
+                        }
+                    </div>
+
+                    <!-- 3. Khổ giấy -->
+                    <div class="tf-setting-group">
+                        <label class="tf-setting-label">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            </svg>
+                            <span>Khổ giấy (Paper size)</span>
+                        </label>
+                        <select class="form-select form-select-sm" disabled>
+                            <option selected>A4 (210 × 297 mm)</option>
+                        </select>
+                        <div class="tf-setting-hint">Tiêu chuẩn văn bản theo NĐ 30/2020/NĐ-CP</div>
+                    </div>
+
+                    <!-- 4. Hướng giấy -->
+                    <div class="tf-setting-group">
+                        <label class="tf-setting-label" for="selOrientation">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="5" y="2" width="14" height="20" rx="2"></rect>
+                            </svg>
+                            <span>Hướng giấy (Orientation)</span>
+                        </label>
+                        <select id="selOrientation" class="form-select form-select-sm" @bind="OrientationValue" @bind:after="OnOrientationChanged">
+                            <option value="portrait">Dọc (Portrait)</option>
+                            <option value="landscape">Ngang (Landscape)</option>
+                        </select>
+                    </div>
+
+                    <!-- 5. Trang in -->
+                    <div class="tf-setting-group">
+                        <label class="tf-setting-label" for="selPages">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                                <polyline points="13 2 13 9 20 9"></polyline>
+                            </svg>
+                            <span>Trang in (Pages)</span>
+                        </label>
+                        <select id="selPages" class="form-select form-select-sm" @bind="PageSelectionMode">
+                            <option value="all">Tất cả (@totalPages trang)</option>
+                            <option value="custom">Tùy chỉnh</option>
+                        </select>
+
+                        @if (PageSelectionMode == "custom")
+                        {
+                            <div class="mt-1.5">
+                                <input type="text"
+                                       class="form-control form-control-sm"
+                                       placeholder="ví dụ: 1, 1-2"
+                                       @bind="CustomPageRange"
+                                       @bind:event="oninput" />
+                                <div class="tf-setting-hint">Tổng số: @totalPages trang (VD: 1 hoặc 1-2)</div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- 6. Lề trang -->
+                    <div class="tf-setting-group">
+                        <label class="tf-setting-label" for="selMargins">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                                <path d="M9 3v18"></path>
+                            </svg>
+                            <span>Lề trang (Margins)</span>
+                        </label>
+                        <select id="selMargins" class="form-select form-select-sm" @bind="MarginMode">
+                            <option value="default">Mặc định (28mm trái, 20mm lề khác)</option>
+                            <option value="minimum">Tối thiểu (15mm đều)</option>
+                        </select>
+                    </div>
+
+                    <!-- 7. Tỷ lệ -->
+                    <div class="tf-setting-group">
+                        <label class="tf-setting-label" for="selScale">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                <line x1="11" y1="8" x2="11" y2="14"></line>
+                                <line x1="8" y1="11" x2="14" y2="11"></line>
+                            </svg>
+                            <span>Tỷ lệ (Scale)</span>
+                        </label>
+                        <select id="selScale" class="form-select form-select-sm" @bind="ScaleMode">
+                            <option value="100">100% (Khổ chuẩn A4)</option>
+                            <option value="fit">Vừa khung nhìn (Fit width)</option>
+                        </select>
+                    </div>
+
+                    <!-- 8. Tùy chọn khác -->
+                    <div class="tf-setting-group">
+                        <label class="tf-setting-label">Tùy chọn (Options)</label>
+                        <div class="form-check form-check-sm mb-1.5">
+                            <input class="form-check-input" type="checkbox" id="chkShowFooter" @bind="ShowDocumentFooter" />
+                            <label class="form-check-label small" for="chkShowFooter">
+                                Chân trang hợp đồng (Mã HĐ &amp; Trang X/Y)
+                            </label>
+                        </div>
+                        <div class="form-check form-check-sm">
+                            <input class="form-check-input" type="checkbox" id="chkBackgroundGraphics" checked disabled />
+                            <label class="form-check-label small text-muted" for="chkBackgroundGraphics">
+                                Đồ họa nền &amp; tem ký điện tử
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Quick Metadata Badge -->
+                    <div class="tf-sidebar-doc-card">
+                        <div class="tf-doc-card-title">Thông tin tài liệu</div>
+                        <div class="tf-doc-card-row">
+                            <span class="text-muted">Tổng điều khoản:</span>
+                            <span class="fw-semibold">@(Contract.Clauses?.Count ?? 0) điều khoản</span>
+                        </div>
+                        <div class="tf-doc-card-row">
+                            <span class="text-muted">Đối tác:</span>
+                            <span class="fw-semibold text-truncate" title="@Contract.PartyBName">@Contract.PartyBName</span>
+                        </div>
+                        <div class="tf-doc-card-row">
+                            <span class="text-muted">Ký điện tử:</span>
+                            <span class="fw-semibold @(isSignedContract ? "text-success" : "text-muted")">
+                                @(isSignedContract ? "Đã ký số SHA-256" : "Chưa thực hiện ký")
+                            </span>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Cột phải: Vùng hiển thị tài liệu hợp đồng (A4 Preview Stage) -->
+                <main id="tf-contract-preview-stage" class="tf-chrome-stage">
+                    <!-- Chỉ báo trang nổi -->
+                    <div class="tf-stage-page-counter no-print">
+                        <span>Trang hiển thị: <strong>@visiblePages</strong> / <strong>@totalPages</strong></span>
+                        @if (PageSelectionMode == "custom")
+                        {
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1">Bộ lọc trang</span>
+                        }
+                    </div>
+
+                    @if (SelectedVersion == "signed" && !isSignedContract)
+                    {
+                        <!-- Khi hợp đồng chưa được ký số, thông báo rõ ràng, không tạo bản ký số giả -->
+                        <div class="tf-unsigned-notice-card">
+                            <div class="tf-unsigned-notice-icon">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                            </div>
+                            <h5 class="fw-bold mb-2">Hợp đồng này chưa có Bản đã ký số</h5>
+                            <p class="text-muted mb-3" style="max-width: 520px;">
+                                Hợp đồng <strong>@Contract.ContractNumber</strong> hiện chưa thực hiện ký số / ký điện tử bởi các bên.
+                                Hệ thống không tạo chữ ký số giả đối với hợp đồng chưa ký.
+                                Bạn có thể chuyển sang <strong>Bản chưa ký</strong> để rà soát nội dung, in văn bản ký tay hoặc thực hiện ký điện tử ngay.
+                            </p>
+                            <div class="d-flex justify-content-center gap-2 flex-wrap">
+                                <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" @onclick='() => SwitchVersionAsync("unsigned")'>
+                                    Xem Bản chưa ký (Dành cho in ký tay / rà soát)
+                                </button>
+                                @if (OnRequestSign.HasDelegate && (Contract.Status == ContractStatus.Draft || Contract.Status == ContractStatus.PendingSignature))
+                                {
+                                    <button type="button" class="btn btn-sm btn-success fw-semibold" @onclick="TriggerSignAsync">
+                                        Thực hiện Ký điện tử ngay
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <ContractA4DocumentView Contract="@Contract"
+                                                IncludeSignatures="@(SelectedVersion == "signed")"
+                                                ContainerId="tf-modal-contract-sheet"
+                                                PageRange="@(PageSelectionMode == "custom" ? CustomPageRange : "all")"
+                                                IsLandscape="@IsLandscape"
+                                                MarginMode="@MarginMode"
+                                                ShowDocumentFooter="@ShowDocumentFooter"
+                                                ScaleMode="@ScaleMode" />
+                    }
+                </main>
+            </div>
+
+            <!-- 3. Thanh công cụ Footer chuẩn Google Chrome -->
+            <footer class="tf-chrome-footer">
+                <div class="tf-chrome-footer-left">
+                    <span class="badge bg-secondary-subtle text-secondary border">A4 · @(IsLandscape ? "297 × 210 mm (Ngang)" : "210 × 297 mm (Dọc)")</span>
+                    <span class="badge @(SelectedVersion == "signed" ? (isSignedContract ? "bg-success-subtle text-success border" : "bg-warning-subtle text-warning-emphasis border") : "bg-info-subtle text-info border")">
+                        @(SelectedVersion == "signed" ? (isSignedContract ? "Bản đã ký số" : "Chưa ký số") : "Bản chưa ký (Văn bản sạch)")
+                    </span>
+                    <span class="text-muted small d-none d-md-inline">
+                        Hiển thị @visiblePages / @totalPages trang
+                    </span>
+                </div>
+
+                <div class="tf-chrome-footer-right">
+                    <button type="button" class="btn btn-sm btn-light border" @onclick="CloseAsync">
+                        Đóng
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1.5"
+                            disabled="@(!canExportCurrentVersion || isDownloading)"
+                            @onclick="DownloadCurrentVersionPdfAsync">
+                        @if (isDownloading)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span>Đang tải...</span>
+                        }
+                        else
+                        {
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            <span>Tải PDF</span>
+                        }
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-sm btn-primary d-flex align-items-center gap-1.5"
+                            disabled="@(!canExportCurrentVersion || isPrinting)"
+                            @onclick="ExecutePrintOrPdfActionAsync">
+                        @if (isPrinting)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span>Đang chuẩn bị...</span>
+                        }
+                        else
+                        {
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                                <rect x="6" y="14" width="12" height="8"></rect>
+                            </svg>
+                            <span>@(Destination == "pdf" ? "Lưu PDF" : "In tài liệu")</span>
+                        }
+                    </button>
+                </div>
+            </footer>
+        </div>
+    </div>
+}
+
+<style>
+    @@keyframes tfPreviewBackdropFadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @@keyframes tfPreviewDialogSlideIn {
+        from {
+            opacity: 0;
+            transform: scale(0.975) translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+
+    .tf-contract-preview-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 10050;
+        background: rgba(15, 23, 42, 0.68);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        animation: tfPreviewBackdropFadeIn 200ms ease-out;
+    }
+
+    .tf-chrome-dialog {
+        width: 90vw;
+        max-width: 1080px;
+        height: 85vh;
+        background: var(--tf-bg-card, #ffffff);
+        border: 1px solid var(--tf-border, #cbd5e1);
+        border-radius: 12px;
+        box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.45);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        animation: tfPreviewDialogSlideIn 220ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* 1. Header */
+    .tf-chrome-header {
+        padding: 10px 18px;
+        background: var(--tf-bg-card, #ffffff);
+        border-bottom: 1px solid var(--tf-border, #e2e8f0);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-shrink: 0;
+    }
+
+    .tf-chrome-header-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+    }
+
+    .tf-chrome-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: rgba(37, 99, 235, 0.1);
+        color: #2563eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .tf-chrome-title-wrap {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        flex-wrap: wrap;
+    }
+
+    .tf-chrome-main-title {
+        font-weight: 700;
+        font-size: 0.96rem;
+        color: var(--tf-text-primary, #0f172a);
+    }
+
+    .tf-chrome-sep {
+        color: var(--tf-text-muted, #94a3b8);
+        font-weight: 700;
+    }
+
+    .tf-chrome-code {
+        font-weight: 600;
+        font-size: 0.92rem;
+        color: #2563eb;
+    }
+
+    .tf-chrome-docname {
+        font-size: 0.84rem;
+        color: var(--tf-text-secondary, #64748b);
+        max-width: 400px;
+    }
+
+    .tf-chrome-close-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        border: 1px solid var(--tf-border, #e2e8f0);
+        background: transparent;
+        color: var(--tf-text-secondary, #64748b);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .tf-chrome-close-btn:hover {
+        background: var(--tf-bg-subtle, #f1f5f9);
+        color: var(--tf-text-primary, #0f172a);
+    }
+
+    /* 2. Split Body */
+    .tf-chrome-content-split {
+        flex: 1 1 auto;
+        display: flex;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    /* Left Sidebar: Google Chrome style settings (Compact 250px) */
+    .tf-chrome-sidebar {
+        width: 250px;
+        min-width: 250px;
+        max-width: 250px;
+        background: var(--tf-bg-card, #ffffff);
+        border-right: 1px solid var(--tf-border, #e2e8f0);
+        overflow-y: auto;
+        padding: 14px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        flex-shrink: 0;
+    }
+
+    .tf-sidebar-section-title {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        color: var(--tf-text-secondary, #64748b);
+        padding-bottom: 4px;
+        border-bottom: 1px solid var(--tf-border, #f1f5f9);
+    }
+
+    .tf-setting-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .tf-setting-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--tf-text-primary, #1e293b);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 1px;
+    }
+
+    .tf-setting-hint {
+        font-size: 0.72rem;
+        color: var(--tf-text-secondary, #64748b);
+        margin-top: 2px;
+    }
+
+    .tf-setting-warn {
+        font-size: 0.73rem;
+        color: #d97706;
+        font-weight: 600;
+        margin-top: 2px;
+    }
+
+    .tf-sidebar-doc-card {
+        margin-top: auto;
+        padding: 10px 12px;
+        background: var(--tf-bg-subtle, #f8fafc);
+        border: 1px solid var(--tf-border, #e2e8f0);
+        border-radius: 8px;
+        font-size: 0.76rem;
+    }
+
+    .tf-doc-card-title {
+        font-weight: 700;
+        color: var(--tf-text-primary, #0f172a);
+        margin-bottom: 6px;
+    }
+
+    .tf-doc-card-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 3px;
+    }
+
+    /* Right Stage: Neutral canvas */
+    .tf-chrome-stage {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        background: #475569;
+        padding: 24px 16px;
+        position: relative;
+    }
+
+    html[data-bs-theme="dark"] .tf-chrome-stage {
+        background: #0b0f19;
+    }
+
+    .tf-stage-page-counter {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        margin-bottom: 16px;
+        display: inline-flex;
+        align-items: center;
+        background: rgba(15, 23, 42, 0.78);
+        backdrop-filter: blur(6px);
+        color: #ffffff;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .tf-unsigned-notice-card {
+        max-width: 600px;
+        margin: 48px auto;
+        padding: 32px 24px;
+        background: var(--tf-bg-card, #ffffff);
+        border: 1px solid var(--tf-border, #cbd5e1);
+        border-radius: 12px;
+        text-align: center;
+        box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.1);
+        color: var(--tf-text-primary, #0f172a);
+    }
+
+    .tf-unsigned-notice-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: rgba(245, 158, 11, 0.14);
+        color: #d97706;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 14px auto;
+    }
+
+    /* 3. Footer */
+    .tf-chrome-footer {
+        padding: 10px 18px;
+        background: var(--tf-bg-card, #ffffff);
+        border-top: 1px solid var(--tf-border, #e2e8f0);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-shrink: 0;
+    }
+
+    .tf-chrome-footer-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .tf-chrome-footer-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* Dark Mode Adjustments */
+    html[data-bs-theme="dark"] .tf-chrome-header,
+    html[data-bs-theme="dark"] .tf-chrome-sidebar,
+    html[data-bs-theme="dark"] .tf-chrome-footer {
+        background: #0f172a;
+        border-color: #334155;
+    }
+
+    html[data-bs-theme="dark"] .tf-chrome-dialog {
+        background: #0f172a;
+        border-color: #334155;
+    }
+
+    html[data-bs-theme="dark"] .tf-sidebar-doc-card {
+        background: #1e293b;
+        border-color: #334155;
+    }
+
+    html[data-bs-theme="dark"] .tf-chrome-close-btn {
+        border-color: #334155;
+    }
+</style>
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public ContractDto? Contract { get; set; }
+    [Parameter] public string InitialVersion { get; set; } = "auto";
+    [Parameter] public EventCallback OnRequestSign { get; set; }
+
+    // Chrome Print Controls State
+    private string Destination { get; set; } = "printer";
+    private string SelectedVersion { get; set; } = "unsigned";
+    private string OrientationValue { get; set; } = "portrait";
+    private bool IsLandscape => OrientationValue == "landscape";
+    private string PageSelectionMode { get; set; } = "all";
+    private string CustomPageRange { get; set; } = "1";
+    private string MarginMode { get; set; } = "default";
+    private string ScaleMode { get; set; } = "100";
+    private bool ShowDocumentFooter { get; set; } = true;
+
+    private bool isDownloading = false;
+    private bool isPrinting = false;
+    private int? _lastContractId;
+    private bool _wasOpen;
+    private bool _shouldAnimateEntrance;
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen && Contract != null && (!_wasOpen || _lastContractId != Contract.Id))
+        {
+            _lastContractId = Contract.Id;
+            _shouldAnimateEntrance = true;
+            if (InitialVersion == "unsigned")
+                SelectedVersion = "unsigned";
+            else if (InitialVersion == "signed")
+                SelectedVersion = "signed";
+            else
+                SelectedVersion = Contract.IsDigitallySigned ? "signed" : "unsigned";
+
+            OrientationValue = "portrait";
+            PageSelectionMode = "all";
+            MarginMode = "default";
+            ScaleMode = "100";
+            ShowDocumentFooter = true;
+        }
+        _wasOpen = IsOpen;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsOpen && Contract != null && _shouldAnimateEntrance)
+        {
+            _shouldAnimateEntrance = false;
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.animateModalEnter", "#tf-contract-preview-modal", ".tf-contract-preview-backdrop");
+            }
+            catch { }
+        }
+    }
+
+    private async Task SwitchVersionAsync(string version)
+    {
+        if (SelectedVersion == version) return;
+        SelectedVersion = version;
+        StateHasChanged();
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.animateTabContent", "#tf-contract-preview-stage");
+        }
+        catch { }
+    }
+
+    private void OnVersionChanged()
+    {
+        StateHasChanged();
+    }
+
+    private void OnOrientationChanged()
+    {
+        StateHasChanged();
+    }
+
+    private int GetVisiblePageCount(int totalPages)
+    {
+        if (PageSelectionMode != "custom" || string.IsNullOrWhiteSpace(CustomPageRange))
+            return totalPages;
+
+        var set = ParsePageRange(CustomPageRange, totalPages);
+        return set != null && set.Count > 0 ? set.Count : totalPages;
+    }
+
+    private static HashSet<int>? ParsePageRange(string? range, int totalPages)
+    {
+        if (string.IsNullOrWhiteSpace(range) || range.Trim().Equals("all", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var result = new HashSet<int>();
+        var parts = range.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var part in parts)
+        {
+            var trimmed = part.Trim();
+            if (trimmed.Contains('-'))
+            {
+                var bounds = trimmed.Split('-');
+                if (bounds.Length == 2 && int.TryParse(bounds[0], out int start) && int.TryParse(bounds[1], out int end))
+                {
+                    for (int i = Math.Max(1, start); i <= Math.Min(totalPages, end); i++)
+                        result.Add(i);
+                }
+            }
+            else if (int.TryParse(trimmed, out int single) && single >= 1 && single <= totalPages)
+            {
+                result.Add(single);
+            }
+        }
+
+        return result.Count > 0 ? result : null;
+    }
+
+    private async Task ExecutePrintOrPdfActionAsync()
+    {
+        if (Destination == "pdf")
+        {
+            await DownloadCurrentVersionPdfAsync();
+        }
+        else
+        {
+            await PrintCurrentVersionAsync();
+        }
+    }
+
+    private async Task PrintCurrentVersionAsync()
+    {
+        if (Contract == null || isPrinting) return;
+        if (SelectedVersion == "signed" && !Contract.IsDigitallySigned) return;
+
+        try
+        {
+            isPrinting = true;
+            StateHasChanged();
+
+            // When custom page range or landscape is selected, print via styled HTML iframe
+            if (PageSelectionMode == "custom" || IsLandscape || MarginMode != "default")
+            {
+                await JS.InvokeVoidAsync("tradeflow.printDocument", "tf-modal-contract-sheet", Contract.ContractNumber);
+            }
+            else
+            {
+                var pdfUrl = $"/api/contracts/{Contract.Id}/export-pdf?version={SelectedVersion}&inline=true";
+                await JS.InvokeVoidAsync("tradeflow.printPdfUrl", pdfUrl);
+            }
+        }
+        catch { }
+        finally
+        {
+            isPrinting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DownloadCurrentVersionPdfAsync()
+    {
+        if (Contract == null || isDownloading) return;
+        if (SelectedVersion == "signed" && !Contract.IsDigitallySigned) return;
+
+        try
+        {
+            isDownloading = true;
+            StateHasChanged();
+            var rawNumber = string.IsNullOrWhiteSpace(Contract.ContractNumber) ? $"HD-{Contract.Id}" : Contract.ContractNumber.Trim();
+            var safeCode = string.Concat(rawNumber.Split(System.IO.Path.GetInvalidFileNameChars())).Replace(" ", "_");
+            var suffix = SelectedVersion == "unsigned" ? "_Ban_chua_ky" : "_Ban_da_ky_so";
+            var filename = $"Hop_dong_{safeCode}{suffix}.pdf";
+            var url = $"/api/contracts/{Contract.Id}/export-pdf?version={SelectedVersion}";
+            await JS.InvokeVoidAsync("tradeflow.downloadPdf", url, filename);
+        }
+        catch { }
+        finally
+        {
+            isDownloading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task TriggerSignAsync()
+    {
+        await CloseAsync();
+        if (OnRequestSign.HasDelegate)
+        {
+            await OnRequestSign.InvokeAsync();
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        IsOpen = false;
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.unlockScroll", true);
+        }
+        catch { }
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private static string GetStatusVietnamese(ContractStatus status) => status switch
+    {
+        ContractStatus.Draft => "Bản nháp",
+        ContractStatus.PendingSignature => "Chờ ký",
+        ContractStatus.Signed => "Đã ký",
+        ContractStatus.Printed => "Đã in giấy",
+        ContractStatus.Liquidated => "Đã thanh lý",
+        ContractStatus.Cancelled => "Đã hủy",
+        _ => status.ToString()
+    };
+
+    private static string GetStatusBadgeClass(ContractStatus status) => status switch
+    {
+        ContractStatus.Draft => "bg-secondary text-white",
+        ContractStatus.PendingSignature => "bg-warning text-dark",
+        ContractStatus.Signed => "bg-success text-white",
+        ContractStatus.Printed => "bg-info text-dark",
+        ContractStatus.Liquidated => "bg-primary text-white",
+        ContractStatus.Cancelled => "bg-danger text-white",
+        _ => "bg-light text-dark"
+    };
+}

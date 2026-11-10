@@ -35,6 +35,17 @@
         </div>
         <div class="d-flex gap-2">
             <button type="button" class="btn btn-sm btn-outline-secondary" @onclick='() => Nav.NavigateTo("/hop-dong")'>Hủy</button>
+            <button type="button"
+                    class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1.5"
+                    @onclick="OpenPreviewModal"
+                    disabled="@string.IsNullOrEmpty(model.TemplateCode)"
+                    title="Mở cửa sổ xem trước A4 / In / PDF">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <span>Xem trước A4</span>
+            </button>
             <button type="button" class="btn btn-sm btn-secondary" @onclick="SaveDraftAsync" disabled="@isSaving">
                 Lưu bản nháp
             </button>
@@ -368,19 +379,40 @@
             </div>
 
             <!-- Clauses and Terms -->
-            <h6 class="fw-bold text-dark mb-2">Các Điều khoản Hợp đồng</h6>
-            @foreach (var clause in model.Clauses)
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <h6 class="fw-bold text-dark mb-0">Các Điều khoản Hợp đồng</h6>
+                    <div class="text-muted" style="font-size: 0.76rem;">Hỗ trợ bảo toàn định dạng in đậm (<code>&lt;b&gt;</code>), in nghiêng (<code>&lt;i&gt;</code>), gạch chân (<code>&lt;u&gt;</code>) và danh sách khoản/điểm (<code>1.1.</code>, <code>a)</code>, <code>-</code>).</div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddNewClause">
+                    + Thêm điều khoản
+                </button>
+            </div>
+            @for (int cIdx = 0; cIdx < model.Clauses.Count; cIdx++)
             {
+                var clause = model.Clauses[cIdx];
+                var clauseNumberIndex = cIdx + 1;
                 <div class="card mb-2 p-3 bg-white border">
-                    <div class="row g-2">
+                    <div class="row g-2 align-items-center">
                         <div class="col-md-3">
                             <input type="text" class="form-control form-control-sm fw-bold" @bind="clause.ClauseNumber" placeholder="Điều X" />
                         </div>
-                        <div class="col-md-9">
+                        <div class="col-md-8">
                             <input type="text" class="form-control form-control-sm fw-bold" @bind="clause.Title" placeholder="Tiêu đề điều khoản..." />
                         </div>
+                        <div class="col-md-1 text-end">
+                            <button type="button" class="btn btn-sm btn-link text-danger p-0" title="Xóa điều khoản" @onclick="() => RemoveClause(clause)">✕</button>
+                        </div>
                         <div class="col-12">
-                            <textarea class="form-control form-control-sm" rows="2" @bind="clause.Content"></textarea>
+                            <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
+                                <button type="button" class="btn btn-xs btn-light border px-2 py-0 fw-bold" style="font-size: 0.74rem;" title="Chèn chữ in đậm" @onclick='() => AppendFormattingSnippet(clause, "<b>Nội dung in đậm</b>")'>B</button>
+                                <button type="button" class="btn btn-xs btn-light border px-2 py-0 fst-italic" style="font-size: 0.74rem;" title="Chèn chữ in nghiêng" @onclick='() => AppendFormattingSnippet(clause, "<i>Nội dung in nghiêng</i>")'>I</button>
+                                <button type="button" class="btn btn-xs btn-light border px-2 py-0 text-decoration-underline" style="font-size: 0.74rem;" title="Chèn chữ gạch chân" @onclick='() => AppendFormattingSnippet(clause, "<u>Nội dung gạch chân</u>")'>U</button>
+                                <button type="button" class="btn btn-xs btn-light border px-2 py-0" style="font-size: 0.74rem;" title="Thêm khoản đánh số" @onclick='() => AppendFormattingSnippet(clause, $"\n{clauseNumberIndex}.1. ")'>+ Khoản @(clauseNumberIndex).1</button>
+                                <button type="button" class="btn btn-xs btn-light border px-2 py-0" style="font-size: 0.74rem;" title="Thêm điểm a)" @onclick='() => AppendFormattingSnippet(clause, "\na) ")'>+ Điểm a)</button>
+                                <button type="button" class="btn btn-xs btn-light border px-2 py-0" style="font-size: 0.74rem;" title="Thêm gạch đầu dòng" @onclick='() => AppendFormattingSnippet(clause, "\n- ")'>+ Gạch đầu dòng</button>
+                            </div>
+                            <textarea class="form-control form-control-sm" rows="3" @bind="clause.Content"></textarea>
                         </div>
                     </div>
                 </div>
@@ -395,118 +427,31 @@
         }
         else if (currentStep == 5)
         {
-            <!-- STEP 5: XEM TRƯỚC VĂN BẢN (PREVIEW TIMES NEW ROMAN) -->
+            <!-- STEP 5: XEM TRƯỚC VĂN BẢN CHUẨN A4 (TIMES NEW ROMAN) -->
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="fw-bold text-dark mb-0">Bước 5: Xem trước Văn bản Hợp đồng (Times New Roman)</h5>
-                <span class="badge bg-secondary-subtle text-secondary border">Định dạng A4 chuẩn Pháp lý</span>
+                <div>
+                    <h5 class="fw-bold text-dark mb-0">Bước 5: Xem trước Văn bản Hợp đồng chuẩn A4 (Times New Roman)</h5>
+                    <div class="text-muted small">Trình bày chuẩn khổ A4 dọc (210 × 297 mm), tự động phân trang và bảo toàn định dạng văn bản.</div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-secondary-subtle text-secondary border">Bản chưa ký — Khổ A4</span>
+                    <button type="button"
+                            class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1.5"
+                            @onclick="OpenPreviewModal">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                        <span>Cửa sổ In &amp; PDF</span>
+                    </button>
+                </div>
             </div>
 
-            <div class="p-4 bg-white border shadow-sm mx-auto" style="max-width: 820px; font-family: 'Times New Roman', Times, serif; font-size: 14px; line-height: 1.5; color: #111;">
-                <!-- Header -->
-                <div class="text-center mb-4">
-                    <div class="fw-bold" style="font-size: 15px;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
-                    <div class="fw-bold" style="font-size: 14px;">Độc lập - Tự do - Hạnh phúc</div>
-                    <div class="mx-auto my-1" style="width: 140px; height: 1px; background-color: #333;"></div>
-                    <div class="fst-italic" style="font-size: 13px;">@model.ContractPlace, ngày @model.ContractDate.ToString("dd") tháng @model.ContractDate.ToString("MM") năm @model.ContractDate.ToString("yyyy")</div>
-                </div>
-
-                <div class="text-center mb-4">
-                    <div class="fw-bold fs-5 text-uppercase">@model.Title</div>
-                    <div class="fw-semibold">Số: [Sẽ tạo tự động khi lưu]</div>
-                </div>
-
-                <div class="mb-3 fst-italic" style="font-size: 13px;">
-                    <div>- Căn cứ Bộ luật Dân sự số 91/2015/QH13 được Quốc hội ban hành ngày 24/11/2015;</div>
-                    <div>- Căn cứ Luật Thương mại số 36/2005/QH11 được Quốc hội ban hành ngày 14/06/2005;</div>
-                    <div>- Căn cứ Luật Giao dịch điện tử số 20/2023/QH15 có hiệu lực thi hành từ ngày 01/07/2024;</div>
-                    <div>- Căn cứ vào năng lực và nhu cầu thực tế của hai bên.</div>
-                </div>
-
-                <!-- Parties -->
-                <div class="mb-3 tf-doc-party-box tf-legal-party-block">
-                    <div class="fw-bold text-uppercase mb-1">BÊN A (BÊN BÁN): @model.PartyAName</div>
-                    <div class="ps-3">
-                        <div>Địa chỉ: @model.PartyAAddress</div>
-                        <div>Mã số thuế: @model.PartyATaxCode | Điện thoại: @model.PartyAPhone</div>
-                        <div>Đại diện: <strong>@model.PartyARepresentative</strong> - Chức vụ: @model.PartyAPosition</div>
-                        <div>Tài khoản ngân hàng: @model.PartyABankAccount tại @model.PartyABankName</div>
-                    </div>
-                </div>
-
-                <div class="mb-3 tf-doc-party-box tf-legal-party-block">
-                    <div class="fw-bold text-uppercase mb-1">BÊN B (BÊN MUA): @model.PartyBName</div>
-                    <div class="ps-3">
-                        <div>Địa chỉ: @(string.IsNullOrWhiteSpace(model.PartyBAddress) ? "Trụ sở / Địa chỉ liên hệ của Bên B" : model.PartyBAddress)</div>
-                        <div>@(model.PartyBType == ContractPartyBType.Company ? $"Mã số thuế: {(string.IsNullOrWhiteSpace(model.PartyBTaxCode) ? "[Đang cập nhật]" : model.PartyBTaxCode)}" : $"Số CCCD: {(string.IsNullOrWhiteSpace(model.PartyBIdCardNumber) ? "[Đang cập nhật]" : model.PartyBIdCardNumber)}") | Điện thoại: @(string.IsNullOrWhiteSpace(model.PartyBPhone) ? "[Đang cập nhật]" : model.PartyBPhone)</div>
-                        @if (!string.IsNullOrEmpty(model.PartyBRepresentative) || model.PartyBType == ContractPartyBType.Company)
-                        {
-                            <div>Người đại diện: <strong>@(string.IsNullOrWhiteSpace(model.PartyBRepresentative) ? "Người đại diện pháp luật" : model.PartyBRepresentative)</strong> - Chức vụ: @(string.IsNullOrWhiteSpace(model.PartyBPosition) ? "Giám đốc" : model.PartyBPosition)</div>
-                        }
-                    </div>
-                </div>
-
-                <!-- Items Table -->
-                @if (model.Items.Count > 0)
-                {
-                    <table class="table table-bordered table-sm mb-3 text-center" style="font-size: 13px;">
-                        <thead class="table-light">
-                            <tr>
-                                <th>STT</th>
-                                <th>Mã hàng</th>
-                                <th>Tên hàng hóa</th>
-                                <th>ĐVT</th>
-                                <th>SL</th>
-                                <th>Đơn giá (đ)</th>
-                                <th>Thành tiền (đ)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @for (int i = 0; i < model.Items.Count; i++)
-                            {
-                                var item = model.Items[i];
-                                <tr>
-                                    <td>@(i + 1)</td>
-                                    <td>@item.ProductCode</td>
-                                    <td class="text-start">@item.ProductName</td>
-                                    <td>@item.Unit</td>
-                                    <td class="text-end">@item.Quantity.ToString("N0")</td>
-                                    <td class="text-end">@item.UnitPrice.ToString("N0")</td>
-                                    <td class="text-end">@item.LineTotal.ToString("N0")</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                }
-
-                <div class="mb-3 py-2 px-3 border-top border-bottom tf-legal-summary-block">
-                    <div class="fw-bold">Tổng giá trị hợp đồng: @model.TotalAmount.ToString("N0") đ</div>
-                    <div class="fst-italic">Bằng chữ: @model.AmountInWords</div>
-                </div>
-
-                <!-- Clauses (Anti-orphan Heading Protection) -->
-                @foreach (var c in model.Clauses)
-                {
-                    <div class="mb-3 tf-clause-item">
-                        <div class="clause-heading fw-bold mt-2 mb-1" style="break-after: avoid-page; page-break-after: avoid;">@c.ClauseNumber: @c.Title</div>
-                        <div class="clause-paragraph" style="text-align: justify; text-justify: inter-word; white-space: pre-line; orphans: 3; widows: 3;">@c.Content</div>
-                    </div>
-                }
-
-                <!-- Signatures (Anti-break Protection) -->
-                <div class="row mt-4 pt-3 text-center tf-signature-block" style="break-inside: avoid !important; page-break-inside: avoid !important;">
-                    <div class="col-6">
-                        <div class="fw-bold">ĐẠI DIỆN BÊN A</div>
-                        <div class="fst-italic small">(Ký, ghi rõ họ tên và đóng dấu)</div>
-                        <div style="height: 70px;"></div>
-                        <div class="fw-bold">@model.PartyARepresentative</div>
-                    </div>
-                    <div class="col-6">
-                        <div class="fw-bold">ĐẠI DIỆN BÊN B</div>
-                        <div class="fst-italic small">(Ký, ghi rõ họ tên và đóng dấu)</div>
-                        <div style="height: 70px;"></div>
-                        <div class="fw-bold">@(model.PartyBRepresentative ?? model.PartyBName)</div>
-                    </div>
-                </div>
+            <div class="p-3 p-md-4 rounded-3 border" style="background: var(--tf-bg-subtle, #e2e8f0);">
+                <ContractA4DocumentView Contract="@BuildPreviewDto()"
+                                        IncludeSignatures="false"
+                                        ContainerId="tf-create-preview-sheet" />
             </div>
 
             <div class="d-flex justify-content-between mt-4">
@@ -524,12 +469,20 @@
     </div>
 </div>
 
+<ContractPreviewModal @bind-IsOpen="showPreviewModal" Contract="@BuildPreviewDto()" />
+
 @code {
     [Parameter] public string? TemplateCode { get; set; }
 
     private int currentStep = 1;
     private bool isSaving = false;
+    private bool showPreviewModal = false;
     private string? errorMessage;
+
+    private void OpenPreviewModal()
+    {
+        showPreviewModal = true;
+    }
 
     private CreateContractDto model = new();
     private List<ContractTemplateDto> availableTemplates = new();
@@ -572,9 +525,9 @@
             model.PartyABankAccount = partyA.BankAccount;
             model.PartyABankAccountHolder = partyA.BankAccountHolder;
             model.PartyABankBranch = partyA.BankBranch;
-            model.PaymentTerms = partyA.DefaultPaymentInstructions;
-            model.DeliveryTerms = partyA.DefaultDeliveryTerms;
-            model.WarrantyTerms = partyA.DefaultWarrantyTerms;
+            model.PaymentTerms = null;
+            model.DeliveryTerms = null;
+            model.WarrantyTerms = null;
             model.ContractPlace = !string.IsNullOrWhiteSpace(partyA.DefaultSigningLocation) ? partyA.DefaultSigningLocation : "TP. Cần Thơ";
 
             if (availableTemplates.Count > 0 && string.IsNullOrEmpty(TemplateCode))
@@ -658,6 +611,85 @@
     {
         model.Items.Remove(item);
         RecalculateTotals();
+    }
+
+    private void AddNewClause()
+    {
+        var nextNum = model.Clauses.Count + 1;
+        model.Clauses.Add(new ContractClauseDto
+        {
+            ClauseNumber = $"Điều {nextNum}",
+            Title = "Điều khoản bổ sung",
+            Content = $"{nextNum}.1. Nội dung điều khoản thỏa thuận bổ sung giữa các bên."
+        });
+    }
+
+    private void RemoveClause(ContractClauseDto clause)
+    {
+        model.Clauses.Remove(clause);
+    }
+
+    private void AppendFormattingSnippet(ContractClauseDto clause, string snippet)
+    {
+        clause.Content = (clause.Content ?? string.Empty) + snippet;
+    }
+
+    private ContractDto BuildPreviewDto()
+    {
+        return new ContractDto
+        {
+            ContractNumber = $"HĐ-{DateTime.UtcNow.Year}-DỰ-THẢO",
+            Title = model.Title,
+            TemplateCode = model.TemplateCode,
+            Status = ContractStatus.Draft,
+            ContractDate = model.ContractDate,
+            ContractPlace = model.ContractPlace,
+            EffectiveDate = model.EffectiveDate,
+            ExpirationDate = model.ExpirationDate,
+            PartyBType = model.PartyBType,
+            PartyAName = model.PartyAName,
+            PartyATaxCode = model.PartyATaxCode,
+            PartyAAddress = model.PartyAAddress,
+            PartyAContactAddress = model.PartyAContactAddress,
+            PartyARepresentative = model.PartyARepresentative,
+            PartyAPosition = model.PartyAPosition,
+            PartyAAuthority = model.PartyAAuthority,
+            PartyAPhone = model.PartyAPhone,
+            PartyAEmail = model.PartyAEmail,
+            PartyABankName = model.PartyABankName,
+            PartyABankAccount = model.PartyABankAccount,
+            PartyABankAccountHolder = model.PartyABankAccountHolder,
+            PartyABankBranch = model.PartyABankBranch,
+            PartyBName = model.PartyBName,
+            PartyBTaxCode = model.PartyBTaxCode,
+            PartyBIdCardNumber = model.PartyBIdCardNumber,
+            PartyBIdCardDate = model.PartyBIdCardDate,
+            PartyBIdCardPlace = model.PartyBIdCardPlace,
+            PartyBAddress = model.PartyBAddress,
+            PartyBDeliveryAddress = model.PartyBDeliveryAddress,
+            PartyBPhone = model.PartyBPhone,
+            PartyBEmail = model.PartyBEmail,
+            PartyBRepresentative = model.PartyBRepresentative,
+            PartyBPosition = model.PartyBPosition,
+            PartyBAuthority = model.PartyBAuthority,
+            PartyBBankName = model.PartyBBankName,
+            PartyBBankAccount = model.PartyBBankAccount,
+            SubTotal = model.SubTotal,
+            TotalDiscount = model.TotalDiscount,
+            TaxRate = model.TaxRate,
+            TaxAmount = model.TaxAmount,
+            TotalAmount = model.TotalAmount,
+            DepositAmount = model.DepositAmount,
+            RemainingAmount = model.RemainingAmount,
+            CurrencyCode = model.CurrencyCode,
+            AmountInWords = model.AmountInWords,
+            PaymentTerms = model.PaymentTerms,
+            DeliveryTerms = model.DeliveryTerms,
+            WarrantyTerms = model.WarrantyTerms,
+            Notes = model.Notes,
+            Clauses = model.Clauses,
+            Items = model.Items
+        };
     }
 
     private void RecalculateTotals()

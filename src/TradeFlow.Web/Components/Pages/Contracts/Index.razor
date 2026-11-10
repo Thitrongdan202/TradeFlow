@@ -395,7 +395,15 @@
                                     </td>
                                     <td class="text-center">
                                         <div class="tf-action-group">
-                                            <a href="/hop-dong/@c.Id" class="tf-action-btn" title="Xem chi tiết">
+                                            <button type="button" class="tf-action-btn" title="Xem trước &amp; In chuẩn A4" @onclick="() => OpenCommercialPreviewAsync(c.Id)">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                                    <polyline points="14 2 14 8 20 8"/>
+                                                    <line x1="16" y1="13" x2="8" y2="13"/>
+                                                    <line x1="16" y1="17" x2="8" y2="17"/>
+                                                </svg>
+                                            </button>
+                                            <a href="/hop-dong/@c.Id" class="tf-action-btn" title="Mở trang chi tiết &amp; ký kết">
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                     <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
                                                     <circle cx="12" cy="12" r="3"/>
@@ -796,6 +804,9 @@
 <!-- Modal Components for Commercial Contracts -->
 <PartyASettingsModal @bind-IsOpen="showPartyASettingsModal" OnSaved="OnPartyASaved" />
 <TemplateSelectorModal @bind-IsOpen="showTemplateSelectorModal" />
+<ContractPreviewModal @bind-IsOpen="showCommercialPreviewModal"
+                      Contract="@previewCommercialContract"
+                      OnRequestSign="() => NavigateToSignCommercialContract()" />
 
 <!-- Modal Components for Employment Contracts -->
 <EmploymentContractFormModal @ref="empFormModal" @bind-IsOpen="isCreateEmpModalOpen" OnSaved="LoadEmploymentContractsAsync" />
@@ -810,6 +821,8 @@
     private bool isLoading = true;
     private bool showPartyASettingsModal = false;
     private bool showTemplateSelectorModal = false;
+    private bool showCommercialPreviewModal = false;
+    private ContractDto? previewCommercialContract;
 
     private string searchTerm = string.Empty;
     private ContractStatus? selectedStatus;
@@ -962,6 +975,25 @@
     }
 
     private async Task OnPartyASaved() => await LoadContractsAsync();
+
+    private async Task OpenCommercialPreviewAsync(int id)
+    {
+        var fullContract = await ContractService.GetContractByIdAsync(id);
+        if (fullContract != null)
+        {
+            previewCommercialContract = fullContract;
+            showCommercialPreviewModal = true;
+            StateHasChanged();
+        }
+    }
+
+    private void NavigateToSignCommercialContract()
+    {
+        if (previewCommercialContract != null)
+        {
+            Nav.NavigateTo($"/hop-dong/{previewCommercialContract.Id}");
+        }
+    }
 
     // === Employment Contracts Actions ===
     private void FilterEmpByStatus(EmploymentContractStatus? status) => selectedEmpStatus = status;

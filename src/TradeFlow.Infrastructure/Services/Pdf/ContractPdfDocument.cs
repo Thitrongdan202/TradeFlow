@@ -1,9 +1,9 @@
 using System;
-using System.IO;
 using System.Linq;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using TradeFlow.Application.Common.Helpers;
 using TradeFlow.Application.Common.Models.Contracts;
 using TradeFlow.Domain.Enums;
 
@@ -11,15 +11,18 @@ namespace TradeFlow.Infrastructure.Services.Pdf;
 
 public class ContractPdfDocument : IDocument
 {
-    private static readonly System.Globalization.CultureInfo ViCulture = System.Globalization.CultureInfo.GetCultureInfo("vi-VN");
-
     private readonly ContractDto _model;
     private readonly ContractPartyASettingsDto? _partyASettings;
+    private readonly bool _includeSignatures;
 
-    public ContractPdfDocument(ContractDto model, ContractPartyASettingsDto? partyASettings)
+    public ContractPdfDocument(
+        ContractDto model,
+        ContractPartyASettingsDto? partyASettings,
+        bool includeSignatures = true)
     {
         _model = model;
         _partyASettings = partyASettings;
+        _includeSignatures = includeSignatures;
     }
 
     public DocumentMetadata GetMetadata() => DocumentMetadata.Default;
@@ -27,392 +30,636 @@ public class ContractPdfDocument : IDocument
 
     public void Compose(IDocumentContainer container)
     {
-        bool isB2C = _model.PartyBType == ContractPartyBType.Individual || 
+        bool isB2C = _model.PartyBType == ContractPartyBType.Individual ||
                      (_model.TemplateCode != null && _model.TemplateCode.Equals("B2C_RETAIL", StringComparison.OrdinalIgnoreCase));
 
-        // Chuẩn hóa theo Nghị định 30/2020/NĐ-CP: Phông Times New Roman 13pt, giãn dòng 1.25
-        float baseFontSize = 13f;
+        // Chuẩn hóa trình bày văn bản hợp đồng trên khổ A4 dọc:
+        // Font Times New Roman, Nội dung 12.2pt (trong khoảng chuẩn 12-13pt), giãn dòng 1.18 (trong khoảng chuẩn 1.15-1.25)
+        const float baseFontSize = 12.2f;
+        const float lineHeight = 1.18f;
 
         container.Page(page =>
         {
             page.Size(PageSizes.A4);
-            page.MarginTop(2.0f, Unit.Centimetre);
-            page.MarginBottom(2.0f, Unit.Centimetre);
-            page.MarginLeft(3.0f, Unit.Centimetre);
-            page.MarginRight(2.0f, Unit.Centimetre);
+            // Lề chuẩn A4: Trên 20mm, Dưới 20mm, Trái 28mm (chừa lề đóng gáy), Phải 20mm
+            page.MarginTop(20f, Unit.Millimetre);
+            page.MarginBottom(20f, Unit.Millimetre);
+            page.MarginLeft(28f, Unit.Millimetre);
+            page.MarginRight(20f, Unit.Millimetre);
             page.PageColor(Colors.White);
 
-            // Phông chữ Times New Roman quy chuẩn văn bản pháp lý Việt Nam (NĐ 30/2020/NĐ-CP)
-            page.DefaultTextStyle(x => x.FontFamily("Times New Roman").FontSize(baseFontSize).FontColor(Colors.Black).LineHeight(1.25f));
+            page.DefaultTextStyle(x => x
+                .FontFamily("Times New Roman")
+                .FontSize(baseFontSize)
+                .FontColor(Colors.Black)
+                .LineHeight(lineHeight));
 
-            // Trang đầu chứa đầy đủ Quốc hiệu, Tiêu ngữ, Tên HĐ nằm trong Content. Trang sau KHÔNG lặp lại.
-            page.Content().Element(c => ComposeContent(c, isB2C, baseFontSize));
+            // Không lặp lại Header ở các trang sau; Quốc hiệu, Tiêu ngữ và Tên hợp đồng nằm ở phần đầu Trang 1
+            page.Content().Element(c => ComposeContent(c, isB2C, baseFontSize, lineHeight));
             page.Footer().Element(ComposeFooter);
         });
     }
 
-    private void ComposeContent(IContainer container, bool isB2C, float baseFontSize)
+    private void ComposeContent(IContainer container, bool isB2C, float baseFontSize, float lineHeight)
     {
+        bool hasThirdParty = ContractRichTextFormatter.TryExtractThirdParty(_model, out var thirdParty);
+
         container.Column(col =>
         {
-            col.Spacing(6);
+            col.Spacing(1.5f);
 
             // ==========================================
-            // TRANG 1: QUỐC HIỆU, TIÊU NGỮ, TÊN HỢP ĐỒNG (CHỈ XUẤT HIỆN TRANG ĐẦU TIÊN)
+            // 1. QUỐC HIỆU, TIÊU NGỮ, ĐỊA ĐIỂM - NGÀY THÁNG, TÊN & SỐ HỢP ĐỒNG (TRANG ĐẦU)
             // ==========================================
             col.Item().Column(headerCol =>
             {
                 headerCol.Item().AlignCenter().Column(c =>
                 {
-                    c.Item().AlignCenter().Text("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM").FontSize(13f).Bold();
-                    c.Item().PaddingTop(3).AlignCenter().Text("Độc lập - Tự do - Hạnh phúc").FontSize(13f).Bold();
-                    c.Item().PaddingTop(4).AlignCenter().Width(140).LineHorizontal(1.5f).LineColor(Colors.Black);
-                    c.Item().PaddingTop(5).AlignCenter().Text($"{(!string.IsNullOrWhiteSpace(_model.ContractPlace) ? _model.ContractPlace : "Cần Thơ")}, ngày {_model.ContractDate:dd} tháng {_model.ContractDate:MM} năm {_model.ContractDate:yyyy}").FontSize(13f).Italic();
+                    c.Item().AlignCenter().Text("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM").FontSize(12.2f).Bold();
+                    c.Item().PaddingTop(1).AlignCenter().Text("Độc lập - Tự do - Hạnh phúc").FontSize(12.8f).Bold();
+                    c.Item().PaddingTop(2).AlignCenter().Width(145).LineHorizontal(1f).LineColor(Colors.Black);
+
+                    var place = !string.IsNullOrWhiteSpace(_model.ContractPlace)
+                        ? _model.ContractPlace
+                        : (_partyASettings?.DefaultSigningLocation ?? "TP. Cần Thơ");
+                    c.Item().PaddingTop(3).AlignCenter().Text($"{place}, ngày {_model.ContractDate:dd} tháng {_model.ContractDate:MM} năm {_model.ContractDate:yyyy}")
+                        .FontSize(12f).Italic();
                 });
 
-                headerCol.Item().PaddingTop(12).AlignCenter().Column(c =>
+                headerCol.Item().PaddingTop(6).AlignCenter().Column(c =>
                 {
-                    c.Item().AlignCenter().Text(_model.Title.ToUpper()).FontSize(16f).Bold();
-                    c.Item().AlignCenter().PaddingTop(3).Text($"Số: {_model.ContractNumber}").FontSize(13f).Bold();
-
-                    if (_model.Status == ContractStatus.Draft)
-                    {
-                        c.Item().AlignCenter().PaddingTop(2).Text("(BẢN DỰ THẢO - CHƯA CÓ HIỆU LỰC GIAO KẾT)").FontSize(10f).Italic().FontColor(Colors.Red.Darken2);
-                    }
+                    var titleText = string.IsNullOrWhiteSpace(_model.Title)
+                        ? "HỢP ĐỒNG MUA BÁN HÀNG HÓA"
+                        : _model.Title.Trim().ToUpperInvariant();
+                    c.Item().AlignCenter().Text(titleText).FontSize(15f).Bold();
+                    c.Item().PaddingTop(2).AlignCenter().Text($"Số: {_model.ContractNumber}").FontSize(12.2f).Bold();
                 });
-
-                headerCol.Item().PaddingTop(8).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
             });
 
             // ==========================================
-            // CĂN CỨ PHÁP LÝ (CHỈ TRANG ĐẦU TIÊN)
+            // 2. CĂN CỨ PHÁP LÝ (IN NGHIÊNG ĐÚNG QUY CHUẨN)
             // ==========================================
-            col.Item().PaddingTop(4).Column(c =>
+            col.Item().PaddingTop(3).Column(c =>
             {
-                c.Item().Text("• Căn cứ Bộ luật Dân sự số 91/2015/QH13 được Quốc hội nước CHXHCN Việt Nam thông qua ngày 24/11/2015;").Italic().FontSize(baseFontSize - 1f);
+                c.Spacing(1);
+                c.Item().Text("- Căn cứ Bộ luật Dân sự số 91/2015/QH13 được Quốc hội nước Cộng hòa xã hội chủ nghĩa Việt Nam thông qua ngày 24/11/2015;").Italic().FontSize(12f).Justify();
                 if (isB2C)
                 {
-                    c.Item().Text("• Căn cứ Luật Bảo vệ quyền lợi người tiêu dùng số 19/2023/QH15 có hiệu lực từ ngày 01/07/2024;").Italic().FontSize(baseFontSize - 1f);
-                    c.Item().Text("• Căn cứ Nghị định số 55/2024/NĐ-CP quy định chi tiết một số điều của Luật Bảo vệ quyền lợi người tiêu dùng;").Italic().FontSize(baseFontSize - 1f);
+                    c.Item().Text("- Căn cứ Luật Bảo vệ quyền lợi người tiêu dùng số 19/2023/QH15 và Nghị định số 55/2024/NĐ-CP quy định chi tiết thi hành;").Italic().FontSize(12f).Justify();
                 }
                 else
                 {
-                    c.Item().Text("• Căn cứ Luật Thương mại số 36/2005/QH11 được Quốc hội nước CHXHCN Việt Nam thông qua ngày 14/06/2005;").Italic().FontSize(baseFontSize - 1f);
-                    c.Item().Text("• Căn cứ Luật Doanh nghiệp số 59/2020/QH14 được Quốc hội nước CHXHCN Việt Nam thông qua ngày 17/06/2020;").Italic().FontSize(baseFontSize - 1f);
+                    c.Item().Text("- Căn cứ Luật Thương mại số 36/2005/QH11 được Quốc hội nước Cộng hòa xã hội chủ nghĩa Việt Nam thông qua ngày 14/06/2005;").Italic().FontSize(12f).Justify();
                 }
-                c.Item().Text("• Căn cứ Luật Giao dịch điện tử số 20/2023/QH15 có hiệu lực thi hành từ ngày 01/07/2024;").Italic().FontSize(baseFontSize - 1f);
-                c.Item().Text("• Căn cứ vào nhu cầu và sự thỏa thuận tự nguyện của các bên.").Italic().FontSize(baseFontSize - 1f);
+                c.Item().Text("- Căn cứ Luật Giao dịch điện tử số 20/2023/QH15 và các văn bản hướng dẫn thi hành;").Italic().FontSize(12f).Justify();
+                c.Item().Text("- Căn cứ vào nhu cầu và năng lực thực tế, sự thỏa thuận tự nguyện của các bên.").Italic().FontSize(12f).Justify();
             });
 
-            col.Item().PaddingTop(4).Text($"Hôm nay, ngày {_model.ContractDate:dd/MM/yyyy}, tại {(!string.IsNullOrWhiteSpace(_model.ContractPlace) ? _model.ContractPlace : "Cần Thơ")}, chúng tôi gồm các bên:").Italic();
+            var signingPlace = !string.IsNullOrWhiteSpace(_model.ContractPlace)
+                ? _model.ContractPlace
+                : (_partyASettings?.DefaultSigningLocation ?? "TP. Cần Thơ");
+
+            col.Item().PaddingTop(3).Text(
+                $"Hôm nay, ngày {_model.ContractDate:dd} tháng {_model.ContractDate:MM} năm {_model.ContractDate:yyyy}, tại {signingPlace}, chúng tôi gồm có:")
+                .FontSize(baseFontSize).Justify();
 
             // ==========================================
-            // THÔNG TIN BÊN A (BÊN BÁN)
+            // 3. THÔNG TIN CÁC BÊN GIAO KẾT (TRÌNH BÀY CHUẨN VĂN BẢN PHÁP LÝ)
             // ==========================================
-            col.Item().PaddingTop(4).Border(0.5f).BorderColor(Colors.Grey.Medium).Padding(8).Column(c =>
+            // BÊN A
+            col.Item().PaddingTop(2).ShowEntire().Column(c =>
             {
-                c.Item().Text("BÊN A (BÊN BÁN / ĐƠN VỊ CUNG CẤP):").Bold().FontSize(baseFontSize + 0.5f);
-                c.Item().PaddingTop(2).Text(t => { t.Span("Tên đơn vị: ").Bold(); t.Span(_model.PartyAName); });
-                
-                if (!string.IsNullOrWhiteSpace(_model.PartyATaxCode))
+                c.Spacing(1);
+                var partyAName = !string.IsNullOrWhiteSpace(_model.PartyAName)
+                    ? _model.PartyAName
+                    : (_partyASettings?.CompanyName ?? "CÔNG TY TNHH THIẾT BỊ VỆ SINH LACASA VIỆT NAM");
+                var partyATax = !string.IsNullOrWhiteSpace(_model.PartyATaxCode)
+                    ? _model.PartyATaxCode
+                    : _partyASettings?.TaxCode;
+                var partyAAddr = !string.IsNullOrWhiteSpace(_model.PartyAAddress)
+                    ? _model.PartyAAddress
+                    : _partyASettings?.RegisteredAddress;
+                var partyARep = !string.IsNullOrWhiteSpace(_model.PartyARepresentative)
+                    ? _model.PartyARepresentative
+                    : (_partyASettings?.RepresentativeName ?? "Trần Thị Mai Phương");
+                var partyAPos = !string.IsNullOrWhiteSpace(_model.PartyAPosition)
+                    ? _model.PartyAPosition
+                    : (_partyASettings?.RepresentativePosition ?? "Chủ tịch Hội đồng thành viên");
+                var partyAAuth = !string.IsNullOrWhiteSpace(_model.PartyAAuthority)
+                    ? _model.PartyAAuthority
+                    : (_partyASettings?.RepresentativeAuthority ?? "Người đại diện theo pháp luật");
+                var partyAPhone = !string.IsNullOrWhiteSpace(_model.PartyAPhone)
+                    ? _model.PartyAPhone
+                    : _partyASettings?.Phone;
+                var partyABankAcc = !string.IsNullOrWhiteSpace(_model.PartyABankAccount)
+                    ? _model.PartyABankAccount
+                    : _partyASettings?.BankAccount;
+                var partyABankName = !string.IsNullOrWhiteSpace(_model.PartyABankName)
+                    ? _model.PartyABankName
+                    : _partyASettings?.BankName;
+                var partyABankBranch = !string.IsNullOrWhiteSpace(_model.PartyABankBranch)
+                    ? _model.PartyABankBranch
+                    : _partyASettings?.BankBranch;
+
+                c.Item().Text(t =>
                 {
-                    c.Item().PaddingTop(1).Row(r =>
-                    {
-                        r.RelativeItem().Text(t => { t.Span("Mã số thuế: ").Bold(); t.Span(_model.PartyATaxCode); });
-                        if (!string.IsNullOrWhiteSpace(_model.PartyAPhone))
-                            r.RelativeItem().Text(t => { t.Span("Điện thoại: ").Bold(); t.Span(_model.PartyAPhone); });
-                    });
-                }
-                if (!string.IsNullOrWhiteSpace(_model.PartyAAddress))
-                {
-                    c.Item().PaddingTop(1).Text(t => { t.Span("Địa chỉ trụ sở: ").Bold(); t.Span(_model.PartyAAddress); });
-                }
-                c.Item().PaddingTop(1).Row(r =>
-                {
-                    r.RelativeItem().Text(t => { t.Span("Người đại diện: ").Bold(); t.Span(_model.PartyARepresentative ?? "Nguyễn Văn An"); });
-                    r.RelativeItem().Text(t => { t.Span("Chức vụ: ").Bold(); t.Span(_model.PartyAPosition ?? "Giám đốc"); });
+                    t.Span("BÊN A (BÊN BÁN / BÊN CUNG CẤP): ").Bold();
+                    t.Span(partyAName.ToUpperInvariant()).Bold();
                 });
-                c.Item().PaddingTop(1).Text(t => { t.Span("Căn cứ đại diện: ").Bold(); t.Span(_model.PartyAAuthority ?? "Đại diện theo pháp luật"); });
 
-                if (!string.IsNullOrWhiteSpace(_model.PartyABankAccount))
+                if (!string.IsNullOrWhiteSpace(partyAAddr))
                 {
-                    c.Item().PaddingTop(1).Text(t =>
+                    c.Item().Text(t => { t.Span("- Địa chỉ trụ sở: "); t.Span(partyAAddr); });
+                }
+
+                c.Item().Row(r =>
+                {
+                    if (!string.IsNullOrWhiteSpace(partyATax))
+                        r.RelativeItem().Text(t => { t.Span("- Mã số thuế: "); t.Span(partyATax).Bold(); });
+                    if (!string.IsNullOrWhiteSpace(partyAPhone))
+                        r.RelativeItem().Text(t => { t.Span("Điện thoại: "); t.Span(partyAPhone); });
+                });
+
+                if (!string.IsNullOrWhiteSpace(partyABankAcc))
+                {
+                    c.Item().Text(t =>
                     {
-                        t.Span("Tài khoản ngân hàng: ").Bold();
-                        t.Span($"{_model.PartyABankAccount} tại {_model.PartyABankName} {_model.PartyABankBranch}");
+                        t.Span("- Tài khoản số: ");
+                        t.Span(partyABankAcc).Bold();
+                        if (!string.IsNullOrWhiteSpace(partyABankName))
+                            t.Span($" tại {partyABankName}");
+                        if (!string.IsNullOrWhiteSpace(partyABankBranch))
+                            t.Span($" - {partyABankBranch}");
                     });
+                }
+
+                c.Item().Row(r =>
+                {
+                    r.RelativeItem(3).Text(t => { t.Span("- Đại diện bởi: "); t.Span(partyARep).Bold(); });
+                    r.RelativeItem(2).Text(t => { t.Span("Chức vụ: "); t.Span(partyAPos); });
+                });
+
+                if (!string.IsNullOrWhiteSpace(partyAAuth))
+                {
+                    c.Item().Text(t => { t.Span("- Căn cứ đại diện: "); t.Span(partyAAuth).Italic(); });
                 }
             });
 
-            // ==========================================
-            // THÔNG TIN BÊN B (BÊN MUA / KHÁCH HÀNG)
-            // ==========================================
-            col.Item().PaddingTop(4).Border(0.5f).BorderColor(Colors.Grey.Medium).Padding(8).Column(c =>
+            // BÊN B
+            col.Item().PaddingTop(2).ShowEntire().Column(c =>
             {
-                string partyBHeader = isB2C ? "BÊN B (BÊN MUA / KHÁCH HÀNG CÁ NHÂN):" : "BÊN B (BÊN MUA / ĐỐI TÁC THƯƠNG MẠI):";
-                c.Item().Text(partyBHeader).Bold().FontSize(baseFontSize + 0.5f);
-                c.Item().PaddingTop(2).Text(t => { t.Span(isB2C ? "Họ và tên khách hàng: " : "Tên đơn vị: ").Bold(); t.Span(_model.PartyBName); });
+                c.Spacing(1);
+                string partyBLabel = isB2C
+                    ? "BÊN B (BÊN MUA / KHÁCH HÀNG): "
+                    : "BÊN B (BÊN MUA / ĐỐI TÁC): ";
 
-                c.Item().PaddingTop(1).Row(r =>
+                c.Item().Text(t =>
                 {
-                    if (!string.IsNullOrWhiteSpace(_model.PartyBTaxCode))
-                        r.RelativeItem().Text(t => { t.Span("Mã số thuế: ").Bold(); t.Span(_model.PartyBTaxCode); });
-                    else if (!string.IsNullOrWhiteSpace(_model.PartyBIdCardNumber))
-                        r.RelativeItem().Text(t => { t.Span("Số CCCD/Định danh: ").Bold(); t.Span(_model.PartyBIdCardNumber); });
-
-                    if (!string.IsNullOrWhiteSpace(_model.PartyBPhone))
-                        r.RelativeItem().Text(t => { t.Span("Điện thoại: ").Bold(); t.Span(_model.PartyBPhone); });
+                    t.Span(partyBLabel).Bold();
+                    t.Span((_model.PartyBName ?? string.Empty).ToUpperInvariant()).Bold();
                 });
 
                 if (!string.IsNullOrWhiteSpace(_model.PartyBAddress))
                 {
-                    c.Item().PaddingTop(1).Text(t => { t.Span(isB2C ? "Nơi cư trú / Địa chỉ: " : "Địa chỉ trụ sở: ").Bold(); t.Span(_model.PartyBAddress); });
+                    c.Item().Text(t =>
+                    {
+                        t.Span(isB2C ? "- Địa chỉ thường trú / Liên hệ: " : "- Địa chỉ trụ sở: ");
+                        t.Span(_model.PartyBAddress);
+                    });
+                }
+
+                if (!string.IsNullOrWhiteSpace(_model.PartyBDeliveryAddress) &&
+                    !string.Equals(_model.PartyBDeliveryAddress, _model.PartyBAddress, StringComparison.OrdinalIgnoreCase))
+                {
+                    c.Item().Text(t => { t.Span("- Địa điểm giao nhận: "); t.Span(_model.PartyBDeliveryAddress); });
+                }
+
+                if (!string.IsNullOrWhiteSpace(_model.PartyBTaxCode) ||
+                    !string.IsNullOrWhiteSpace(_model.PartyBIdCardNumber) ||
+                    !string.IsNullOrWhiteSpace(_model.PartyBPhone))
+                {
+                    c.Item().Row(r =>
+                    {
+                        if (!string.IsNullOrWhiteSpace(_model.PartyBTaxCode))
+                            r.RelativeItem().Text(t => { t.Span("- Mã số thuế: "); t.Span(_model.PartyBTaxCode).Bold(); });
+                        else if (!string.IsNullOrWhiteSpace(_model.PartyBIdCardNumber))
+                            r.RelativeItem().Text(t => { t.Span("- Số CCCD/CMND: "); t.Span(_model.PartyBIdCardNumber).Bold(); });
+
+                        if (!string.IsNullOrWhiteSpace(_model.PartyBPhone))
+                            r.RelativeItem().Text(t => { t.Span("Điện thoại: "); t.Span(_model.PartyBPhone); });
+                    });
+                }
+
+                if (!string.IsNullOrWhiteSpace(_model.PartyBBankAccount))
+                {
+                    c.Item().Text(t =>
+                    {
+                        t.Span("- Tài khoản số: ");
+                        t.Span(_model.PartyBBankAccount).Bold();
+                        if (!string.IsNullOrWhiteSpace(_model.PartyBBankName))
+                            t.Span($" tại {_model.PartyBBankName}");
+                    });
                 }
 
                 if (!isB2C && !string.IsNullOrWhiteSpace(_model.PartyBRepresentative))
                 {
-                    c.Item().PaddingTop(1).Row(r =>
+                    c.Item().Row(r =>
                     {
-                        r.RelativeItem().Text(t => { t.Span("Người đại diện: ").Bold(); t.Span(_model.PartyBRepresentative); });
+                        r.RelativeItem(3).Text(t => { t.Span("- Đại diện bởi: "); t.Span(_model.PartyBRepresentative).Bold(); });
                         if (!string.IsNullOrWhiteSpace(_model.PartyBPosition))
-                            r.RelativeItem().Text(t => { t.Span("Chức vụ: ").Bold(); t.Span(_model.PartyBPosition); });
+                            r.RelativeItem(2).Text(t => { t.Span("Chức vụ: "); t.Span(_model.PartyBPosition); });
                     });
-                    c.Item().PaddingTop(1).Text(t => { t.Span("Căn cứ đại diện: ").Bold(); t.Span(_model.PartyBAuthority ?? "Đại diện theo pháp luật hoặc Ủy quyền hợp pháp"); });
-                }
-            });
 
-            col.Item().PaddingTop(4).Text("Hai bên cùng thỏa thuận và thống nhất ký kết hợp đồng với các điều khoản cụ thể sau đây:").Italic();
-
-            // ==========================================
-            // BẢNG KÊ HÀNG HÓA NẾU CÓ (TỰ ĐỘNG PHÂN TRANG VÀ LẶP LẠI HEADER NẾU DÀI)
-            // ==========================================
-            if (_model.Items != null && _model.Items.Count > 0)
-            {
-                col.Item().PaddingTop(4).Element(ComposeItemsTable);
-            }
-
-            // ==========================================
-            // TỔNG KẾT TÀI CHÍNH
-            // ==========================================
-            col.Item().ShowEntire().PaddingTop(4).Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(6).Column(c =>
-            {
-                c.Item().Row(r =>
-                {
-                    r.RelativeItem().Text(t => { t.Span("Tổng giá trị hợp đồng: ").Bold(); t.Span($"{_model.TotalAmount:N0} {_model.CurrencyCode}").Bold().FontSize(baseFontSize + 1f); });
-                    if (_model.DepositAmount > 0)
+                    if (!string.IsNullOrWhiteSpace(_model.PartyBAuthority))
                     {
-                        r.RelativeItem().Text(t => { t.Span("Tiền đặt cọc: ").Bold(); t.Span($"{_model.DepositAmount:N0} {_model.CurrencyCode}"); });
+                        c.Item().Text(t => { t.Span("- Căn cứ đại diện: "); t.Span(_model.PartyBAuthority).Italic(); });
                     }
-                });
-                if (!string.IsNullOrWhiteSpace(_model.AmountInWords))
-                {
-                    c.Item().PaddingTop(2).Text(t => { t.Span("Bằng chữ: ").Bold(); t.Span(_model.AmountInWords).Italic(); });
                 }
             });
 
-            // ==========================================
-            // CÁC ĐIỀU KHOẢN HỢP ĐỒNG (SHOW ENTIRE TỪNG ĐIỀU ĐỂ KHÔNG BỊ CẮT CHỮ)
-            // ==========================================
-            if (_model.Clauses != null && _model.Clauses.Count > 0)
+            // BÊN C (NẾU HỢP ĐỒNG 3 BÊN)
+            if (hasThirdParty && thirdParty != null)
             {
-                col.Item().PaddingTop(4).Column(clauseCol =>
+                col.Item().PaddingTop(4).ShowEntire().Column(c =>
                 {
-                    clauseCol.Spacing(6);
-                    foreach (var clause in _model.Clauses)
+                    c.Spacing(2);
+                    c.Item().Text(t =>
                     {
-                        clauseCol.Item().ShowEntire().Column(c =>
+                        t.Span($"{thirdParty.PartyLabel}: ").Bold();
+                        t.Span(thirdParty.Name.ToUpperInvariant()).Bold();
+                    });
+                    if (!string.IsNullOrWhiteSpace(thirdParty.Address))
+                        c.Item().Text(t => { t.Span("- Địa chỉ: "); t.Span(thirdParty.Address); });
+                    if (!string.IsNullOrWhiteSpace(thirdParty.TaxCode))
+                        c.Item().Text(t => { t.Span("- Mã số thuế: "); t.Span(thirdParty.TaxCode).Bold(); });
+                    if (!string.IsNullOrWhiteSpace(thirdParty.Representative))
+                    {
+                        c.Item().Row(r =>
                         {
-                            c.Item().Text($"{clause.ClauseNumber}. {clause.Title}").Bold().FontSize(baseFontSize + 0.5f);
-                            c.Item().PaddingTop(1).Text(clause.Content).FontSize(baseFontSize);
+                            r.RelativeItem(3).Text(t => { t.Span("- Đại diện bởi: "); t.Span(thirdParty.Representative).Bold(); });
+                            if (!string.IsNullOrWhiteSpace(thirdParty.Position))
+                                r.RelativeItem(2).Text(t => { t.Span("Chức vụ: "); t.Span(thirdParty.Position); });
                         });
                     }
                 });
             }
 
-            // Điều khoản bổ sung nếu có
-            if (!string.IsNullOrWhiteSpace(_model.PaymentTerms))
+            col.Item().PaddingTop(4).Text(hasThirdParty
+                ? "Các bên cùng thống nhất thỏa thuận và ký kết hợp đồng với các điều khoản cụ thể sau đây:"
+                : "Sau khi bàn bạc, hai bên cùng thống nhất thỏa thuận và ký kết hợp đồng với các điều khoản cụ thể sau đây:")
+                .Italic().Justify();
+
+            // ==========================================
+            // 4. BẢNG KÊ HÀNG HÓA & TỔNG KẾT TÀI CHÍNH (NẾU CÓ)
+            // ==========================================
+            if (_model.Items != null && _model.Items.Count > 0)
             {
-                col.Item().ShowEntire().Column(c =>
-                {
-                    c.Item().Text("Điều khoản thanh toán bổ sung:").Bold();
-                    c.Item().Text(_model.PaymentTerms);
-                });
-            }
-            if (!string.IsNullOrWhiteSpace(_model.DeliveryTerms))
-            {
-                col.Item().ShowEntire().Column(c =>
-                {
-                    c.Item().Text("Điều kiện giao nhận & Địa điểm:").Bold();
-                    c.Item().Text(_model.DeliveryTerms);
-                });
-            }
-            if (!string.IsNullOrWhiteSpace(_model.WarrantyTerms))
-            {
-                col.Item().ShowEntire().Column(c =>
-                {
-                    c.Item().Text("Chính sách bảo hành & Hỗ trợ kỹ thuật:").Bold();
-                    c.Item().Text(_model.WarrantyTerms);
-                });
+                col.Item().PaddingTop(6).Element(ComposeItemsTable);
             }
 
-            // ==========================================
-            // HIỆU LỰC VÀ SỐ BẢN HỢP ĐỒNG
-            // ==========================================
-            int copies = isB2C ? 2 : 4;
-            int eachCopies = isB2C ? 1 : 2;
-            string copiesText = $"Hợp đồng này có hiệu lực kể từ ngày hai bên hoàn tất việc ký kết hợp pháp. Hợp đồng được lập thành 0{copies} bản chính bằng tiếng Việt có giá trị pháp lý như nhau, Bên A giữ 0{eachCopies} bản, Bên B giữ 0{eachCopies} bản để cùng thực hiện.";
-
-            col.Item().ShowEntire().PaddingTop(6).Column(c =>
+            if ((_model.Items != null && _model.Items.Count > 0) || _model.TotalAmount > 0)
             {
-                c.Item().Text(copiesText).Italic();
-            });
-
-            // ==========================================
-            // KHỐI CHỮ KÝ HAI BÊN (SHOW ENTIRE, TRÁNH CẮT TRANG)
-            // ==========================================
-            col.Item().ShowEntire().PaddingTop(14).Row(row =>
-            {
-                // Bên A (Doanh nghiệp bán hàng)
-                row.RelativeItem().AlignCenter().Column(c =>
+                col.Item().ShowEntire().PaddingTop(4).Column(c =>
                 {
-                    c.Item().AlignCenter().Text("ĐẠI DIỆN BÊN A").Bold().FontSize(baseFontSize + 0.5f);
-                    c.Item().AlignCenter().Text("(Ký, ghi rõ họ tên và đóng dấu nếu có)").FontSize(9f).Italic();
-
-                    if (_model.PartyASignedAt.HasValue)
+                    c.Spacing(2);
+                    if (_model.SubTotal > 0 && (_model.TaxAmount > 0 || _model.TotalDiscount > 0))
                     {
-                        c.Item().PaddingTop(6).Element(RenderSignatureBlockPartyA);
+                        c.Item().Row(r =>
+                        {
+                            r.RelativeItem().Text(t =>
+                            {
+                                t.Span("- Cộng tiền hàng (chưa thuế): ");
+                                t.Span($"{_model.SubTotal:N0} {_model.CurrencyCode}").Bold();
+                            });
+                            if (_model.TotalDiscount > 0)
+                            {
+                                r.RelativeItem().Text(t =>
+                                {
+                                    t.Span("Chiết khấu: ");
+                                    t.Span($"{_model.TotalDiscount:N0} {_model.CurrencyCode}").Bold();
+                                });
+                            }
+                            if (_model.TaxAmount > 0)
+                            {
+                                r.RelativeItem().Text(t =>
+                                {
+                                    t.Span($"Thuế GTGT ({_model.TaxRate:0.#}%): ");
+                                    t.Span($"{_model.TaxAmount:N0} {_model.CurrencyCode}").Bold();
+                                });
+                            }
+                        });
                     }
-                    else
+
+                    c.Item().Row(r =>
                     {
-                        c.Item().Height(65);
-                        if (!string.IsNullOrWhiteSpace(_model.PartyARepresentative))
-                            c.Item().AlignCenter().Text(_model.PartyARepresentative).Bold();
+                        r.RelativeItem(3).Text(t =>
+                        {
+                            t.Span("- Tổng giá trị hợp đồng thanh toán: ").Bold();
+                            t.Span($"{_model.TotalAmount:N0} {_model.CurrencyCode}").Bold();
+                        });
+                        if (_model.DepositAmount > 0)
+                        {
+                            r.RelativeItem(2).Text(t =>
+                            {
+                                t.Span("Tiền đặt cọc: ").Bold();
+                                t.Span($"{_model.DepositAmount:N0} {_model.CurrencyCode}");
+                            });
+                        }
+                    });
+
+                    if (!string.IsNullOrWhiteSpace(_model.AmountInWords))
+                    {
+                        c.Item().Text(t =>
+                        {
+                            t.Span("- Số tiền viết bằng chữ: ").Bold();
+                            t.Span(_model.AmountInWords).Italic().Bold();
+                        });
                     }
                 });
+            }
 
-                // Bên B (Doanh nghiệp hoặc Cá nhân)
-                row.RelativeItem().AlignCenter().Column(c =>
+            // ==========================================
+            // 5. CÁC ĐIỀU KHOẢN HỢP ĐỒNG (CHỐNG RỚT TIÊU ĐỀ LẺ LOI + TRẢI TRANG TỰ NHIÊN + BẢO TOÀN ĐỊNH DẠNG)
+            // ==========================================
+            if (_model.Clauses != null && _model.Clauses.Count > 0)
+            {
+                col.Item().PaddingTop(2).Column(clauseCol =>
                 {
-                    string sigTitle = isB2C ? "BÊN MUA / KHÁCH HÀNG" : "ĐẠI DIỆN BÊN B";
-                    string sigNote = isB2C ? "(Ký và ghi rõ họ tên)" : "(Ký, ghi rõ họ tên và đóng dấu nếu có)";
-
-                    c.Item().AlignCenter().Text(sigTitle).Bold().FontSize(baseFontSize + 0.5f);
-                    c.Item().AlignCenter().Text(sigNote).FontSize(9f).Italic();
-
-                    if (_model.PartyBSignedAt.HasValue)
+                    foreach (var clause in _model.Clauses)
                     {
-                        c.Item().PaddingTop(6).Element(RenderSignatureBlockPartyB);
-                    }
-                    else
-                    {
-                        c.Item().Height(65);
-                        string partyBNameDisplay = (!isB2C && !string.IsNullOrWhiteSpace(_model.PartyBRepresentative))
-                            ? _model.PartyBRepresentative
-                            : _model.PartyBName;
+                        var num = (clause.ClauseNumber ?? string.Empty).Trim().TrimEnd('.', ':');
+                        var title = (clause.Title ?? string.Empty).Trim();
+                        var heading = string.IsNullOrWhiteSpace(title)
+                            ? $"{num}."
+                            : $"{num}. {title}";
 
-                        if (!string.IsNullOrWhiteSpace(partyBNameDisplay))
-                            c.Item().AlignCenter().Text(partyBNameDisplay).Bold();
+                        clauseCol.RenderLegalClause(
+                            heading,
+                            clause.Content,
+                            headingFontSize: 12.5f,
+                            bodyFontSize: baseFontSize,
+                            lineHeight: lineHeight);
                     }
                 });
-            });
+            }
+            else
+            {
+                // Các điều khoản bổ sung nếu không có Clauses
+                if (!string.IsNullOrWhiteSpace(_model.PaymentTerms))
+                {
+                    col.RenderLegalClause("Điều khoản thanh toán cụ thể", _model.PaymentTerms, 12.5f, baseFontSize, lineHeight);
+                }
+                if (!string.IsNullOrWhiteSpace(_model.DeliveryTerms))
+                {
+                    col.RenderLegalClause("Điều kiện và địa điểm giao nhận", _model.DeliveryTerms, 12.5f, baseFontSize, lineHeight);
+                }
+                if (!string.IsNullOrWhiteSpace(_model.InstallationTerms))
+                {
+                    col.RenderLegalClause("Điều kiện thi công lắp đặt và nghiệm thu", _model.InstallationTerms, 12.5f, baseFontSize, lineHeight);
+                }
+                if (!string.IsNullOrWhiteSpace(_model.WarrantyTerms))
+                {
+                    col.RenderLegalClause("Chính sách bảo hành và hỗ trợ kỹ thuật", _model.WarrantyTerms, 12.5f, baseFontSize, lineHeight);
+                }
+                if (!string.IsNullOrWhiteSpace(_model.GeneralTerms))
+                {
+                    col.RenderLegalClause("Điều khoản chung bổ sung", _model.GeneralTerms, 12.5f, baseFontSize, lineHeight);
+                }
+            }
+
+            // ==========================================
+            // 6. ĐOẠN KẾT & KHỐI CHỮ KÝ CÁC BÊN (SHOW ENTIRE ĐỂ KHÔNG BỊ TÁCH TRANG)
+            // ==========================================
+            bool alreadyHasCopiesClause = _model.Clauses != null && _model.Clauses.Any(c =>
+                (c.Title != null && c.Title.Contains("số bản", StringComparison.OrdinalIgnoreCase)) ||
+                (c.Content != null && c.Content.Contains("lập thành", StringComparison.OrdinalIgnoreCase)));
+
+            if (!alreadyHasCopiesClause)
+            {
+                int copies = hasThirdParty ? 3 : (isB2C ? 2 : 4);
+                int eachCopies = hasThirdParty ? 1 : (isB2C ? 1 : 2);
+                string copiesText = hasThirdParty
+                    ? $"Hợp đồng này có hiệu lực kể từ ngày ký và được lập thành 0{copies} bản chính bằng tiếng Việt có giá trị pháp lý như nhau, mỗi bên giữ 0{eachCopies} bản để cùng thực hiện."
+                    : $"Hợp đồng này có hiệu lực kể từ ngày ký và được lập thành 0{copies} bản chính bằng tiếng Việt có giá trị pháp lý như nhau, Bên A giữ 0{eachCopies} bản, Bên B giữ 0{eachCopies} bản để cùng thực hiện.";
+
+                col.Item().ShowEntire().PaddingTop(3).Text(copiesText).Italic().Justify();
+            }
+
+            col.Item().ShowEntire().PaddingTop(6).Element(sigContainer =>
+                ComposeSignatures(sigContainer, isB2C, hasThirdParty, thirdParty));
         });
     }
 
     private void ComposeItemsTable(IContainer container)
     {
+        // Cỡ chữ bảng dữ liệu 10.5pt đúng chuẩn (10.5 - 11.5pt), lặp lại Header khi qua trang, mỗi dòng ShowEntire()
+        const float tableHeaderFontSize = 10.5f;
+        const float tableCellFontSize = 10.5f;
+
         container.Table(table =>
         {
             table.ColumnsDefinition(cols =>
             {
-                cols.ConstantColumn(26); // STT
-                cols.ConstantColumn(65); // Mã hàng
-                cols.RelativeColumn();   // Tên thiết bị & quy cách
-                cols.ConstantColumn(38); // ĐVT
+                cols.ConstantColumn(28); // STT
+                cols.ConstantColumn(68); // Mã hàng
+                cols.RelativeColumn();   // Tên hàng hóa, quy cách
+                cols.ConstantColumn(40); // ĐVT
                 cols.ConstantColumn(38); // SL
-                cols.ConstantColumn(72); // Đơn giá
-                cols.ConstantColumn(76); // Thành tiền
+                cols.ConstantColumn(74); // Đơn giá
+                cols.ConstantColumn(80); // Thành tiền
             });
 
             table.Header(header =>
             {
-                header.Cell().Border(0.5f).BorderColor(Colors.Grey.Darken1).Background(Colors.Grey.Lighten4).Padding(3).AlignCenter().Text("STT").Bold().FontSize(9.5f);
-                header.Cell().Border(0.5f).BorderColor(Colors.Grey.Darken1).Background(Colors.Grey.Lighten4).Padding(3).AlignCenter().Text("Mã hàng").Bold().FontSize(9.5f);
-                header.Cell().Border(0.5f).BorderColor(Colors.Grey.Darken1).Background(Colors.Grey.Lighten4).Padding(3).AlignCenter().Text("Tên hàng hóa, quy cách").Bold().FontSize(9.5f);
-                header.Cell().Border(0.5f).BorderColor(Colors.Grey.Darken1).Background(Colors.Grey.Lighten4).Padding(3).AlignCenter().Text("ĐVT").Bold().FontSize(9.5f);
-                header.Cell().Border(0.5f).BorderColor(Colors.Grey.Darken1).Background(Colors.Grey.Lighten4).Padding(3).AlignCenter().Text("SL").Bold().FontSize(9.5f);
-                header.Cell().Border(0.5f).BorderColor(Colors.Grey.Darken1).Background(Colors.Grey.Lighten4).Padding(3).AlignCenter().Text("Đơn giá (đ)").Bold().FontSize(9.5f);
-                header.Cell().Border(0.5f).BorderColor(Colors.Grey.Darken1).Background(Colors.Grey.Lighten4).Padding(3).AlignCenter().Text("Thành tiền (đ)").Bold().FontSize(9.5f);
+                header.Cell().Border(0.5f).BorderColor(Colors.Black).Background(Colors.Grey.Lighten4).PaddingVertical(4).PaddingHorizontal(3).AlignCenter().AlignMiddle().Text("STT").Bold().FontSize(tableHeaderFontSize);
+                header.Cell().Border(0.5f).BorderColor(Colors.Black).Background(Colors.Grey.Lighten4).PaddingVertical(4).PaddingHorizontal(3).AlignCenter().AlignMiddle().Text("Mã hàng").Bold().FontSize(tableHeaderFontSize);
+                header.Cell().Border(0.5f).BorderColor(Colors.Black).Background(Colors.Grey.Lighten4).PaddingVertical(4).PaddingHorizontal(4).AlignCenter().AlignMiddle().Text("Tên hàng hóa, quy cách").Bold().FontSize(tableHeaderFontSize);
+                header.Cell().Border(0.5f).BorderColor(Colors.Black).Background(Colors.Grey.Lighten4).PaddingVertical(4).PaddingHorizontal(3).AlignCenter().AlignMiddle().Text("ĐVT").Bold().FontSize(tableHeaderFontSize);
+                header.Cell().Border(0.5f).BorderColor(Colors.Black).Background(Colors.Grey.Lighten4).PaddingVertical(4).PaddingHorizontal(3).AlignCenter().AlignMiddle().Text("Số lượng").Bold().FontSize(tableHeaderFontSize);
+                header.Cell().Border(0.5f).BorderColor(Colors.Black).Background(Colors.Grey.Lighten4).PaddingVertical(4).PaddingHorizontal(4).AlignCenter().AlignMiddle().Text("Đơn giá").Bold().FontSize(tableHeaderFontSize);
+                header.Cell().Border(0.5f).BorderColor(Colors.Black).Background(Colors.Grey.Lighten4).PaddingVertical(4).PaddingHorizontal(4).AlignCenter().AlignMiddle().Text("Thành tiền").Bold().FontSize(tableHeaderFontSize);
             });
 
             int index = 1;
             foreach (var item in _model.Items)
             {
-                table.Cell().Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(3).AlignCenter().Text(index++.ToString()).FontSize(9f);
-                table.Cell().Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(3).AlignCenter().Text(item.ProductCode).FontSize(9f);
-                table.Cell().Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(3).AlignLeft().Text(item.ProductName).FontSize(9f);
-                table.Cell().Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(3).AlignCenter().Text(item.Unit).FontSize(9f);
-                table.Cell().Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(3).AlignCenter().Text($"{item.Quantity:N0}").FontSize(9f);
-                table.Cell().Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(3).AlignRight().Text($"{item.UnitPrice:N0}").FontSize(9f);
-                table.Cell().Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(3).AlignRight().Text($"{item.LineTotal:N0}").FontSize(9f);
+                var productDisplay = string.IsNullOrWhiteSpace(item.Specifications)
+                    ? item.ProductName
+                    : $"{item.ProductName} ({item.Specifications})";
+
+                table.Cell().ShowEntire().Border(0.5f).BorderColor(Colors.Grey.Darken2).PaddingVertical(3.5f).PaddingHorizontal(3).AlignCenter().AlignMiddle().Text(index++.ToString()).FontSize(tableCellFontSize);
+                table.Cell().ShowEntire().Border(0.5f).BorderColor(Colors.Grey.Darken2).PaddingVertical(3.5f).PaddingHorizontal(3).AlignCenter().AlignMiddle().Text(item.ProductCode ?? "-").FontSize(tableCellFontSize);
+                table.Cell().ShowEntire().Border(0.5f).BorderColor(Colors.Grey.Darken2).PaddingVertical(3.5f).PaddingHorizontal(4).AlignLeft().AlignMiddle().Text(productDisplay).FontSize(tableCellFontSize);
+                table.Cell().ShowEntire().Border(0.5f).BorderColor(Colors.Grey.Darken2).PaddingVertical(3.5f).PaddingHorizontal(3).AlignCenter().AlignMiddle().Text(item.Unit ?? "Bộ").FontSize(tableCellFontSize);
+                table.Cell().ShowEntire().Border(0.5f).BorderColor(Colors.Grey.Darken2).PaddingVertical(3.5f).PaddingHorizontal(3).AlignCenter().AlignMiddle().Text($"{item.Quantity:N0}").FontSize(tableCellFontSize);
+                table.Cell().ShowEntire().Border(0.5f).BorderColor(Colors.Grey.Darken2).PaddingVertical(3.5f).PaddingHorizontal(4).AlignRight().AlignMiddle().Text($"{item.UnitPrice:N0}").FontSize(tableCellFontSize);
+                table.Cell().ShowEntire().Border(0.5f).BorderColor(Colors.Grey.Darken2).PaddingVertical(3.5f).PaddingHorizontal(4).AlignRight().AlignMiddle().Text($"{item.LineTotal:N0}").FontSize(tableCellFontSize).Bold();
+            }
+        });
+    }
+
+    private void ComposeSignatures(
+        IContainer container,
+        bool isB2C,
+        bool hasThirdParty,
+        ContractThirdPartyInfo? thirdParty)
+    {
+        var partyARep = !string.IsNullOrWhiteSpace(_model.PartyARepresentative)
+            ? _model.PartyARepresentative
+            : (_partyASettings?.RepresentativeName ?? "Trần Thị Mai Phương");
+
+        var partyBDisplayName = (!isB2C && !string.IsNullOrWhiteSpace(_model.PartyBRepresentative))
+            ? _model.PartyBRepresentative!
+            : _model.PartyBName;
+
+        bool showSignedA = _includeSignatures && _model.PartyASignedAt.HasValue;
+        bool showSignedB = _includeSignatures && _model.PartyBSignedAt.HasValue;
+
+        container.Column(sigRoot =>
+        {
+            sigRoot.Item().Row(row =>
+            {
+                // Cột 1: ĐẠI DIỆN BÊN A
+                row.RelativeItem().PaddingHorizontal(4).AlignCenter().Column(c =>
+                {
+                    c.Item().AlignCenter().Text("ĐẠI DIỆN BÊN A").Bold().FontSize(12.5f);
+                    c.Item().PaddingTop(1).AlignCenter().Text("(Ký, ghi rõ họ tên và đóng dấu)").FontSize(10f).Italic();
+
+                    if (showSignedA)
+                    {
+                        c.Item().PaddingTop(6).Element(RenderSignatureBlockPartyA);
+                    }
+                    else
+                    {
+                        c.Item().Height(46);
+                        if (!string.IsNullOrWhiteSpace(partyARep))
+                            c.Item().AlignCenter().Text(partyARep).Bold().FontSize(12f);
+                    }
+                });
+
+                // Cột 2: ĐẠI DIỆN BÊN B
+                row.RelativeItem().PaddingHorizontal(4).AlignCenter().Column(c =>
+                {
+                    string sigTitleB = isB2C ? "ĐẠI DIỆN BÊN B (KHÁCH HÀNG)" : "ĐẠI DIỆN BÊN B";
+                    string sigNoteB = isB2C ? "(Ký và ghi rõ họ tên)" : "(Ký, ghi rõ họ tên và đóng dấu)";
+
+                    c.Item().AlignCenter().Text(sigTitleB).Bold().FontSize(12.5f);
+                    c.Item().PaddingTop(1).AlignCenter().Text(sigNoteB).FontSize(10f).Italic();
+
+                    if (showSignedB)
+                    {
+                        c.Item().PaddingTop(6).Element(RenderSignatureBlockPartyB);
+                    }
+                    else
+                    {
+                        c.Item().Height(46);
+                        if (!string.IsNullOrWhiteSpace(partyBDisplayName))
+                            c.Item().AlignCenter().Text(partyBDisplayName).Bold().FontSize(12f);
+                    }
+                });
+
+                // Cột 3 (nếu Hợp đồng có 3 bên ký): ĐẠI DIỆN BÊN C
+                if (hasThirdParty && thirdParty != null)
+                {
+                    row.RelativeItem().PaddingHorizontal(4).AlignCenter().Column(c =>
+                    {
+                        c.Item().AlignCenter().Text(thirdParty.HeadingTitle).Bold().FontSize(12.5f);
+                        c.Item().PaddingTop(1).AlignCenter().Text("(Ký, ghi rõ họ tên và đóng dấu)").FontSize(10f).Italic();
+                        c.Item().Height(46);
+                        var repC = !string.IsNullOrWhiteSpace(thirdParty.Representative)
+                            ? thirdParty.Representative
+                            : thirdParty.Name;
+                        if (!string.IsNullOrWhiteSpace(repC))
+                            c.Item().AlignCenter().Text(repC).Bold().FontSize(12f);
+                    });
+                }
+            });
+
+            // Chỉ hiển thị chứng thực chữ ký số & mã băm SHA-256 ở Bản đã ký số (khi đã thực sự ký)
+            if (_includeSignatures && (showSignedA || showSignedB) && !string.IsNullOrWhiteSpace(_model.DocumentHash))
+            {
+                sigRoot.Item().PaddingTop(10).Border(0.5f).BorderColor(Colors.Grey.Lighten1).Background(Colors.Grey.Lighten5).PaddingVertical(4).PaddingHorizontal(8).Row(r =>
+                {
+                    r.RelativeItem().Text(t =>
+                    {
+                        t.DefaultTextStyle(x => x.FontSize(9.5f).FontColor(Colors.Grey.Darken3));
+                        t.Span("Chứng thực chữ ký điện tử & toàn vẹn dữ liệu (SHA-256): ").Bold();
+                        t.Span(_model.DocumentHash);
+                    });
+                });
             }
         });
     }
 
     private void RenderSignatureBlockPartyA(IContainer container)
     {
-        container.Border(1).BorderColor(Colors.Blue.Darken2).Background(Colors.Blue.Lighten5).Padding(6).Column(c =>
+        var signerName = !string.IsNullOrWhiteSpace(_model.PartyASignedBy)
+            ? _model.PartyASignedBy
+            : (!string.IsNullOrWhiteSpace(_model.PartyARepresentative) ? _model.PartyARepresentative : "Trần Thị Mai Phương");
+
+        container.Border(0.75f).BorderColor(Colors.Blue.Darken2).Background(Colors.Blue.Lighten5).Padding(6).Column(c =>
         {
-            c.Item().AlignCenter().Text("XÁC NHẬN CHỮ KÝ ĐIỆN TỬ").Bold().FontSize(9f).FontColor(Colors.Blue.Darken3);
+            c.Item().AlignCenter().Text("ĐÃ KÝ SỐ / ĐIỆN TỬ HỢP LỆ").Bold().FontSize(9.5f).FontColor(Colors.Blue.Darken3);
             if (!string.IsNullOrWhiteSpace(_model.PartyASignatureData) && _model.PartyASignatureData.StartsWith("data:image"))
             {
                 try
                 {
                     var base64 = _model.PartyASignatureData.Substring(_model.PartyASignatureData.IndexOf(',') + 1);
                     var bytes = Convert.FromBase64String(base64);
-                    c.Item().AlignCenter().Height(40).Image(bytes).FitArea();
+                    c.Item().PaddingVertical(2).AlignCenter().Height(42).Image(bytes).FitArea();
                 }
                 catch { }
             }
-            c.Item().AlignCenter().Text($"Ký bởi: {_model.PartyASignedBy ?? _model.PartyARepresentative}").Bold().FontSize(9.5f);
-            c.Item().AlignCenter().Text($"Ngày ký: {_model.PartyASignedAt:dd/MM/yyyy HH:mm}").FontSize(8f).Italic();
+            c.Item().AlignCenter().Text(signerName).Bold().FontSize(11f).FontColor(Colors.Black);
+            c.Item().AlignCenter().Text($"Ký ngày: {_model.PartyASignedAt:dd/MM/yyyy HH:mm}").FontSize(9.5f).Italic().FontColor(Colors.Grey.Darken3);
         });
     }
 
     private void RenderSignatureBlockPartyB(IContainer container)
     {
-        container.Border(1).BorderColor(Colors.Green.Darken2).Background(Colors.Green.Lighten5).Padding(6).Column(c =>
+        var signerName = !string.IsNullOrWhiteSpace(_model.PartyBSignedBy)
+            ? _model.PartyBSignedBy
+            : (!string.IsNullOrWhiteSpace(_model.PartyBRepresentative) ? _model.PartyBRepresentative : _model.PartyBName);
+
+        container.Border(0.75f).BorderColor(Colors.Green.Darken2).Background(Colors.Green.Lighten5).Padding(6).Column(c =>
         {
-            c.Item().AlignCenter().Text("XÁC NHẬN CHỮ KÝ ĐIỆN TỬ").Bold().FontSize(9f).FontColor(Colors.Green.Darken3);
+            c.Item().AlignCenter().Text("ĐÃ KÝ SỐ / ĐIỆN TỬ HỢP LỆ").Bold().FontSize(9.5f).FontColor(Colors.Green.Darken3);
             if (!string.IsNullOrWhiteSpace(_model.PartyBSignatureData) && _model.PartyBSignatureData.StartsWith("data:image"))
             {
                 try
                 {
                     var base64 = _model.PartyBSignatureData.Substring(_model.PartyBSignatureData.IndexOf(',') + 1);
                     var bytes = Convert.FromBase64String(base64);
-                    c.Item().AlignCenter().Height(40).Image(bytes).FitArea();
+                    c.Item().PaddingVertical(2).AlignCenter().Height(42).Image(bytes).FitArea();
                 }
                 catch { }
             }
-            c.Item().AlignCenter().Text($"Ký bởi: {_model.PartyBSignedBy ?? _model.PartyBRepresentative ?? _model.PartyBName}").Bold().FontSize(9.5f);
-            c.Item().AlignCenter().Text($"Ngày ký: {_model.PartyBSignedAt:dd/MM/yyyy HH:mm}").FontSize(8f).Italic();
+            c.Item().AlignCenter().Text(signerName).Bold().FontSize(11f).FontColor(Colors.Black);
+            c.Item().AlignCenter().Text($"Ký ngày: {_model.PartyBSignedAt:dd/MM/yyyy HH:mm}").FontSize(9.5f).Italic().FontColor(Colors.Grey.Darken3);
         });
     }
 
     private void ComposeFooter(IContainer container)
     {
+        // Footer chuẩn: Bên trái là Số hợp đồng, Bên phải là Trang X / Y, cỡ chữ 9 - 9.5pt, không có URL hay chữ thừa
+        const float footerFontSize = 9.2f;
+
         container.Column(col =>
         {
             col.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten1);
             col.Item().PaddingTop(3).Row(row =>
             {
-                row.RelativeItem().Text($"Hợp đồng số: {_model.ContractNumber}").FontSize(8f).FontColor(Colors.Grey.Darken1);
+                row.RelativeItem().Text(_model.ContractNumber ?? string.Empty)
+                    .FontSize(footerFontSize)
+                    .FontColor(Colors.Grey.Darken2);
 
                 row.RelativeItem().AlignRight().Text(text =>
                 {
-                    text.Span("Trang ").FontSize(8f);
-                    text.CurrentPageNumber().FontSize(8f);
-                    text.Span(" / ").FontSize(8f);
-                    text.TotalPages().FontSize(8f);
+                    text.DefaultTextStyle(x => x.FontSize(footerFontSize).FontColor(Colors.Grey.Darken2));
+                    text.Span("Trang ");
+                    text.CurrentPageNumber();
+                    text.Span(" / ");
+                    text.TotalPages();
                 });
             });
         });

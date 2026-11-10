@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
@@ -66,6 +66,32 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
             }
 
             return TypedResults.LocalRedirect($"~/{returnUrl}");
+        });
+
+        accountGroup.MapGet("/Logout", async (
+            HttpContext context,
+            ClaimsPrincipal user,
+            [FromServices] SignInManager<ApplicationUser> signInManager,
+            [FromServices] TradeFlow.Application.Common.Interfaces.IAuditService auditService) =>
+        {
+            var userName = user.Identity?.Name;
+
+            await signInManager.SignOutAsync();
+
+            if (!string.IsNullOrEmpty(userName))
+            {
+                var ip = context.Connection.RemoteIpAddress?.ToString();
+                var userAgent = context.Request.Headers.UserAgent.ToString();
+
+                await auditService.LogAsync(
+                    TradeFlow.Domain.Enums.AuditEventType.Logout,
+                    performedBy: userName,
+                    details: "Người dùng đăng xuất",
+                    ipAddress: ip,
+                    userAgent: userAgent);
+            }
+
+            return TypedResults.Redirect("/Account/Login");
         });
 
         accountGroup.MapPost("/PasskeyCreationOptions", async (

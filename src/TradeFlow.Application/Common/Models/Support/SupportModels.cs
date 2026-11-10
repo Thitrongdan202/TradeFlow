@@ -94,6 +94,13 @@ public class SupportAttachmentDto
     public string DownloadUrl => $"/api/support/attachments/{Id}/download";
     public string PreviewUrl => $"/api/support/attachments/{Id}/preview";
     public bool IsImage => ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+    public bool IsPdf => ContentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase)
+                      || OriginalFileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase);
+    public bool IsTextPreview => ContentType.StartsWith("text/", StringComparison.OrdinalIgnoreCase)
+                              || OriginalFileName.EndsWith(".txt", StringComparison.OrdinalIgnoreCase)
+                              || OriginalFileName.EndsWith(".log", StringComparison.OrdinalIgnoreCase)
+                              || OriginalFileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase);
+    public string FileExtension => System.IO.Path.GetExtension(OriginalFileName)?.TrimStart('.').ToUpperInvariant() is { Length: > 0 } ext ? ext : "FILE";
 
     public string FormattedSize
     {

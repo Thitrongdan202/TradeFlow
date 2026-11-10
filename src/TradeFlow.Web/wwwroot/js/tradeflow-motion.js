@@ -206,9 +206,11 @@
                 if (dialog) {
                     dialog.style.transform = '';
                     dialog.style.opacity = '1';
+                    dialog.style.transition = '';
                 }
                 if (backdrop) {
                     backdrop.style.opacity = '1';
+                    backdrop.style.transition = '';
                 }
                 if (onComplete) onComplete();
                 resolve();
@@ -219,18 +221,24 @@
                     dialog.style.opacity = '1';
                     dialog.style.transform = 'none';
                     dialog.style.animation = 'none';
+                    dialog.style.transition = 'none';
                 }
                 if (backdrop) {
                     backdrop.style.opacity = '1';
                     backdrop.style.animation = 'none';
+                    backdrop.style.transition = 'none';
                 }
                 finish();
                 return;
             }
 
-            // Suppress CSS keyframe to avoid conflict
+            // Suppress CSS keyframe & transition to avoid conflict
             dialog.style.animation = 'none';
-            if (backdrop) backdrop.style.animation = 'none';
+            dialog.style.transition = 'none';
+            if (backdrop) {
+                backdrop.style.animation = 'none';
+                backdrop.style.transition = 'none';
+            }
 
             if (Motion && typeof Motion.animate === 'function') {
                 claimOwnership(dialog, 'motion');
@@ -304,7 +312,11 @@
             }
 
             dialog.style.animation = 'none';
-            if (backdrop) backdrop.style.animation = 'none';
+            dialog.style.transition = 'none';
+            if (backdrop) {
+                backdrop.style.animation = 'none';
+                backdrop.style.transition = 'none';
+            }
 
             if (Motion && typeof Motion.animate === 'function') {
                 claimOwnership(dialog, 'motion');

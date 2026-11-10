@@ -196,6 +196,18 @@
                 _isAdminUser = false;
                 _isManagerUser = false;
                 _supportBadgeCount = 0;
+
+                var relative = Nav.ToBaseRelativePath(Nav.Uri);
+                var pathOnly = relative.Split('?')[0].TrimStart('/');
+                if (!pathOnly.StartsWith("account/", StringComparison.OrdinalIgnoreCase) &&
+                    !pathOnly.StartsWith("error", StringComparison.OrdinalIgnoreCase) &&
+                    !pathOnly.StartsWith("loi", StringComparison.OrdinalIgnoreCase))
+                {
+                    var returnUrl = string.IsNullOrWhiteSpace(relative) || relative == "/"
+                        ? ""
+                        : $"?returnUrl={Uri.EscapeDataString(relative)}";
+                    Nav.NavigateTo($"Account/Login{returnUrl}", forceLoad: true);
+                }
             }
         }
     }

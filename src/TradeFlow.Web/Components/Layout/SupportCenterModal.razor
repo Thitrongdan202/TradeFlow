@@ -175,6 +175,7 @@
                                        class="tf-support-input"
                                        placeholder="Tóm tắt ngắn gọn vấn đề (ví dụ: Không thể lưu đơn bán hàng số DH-0021)"
                                        @bind="_title"
+                                       @bind:event="oninput"
                                        maxlength="250"
                                        required />
                             </div>
@@ -184,6 +185,7 @@
                                 <textarea class="tf-support-textarea"
                                           placeholder="Vui lòng nêu rõ:&#10;• Bạn vừa thực hiện thao tác gì?&#10;• Kết quả thực tế đang xảy ra là gì?&#10;• Kết quả bạn mong muốn?&#10;• Các bước để tái hiện lại lỗi?"
                                           @bind="_description"
+                                          @bind:event="oninput"
                                           required></textarea>
                             </div>
 
@@ -917,33 +919,56 @@
                         @if (_currentTicket.Attachments.Count > 0)
                         {
                             <div class="tf-detail-attachments-section">
-                                <h4 class="tf-section-subtitle">TỆP ĐÍNH KÈM (@_currentTicket.Attachments.Count)</h4>
+                                <div class="tf-attachments-section-head">
+                                    <h4 class="tf-section-subtitle">TỆP ĐÍNH KÈM (@_currentTicket.Attachments.Count)</h4>
+                                    <span class="tf-attachments-hint">Nhấn vào tệp để xem trực tiếp</span>
+                                </div>
                                 <div class="tf-attachments-gallery">
                                     @foreach (var att in _currentTicket.Attachments)
                                     {
-                                        <a href="@att.DownloadUrl" target="_blank" download class="tf-attachment-card" title="Nhấn để xem hoặc tải xuống">
-                                            <div class="tf-att-icon-box">
-                                                @if (att.IsImage)
-                                                {
-                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                                                        <polyline points="21 15 16 10 5 21"></polyline>
-                                                    </svg>
-                                                }
-                                                else
-                                                {
-                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                                        <polyline points="14 2 14 8 20 8"></polyline>
-                                                    </svg>
-                                                }
-                                            </div>
+                                        <div class="tf-attachment-card @(att.IsImage ? "is-image-card" : "is-doc-card")"
+                                             role="button"
+                                             tabindex="0"
+                                             title="Nhấn để xem trực tiếp: @att.OriginalFileName"
+                                             @onclick="() => OpenAttachmentViewer(att, _currentTicket.Attachments)">
+                                            @if (att.IsImage)
+                                            {
+                                                <div class="tf-att-thumb-wrap">
+                                                    <img src="@att.PreviewUrl" alt="@att.OriginalFileName" class="tf-att-thumb-img" loading="lazy" />
+                                                    <div class="tf-att-thumb-overlay">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                                            <circle cx="11" cy="11" r="8"></circle>
+                                                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                                            <line x1="11" y1="8" x2="11" y2="14"></line>
+                                                            <line x1="8" y1="11" x2="14" y2="11"></line>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="tf-att-icon-box @(att.IsPdf ? "is-pdf" : "")">
+                                                    <span class="tf-att-ext-label">@att.FileExtension</span>
+                                                </div>
+                                            }
                                             <div class="tf-att-info">
                                                 <span class="tf-att-filename">@att.OriginalFileName</span>
-                                                <span class="tf-att-meta">@att.FormattedSize • Tải về</span>
+                                                <span class="tf-att-meta">
+                                                    @att.FormattedSize • @(att.IsImage ? "Xem ảnh" : (att.IsPdf || att.IsTextPreview ? "Xem tài liệu" : "Xem chi tiết"))
+                                                </span>
                                             </div>
-                                        </a>
+                                            <a href="@att.DownloadUrl"
+                                               download="@att.OriginalFileName"
+                                               class="tf-att-download-action"
+                                               title="Tải tệp xuống máy"
+                                               @onclick:stopPropagation="true">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                                </svg>
+                                            </a>
+                                        </div>
                                     }
                                 </div>
                             </div>
@@ -984,9 +1009,29 @@
                                                 <div class="tf-msg-attachments">
                                                     @foreach (var a in c.Attachments)
                                                     {
-                                                        <a href="@a.DownloadUrl" target="_blank" download class="tf-msg-att-pill">
-                                                            📎 @a.OriginalFileName (@a.FormattedSize)
-                                                        </a>
+                                                        <div class="tf-msg-att-pill-group">
+                                                            <button type="button"
+                                                                    class="tf-msg-att-pill"
+                                                                    title="Nhấn để xem trực tiếp: @a.OriginalFileName"
+                                                                    @onclick="() => OpenAttachmentViewer(a, c.Attachments)">
+                                                                @if (a.IsImage)
+                                                                {
+                                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                                                }
+                                                                <span>@a.OriginalFileName (@a.FormattedSize)</span>
+                                                            </button>
+                                                            <a href="@a.DownloadUrl"
+                                                               download="@a.OriginalFileName"
+                                                               class="tf-msg-att-dl"
+                                                               title="Tải về"
+                                                               @onclick:stopPropagation="true">
+                                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                                            </a>
+                                                        </div>
                                                     }
                                                 </div>
                                             }
@@ -995,45 +1040,228 @@
                                 </div>
                             }
 
-                            <!-- Reply Form Card -->
-                            <div class="tf-reply-card">
-                                <h5 class="tf-reply-title">Gửi phản hồi / Bổ sung thông tin</h5>
-                                <textarea class="tf-support-textarea tf-reply-textarea"
-                                          placeholder="Nhập nội dung phản hồi, hướng dẫn khắc phục hoặc yêu cầu bổ sung thông tin..."
-                                          @bind="_replyText"></textarea>
+                            <!-- Redesigned Reply Form Card (Part 4) -->
+                            <div class="tf-reply-card @(_replyIsInternal ? "is-internal-mode" : "")">
+                                <div class="tf-reply-header">
+                                    <div class="tf-reply-header-left">
+                                        <span class="tf-reply-header-icon">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                            </svg>
+                                        </span>
+                                        <h5 class="tf-reply-title">Gửi phản hồi / Bổ sung thông tin</h5>
+                                    </div>
+                                    @if (_replyIsInternal)
+                                    {
+                                        <span class="tf-reply-mode-badge is-internal">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                            </svg>
+                                            <span>Chế độ ghi chú nội bộ</span>
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="tf-reply-mode-badge">Phản hồi công khai</span>
+                                    }
+                                </div>
+
+                                <div class="tf-reply-body">
+                                    <textarea class="tf-support-textarea tf-reply-textarea"
+                                              rows="3"
+                                              placeholder="@(_replyIsInternal ? "Nhập ghi chú nội bộ dành riêng cho Manager & Admin xử lý..." : "Nhập nội dung phản hồi, hướng dẫn khắc phục hoặc bổ sung thông tin...")"
+                                              @bind="_replyText"
+                                              @bind:event="oninput"></textarea>
+                                </div>
 
                                 <div class="tf-reply-footer">
-                                    <div>
+                                    <div class="tf-reply-footer-left">
                                         @if (_canManage)
                                         {
-                                            <label class="tf-internal-toggle">
-                                                <input type="checkbox" @bind="_replyIsInternal" />
-                                                <span>Ghi chú nội bộ (chỉ Manager &amp; Admin thấy)</span>
+                                            <label class="tf-internal-toggle @(_replyIsInternal ? "is-checked" : "")">
+                                                <input type="checkbox" class="tf-internal-checkbox" @bind="_replyIsInternal" />
+                                                <span class="tf-internal-toggle-dot"></span>
+                                                <span class="tf-internal-toggle-text">Ghi chú nội bộ (chỉ Manager &amp; Admin thấy)</span>
                                             </label>
-                                        }
-                                    </div>
-
-                                    <button type="button"
-                                            class="tf-support-btn tf-btn-primary"
-                                            disabled="@(_isSubmittingReply || string.IsNullOrWhiteSpace(_replyText))"
-                                            @onclick="SubmitReplyAsync">
-                                        @if (_isSubmittingReply)
-                                        {
-                                            <span class="tf-spinner-sm"></span>
-                                            <span>Đang gửi...</span>
                                         }
                                         else
                                         {
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <line x1="22" y1="2" x2="11" y2="13"></line>
-                                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                                            </svg>
-                                            <span>Gửi phản hồi</span>
+                                            <span class="tf-reply-helper-hint">Phản hồi được cập nhật trực tiếp vào tiến trình xử lý báo cáo.</span>
                                         }
-                                    </button>
+                                    </div>
+
+                                    <div class="tf-reply-footer-right">
+                                        @if (!string.IsNullOrEmpty(_replyText))
+                                        {
+                                            <span class="tf-reply-char-count">@_replyText.Length ký tự</span>
+                                        }
+                                        <button type="button"
+                                                class="tf-support-btn tf-btn-primary tf-reply-submit-btn @(_replyIsInternal ? "is-internal-btn" : "")"
+                                                disabled="@(_isSubmittingReply || string.IsNullOrWhiteSpace(_replyText))"
+                                                @onclick="SubmitReplyAsync">
+                                            @if (_isSubmittingReply)
+                                            {
+                                                <span class="tf-spinner-sm"></span>
+                                                <span>Đang gửi...</span>
+                                            }
+                                            else
+                                            {
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                                </svg>
+                                                <span>@(_replyIsInternal ? "Lưu ghi chú nội bộ" : "Gửi phản hồi")</span>
+                                            }
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Direct Attachment Viewer Modal: Lightbox for Images & Inline Viewer for PDF/Documents (Part 3) -->
+@if (_previewAttachment != null)
+{
+    <div class="tf-att-viewer-overlay"
+         id="tf-att-viewer-overlay"
+         tabindex="0"
+         @onkeydown="HandlePreviewKeyDown"
+         @onclick="CloseAttachmentViewer">
+        <div class="tf-att-viewer-container" @onclick:stopPropagation="true">
+            <!-- Top Toolbar -->
+            <div class="tf-att-viewer-toolbar">
+                <div class="tf-att-viewer-filemeta">
+                    <span class="tf-att-viewer-badge @(_previewAttachment.IsImage ? "is-img" : (_previewAttachment.IsPdf ? "is-pdf" : "is-doc"))">
+                        @(_previewAttachment.IsImage ? "IMAGE" : _previewAttachment.FileExtension)
+                    </span>
+                    <div class="tf-att-viewer-titles">
+                        <span class="tf-att-viewer-filename" title="@_previewAttachment.OriginalFileName">@_previewAttachment.OriginalFileName</span>
+                        <span class="tf-att-viewer-submeta">
+                            @_previewAttachment.FormattedSize
+                            @if (!string.IsNullOrEmpty(_previewAttachment.UploadedByUserName))
+                            {
+                                <text> • Tải lên bởi @_previewAttachment.UploadedByUserName</text>
+                            }
+                            @if (_previewAttachment.IsImage && _previewImageList.Count > 1)
+                            {
+                                <text> • Ảnh @(_previewImageIndex + 1) / @_previewImageList.Count</text>
+                            }
+                        </span>
+                    </div>
+                </div>
+
+                <div class="tf-att-viewer-actions">
+                    @if (_previewAttachment.IsImage)
+                    {
+                        <div class="tf-att-zoom-controls" title="Điều chỉnh thu phóng">
+                            <button type="button" class="tf-att-tool-btn" @onclick="ZoomOutPreview" disabled="@(_previewZoom <= 0.5)" title="Thu nhỏ (-)">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                            </button>
+                            <button type="button" class="tf-att-zoom-readout" @onclick="ResetPreviewZoom" title="Đặt lại 100%">
+                                @($"{(int)Math.Round(_previewZoom * 100)}%")
+                            </button>
+                            <button type="button" class="tf-att-tool-btn" @onclick="ZoomInPreview" disabled="@(_previewZoom >= 3.0)" title="Phóng to (+)">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                            </button>
+                        </div>
+                    }
+
+                    <a href="@_previewAttachment.DownloadUrl"
+                       download="@_previewAttachment.OriginalFileName"
+                       class="tf-att-viewer-dl-btn"
+                       title="Tải tệp này về máy">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        <span>Tải xuống</span>
+                    </a>
+
+                    <button type="button"
+                            class="tf-att-viewer-close-btn"
+                            title="Đóng trình xem tệp (Esc)"
+                            @onclick="CloseAttachmentViewer">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Main Viewer Stage -->
+            <div class="tf-att-viewer-stage" @onclick="CloseAttachmentViewer">
+                @if (_previewAttachment.IsImage)
+                {
+                    @if (_previewImageList.Count > 1)
+                    {
+                        <button type="button"
+                                class="tf-att-nav-arrow prev"
+                                title="Ảnh trước (←)"
+                                @onclick="PrevPreviewImage"
+                                @onclick:stopPropagation="true">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </button>
+                    }
+
+                    <div class="tf-att-image-canvas" @onclick:stopPropagation="true">
+                        <img src="@_previewAttachment.PreviewUrl"
+                             alt="@_previewAttachment.OriginalFileName"
+                             class="tf-att-lightbox-img"
+                             style="transform: scale(@_previewZoom.ToString(System.Globalization.CultureInfo.InvariantCulture));" />
+                    </div>
+
+                    @if (_previewImageList.Count > 1)
+                    {
+                        <button type="button"
+                                class="tf-att-nav-arrow next"
+                                title="Ảnh tiếp theo (→)"
+                                @onclick="NextPreviewImage"
+                                @onclick:stopPropagation="true">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </button>
+                    }
+                }
+                else if (_previewAttachment.IsPdf || _previewAttachment.IsTextPreview)
+                {
+                    <div class="tf-att-doc-stage" @onclick:stopPropagation="true">
+                        <iframe src="@_previewAttachment.PreviewUrl"
+                                class="tf-doc-preview-frame"
+                                title="@_previewAttachment.OriginalFileName"></iframe>
+                    </div>
+                }
+                else
+                {
+                    <div class="tf-att-unsupported-card" @onclick:stopPropagation="true">
+                        <div class="tf-att-unsupported-icon">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                            </svg>
+                        </div>
+                        <h4 class="tf-att-unsupported-title">@_previewAttachment.OriginalFileName</h4>
+                        <p class="tf-att-unsupported-desc">
+                            Định dạng tệp <strong>.@_previewAttachment.FileExtension</strong> (@_previewAttachment.FormattedSize) chưa hỗ trợ hiển thị trực tiếp trong trình duyệt. Bạn có thể tải tệp về máy để mở bằng ứng dụng chuyên dụng.
+                        </p>
+                        <a href="@_previewAttachment.DownloadUrl"
+                           download="@_previewAttachment.OriginalFileName"
+                           class="tf-support-btn tf-btn-primary">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            <span>Tải tệp xuống máy (@_previewAttachment.FormattedSize)</span>
+                        </a>
                     </div>
                 }
             </div>
@@ -1131,6 +1359,98 @@
     private bool _showRejectModal = false;
     private string _rejectionReasonInput = string.Empty;
 
+    // Direct Attachment Viewer (Lightbox & Document Previewer)
+    private SupportAttachmentDto? _previewAttachment;
+    private List<SupportAttachmentDto> _previewImageList = new();
+    private int _previewImageIndex = 0;
+    private double _previewZoom = 1.0;
+
+    private void OpenAttachmentViewer(SupportAttachmentDto att, List<SupportAttachmentDto>? sourceList = null)
+    {
+        _previewAttachment = att;
+        _previewZoom = 1.0;
+
+        if (att.IsImage && sourceList != null)
+        {
+            _previewImageList = sourceList.Where(x => x.IsImage).ToList();
+            _previewImageIndex = _previewImageList.FindIndex(x => x.Id == att.Id);
+            if (_previewImageIndex < 0) _previewImageIndex = 0;
+        }
+        else
+        {
+            _previewImageList = att.IsImage ? new List<SupportAttachmentDto> { att } : new List<SupportAttachmentDto>();
+            _previewImageIndex = 0;
+        }
+    }
+
+    private void CloseAttachmentViewer()
+    {
+        _previewAttachment = null;
+        _previewImageList.Clear();
+        _previewImageIndex = 0;
+        _previewZoom = 1.0;
+    }
+
+    private void ZoomInPreview()
+    {
+        _previewZoom = Math.Min(3.0, Math.Round(_previewZoom + 0.25, 2));
+    }
+
+    private void ZoomOutPreview()
+    {
+        _previewZoom = Math.Max(0.5, Math.Round(_previewZoom - 0.25, 2));
+    }
+
+    private void ResetPreviewZoom()
+    {
+        _previewZoom = 1.0;
+    }
+
+    private void PrevPreviewImage()
+    {
+        if (_previewImageList.Count <= 1) return;
+        _previewImageIndex = (_previewImageIndex - 1 + _previewImageList.Count) % _previewImageList.Count;
+        _previewAttachment = _previewImageList[_previewImageIndex];
+        _previewZoom = 1.0;
+    }
+
+    private void NextPreviewImage()
+    {
+        if (_previewImageList.Count <= 1) return;
+        _previewImageIndex = (_previewImageIndex + 1) % _previewImageList.Count;
+        _previewAttachment = _previewImageList[_previewImageIndex];
+        _previewZoom = 1.0;
+    }
+
+    private void HandlePreviewKeyDown(KeyboardEventArgs e)
+    {
+        if (_previewAttachment == null) return;
+
+        switch (e.Key)
+        {
+            case "Escape":
+                CloseAttachmentViewer();
+                break;
+            case "ArrowLeft":
+                if (_previewAttachment.IsImage) PrevPreviewImage();
+                break;
+            case "ArrowRight":
+                if (_previewAttachment.IsImage) NextPreviewImage();
+                break;
+            case "+":
+            case "=":
+                if (_previewAttachment.IsImage) ZoomInPreview();
+                break;
+            case "-":
+            case "_":
+                if (_previewAttachment.IsImage) ZoomOutPreview();
+                break;
+            case "0":
+                if (_previewAttachment.IsImage) ResetPreviewZoom();
+                break;
+        }
+    }
+
     private int ActiveFilterCount
     {
         get
@@ -1157,6 +1477,7 @@
         _successMessage = null;
         _errorMessage = null;
         _fileError = null;
+        _previewAttachment = null;
 
         AutoDetectCurrentRouteAndModule();
 
@@ -1186,6 +1507,13 @@
 
     private async Task CloseWithAnimationAsync()
     {
+        if (_previewAttachment != null)
+        {
+            CloseAttachmentViewer();
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
         try
         {
             await JS.InvokeVoidAsync("TradeFlowMotion.animateModalExit", "#tf-support-dialog", "#tf-support-overlay");
@@ -1195,6 +1523,7 @@
         _isOpen = false;
         _showRejectModal = false;
         _showFilterPopover = false;
+        _previewAttachment = null;
         await InvokeAsync(StateHasChanged);
     }
 
@@ -1202,7 +1531,7 @@
     {
         try
         {
-            await Task.Delay(25);
+            await Task.Yield();
             await JS.InvokeVoidAsync("TradeFlowMotion.animateModalEnter", "#tf-support-dialog", "#tf-support-overlay");
         }
         catch { }

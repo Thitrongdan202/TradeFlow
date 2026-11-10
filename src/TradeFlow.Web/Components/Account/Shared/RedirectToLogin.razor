@@ -1,8 +1,25 @@
-﻿@inject NavigationManager NavigationManager
+@inject NavigationManager NavigationManager
 
 @code {
     protected override void OnInitialized()
     {
-        NavigationManager.NavigateTo($"Account/Login?returnUrl={Uri.EscapeDataString(NavigationManager.Uri)}", forceLoad: true);
+        var relative = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        var pathOnly = relative.Split('?')[0].TrimStart('/');
+
+        // Prevent redirect loop if already within the Account flows
+        if (pathOnly.StartsWith("account/login", StringComparison.OrdinalIgnoreCase) ||
+            pathOnly.StartsWith("account/logout", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(relative) || relative == "/")
+        {
+            NavigationManager.NavigateTo("Account/Login", forceLoad: true);
+        }
+        else
+        {
+            NavigationManager.NavigateTo($"Account/Login?returnUrl={Uri.EscapeDataString(relative)}", forceLoad: true);
+        }
     }
 }

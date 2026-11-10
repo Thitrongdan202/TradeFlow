@@ -1,0 +1,77 @@
+{
+  "results": [
+    {
+      "test": "1. Desktop Expanded Width",
+      "passed": true
+    },
+    {
+      "test": "2. Bottom Collapse Button",
+      "passed": true
+    },
+    {
+      "test": "3. No Panel/Flyout on Hover",
+      "passed": true
+    },
+    {
+      "test": "4. Contextual Panel Opened",
+      "passed": true
+    },
+    {
+      "test": "5. Single Panel Smooth Switch",
+      "passed": true
+    },
+    {
+      "test": "6. Item Navigation & Active State",
+      "passed": true
+    },
+    {
+      "test": "7. Current Page Row Highlighted",
+      "passed": true
+    },
+    {
+      "test": "8. Escape Key Closes Panel",
+      "passed": true
+    },
+    {
+      "test": "9. Outside Click Closes Panel",
+      "passed": true
+    },
+    {
+      "test": "10. Re-click Toggles Close",
+      "passed": true
+    },
+    {
+      "test": "11. Dark Mode Theme Styling",
+      "passed": true
+    },
+    {
+      "test": "12. Topbar Toggle Button & Persistence",
+      "passed": true
+    },
+    {
+      "test": "13. Docked Beside Expanded Sidebar",
+      "passed": true
+    },
+    {
+      "test": "Responsive 1440px_desktop No Overflow",
+      "passed": true
+    },
+    {
+      "test": "Responsive 1024px_laptop No Overflow",
+      "passed": true
+    },
+    {
+      "test": "Responsive 768px_tablet No Overflow",
+      "passed": true
+    },
+    {
+      "test": "Responsive 390px_mobile No Overflow",
+      "passed": true
+    },
+    {
+      "test": "Responsive 360px_mobile No Overflow",
+      "passed": true
+    }
+  ],
+  "allPassed": true
+}

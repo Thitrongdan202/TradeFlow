@@ -60,7 +60,7 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
                 await auditService.LogAsync(
                     TradeFlow.Domain.Enums.AuditEventType.Logout,
                     performedBy: userName,
-                    details: "NgÆ°á»i dÃ¹ng Ä‘Äƒng xuáº¥t",
+                    details: "Người dùng đăng xuất",
                     ipAddress: ip,
                     userAgent: userAgent);
             }

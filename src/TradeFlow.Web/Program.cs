@@ -69,6 +69,12 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/Account/AccessDenied";
 });
 
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+{
+    // Đảm bảo cookie session bị thu hồi tức thì khi Admin cập nhật SecurityStamp
+    options.ValidationInterval = TimeSpan.FromSeconds(2);
+});
+
 builder.Services.AddTradeFlowAuthorization();
 
 builder.Services.AddHttpContextAccessor();
@@ -254,6 +260,22 @@ app.MapGet("/api/documents/{id:int}/preview", async (int id, HttpContext httpCon
     httpContext.Response.Headers["Content-Disposition"] = $"inline; filename=\"{System.Net.WebUtility.UrlEncode(fileName)}\"";
     return Results.File(stream, contentType, enableRangeProcessing: true);
 }).RequireAuthorization("Permission:Documents:View");
+
+// Support Attachments Endpoints
+app.MapGet("/api/support/attachments/{id:int}/download", async (int id, HttpContext httpContext, ISupportService supportService) =>
+{
+    var (attachment, stream) = await supportService.GetAttachmentStreamAsync(id, httpContext.User);
+    if (attachment == null || stream == null) return Results.NotFound();
+    return Results.File(stream, attachment.ContentType, attachment.OriginalFileName);
+}).RequireAuthorization();
+
+app.MapGet("/api/support/attachments/{id:int}/preview", async (int id, HttpContext httpContext, ISupportService supportService) =>
+{
+    var (attachment, stream) = await supportService.GetAttachmentStreamAsync(id, httpContext.User);
+    if (attachment == null || stream == null) return Results.NotFound();
+    httpContext.Response.Headers["Content-Disposition"] = $"inline; filename=\"{System.Net.WebUtility.UrlEncode(attachment.OriginalFileName)}\"";
+    return Results.File(stream, attachment.ContentType, enableRangeProcessing: true);
+}).RequireAuthorization();
 
 // Data Backup Download Endpoints
 app.MapGet("/api/admin/backup/download-prepared", async (

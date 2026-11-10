@@ -285,10 +285,7 @@ public class EmployeeService : IEmployeeService
         employee.NationalId = command.NationalId?.Trim();
         employee.DateOfBirth = NormalizeToUtc(command.DateOfBirth);
         employee.Gender = command.Gender?.Trim();
-        if (!string.IsNullOrWhiteSpace(command.AvatarPath))
-        {
-            employee.AvatarPath = command.AvatarPath.Trim();
-        }
+        employee.AvatarPath = string.IsNullOrWhiteSpace(command.AvatarPath) ? null : command.AvatarPath.Trim();
         employee.Phone = command.Phone?.Trim();
         employee.Email = command.Email?.Trim();
         employee.Address = command.Address?.Trim();

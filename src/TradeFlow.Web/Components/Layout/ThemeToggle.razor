@@ -115,11 +115,13 @@
             var newTheme = await JS.InvokeAsync<string>("tradeflow.toggleTheme");
             _isDark = newTheme == "dark";
             ThemeService.SetTheme(newTheme);
+            StateHasChanged();
         }
         catch
         {
             _isDark = !_isDark;
             ThemeService.SetTheme(_isDark ? "dark" : "light");
+            StateHasChanged();
         }
     }
 

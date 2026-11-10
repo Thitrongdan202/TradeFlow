@@ -21,6 +21,7 @@ public class PartnerService : IPartnerService
     private readonly IAuditService _auditService;
     private readonly IAuthorizationService _authService;
     private readonly ICurrentUserService _currentUser;
+    private readonly IPermissionService _permissionService;
     private readonly ILogger<PartnerService> _logger;
 
     public PartnerService(
@@ -29,12 +30,47 @@ public class PartnerService : IPartnerService
         IAuthorizationService authService,
         ICurrentUserService currentUser,
         ILogger<PartnerService> logger)
+        : this(context, auditService, authService, currentUser, null!, logger)
+    {
+    }
+
+    public PartnerService(
+        TradeFlowDbContext context,
+        IAuditService auditService,
+        IAuthorizationService authService,
+        ICurrentUserService currentUser,
+        IPermissionService permissionService,
+        ILogger<PartnerService> logger)
     {
         _context = context;
         _auditService = auditService;
         _authService = authService;
         _currentUser = currentUser;
+        _permissionService = permissionService;
         _logger = logger;
+    }
+
+    private async Task EnsurePermissionAsync(ResourceType resource, PermissionAction action, CancellationToken cancellationToken)
+    {
+        if (_permissionService == null) return;
+        var userId = _currentUser.UserId;
+        if (string.IsNullOrEmpty(userId)) return;
+
+        var hasPerm = await _permissionService.HasPermissionAsync(userId, resource, action, cancellationToken);
+        if (!hasPerm)
+        {
+            var resName = resource == ResourceType.Customers ? "khách hàng" : "nhà cung cấp";
+            var actName = action == PermissionAction.View ? "xem" : (action == PermissionAction.Delete ? "xóa" : "thao tác");
+            _logger.LogWarning("Access denied for user {UserId} on {Resource}:{Action}", userId, resource, action);
+            await _auditService.LogAsync(
+                AuditEventType.UnauthorizedAccessAttempt,
+                _currentUser.UserName ?? userId,
+                resource.ToString(),
+                string.Empty,
+                $"Cố gắng truy cập dữ liệu {resName} ({actName}) khi chưa được phân quyền"
+            );
+            throw new UnauthorizedAccessException($"Bạn không có quyền {actName} dữ liệu {resName}. Vui lòng liên hệ Quản trị viên để được cấp quyền.");
+        }
     }
 
     // =========================================================================
@@ -43,6 +79,7 @@ public class PartnerService : IPartnerService
 
     public async Task<PagedResult<CustomerListItemDto>> GetCustomersAsync(CustomerFilterDto filter, CancellationToken cancellationToken = default)
     {
+        await EnsurePermissionAsync(ResourceType.Customers, PermissionAction.View, cancellationToken);
         var query = _context.Customers.AsNoTracking().AsQueryable();
 
         // 1. Text Search
@@ -238,6 +275,7 @@ public class PartnerService : IPartnerService
 
     public async Task<CustomerDetailDto?> GetCustomerDetailAsync(int id, CancellationToken cancellationToken = default)
     {
+        await EnsurePermissionAsync(ResourceType.Customers, PermissionAction.View, cancellationToken);
         var c = await _context.Customers.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (c == null) return null;
 
@@ -543,6 +581,7 @@ public class PartnerService : IPartnerService
 
     public async Task<PagedResult<SupplierListItemDto>> GetSuppliersAsync(SupplierFilterDto filter, CancellationToken cancellationToken = default)
     {
+        await EnsurePermissionAsync(ResourceType.Suppliers, PermissionAction.View, cancellationToken);
         var query = _context.Suppliers.AsNoTracking().AsQueryable();
 
         // 1. Text Search
@@ -681,6 +720,7 @@ public class PartnerService : IPartnerService
 
     public async Task<SupplierDetailDto?> GetSupplierDetailAsync(int id, CancellationToken cancellationToken = default)
     {
+        await EnsurePermissionAsync(ResourceType.Suppliers, PermissionAction.View, cancellationToken);
         var s = await _context.Suppliers.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (s == null) return null;
 
@@ -863,6 +903,7 @@ public class PartnerService : IPartnerService
 
     public async Task<List<string>> GetCustomerCreatorsAsync(CancellationToken cancellationToken = default)
     {
+        await EnsurePermissionAsync(ResourceType.Customers, PermissionAction.View, cancellationToken);
         return await _context.Customers.AsNoTracking()
             .Where(c => c.CreatedBy != null && c.CreatedBy != "")
             .Select(c => c.CreatedBy!)
@@ -873,6 +914,7 @@ public class PartnerService : IPartnerService
 
     public async Task<List<string>> GetSupplierCreatorsAsync(CancellationToken cancellationToken = default)
     {
+        await EnsurePermissionAsync(ResourceType.Suppliers, PermissionAction.View, cancellationToken);
         return await _context.Suppliers.AsNoTracking()
             .Where(s => s.CreatedBy != null && s.CreatedBy != "")
             .Select(s => s.CreatedBy!)

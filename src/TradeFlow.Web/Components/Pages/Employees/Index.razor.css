@@ -297,3 +297,99 @@
         transform: none !important;
     }
 }
+
+/* Employee Avatar Enhancement */
+.tf-emp-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--tf-primary-subtle, #eff6ff);
+    color: var(--tf-primary, #2563eb);
+    font-size: 11px;
+    font-weight: 700;
+    margin: 0 auto;
+    border: 1px solid var(--tf-border, #e2e8f0);
+}
+
+.tf-emp-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+}
+
+.tf-emp-avatar-lg {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--tf-primary-subtle, #eff6ff);
+    color: var(--tf-primary, #2563eb);
+    border: 2px solid var(--tf-border, #cbd5e1);
+}
+
+.tf-emp-avatar-edit-wrap {
+    position: relative;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tf-emp-avatar-badge-btn {
+    position: absolute;
+    bottom: -3px;
+    right: -3px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--tf-primary, #2563eb);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 2px solid var(--tf-bg-card, #ffffff);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.tf-emp-avatar-badge-btn:hover {
+    transform: scale(1.1);
+    background: var(--tf-primary-hover, #1d4ed8);
+}
+
+.tf-emp-avatar-remove-btn {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ef4444;
+    color: #ffffff;
+    border: 2px solid var(--tf-bg-card, #ffffff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: transform 0.15s ease;
+}
+
+.tf-emp-avatar-remove-btn:hover {
+    transform: scale(1.15);
+    background: #dc2626;
+}

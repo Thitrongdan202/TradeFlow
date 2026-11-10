@@ -24,6 +24,7 @@ public class DatabaseSeeder
     private readonly TradeFlowDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
+    private readonly TradeFlow.Application.Common.Interfaces.ICredentialVaultService _vaultService;
 
     private const string DevPassword = "tradecore123";
 
@@ -31,33 +32,40 @@ public class DatabaseSeeder
     [
         ("admin",        "admin@tradeflow.local",        "Quản trị viên",      "Administrator"),
         ("quanly01",     "quanly01@tradeflow.local",     "Quản Lý 01",         "Manager"),
+        ("hr01",         "hr01@tradeflow.local",         "Nhân Sự 01",         "HR"),
         ("kinhdoanh01",  "kinhdoanh01@tradeflow.local",  "Kinh Doanh 01",      "Sales"),
         ("muahang01",    "muahang01@tradeflow.local",    "Mua Hàng 01",        "Purchase"),
         ("kho01",        "kho01@tradeflow.local",        "Kho 01",             "Warehouse"),
+        ("ketoan01",     "ketoan01@tradeflow.local",     "Kế Toán 01",         "Accountant"),
         ("xnk01",        "xnk01@tradeflow.local",        "Xuất Nhập Khẩu 01",  "Import-Export"),
+        ("nv01",         "nv01@tradeflow.local",         "Nhân Viên 01",       "Employee"),
     ];
 
-    private static readonly (string Name, string Description, bool IsSystem)[] RoleDefinitions =
+    private static readonly (string Name, string Description, bool IsSystem, string ColorHex, string Icon)[] RoleDefinitions =
     [
-        ("Administrator", "Quản trị viên hệ thống (toàn quyền)", true),
-        ("Manager",       "Quản lý (xem và phê duyệt)",          false),
-        ("Sales",         "Nhân viên kinh doanh",                 false),
-        ("Purchase",      "Nhân viên mua hàng",                   false),
-        ("Warehouse",     "Nhân viên kho",                        false),
-        ("Import-Export", "Nhân viên xuất nhập khẩu",             false),
-        ("Employee",      "Nhân viên tiêu chuẩn (tự phục vụ)",     false),
+        ("Administrator", "Quản trị viên hệ thống (toàn quyền)", true,  "#ef4444", "shield"),
+        ("Manager",       "Quản lý (xem và phê duyệt)",          false, "#8b5cf6", "user-check"),
+        ("HR",            "Quản lý nhân sự & Chấm công",         false, "#ec4899", "users"),
+        ("Sales",         "Nhân viên kinh doanh & Bán hàng",     false, "#3b82f6", "shopping-cart"),
+        ("Purchase",      "Nhân viên mua hàng",                   false, "#06b6d4", "truck"),
+        ("Warehouse",     "Nhân viên kho",                        false, "#f59e0b", "archive"),
+        ("Accountant",    "Kế toán & Hóa đơn",                   false, "#10b981", "calculator"),
+        ("Import-Export", "Nhân viên xuất nhập khẩu",             false, "#6366f1", "globe"),
+        ("Employee",      "Nhân viên tiêu chuẩn (tự phục vụ)",     false, "#64748b", "user"),
     ];
 
     public DatabaseSeeder(
         ILogger<DatabaseSeeder> logger,
         TradeFlowDbContext context,
         UserManager<ApplicationUser> userManager,
-        RoleManager<ApplicationRole> roleManager)
+        RoleManager<ApplicationRole> roleManager,
+        TradeFlow.Application.Common.Interfaces.ICredentialVaultService vaultService)
     {
         _logger = logger;
         _context = context;
         _userManager = userManager;
         _roleManager = roleManager;
+        _vaultService = vaultService;
     }
 
     public async Task SeedAsync()
@@ -72,6 +80,7 @@ public class DatabaseSeeder
             await CleanupLegacyAccountsAsync();
             await SeedRolesAsync();
             await SeedAdminPermissionsAsync();
+            await SeedDefaultRolePermissionsAsync();
             await SeedDevAccountsAsync();
             await SeedCompanySettingsAsync();
             await SeedSystemSequencesAsync();
@@ -84,6 +93,7 @@ public class DatabaseSeeder
             await SeedContractDataAsync();
             await SeedEmploymentContractsDataAsync();
             await SeedWarehouseOperationsDataAsync();
+            await FixMojibakeInAuditLogsAsync();
         }
         catch (Exception ex)
         {
@@ -104,7 +114,7 @@ public class DatabaseSeeder
 
     private async Task SeedRolesAsync()
     {
-        foreach (var (name, description, isSystem) in RoleDefinitions)
+        foreach (var (name, description, isSystem, colorHex, icon) in RoleDefinitions)
         {
             if (!await _roleManager.RoleExistsAsync(name))
             {
@@ -114,6 +124,8 @@ public class DatabaseSeeder
                     Description = description,
                     IsSystem = isSystem,
                     IsActive = true,
+                    ColorHex = colorHex,
+                    Icon = icon,
                     CreatedBy = "System"
                 };
                 var result = await _roleManager.CreateAsync(role);
@@ -169,6 +181,202 @@ public class DatabaseSeeder
         }
     }
 
+    private async Task SeedDefaultRolePermissionsAsync()
+    {
+        var roleSpecs = new Dictionary<string, (ResourceType, PermissionAction)[]>
+        {
+            ["Employee"] =
+            [
+                (ResourceType.Attendance, PermissionAction.View),
+                (ResourceType.Attendance, PermissionAction.Create),
+                (ResourceType.Attendance, PermissionAction.Edit),
+                (ResourceType.SalesOrders, PermissionAction.Create),
+                (ResourceType.SalesOrders, PermissionAction.View),
+                (ResourceType.Products, PermissionAction.View),
+                (ResourceType.PriceLists, PermissionAction.View),
+                (ResourceType.Warehouses, PermissionAction.View),
+            ],
+            ["Sales"] =
+            [
+                (ResourceType.SalesOrders, PermissionAction.View),
+                (ResourceType.SalesOrders, PermissionAction.Create),
+                (ResourceType.SalesOrders, PermissionAction.Edit),
+                (ResourceType.SalesOrders, PermissionAction.Export),
+                (ResourceType.Quotations, PermissionAction.View),
+                (ResourceType.Quotations, PermissionAction.Create),
+                (ResourceType.Quotations, PermissionAction.Edit),
+                (ResourceType.Quotations, PermissionAction.Export),
+                (ResourceType.Invoices, PermissionAction.View),
+                (ResourceType.Customers, PermissionAction.View),
+                (ResourceType.Customers, PermissionAction.Create),
+                (ResourceType.Customers, PermissionAction.Edit),
+                (ResourceType.Customers, PermissionAction.Export),
+                (ResourceType.Products, PermissionAction.View),
+                (ResourceType.PriceLists, PermissionAction.View),
+                (ResourceType.Warehouses, PermissionAction.View),
+                (ResourceType.Attendance, PermissionAction.View),
+                (ResourceType.Attendance, PermissionAction.Create),
+                (ResourceType.Attendance, PermissionAction.Edit),
+            ],
+            ["Warehouse"] =
+            [
+                (ResourceType.Warehouses, PermissionAction.View),
+                (ResourceType.Warehouses, PermissionAction.Create),
+                (ResourceType.Warehouses, PermissionAction.Edit),
+                (ResourceType.Warehouses, PermissionAction.Export),
+                (ResourceType.Products, PermissionAction.View),
+                (ResourceType.ProductCategories, PermissionAction.View),
+                (ResourceType.UnitOfMeasures, PermissionAction.View),
+                (ResourceType.Attendance, PermissionAction.View),
+                (ResourceType.Attendance, PermissionAction.Create),
+                (ResourceType.Attendance, PermissionAction.Edit),
+            ],
+            ["HR"] =
+            [
+                (ResourceType.Employees, PermissionAction.View),
+                (ResourceType.Employees, PermissionAction.Create),
+                (ResourceType.Employees, PermissionAction.Edit),
+                (ResourceType.Employees, PermissionAction.Export),
+                (ResourceType.EmployeeRequests, PermissionAction.View),
+                (ResourceType.EmployeeRequests, PermissionAction.Approve),
+                (ResourceType.EmployeeRequests, PermissionAction.Edit),
+                (ResourceType.Departments, PermissionAction.View),
+                (ResourceType.Departments, PermissionAction.Create),
+                (ResourceType.Departments, PermissionAction.Edit),
+                (ResourceType.Positions, PermissionAction.View),
+                (ResourceType.Positions, PermissionAction.Create),
+                (ResourceType.Positions, PermissionAction.Edit),
+                (ResourceType.EmploymentContracts, PermissionAction.View),
+                (ResourceType.EmploymentContracts, PermissionAction.Create),
+                (ResourceType.EmploymentContracts, PermissionAction.Edit),
+                (ResourceType.EmploymentContracts, PermissionAction.Approve),
+                (ResourceType.EmploymentContracts, PermissionAction.Export),
+                (ResourceType.Attendance, PermissionAction.View),
+                (ResourceType.Attendance, PermissionAction.Create),
+                (ResourceType.Attendance, PermissionAction.Edit),
+                (ResourceType.Attendance, PermissionAction.Approve),
+                (ResourceType.Attendance, PermissionAction.Export),
+                (ResourceType.Accounts, PermissionAction.View),
+            ],
+            ["Manager"] =
+            [
+                (ResourceType.Attendance, PermissionAction.View),
+                (ResourceType.Attendance, PermissionAction.Create),
+                (ResourceType.Attendance, PermissionAction.Edit),
+                (ResourceType.Attendance, PermissionAction.Approve),
+                (ResourceType.Attendance, PermissionAction.Export),
+                (ResourceType.Employees, PermissionAction.View),
+                (ResourceType.Employees, PermissionAction.Edit),
+                (ResourceType.EmployeeRequests, PermissionAction.View),
+                (ResourceType.EmployeeRequests, PermissionAction.Approve),
+                (ResourceType.Departments, PermissionAction.View),
+                (ResourceType.Positions, PermissionAction.View),
+                (ResourceType.SalesOrders, PermissionAction.View),
+                (ResourceType.SalesOrders, PermissionAction.Create),
+                (ResourceType.SalesOrders, PermissionAction.Edit),
+                (ResourceType.SalesOrders, PermissionAction.Approve),
+                (ResourceType.SalesOrders, PermissionAction.Export),
+                (ResourceType.Quotations, PermissionAction.View),
+                (ResourceType.Quotations, PermissionAction.Create),
+                (ResourceType.Quotations, PermissionAction.Edit),
+                (ResourceType.Quotations, PermissionAction.Approve),
+                (ResourceType.Quotations, PermissionAction.Export),
+                (ResourceType.Invoices, PermissionAction.View),
+                (ResourceType.Invoices, PermissionAction.Create),
+                (ResourceType.Invoices, PermissionAction.Edit),
+                (ResourceType.Invoices, PermissionAction.Approve),
+                (ResourceType.Invoices, PermissionAction.Export),
+                (ResourceType.Warehouses, PermissionAction.View),
+                (ResourceType.Warehouses, PermissionAction.Create),
+                (ResourceType.Warehouses, PermissionAction.Edit),
+                (ResourceType.Warehouses, PermissionAction.Approve),
+                (ResourceType.Warehouses, PermissionAction.Export),
+                (ResourceType.Products, PermissionAction.View),
+                (ResourceType.Products, PermissionAction.Create),
+                (ResourceType.Products, PermissionAction.Edit),
+                (ResourceType.Customers, PermissionAction.View),
+                (ResourceType.Customers, PermissionAction.Create),
+                (ResourceType.Customers, PermissionAction.Edit),
+                (ResourceType.Suppliers, PermissionAction.View),
+                (ResourceType.Suppliers, PermissionAction.Create),
+                (ResourceType.Suppliers, PermissionAction.Edit),
+                (ResourceType.PriceLists, PermissionAction.View),
+                (ResourceType.PriceLists, PermissionAction.Create),
+                (ResourceType.PriceLists, PermissionAction.Edit),
+                (ResourceType.PriceLists, PermissionAction.Approve),
+                (ResourceType.Contracts, PermissionAction.View),
+                (ResourceType.Contracts, PermissionAction.Create),
+                (ResourceType.Contracts, PermissionAction.Edit),
+                (ResourceType.Contracts, PermissionAction.Approve),
+                (ResourceType.EmploymentContracts, PermissionAction.View),
+                (ResourceType.Documents, PermissionAction.View),
+                (ResourceType.Documents, PermissionAction.Create),
+                (ResourceType.Documents, PermissionAction.Edit),
+            ],
+            ["Accountant"] =
+            [
+                (ResourceType.Invoices, PermissionAction.View),
+                (ResourceType.Invoices, PermissionAction.Create),
+                (ResourceType.Invoices, PermissionAction.Edit),
+                (ResourceType.Invoices, PermissionAction.Approve),
+                (ResourceType.Invoices, PermissionAction.Export),
+                (ResourceType.SalesOrders, PermissionAction.View),
+                (ResourceType.SalesOrders, PermissionAction.Export),
+                (ResourceType.Quotations, PermissionAction.View),
+                (ResourceType.Quotations, PermissionAction.Export),
+                (ResourceType.Customers, PermissionAction.View),
+                (ResourceType.Customers, PermissionAction.Edit),
+                (ResourceType.Customers, PermissionAction.Export),
+                (ResourceType.Suppliers, PermissionAction.View),
+                (ResourceType.Suppliers, PermissionAction.Edit),
+                (ResourceType.Suppliers, PermissionAction.Export),
+                (ResourceType.Documents, PermissionAction.View),
+                (ResourceType.Documents, PermissionAction.Create),
+                (ResourceType.Documents, PermissionAction.Edit),
+                (ResourceType.Documents, PermissionAction.Export),
+                (ResourceType.Attendance, PermissionAction.View),
+                (ResourceType.Attendance, PermissionAction.Create),
+                (ResourceType.Attendance, PermissionAction.Edit),
+            ]
+        };
+
+        foreach (var (roleName, perms) in roleSpecs)
+        {
+            var role = await _roleManager.FindByNameAsync(roleName);
+            if (role == null) continue;
+
+            var existingPerms = await _context.RolePermissions
+                .Where(p => p.RoleId == role.Id)
+                .Select(p => new { p.Resource, p.Action })
+                .ToListAsync();
+            var existingSet = new HashSet<(ResourceType, PermissionAction)>(
+                existingPerms.Select(p => (p.Resource, p.Action)));
+
+            bool addedAny = false;
+            foreach (var (res, act) in perms)
+            {
+                if (!existingSet.Contains((res, act)))
+                {
+                    _context.RolePermissions.Add(new RolePermission
+                    {
+                        RoleId = role.Id,
+                        Resource = res,
+                        Action = act,
+                        IsGranted = true,
+                        GrantedBy = "System"
+                    });
+                    addedAny = true;
+                }
+            }
+
+            if (addedAny)
+            {
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Role permissions seeded for role {RoleName}.", roleName);
+            }
+        }
+    }
+
     private async Task SeedDevAccountsAsync()
     {
         foreach (var (username, email, fullName, roleName) in DevAccounts)
@@ -194,7 +402,9 @@ public class DatabaseSeeder
                 EmailConfirmed = true,
                 LockoutEnabled = false,
                 Status = UserStatus.Active,
-                CreatedBy = "System"
+                CreatedBy = "System",
+                EncryptedPassword = _vaultService.EncryptPassword(DevPassword),
+                PasswordChangedAt = DateTime.UtcNow
             };
 
             var createResult = await _userManager.CreateAsync(user, DevPassword);
@@ -226,11 +436,11 @@ public class DatabaseSeeder
                 changed = true;
             }
 
-            if (!await _userManager.CheckPasswordAsync(existing, DevPassword))
+            if (string.IsNullOrEmpty(existing.EncryptedPassword))
             {
-                var token = await _userManager.GeneratePasswordResetTokenAsync(existing);
-                await _userManager.ResetPasswordAsync(existing, token, DevPassword);
-                _logger.LogInformation("Reset password to default for dev account: {Username}", username);
+                existing.EncryptedPassword = _vaultService.EncryptPassword(DevPassword);
+                existing.PasswordChangedAt ??= DateTime.UtcNow;
+                changed = true;
             }
 
             if (changed)
@@ -763,6 +973,7 @@ public class DatabaseSeeder
         var userKd = await _userManager.FindByNameAsync("kinhdoanh01");
         var userKho = await _userManager.FindByNameAsync("kho01");
         var userXnk = await _userManager.FindByNameAsync("xnk01");
+        var userHr = await _userManager.FindByNameAsync("hr01");
 
         // 1. NV00001 - Active, linked to user kinhdoanh01
         if (!await _context.Employees.AnyAsync(e => e.Code == "NV00001"))
@@ -880,35 +1091,52 @@ public class DatabaseSeeder
             });
         }
 
-        // 5. NV00005 - Retired / Đã nghỉ
-        if (!await _context.Employees.AnyAsync(e => e.Code == "NV00005"))
+        // 5. NV00005 - Active HR Personnel (NV-DEMO-05 / HR Department)
+        var empHr = await _context.Employees.FirstOrDefaultAsync(e => e.Code == "NV00005");
+        var deptHr = await _context.Departments.FirstOrDefaultAsync(d => d.Code == "HR") ?? deptKt;
+        userHr = await _userManager.FindByNameAsync("hr01");
+        if (empHr != null)
         {
-            _context.Employees.Add(new Employee
+            empHr.Status = EmployeeStatus.Active;
+            empHr.FullName = "Đặng Thu Thảo";
+            empHr.DepartmentId = deptHr?.Id;
+            empHr.PositionId = posNv?.Id;
+            empHr.UserId = userHr?.Id;
+            empHr.Notes = "Chuyên viên Hành chính - Nhân sự (thuộc diện chấm công)";
+        }
+        else
+        {
+            empHr = new Employee
             {
                 Code = "NV00005",
                 AttendanceCode = "CC005",
-                FullName = "Vũ Đình Tuấn",
+                FullName = "Đặng Thu Thảo",
                 NationalId = "031093056789",
                 Phone = "0965556677",
-                Email = "tuan.vu@tradeflow.local",
+                Email = "hr01@tradeflow.local",
                 DateOfBirth = new DateTime(1993, 7, 4, 0, 0, 0, DateTimeKind.Utc),
-                Gender = "Nam",
-                Address = "Số 88, Đường Láng, Quận Đống Đa, Hà Nội",
-                DepartmentId = deptKd?.Id,
+                Gender = "Nữ",
+                Address = "Số 88, Phố Huế, Quận Hai Bà Trưng, Hà Nội",
+                DepartmentId = deptHr?.Id,
                 PositionId = posNv?.Id,
                 WorkingBranch = "Chi nhánh trung tâm",
                 PayrollBranch = "Chi nhánh trung tâm",
                 StartDate = new DateTime(2023, 1, 15, 0, 0, 0, DateTimeKind.Utc),
-                Status = EmployeeStatus.Retired,
-                TerminationDate = new DateTime(2025, 12, 31, 0, 0, 0, DateTimeKind.Utc),
-                TerminationReason = "Chuyển công tác theo nguyện vọng cá nhân",
-                BankInformation = "1902998877665, Techcombank, VU DINH TUAN",
+                Status = EmployeeStatus.Active,
+                BankInformation = "1902998877665, Techcombank, DANG THU THAO",
                 DebtAndAdvance = 0,
-                Notes = "Đã bàn giao đầy đủ hồ sơ và thiết bị",
-                UserId = null,
+                Notes = "Chuyên viên Hành chính - Nhân sự (thuộc diện chấm công)",
+                UserId = userHr?.Id,
                 CreatedAt = now,
                 CreatedBy = "System"
-            });
+            };
+            _context.Employees.Add(empHr);
+        }
+        await _context.SaveChangesAsync();
+        if (userHr != null && empHr.Id > 0 && userHr.EmployeeId != empHr.Id)
+        {
+            userHr.EmployeeId = empHr.Id;
+            await _userManager.UpdateAsync(userHr);
         }
 
         // 6. NV00006 - Retired / Đã nghỉ
@@ -2120,5 +2348,25 @@ public class DatabaseSeeder
         }
 
         _logger.LogInformation("Warehouse operations data seeded successfully.");
+    }
+
+    private async Task FixMojibakeInAuditLogsAsync()
+    {
+        try
+        {
+            await _context.Database.ExecuteSqlRawAsync(@"
+                UPDATE ""AuditLogs"" 
+                SET ""Details"" = 'Người dùng đăng xuất' 
+                WHERE ""Details"" LIKE '%NgÆ°%' 
+                   OR ""Details"" LIKE '%Ä‘Äƒng%' 
+                   OR ""Details"" LIKE '%dÃ¹ng%' 
+                   OR ""Details"" LIKE '%xuáº¥t%';
+            ");
+            _logger.LogInformation("Repaired mojibake in AuditLogs via SQL.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to run mojibake repair on AuditLogs: {Message}", ex.Message);
+        }
     }
 }

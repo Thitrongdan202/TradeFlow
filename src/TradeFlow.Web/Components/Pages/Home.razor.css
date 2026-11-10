@@ -95,12 +95,20 @@
     color: var(--tf-text-secondary, #475569);
     border-radius: 6px;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.15s ease;
     white-space: nowrap;
+    user-select: none;
 }
 
 .tf-dash-pill:hover:not(:disabled) {
     color: var(--tf-text-primary, #0f172a);
+}
+
+.tf-dash-pill:active {
+    transform: scale(0.97);
 }
 
 .tf-dash-pill.is-active {
@@ -381,6 +389,42 @@
     border-radius: 6px;
 }
 
+/* Sync indicator in chart header */
+.tf-chart-sync-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--tf-primary, #2563eb);
+    background-color: rgba(37, 99, 235, 0.08);
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    padding: 3px 9px;
+    border-radius: 6px;
+    animation: tf-fade-in 0.2s ease;
+}
+
+.tf-sync-spinner {
+    width: 10px;
+    height: 10px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: tf-spin 0.65s linear infinite;
+    display: inline-block;
+}
+
+.tf-sync-text {
+    line-height: 1;
+}
+
+[data-bs-theme="dark"] .tf-chart-sync-indicator,
+[data-theme="dark"] .tf-chart-sync-indicator {
+    background-color: rgba(56, 189, 248, 0.12);
+    border-color: rgba(56, 189, 248, 0.25);
+    color: #38bdf8;
+}
+
 /* Chart SVG Viewport */
 .tf-dash-chart-body {
     padding: 12px 16px 8px 16px;
@@ -390,6 +434,11 @@
 .tf-chart-viewport-wrap {
     position: relative;
     width: 100%;
+    transition: opacity 0.25s ease;
+}
+
+.tf-chart-viewport-wrap.is-syncing {
+    opacity: 0.94;
 }
 
 .tf-chart-svg {
@@ -410,6 +459,14 @@
     fill: var(--tf-text-muted, #94a3b8);
     font-family: inherit;
     font-weight: 500;
+    transition: opacity 0.2s ease;
+}
+
+.tf-chart-peak-marker,
+.tf-chart-lowest-marker {
+    transition: cx 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+                cy 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.25s ease;
 }
 
 .tf-chart-crosshair {
@@ -434,11 +491,12 @@
     background: var(--tf-surface-card, #ffffff);
     border: 1px solid var(--tf-border, #e2e8f0);
     border-radius: 8px;
-    padding: 8px 12px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    padding: 10px 14px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     pointer-events: none;
     z-index: 10;
-    min-width: 150px;
+    min-width: 260px;
+    max-width: 340px;
     transition: left 0.12s ease-out;
 }
 
@@ -1410,4 +1468,460 @@
     background-color: #141720;
     border-color: #272c3a;
     color: #cbd5e1;
+}
+
+/* ==========================================================================
+   CUSTOM DATE DROPDOWN POPOVER & ADVANCED TIME-BASED CHART STYLES
+   ========================================================================== */
+
+.tf-dash-custom-dropdown-wrap {
+    position: relative;
+    display: inline-flex;
+}
+
+.tf-dash-pill.is-dropdown-open {
+    background-color: var(--tf-surface-card, #ffffff);
+    color: var(--tf-primary, #2563eb);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.tf-dropdown-chevron {
+    margin-left: 5px;
+    transition: transform 0.2s ease;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.tf-dropdown-chevron.is-rotated {
+    transform: rotate(180deg);
+}
+
+.tf-popover-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 998;
+    background: transparent;
+}
+
+.tf-custom-date-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 999;
+    width: 320px;
+    background: var(--tf-surface-card, #ffffff);
+    border: 1px solid var(--tf-border, #e2e8f0);
+    border-radius: 12px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    animation: tf-popover-in 0.18s ease-out;
+}
+
+@keyframes tf-popover-in {
+    from {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.tf-popover-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--tf-border, #f1f5f9);
+}
+
+.tf-popover-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--tf-text-primary, #0f172a);
+}
+
+.tf-popover-close-btn {
+    border: none;
+    background: transparent;
+    font-size: 18px;
+    line-height: 1;
+    color: var(--tf-text-muted, #94a3b8);
+    cursor: pointer;
+    padding: 0 4px;
+}
+
+.tf-popover-close-btn:hover {
+    color: var(--tf-text-primary, #0f172a);
+}
+
+.tf-popover-presets {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tf-presets-label {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--tf-text-muted, #64748b);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.tf-presets-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.tf-preset-chip {
+    border: 1px solid var(--tf-border, #e2e8f0);
+    background: var(--tf-surface-raised, #f8fafc);
+    color: var(--tf-text-secondary, #334155);
+    font-size: 11.5px;
+    font-weight: 500;
+    padding: 4px 9px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.tf-preset-chip:hover {
+    border-color: var(--tf-primary, #2563eb);
+    color: var(--tf-primary, #2563eb);
+    background: rgba(37, 99, 235, 0.06);
+}
+
+.tf-popover-dates {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.tf-date-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.tf-date-field-label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--tf-text-secondary, #475569);
+}
+
+.tf-date-field-input {
+    width: 100%;
+    font-size: 12px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--tf-border, #cbd5e1);
+    background: var(--tf-surface-card, #ffffff);
+    color: var(--tf-text-primary, #0f172a);
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.tf-date-field-input:focus {
+    border-color: var(--tf-primary, #2563eb);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.tf-popover-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--tf-text-muted, #64748b);
+    background: var(--tf-surface-raised, #f8fafc);
+    border: 1px dashed var(--tf-border, #e2e8f0);
+    padding: 6px 10px;
+    border-radius: 6px;
+}
+
+.tf-popover-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 6px;
+    border-top: 1px solid var(--tf-border, #f1f5f9);
+}
+
+.tf-popover-actions-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Hourly Summary Bar in 1-Day Breakdown */
+.tf-dash-hourly-summary-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 10px 16px;
+    background: var(--tf-surface-raised, #f8fafc);
+    border: 1px solid var(--tf-border, #e2e8f0);
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.tf-hourly-summary-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.tf-hsum-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--tf-text-muted, #64748b);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.tf-hsum-val {
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.tf-hourly-summary-divider {
+    width: 1px;
+    height: 22px;
+    background: var(--tf-border, #e2e8f0);
+}
+
+/* SVG Markers for Peak & Lowest Points */
+.tf-chart-peak-marker {
+    filter: drop-shadow(0 1px 3px rgba(245, 158, 11, 0.5));
+}
+
+.tf-chart-lowest-marker {
+    filter: drop-shadow(0 1px 2px rgba(100, 116, 139, 0.4));
+}
+
+/* Tooltip Styling */
+.tf-chart-tooltip-time-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.tf-peak-pill-sm {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(245, 158, 11, 0.15);
+    color: #d97706;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.tf-lowest-pill-sm {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(148, 163, 184, 0.15);
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.tf-chart-tooltip-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: 6px 14px;
+    margin-top: 5px;
+}
+
+.tf-chart-tooltip-metrics-grid .tf-chart-tooltip-metric {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+}
+
+.tf-chart-tooltip-metrics-grid .tf-chart-tooltip-label {
+    white-space: nowrap;
+    font-size: 10px;
+}
+
+.tf-chart-tooltip-metrics-grid .tf-chart-tooltip-val {
+    white-space: nowrap;
+    font-size: 11.5px;
+}
+
+.tf-tooltip-products-section {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--tf-border, #f1f5f9);
+}
+
+.tf-tooltip-products-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--tf-text-secondary, #334155);
+    margin-bottom: 5px;
+}
+
+.tf-tooltip-table-wrap {
+    max-height: 140px;
+    overflow-y: auto;
+}
+
+.tf-tooltip-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.tf-tooltip-table th {
+    text-align: left;
+    font-weight: 600;
+    color: var(--tf-text-muted, #64748b);
+    padding: 2px 4px;
+    border-bottom: 1px solid var(--tf-border, #e2e8f0);
+}
+
+.tf-tooltip-table td {
+    padding: 3px 4px;
+    border-bottom: 1px solid var(--tf-border-subtle, #f8fafc);
+}
+
+.tf-th-right, .tf-td-right {
+    text-align: right;
+}
+
+.tf-td-name {
+    max-width: 130px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--tf-text-primary, #0f172a);
+    font-weight: 500;
+}
+
+.tf-td-amount {
+    font-weight: 600;
+    color: #10b981;
+}
+
+.tf-tooltip-zero-note {
+    font-size: 11px;
+    color: var(--tf-text-muted, #94a3b8);
+    font-style: italic;
+    margin-top: 4px;
+}
+
+/* Error Banner */
+.tf-chart-error-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 8px;
+    color: #ef4444;
+    margin-bottom: 12px;
+}
+
+.tf-chart-error-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 2px;
+}
+
+.tf-chart-error-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #dc2626;
+}
+
+.tf-chart-error-desc {
+    font-size: 11.5px;
+    color: var(--tf-text-secondary, #475569);
+}
+
+/* Dark Mode Overrides */
+[data-bs-theme="dark"] .tf-custom-date-popover,
+[data-theme="dark"] .tf-custom-date-popover {
+    background: #191c25;
+    border-color: #272c3a;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
+}
+
+[data-bs-theme="dark"] .tf-popover-header,
+[data-theme="dark"] .tf-popover-header,
+[data-bs-theme="dark"] .tf-popover-actions,
+[data-theme="dark"] .tf-popover-actions {
+    border-color: #272c3a;
+}
+
+[data-bs-theme="dark"] .tf-popover-title,
+[data-theme="dark"] .tf-popover-title {
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-preset-chip,
+[data-theme="dark"] .tf-preset-chip {
+    background: #141720;
+    border-color: #272c3a;
+    color: #cbd5e1;
+}
+
+[data-bs-theme="dark"] .tf-preset-chip:hover,
+[data-theme="dark"] .tf-preset-chip:hover {
+    background: rgba(37, 99, 235, 0.2);
+    border-color: #3b82f6;
+    color: #60a5fa;
+}
+
+[data-bs-theme="dark"] .tf-date-field-input,
+[data-theme="dark"] .tf-date-field-input {
+    background: #141720;
+    border-color: #272c3a;
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-popover-hint,
+[data-theme="dark"] .tf-popover-hint {
+    background: #141720;
+    border-color: #272c3a;
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .tf-dash-hourly-summary-bar,
+[data-theme="dark"] .tf-dash-hourly-summary-bar {
+    background: #191c25;
+    border-color: #272c3a;
+}
+
+[data-bs-theme="dark"] .tf-hourly-summary-divider,
+[data-theme="dark"] .tf-hourly-summary-divider {
+    background: #272c3a;
+}
+
+[data-bs-theme="dark"] .tf-chart-tooltip,
+[data-theme="dark"] .tf-chart-tooltip {
+    background: #191c25;
+    border-color: #272c3a;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+[data-bs-theme="dark"] .tf-td-name,
+[data-theme="dark"] .tf-td-name {
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .tf-chart-error-banner,
+[data-theme="dark"] .tf-chart-error-banner {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.4);
 }

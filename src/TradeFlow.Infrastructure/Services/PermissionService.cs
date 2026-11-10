@@ -150,14 +150,27 @@ public class PermissionService : IPermissionService
             return result;
         }
 
-        var roles = await userManager.GetRolesAsync(user);
-        if (!roles.Any())
-        {
-            return result;
-        }
+        var now = DateTime.UtcNow;
+
+        // 1. Permanent roles assigned via Identity
+        var permanentRoleNames = await userManager.GetRolesAsync(user);
+        var permanentActiveRoles = await context.Roles
+            .Where(r => permanentRoleNames.Contains(r.Name!) && r.IsActive)
+            .ToListAsync(cancellationToken);
+
+        // 2. Active temporary role grants (on-the-fly expiration check: StartsAt <= now && ExpiresAt > now && Status == Active)
+        var activeTemporaryGrants = await context.TemporaryRoleAssignments
+            .Where(t => t.UserId == userId && t.Status == TemporaryRoleAssignmentStatus.Active && t.StartsAt <= now && t.ExpiresAt > now)
+            .OrderByDescending(t => t.StartsAt)
+            .ToListAsync(cancellationToken);
+
+        var tempRoleIds = activeTemporaryGrants.Select(t => t.RoleId).Distinct().ToList();
+        var tempActiveRoles = await context.Roles
+            .Where(r => tempRoleIds.Contains(r.Id) && r.IsActive)
+            .ToListAsync(cancellationToken);
 
         // Fast path: Administrator có toàn bộ quyền
-        if (roles.Contains("Administrator"))
+        if (permanentActiveRoles.Any(r => r.Name == "Administrator") || tempActiveRoles.Any(r => r.Name == "Administrator"))
         {
             foreach (ResourceType res in Enum.GetValues<ResourceType>())
             {
@@ -165,34 +178,86 @@ public class PermissionService : IPermissionService
                 {
                     result.Add($"{res}:{act}");
                     result.Add($"{(int)res}:{(int)act}");
+                    result.Add($"{res}:{act}:3");
+                    result.Add($"{(int)res}:{(int)act}:3");
                 }
             }
             return result;
         }
 
-        var activeRoleIds = await context.Roles
-            .Where(r => roles.Contains(r.Name!) && r.IsActive)
-            .Select(r => r.Id)
-            .ToListAsync(cancellationToken);
+        // 3. Enforce strictly MAXIMUM 2 ACTIVE ROLES rule:
+        // Role 1 (Base role): Prioritize Employee role or first active permanent role
+        var effectiveRoleIds = new List<string>();
+        var baseRole = permanentActiveRoles.FirstOrDefault(r => r.Name == "Employee") ?? permanentActiveRoles.FirstOrDefault();
+        if (baseRole != null)
+        {
+            effectiveRoleIds.Add(baseRole.Id);
+        }
 
-        if (!activeRoleIds.Any())
+        // Role 2 (Secondary role): Active temporary role takes precedence, then second permanent role
+        if (tempActiveRoles.Any() && effectiveRoleIds.Count < 2)
+        {
+            var secondaryTemp = tempActiveRoles.First();
+            if (!effectiveRoleIds.Contains(secondaryTemp.Id))
+            {
+                effectiveRoleIds.Add(secondaryTemp.Id);
+            }
+        }
+
+        if (effectiveRoleIds.Count < 2)
+        {
+            var secondaryPerm = permanentActiveRoles.FirstOrDefault(r => !effectiveRoleIds.Contains(r.Id));
+            if (secondaryPerm != null)
+            {
+                effectiveRoleIds.Add(secondaryPerm.Id);
+            }
+        }
+
+        if (!effectiveRoleIds.Any())
         {
             return result;
         }
 
+        // 4. Retrieve union of granted permissions across effective roles
         var grantedPermissions = await context.RolePermissions
-            .Where(rp => activeRoleIds.Contains(rp.RoleId) && rp.IsGranted)
-            .Select(rp => new { rp.Resource, rp.Action })
-            .Distinct()
+            .Where(rp => effectiveRoleIds.Contains(rp.RoleId) && rp.IsGranted)
+            .Select(rp => new { rp.Resource, rp.Action, rp.Scope })
             .ToListAsync(cancellationToken);
 
-        foreach (var p in grantedPermissions)
+        // Group by Resource + Action and compute highest scope (All > Department > Self)
+        var grouped = grantedPermissions
+            .GroupBy(p => new { p.Resource, p.Action })
+            .Select(g => new { g.Key.Resource, g.Key.Action, MaxScope = g.Max(x => (int)x.Scope) });
+
+        foreach (var p in grouped)
         {
             result.Add($"{p.Resource}:{p.Action}");
             result.Add($"{(int)p.Resource}:{(int)p.Action}");
+            result.Add($"{p.Resource}:{p.Action}:{p.MaxScope}");
+            result.Add($"{(int)p.Resource}:{(int)p.Action}:{p.MaxScope}");
         }
 
         return result;
+    }
+
+    public async Task<DataScope> GetDataScopeAsync(string userId, ResourceType resource, PermissionAction action, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(userId)) return DataScope.Self;
+
+        var permissions = await GetEffectivePermissionsAsync(userId, cancellationToken);
+        if (permissions.Contains($"{resource}:{action}:3") || permissions.Contains($"{(int)resource}:{(int)action}:3"))
+        {
+            return DataScope.All;
+        }
+        if (permissions.Contains($"{resource}:{action}:2") || permissions.Contains($"{(int)resource}:{(int)action}:2"))
+        {
+            return DataScope.Department;
+        }
+        if (permissions.Contains($"{resource}:{action}:1") || permissions.Contains($"{(int)resource}:{(int)action}:1"))
+        {
+            return DataScope.Self;
+        }
+        return DataScope.Self;
     }
 
     public void InvalidateUserPermissions(string userId)

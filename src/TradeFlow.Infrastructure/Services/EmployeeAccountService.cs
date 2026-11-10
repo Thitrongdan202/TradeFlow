@@ -195,18 +195,23 @@ public class EmployeeAccountService : IEmployeeAccountService
             return new ProvisionAccountResultDto { Succeeded = false, ErrorMessage = $"Lỗi khi tạo tài khoản: {errors}" };
         }
 
-        // 6. Gán vai trò
-        if (await roleManager.RoleExistsAsync(targetRole))
+        // 6. Gán vai trò theo quy tắc: Employee luôn là vai trò nền mặc định, role được chọn là vai trò thứ hai (tối đa 2 role)
+        if (targetRole.Equals("Administrator", StringComparison.OrdinalIgnoreCase))
         {
-            await userManager.AddToRoleAsync(user, targetRole);
+            await userManager.AddToRoleAsync(user, "Administrator");
         }
         else
         {
-            // Mặc định vai trò Employee nếu vai trò yêu cầu chưa tồn tại
+            // Luôn gán vai trò nền Employee
             if (await roleManager.RoleExistsAsync("Employee"))
             {
                 await userManager.AddToRoleAsync(user, "Employee");
-                targetRole = "Employee";
+            }
+
+            // Nếu người dùng chọn một vai trò khác ngoài Employee, gán làm vai trò thứ hai
+            if (!targetRole.Equals("Employee", StringComparison.OrdinalIgnoreCase) && await roleManager.RoleExistsAsync(targetRole))
+            {
+                await userManager.AddToRoleAsync(user, targetRole);
             }
         }
 

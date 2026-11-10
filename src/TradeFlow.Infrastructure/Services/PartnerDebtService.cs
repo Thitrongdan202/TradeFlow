@@ -25,6 +25,7 @@ public class PartnerDebtService : IPartnerDebtService
     private readonly IAuthorizationService _authService;
     private readonly IAuditService _auditService;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IPermissionService _permissionService;
     private readonly ILogger<PartnerDebtService> _logger;
 
     public PartnerDebtService(
@@ -34,17 +35,40 @@ public class PartnerDebtService : IPartnerDebtService
         IAuditService auditService,
         ICurrentUserService currentUserService,
         ILogger<PartnerDebtService> logger)
+        : this(context, exportService, authService, auditService, currentUserService, null!, logger)
+    {
+    }
+
+    public PartnerDebtService(
+        TradeFlowDbContext context,
+        IPartnerDebtExportService exportService,
+        IAuthorizationService authService,
+        IAuditService auditService,
+        ICurrentUserService currentUserService,
+        IPermissionService permissionService,
+        ILogger<PartnerDebtService> logger)
     {
         _context = context;
         _exportService = exportService;
         _authService = authService;
         _auditService = auditService;
         _currentUserService = currentUserService;
+        _permissionService = permissionService;
         _logger = logger;
     }
 
     public async Task<PartnerDebtSummaryDto> GetDebtSummaryAsync(CancellationToken cancellationToken = default)
     {
+        var userId = _currentUserService.UserId;
+        if (!string.IsNullOrEmpty(userId) && _permissionService != null)
+        {
+            var canViewCust = await _permissionService.HasPermissionAsync(userId, ResourceType.Customers, PermissionAction.View, cancellationToken);
+            var canViewSup = await _permissionService.HasPermissionAsync(userId, ResourceType.Suppliers, PermissionAction.View, cancellationToken);
+            if (!canViewCust && !canViewSup)
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền truy cập dữ liệu công nợ đối tác.");
+            }
+        }
         // 1. Total Customers & Suppliers
         int totalCustomers = await _context.Customers.CountAsync(cancellationToken);
         int totalSuppliers = await _context.Suppliers.CountAsync(cancellationToken);
@@ -128,10 +152,23 @@ public class PartnerDebtService : IPartnerDebtService
 
     public async Task<PagedResult<DebtRecordDto>> GetDebtRecordsAsync(DebtFilterDto filter, CancellationToken cancellationToken = default)
     {
+        var userId = _currentUserService.UserId;
+        bool canViewCust = true;
+        bool canViewSup = true;
+        if (!string.IsNullOrEmpty(userId) && _permissionService != null)
+        {
+            canViewCust = await _permissionService.HasPermissionAsync(userId, ResourceType.Customers, PermissionAction.View, cancellationToken);
+            canViewSup = await _permissionService.HasPermissionAsync(userId, ResourceType.Suppliers, PermissionAction.View, cancellationToken);
+            if (!canViewCust && !canViewSup)
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền truy cập dữ liệu công nợ đối tác.");
+            }
+        }
+
         var records = new List<DebtRecordDto>();
 
-        // 1. Build Customer Debt Records if not filtering out customers
-        if (!filter.PartnerType.HasValue || filter.PartnerType.Value == PartnerType.Customer)
+        // 1. Build Customer Debt Records if not filtering out customers and permitted
+        if (canViewCust && (!filter.PartnerType.HasValue || filter.PartnerType.Value == PartnerType.Customer))
         {
             // Load customer payments to calculate paid amount per invoice or customer
             var payments = await _context.PartnerPayments.AsNoTracking()
@@ -234,8 +271,8 @@ public class PartnerDebtService : IPartnerDebtService
             }
         }
 
-        // 2. Build Supplier Debt Records if not filtering out suppliers
-        if (!filter.PartnerType.HasValue || filter.PartnerType.Value == PartnerType.Supplier)
+        // 2. Build Supplier Debt Records if not filtering out suppliers and permitted
+        if (canViewSup && (!filter.PartnerType.HasValue || filter.PartnerType.Value == PartnerType.Supplier))
         {
             var supPayments = await _context.PartnerPayments.AsNoTracking()
                 .Include(p => p.Supplier)

@@ -12,12 +12,26 @@ public class SalesService : ISalesService
     private readonly TradeFlowDbContext _context;
     private readonly ICurrentUserService _currentUserService;
     private readonly IAuditService _auditService;
+    private readonly IPermissionService _permissionService;
 
-    public SalesService(TradeFlowDbContext context, ICurrentUserService currentUserService, IAuditService auditService)
+    public SalesService(
+        TradeFlowDbContext context,
+        ICurrentUserService currentUserService,
+        IAuditService auditService)
+        : this(context, currentUserService, auditService, null!)
+    {
+    }
+
+    public SalesService(
+        TradeFlowDbContext context,
+        ICurrentUserService currentUserService,
+        IAuditService auditService,
+        IPermissionService permissionService)
     {
         _context = context;
         _currentUserService = currentUserService;
         _auditService = auditService;
+        _permissionService = permissionService;
     }
 
         private DateTime NormalizeToUtc(DateTime date)
@@ -218,6 +232,23 @@ public class SalesService : ISalesService
 
         public async Task<List<TradeFlow.Domain.Entities.MasterData.Customer>> SearchCustomersAsync(string searchTerm, CancellationToken cancellationToken = default)
     {
+        // Enterprise Data Protection: Check if user has permission to view customers
+        var userId = _currentUserService.UserId;
+        bool hasCustomerPerm = true;
+        if (!string.IsNullOrEmpty(userId) && _permissionService != null)
+        {
+            hasCustomerPerm = await _permissionService.HasPermissionAsync(userId, ResourceType.Customers, PermissionAction.View, cancellationToken);
+        }
+
+        if (!hasCustomerPerm)
+        {
+            // If user has NO customer view permission, do not leak company client records!
+            // Only allow matching retail customer "Khách lẻ" (KL) if search term matches
+            return await _context.Customers.AsNoTracking()
+                .Where(x => x.IsActive && (x.Code == "KL" || x.Code == "KH_LE" || x.Name == "Khách lẻ"))
+                .ToListAsync(cancellationToken);
+        }
+
         var query = _context.Customers.AsNoTracking().Where(x => x.IsActive);
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {

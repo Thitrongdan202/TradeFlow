@@ -13,6 +13,7 @@ using TradeFlow.Application.Common.Models.Employees;
 using TradeFlow.Application.Common.Models.Notifications;
 using TradeFlow.Domain.Entities.Employees;
 using TradeFlow.Domain.Entities.Pricing;
+using TradeFlow.Domain.Entities.Support;
 using TradeFlow.Domain.Enums;
 using TradeFlow.Infrastructure.Persistence;
 
@@ -47,6 +48,7 @@ public class NotificationService : INotificationService
             bool isAdmin = user?.IsInRole("Administrator") ?? false;
             bool hasEmployeeApprovePermission = isAdmin || (user != null && (user.HasClaim("Permission", "Permission:EmployeeRequests:Approve") || user.HasClaim("Permission", "EmployeeRequests:Approve")));
             bool hasPriceListApprovePermission = isAdmin || (user != null && (user.HasClaim("Permission", "Permission:Pricing:Edit") || user.HasClaim("Permission", "Pricing:Edit")));
+            bool hasAttendanceApprovePermission = isAdmin || (user != null && (user.HasClaim("Permission", "Permission:Attendance:Approve") || user.HasClaim("Permission", "Attendance:Approve")));
 
             var result = new List<SystemNotificationDto>();
 
@@ -219,13 +221,169 @@ public class NotificationService : INotificationService
                     });
                 }
 
-                // 3. Query actual system events from AuditLog (e.g. system backups, security events, user creation)
+                // 2b. Pending Attendance Adjustment Requests
+                var pendingAdjustments = await context.AttendanceAdjustmentRequests
+                    .AsNoTracking()
+                    .Include(r => r.Employee)
+                    .Where(r => r.Status == AttendanceRequestStatus.Pending)
+                    .OrderByDescending(r => r.CreatedAt)
+                    .Take(limit)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var req in pendingAdjustments)
+                {
+                    string id = $"appr_adj_{req.Id}";
+                    bool isSelf = !string.IsNullOrEmpty(currentUserName) &&
+                        ((req.Employee != null && (string.Equals(req.Employee.FullName, currentUserName, StringComparison.OrdinalIgnoreCase) || string.Equals(req.Employee.Code, currentUserName, StringComparison.OrdinalIgnoreCase))) ||
+                         string.Equals(req.Employee?.UserId, userId, StringComparison.OrdinalIgnoreCase));
+                    bool canApprove = hasAttendanceApprovePermission && !isSelf;
+
+                    result.Add(new SystemNotificationDto
+                    {
+                        Id = id,
+                        Title = $"Giải trình chấm công: {req.Employee?.FullName ?? "Nhân viên"}",
+                        Message = $"Yêu cầu điều chỉnh công ngày {req.TargetDate:dd/MM/yyyy} do {req.Employee?.FullName} gửi: {req.Reason}",
+                        Type = "approval",
+                        CreatedAt = req.CreatedAt,
+                        IsRead = readSet.Contains(id),
+                        TargetUrl = "/cham-cong",
+                        ActionButtonText = "Xem đơn chờ duyệt",
+                        IsApprovalRequest = true,
+                        RequestType = "AttendanceAdjustment",
+                        RequestTypeName = "Điều chỉnh chấm công",
+                        EntityId = req.Id,
+                        RequestCode = $"YC-CC-{req.Id:D4}",
+                        Requester = req.Employee?.FullName ?? "Nhân viên",
+                        Status = "Chờ duyệt",
+                        CanApprove = canApprove,
+                        IsSelfRequest = isSelf
+                    });
+                }
+
+                // 2c. Pending Leave Requests
+                var pendingLeaves = await context.LeaveRequests
+                    .AsNoTracking()
+                    .Include(r => r.Employee)
+                    .Where(r => r.Status == AttendanceRequestStatus.Pending)
+                    .OrderByDescending(r => r.CreatedAt)
+                    .Take(limit)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var req in pendingLeaves)
+                {
+                    string id = $"appr_leave_{req.Id}";
+                    bool isSelf = !string.IsNullOrEmpty(currentUserName) &&
+                        ((req.Employee != null && (string.Equals(req.Employee.FullName, currentUserName, StringComparison.OrdinalIgnoreCase) || string.Equals(req.Employee.Code, currentUserName, StringComparison.OrdinalIgnoreCase))) ||
+                         string.Equals(req.Employee?.UserId, userId, StringComparison.OrdinalIgnoreCase));
+                    bool canApprove = hasAttendanceApprovePermission && !isSelf;
+
+                    result.Add(new SystemNotificationDto
+                    {
+                        Id = id,
+                        Title = $"Đơn xin nghỉ phép: {req.Employee?.FullName ?? "Nhân viên"}",
+                        Message = $"Đơn nghỉ phép từ {req.StartDate:dd/MM/yyyy} đến {req.EndDate:dd/MM/yyyy} ({req.TotalDays} ngày) do {req.Employee?.FullName} gửi: {req.Reason}",
+                        Type = "approval",
+                        CreatedAt = req.CreatedAt,
+                        IsRead = readSet.Contains(id),
+                        TargetUrl = "/cham-cong",
+                        ActionButtonText = "Xem đơn nghỉ phép",
+                        IsApprovalRequest = true,
+                        RequestType = "LeaveRequest",
+                        RequestTypeName = "Đơn xin nghỉ phép",
+                        EntityId = req.Id,
+                        RequestCode = $"NP-{req.Id:D4}",
+                        Requester = req.Employee?.FullName ?? "Nhân viên",
+                        Status = "Chờ duyệt",
+                        CanApprove = canApprove,
+                        IsSelfRequest = isSelf
+                    });
+                }
+
+                // 2c. Support Tickets (New tickets for Manager/Admin, feedback/replies for Submitter)
+                bool isManager = user?.IsInRole("Manager") ?? false;
+                if (isAdmin || isManager)
+                {
+                    var newTickets = await context.SupportTickets
+                        .AsNoTracking()
+                        .Where(t => t.Status == SupportStatus.New)
+                        .OrderByDescending(t => t.CreatedAt)
+                        .Take(limit)
+                        .ToListAsync(cancellationToken);
+
+                    foreach (var t in newTickets)
+                    {
+                        string id = $"supp_new_{t.Id}";
+                        string notifType = t.Priority == SupportPriority.Urgent ? "error" : (t.Priority == SupportPriority.Medium ? "warning" : "system");
+                        result.Add(new SystemNotificationDto
+                        {
+                            Id = id,
+                            Title = $"Báo cáo hỗ trợ mới: [{t.Code}] {t.Title}",
+                            Message = $"Nhân sự {t.SubmitterFullName ?? t.CreatedByUserName} ({t.SubmitterRole}) gửi báo cáo: {t.Title}.",
+                            Type = notifType,
+                            CreatedAt = t.CreatedAt,
+                            IsRead = readSet.Contains(id),
+                            TargetUrl = "#support-center",
+                            ActionButtonText = "Xử lý hỗ trợ",
+                            IsApprovalRequest = true,
+                            RequestType = "SupportTicket",
+                            RequestTypeName = "Báo cáo hỗ trợ",
+                            EntityId = t.Id,
+                            RequestCode = t.Code,
+                            Requester = t.SubmitterFullName ?? t.CreatedByUserName,
+                            Status = "Mới gửi",
+                            CanApprove = true
+                        });
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    var myTicketUpdates = await context.SupportTickets
+                        .AsNoTracking()
+                        .Where(t => t.CreatedByUserId == userId && (t.Status == SupportStatus.WaitingForCustomer || t.Status == SupportStatus.Resolved || t.Status == SupportStatus.Rejected))
+                        .OrderByDescending(t => t.UpdatedAt ?? t.CreatedAt)
+                        .Take(limit)
+                        .ToListAsync(cancellationToken);
+
+                    foreach (var t in myTicketUpdates)
+                    {
+                        string id = $"supp_update_{t.Id}_{t.Status}_{t.UpdatedAt?.Ticks ?? t.CreatedAt.Ticks}";
+                        string notifType = t.Status == SupportStatus.Resolved ? "success" : (t.Status == SupportStatus.Rejected ? "error" : "warning");
+                        string statusDesc = t.Status == SupportStatus.Resolved ? "Đã giải quyết" : (t.Status == SupportStatus.Rejected ? $"Từ chối: {t.RejectionReason}" : "Chờ bạn phản hồi");
+                        result.Add(new SystemNotificationDto
+                        {
+                            Id = id,
+                            Title = $"Cập nhật hỗ trợ [{t.Code}]: {t.Title}",
+                            Message = $"Yêu cầu hỗ trợ của bạn có cập nhật mới. Trạng thái: {statusDesc}.",
+                            Type = notifType,
+                            CreatedAt = t.UpdatedAt ?? t.CreatedAt,
+                            IsRead = readSet.Contains(id),
+                            TargetUrl = "#support-center",
+                            ActionButtonText = "Xem trao đổi",
+                            IsApprovalRequest = false,
+                            RequestType = "SupportTicket",
+                            RequestTypeName = "Hỗ trợ nội bộ",
+                            EntityId = t.Id,
+                            RequestCode = t.Code,
+                            Requester = t.SubmitterFullName ?? t.CreatedByUserName,
+                            Status = statusDesc
+                        });
+                    }
+                }
+
+                // 3. Query actual system events from AuditLog (e.g. system backups, security events, user creation, approvals)
                 var recentAuditLogs = await context.AuditLogs
                     .AsNoTracking()
                     .Where(x => x.EventType == AuditEventType.DatabaseBackupCreated
                              || x.EventType == AuditEventType.CompanySettingsChanged
                              || x.EventType == AuditEventType.UserLocked
-                             || x.EventType == AuditEventType.PasswordRecoveryRequested)
+                             || x.EventType == AuditEventType.PasswordRecoveryRequested
+                             || x.EventType == AuditEventType.AttendanceAdjustmentApproved
+                             || x.EventType == AuditEventType.AttendanceAdjustmentRejected
+                             || x.EventType == AuditEventType.LeaveRequestApproved
+                             || x.EventType == AuditEventType.LeaveRequestRejected
+                             || x.EventType == AuditEventType.RoleCreated
+                             || x.EventType == AuditEventType.RoleUpdated)
                     .OrderByDescending(x => x.OccurredAt)
                     .Take(limit)
                     .ToListAsync(cancellationToken);
@@ -239,6 +397,12 @@ public class NotificationService : INotificationService
                         AuditEventType.DatabaseBackupCreated => "Bản sao lưu dữ liệu đã tạo",
                         AuditEventType.CompanySettingsChanged => "Thông tin công ty đã cập nhật",
                         AuditEventType.UserLocked => "Cảnh báo bảo mật tài khoản",
+                        AuditEventType.AttendanceAdjustmentApproved => "Giải trình chấm công đã duyệt",
+                        AuditEventType.AttendanceAdjustmentRejected => "Giải trình chấm công bị từ chối",
+                        AuditEventType.LeaveRequestApproved => "Đơn nghỉ phép đã duyệt",
+                        AuditEventType.LeaveRequestRejected => "Đơn nghỉ phép bị từ chối",
+                        AuditEventType.RoleCreated => "Vai trò mới đã tạo",
+                        AuditEventType.RoleUpdated => "Vai trò & quyền đã cập nhật",
                         _ => "Thông báo hệ thống"
                     };
 
@@ -248,6 +412,12 @@ public class NotificationService : INotificationService
                         AuditEventType.DatabaseBackupCreated => $"Bản sao lưu cơ sở dữ liệu đã được tạo thành công bởi {log.PerformedBy ?? "quản trị viên"}.",
                         AuditEventType.CompanySettingsChanged => $"Cấu hình thông tin doanh nghiệp đã được cập nhật bởi {log.PerformedBy}.",
                         AuditEventType.UserLocked => $"Tài khoản {log.TargetId} đã bị khóa do vi phạm chính sách.",
+                        AuditEventType.AttendanceAdjustmentApproved => log.Details ?? "Yêu cầu điều chỉnh công đã được phê duyệt.",
+                        AuditEventType.AttendanceAdjustmentRejected => log.Details ?? "Yêu cầu điều chỉnh công đã bị từ chối.",
+                        AuditEventType.LeaveRequestApproved => log.Details ?? "Đơn xin nghỉ phép đã được phê duyệt.",
+                        AuditEventType.LeaveRequestRejected => log.Details ?? "Đơn xin nghỉ phép đã bị từ chối.",
+                        AuditEventType.RoleCreated => log.Details ?? "Đã tạo vai trò mới trên hệ thống.",
+                        AuditEventType.RoleUpdated => log.Details ?? "Đã cập nhật vai trò và phân quyền.",
                         _ => log.Details ?? "Cập nhật hệ thống"
                     };
 
@@ -259,7 +429,15 @@ public class NotificationService : INotificationService
                         Type = (log.EventType == AuditEventType.UserLocked || log.EventType == AuditEventType.PasswordRecoveryRequested) ? "warning" : "system",
                         CreatedAt = log.OccurredAt,
                         IsRead = readSet.Contains(id),
-                        TargetUrl = log.EventType == AuditEventType.PasswordRecoveryRequested ? "/admin/nguoi-dung" : (log.EventType == AuditEventType.DatabaseBackupCreated ? "/cai-dat/sao-luu" : "/cai-dat")
+                        TargetUrl = log.EventType switch
+                        {
+                            AuditEventType.PasswordRecoveryRequested => "/cai-dat/nguoi-dung",
+                            AuditEventType.DatabaseBackupCreated => "/cai-dat/sao-luu",
+                            AuditEventType.AttendanceAdjustmentApproved or AuditEventType.AttendanceAdjustmentRejected => "/cham-cong",
+                            AuditEventType.LeaveRequestApproved or AuditEventType.LeaveRequestRejected => "/cham-cong",
+                            AuditEventType.RoleCreated or AuditEventType.RoleUpdated => "/cai-dat/vai-tro",
+                            _ => "/cai-dat"
+                        }
                     });
                 }
 

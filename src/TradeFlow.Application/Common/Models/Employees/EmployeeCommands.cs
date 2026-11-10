@@ -90,6 +90,7 @@ public class CreateEmployeeRequestCommand
     public string? NationalId { get; set; }
     public DateTime? DateOfBirth { get; set; }
     public string? Gender { get; set; } = "Nam";
+    public string? AvatarPath { get; set; }
     public string? Address { get; set; }
     public int? DepartmentId { get; set; }
     public int? PositionId { get; set; }

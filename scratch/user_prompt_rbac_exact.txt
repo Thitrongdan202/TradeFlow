@@ -1,0 +1,516 @@
+<USER_REQUEST>
+# FEATURE: TRADEFLOW ROLE & PERMISSION MANAGEMENT
+## Custom RBAC – Role Assignment – Temporary Access – Data Protection
+
+Bạn đang làm việc trên source code TradeFlow ERP hiện tại. Hãy nghiên cứu kiến trúc và triển khai một hệ thống quản lý Role và Permission hoàn chỉnh, độc lập trong phần **Cài đặt**.
+
+Đây là tính năng bảo mật cấp hệ thống, không phải chỉ là chỉnh sửa Sidebar hoặc ẩn/hiện một số nút trên giao diện.
+
+## 1. QUY TẮC BẮT BUỘC TRƯỚC KHI CODE
+
+- Kiểm tra `git status`, `git diff` và các thay đổi đang tồn tại trước khi chỉnh sửa.
+- Đọc kiến trúc Authentication, Authorization, Account, Employee, các module nghiệp vụ và hệ thống phân quyền hiện tại.
+- Xác định chính xác framework, phiên bản .NET, cách tổ chức Razor Components, API, Services, Database và Dependency Injection.
+- Tận dụng kiến trúc hiện tại, không tạo thêm một hệ thống xác thực song song.
+- Giữ nguyên toàn bộ dữ liệu, nghiệp vụ, chức năng và thay đổi hiện có.
+- Không tự ý sửa các module không thuộc phạm vi tính năng này.
+- Không commit, không push, không thay đổi remote repository.
+- Không xóa dữ liệu tài khoản hoặc dữ liệu nghiệp vụ hiện có.
+
+## 2. VỊ TRÍ VÀ CẤU TRÚC TÍNH NĂNG
+
+Đưa tính năng vào phần **Cài đặt**, tạo một khu vực độc lập:
+
+**Quản lý quyền truy cập**
+
+Bên trong có các khu vực:
+
+1. Tổng quan phân quyền.
+2. Quản lý Role.
+3. Ma trận quyền truy cập.
+4. Quản lý tài khoản và Role.
+5. Quyền truy cập tạm thời.
+6. Nhật ký phân quyền.
+
+Không đặt một mục quản lý Role khổng lồ lên Sidebar chính. Đây là chức năng quản trị bên trong Cài đặt.
+
+## 3. QUẢN LÝ ROLE
+
+Admin có thể tự tạo Role không giới hạn theo nhu cầu doanh nghiệp.
+
+Ví dụ:
+
+- Nhân viên
+- Nhân viên bán hàng
+- Kế toán
+- Nhân viên kho
+- Quản lý kho
+- Quản lý kinh doanh
+- Nhân sự
+- Quản lý nhân sự
+- Kiểm soát viên
+- Trợ lý quản trị
+
+Đây chỉ là Role ví dụ. Không hardcode danh sách trên thành các Role bắt buộc.
+
+Mỗi Role có:
+
+- Tên Role.
+- Mô tả.
+- Màu nhận diện.
+- Biểu tượng.
+- Trạng thái hoạt động.
+- Ngày tạo.
+- Người tạo.
+- Danh sách quyền được cấp.
+- Số tài khoản đang sử dụng.
+
+Admin có thể:
+- Tạo Role.
+- Chỉnh sửa Role.
+- Sao chép Role.
+- Kích hoạt/vô hiệu hóa Role.
+- Xóa Role nếu không còn tài khoản sử dụng và không có ràng buộc hệ thống.
+
+Không cho phép xóa Role hệ thống mặc định hoặc Role đang được tài khoản sử dụng mà chưa xử lý các liên kết.
+
+Role Owner/System Admin là Role hệ thống đặc biệt, không thể bị người dùng thông thường chỉnh sửa, xóa hoặc vô hiệu hóa.
+
+## 4. HỆ THỐNG PERMISSION CHI TIẾT
+
+Đây là phần quan trọng nhất.
+
+Không chỉ phân quyền theo module mà phải phân quyền đến từng hành động.
+
+Ví dụ module Đối tác:
+
+| Permission | Chức năng |
+|---|---|
+| partners.view | Xem danh sách đối tác |
+| partners.view_detail | Xem chi tiết đối tác |
+| partners.create | Tạo đối tác |
+| partners.edit | Chỉnh sửa đối tác |
+| partners.delete | Xóa đối tác |
+| partners.export | Xuất dữ liệu đối tác |
+
+Áp dụng nguyên tắc tương tự cho các module hiện có của TradeFlow.
+
+Phải tự khảo sát source code để lấy danh sách module thực tế, không tự tạo ra các module không tồn tại.
+
+Các nhóm quyền cần hỗ trợ:
+
+- Xem danh sách.
+- Xem chi tiết.
+- Tạo mới.
+- Chỉnh sửa.
+- Xóa.
+- Xuất dữ liệu.
+- In tài liệu.
+- Duyệt.
+- Từ chối.
+- Quản lý cấu hình.
+- Quản lý quyền người khác.
+
+Tùy từng module, chỉ hiển thị những quyền thực sự có ý nghĩa.
+
+### Phân quyền phạm vi dữ liệu
+
+Nếu kiến trúc dữ liệu hiện tại hỗ trợ, cần bổ sung phạm vi truy cập:
+
+- Chỉ dữ liệu của bản thân.
+- Dữ liệu của nhóm/phòng ban.
+- Toàn bộ dữ liệu được phép truy cập.
+
+Ví dụ:
+
+Nhân viên bán hàng có thể xem khách hàng do mình phụ trách nhưng không được xem toàn bộ dữ liệu đối tác của công ty.
+
+Không được mặc định rằng có quyền `view` là được xem tất cả dữ liệu.
+
+### Giao diện cấu hình quyền
+
+Thiết kế ma trận quyền theo module:
+
+| Module | Xem | Tạo | Sửa | Xóa | Xuất |
+|---|---|---|---|---|---|
+| Đối tác | Toggle | Toggle | Toggle | Toggle | Toggle |
+| Bán hàng | Toggle | Toggle | Toggle | Toggle | Toggle |
+| Kho | Toggle | Toggle | Toggle | Toggle | Toggle |
+| Nhân sự | Toggle | Toggle | Toggle | Toggle | Toggle |
+
+Có khả năng:
+
+- Bật/tắt quyền theo từng hành động.
+- Bật/tắt toàn bộ module.
+- Tìm kiếm permission.
+- Thu gọn/mở rộng từng nhóm module.
+- Hiển thị số lượng quyền đã cấp.
+- Cảnh báo khi cấp quyền nhạy cảm.
+- Lưu thay đổi và xác nhận trước khi áp dụng.
+
+Không thiết kế ma trận thành một bảng khổng lồ gây khó sử dụng. Chia nhóm module rõ ràng.
+
+## 5. QUẢN LÝ ROLE CỦA TÀI KHOẢN
+
+Một tài khoản được phép có tối đa **2 Role đang hoạt động cùng lúc**.
+
+Quy tắc mặc định:
+
+- Tài khoản nhân viên mới được tạo tự động gán Role `Nhân viên`.
+- Đây là Role nền mặc định.
+- Admin có thể cấp thêm một Role thứ hai.
+- Không được cấp quá 2 Role đồng thời.
+- Một tài khoản không được tự ý nâng quyền cho chính mình.
+- Tài khoản không có quyền quản trị không được chỉnh sửa Role hoặc Permission.
+
+Ví dụ:
+
+| Tài khoản | Role 1 | Role 2 |
+|---|---|---|
+| Nguyễn Văn A | Nhân viên | Nhân viên bán hàng |
+| Trần Văn B | Nhân viên | Kế toán |
+| Lê Văn C | Nhân viên | Quản lý kho |
+
+Admin có thể lựa chọn Role khi quản lý tài khoản.
+
+Giao diện quản lý tài khoản phải hiển thị:
+
+- Tên tài khoản.
+- Nhân viên liên kết.
+- Role hiện tại.
+- Trạng thái Role.
+- Thời hạn nếu là Role tạm thời.
+- Người cấp quyền.
+- Thời gian cấp quyền.
+
+Có thể tìm kiếm và lọc tài khoản theo Role.
+
+Khi tạo nhân viên hoặc tài khoản nhân viên từ những quy trình hiện có, phải tự động gán Role `Nhân viên` nếu tài khoản chưa có Role nền.
+
+Không làm hỏng luồng tạo tài khoản hiện tại.
+
+## 6. CẤP QUYỀN VĨNH VIỄN VÀ TẠM THỜI
+
+Đây là chức năng quan trọng cần triển khai riêng biệt.
+
+Khi Admin cấp Role thứ hai cho tài khoản, có hai chế độ:
+
+### A. Vĩnh viễn
+
+Đây là chế độ được chọn mặc định.
+
+- Role tồn tại cho đến khi Admin thu hồi hoặc thay đổi.
+- Không có thời hạn tự động.
+- Sau khi lưu, quyền được áp dụng theo cơ chế cập nhật quyền hiện tại của hệ thống.
+
+### B. Tạm thời
+
+Có một nút riêng:
+
+**+ Cấp quyền tạm thời**
+
+Khi nhấn nút, mở một popup/modal để chọn:
+
+- Tài khoản được cấp.
+- Role muốn cấp.
+- Lý do cấp quyền.
+- Thời hạn.
+- Thời điểm bắt đầu.
+
+Giới hạn:
+
+- Thời gian cấp tối đa: 2 giờ.
+- Có thể chọn thời gian ngắn hơn.
+- Không cho phép đặt thời hạn vượt quá 2 giờ.
+- Không cho phép một tài khoản có hơn 2 Role đang hoạt động.
+- Không tạo nhiều bản ghi cấp cùng một Role đang còn hiệu lực một cách không kiểm soát.
+
+Ví dụ:
+
+Admin cấp Role `Quản lý kho` cho nhân viên A trong 2 giờ để xử lý một công việc đặc biệt.
+
+Sau khi hết 2 giờ:
+
+- Tự động thu hồi Role bổ sung.
+- Tài khoản quay về Role nền `Nhân viên`.
+- Những quyền được cấp từ Role tạm thời không còn hiệu lực.
+- Không cần người dùng đăng xuất mới mất quyền.
+- Ghi nhận sự kiện hết hạn trong nhật ký.
+
+Phải có cơ chế hết hạn bền vững ở Backend/Database, không phụ thuộc vào việc trình duyệt đang mở.
+
+Yêu cầu kỹ thuật:
+
+- Lưu thời gian theo UTC.
+- Hiển thị theo múi giờ Asia/Ho_Chi_Minh.
+- Có Background Service hoặc cơ chế xử lý tác vụ hết hạn phù hợp với kiến trúc hiện tại.
+- Kiểm tra thời hạn ngay trong quá trình authorization để quyền hết hiệu lực chính xác kể cả khi Background Service chưa kịp xử lý bản ghi.
+- Không chỉ xóa Role khỏi giao diện mà phải thu hồi quyền thực tế.
+- Hỗ trợ khởi động lại ứng dụng mà không làm mất trạng thái thời hạn.
+- Có khả năng xử lý nhiều tài khoản cùng lúc.
+
+Role tạm thời phải có trạng thái:
+- Chờ hiệu lực.
+- Đang hiệu lực.
+- Đã hết hạn.
+- Đã thu hồi.
+
+## 7. BẢO MẬT DỮ LIỆU DOANH NGHIỆP
+
+Hiện tại có tình trạng tài khoản nhân viên nhìn thấy dữ liệu Đối tác dù không cần thiết. Phải xử lý triệt để.
+
+Ví dụ:
+
+Nhân viên bán hàng không được cấp quyền Đối tác thì:
+
+- Không thấy menu Đối tác.
+- Không truy cập được trang Đối tác bằng URL trực tiếp.
+- Không gọi được API lấy danh sách đối tác.
+- Không xem được chi tiết đối tác.
+- Không tìm kiếm được dữ liệu đối tác thông qua module khác nếu không được phép.
+- Không xuất được dữ liệu đối tác.
+- Không thể truy cập dữ liệu bằng cách sửa request hoặc tham số URL.
+
+**Không được chỉ ẩn menu hoặc ẩn nút trên Frontend.**
+
+Bắt buộc kiểm tra quyền ở Backend tại các điểm:
+
+1. Route/Page authorization.
+2. API endpoint.
+3. Service nghiệp vụ.
+4. Truy vấn dữ liệu.
+5. Các thao tác tạo/sửa/xóa.
+6. Xuất Excel/PDF.
+7. Các chức năng tìm kiếm và autocomplete có thể trả về dữ liệu nhạy cảm.
+
+Đặc biệt phải kiểm tra các màn hình Dashboard, POS, Báo cáo và các module khác có thể đang lấy dữ liệu Đối tác gián tiếp.
+
+Không để dữ liệu bị rò rỉ qua API tổng hợp hoặc endpoint dùng chung.
+
+Nguyên tắc: Không có quyền thì không có dữ liệu, kể cả khi người dùng biết URL hoặc endpoint.
+
+## 8. CÁCH TÍNH QUYỀN KHI MỘT TÀI KHOẢN CÓ 2 ROLE
+
+Phải xây dựng một cơ chế tổng hợp Permission nhất quán.
+
+- Các quyền của Role đang hoạt động được tổng hợp theo một chính sách rõ ràng.
+- Role hết hạn hoặc bị thu hồi không được đóng góp quyền.
+- Role vô hiệu hóa không được cấp quyền.
+- Không để cache quyền cũ tiếp tục có hiệu lực sau khi thu hồi.
+- Khi cập nhật quyền, các phiên đăng nhập cần được làm mới quyền theo cơ chế phù hợp.
+- Không được để một Role bổ sung vô tình cấp quyền vượt quá phạm vi mong muốn.
+
+Nếu có các quyền nhạy cảm hoặc quyền giới hạn phạm vi dữ liệu, phải thiết kế chính sách ưu tiên rõ ràng, tránh việc kết hợp hai Role tạo ra quyền truy cập ngoài ý muốn.
+
+Owner/System Admin có quyền quản trị toàn hệ thống theo cơ chế đặc biệt hiện tại, nhưng không được làm hỏng hoặc thay thế tài khoản Root hiện có.
+
+## 9. GIAO DIỆN – THIẾT KẾ RIÊNG CHO TRADEFLOW
+
+Hai ảnh Discord được cung cấp chỉ là tài liệu tham khảo về chức năng Role, không phải mẫu để sao chép giao diện.
+
+Không copy:
+- Sidebar Role của Discord.
+- Cách sắp xếp tab.
+- Icon.
+- Màu sắc.
+- Bố cục chỉnh sửa Role.
+- Các thành phần Boosting hoặc tính năng riêng của Discord.
+
+Hãy tạo một UI riêng phù hợp với TradeFlow ERP.
+
+Định hướng:
+
+- Premium Enterprise SaaS.
+- Gọn, rõ, chuyên nghiệp.
+- Tận dụng không gian hợp lý.
+- Không lạm dụng card, gradient, glow, shadow.
+- Không tạo giao diện quá nhiều khoảng trắng.
+- Không sử dụng các bảng quá dày đặc.
+- Typography đồng nhất với hệ thống hiện tại.
+- Tương thích Light Mode và Dark Mode.
+- Responsive Desktop, Tablet và Mobile.
+
+### Trang tổng quan
+
+Hiển thị:
+- Tổng số Role.
+- Tổng số tài khoản đã được phân quyền.
+- Số Role tạm thời đang hoạt động.
+- Số quyền truy cập cần chú ý.
+- Hoạt động phân quyền gần đây.
+
+### Trang Role
+
+Có danh sách Role và tìm kiếm.
+
+Khi chọn một Role, hiển thị trang cấu hình riêng với các khu vực:
+
+- Thông tin Role.
+- Quyền theo module.
+- Tài khoản đang sử dụng Role.
+- Lịch sử thay đổi.
+
+### Trang quản lý tài khoản
+
+Có thể mở chi tiết tài khoản và quản lý tối đa hai Role.
+
+Phải phân biệt rõ:
+- Role nền.
+- Role bổ sung.
+- Vĩnh viễn.
+- Tạm thời.
+- Thời gian hết hạn.
+
+Có nút cấp quyền tạm thời nổi bật vừa đủ, không gây nhầm với thao tác cấp quyền vĩnh viễn.
+
+### Trang nhật ký
+
+Hiển thị:
+- Ai cấp quyền.
+- Ai thu hồi quyền.
+- Tài khoản nào được cấp.
+- Role nào được cấp.
+- Thời gian.
+- Lý do.
+- Thời hạn.
+- Kết quả.
+
+## 10. AUDIT LOG VÀ CHỐNG LẠM DỤNG QUYỀN
+
+Mọi thao tác quan trọng phải có nhật ký:
+
+- Tạo Role.
+- Sửa Role.
+- Thay đổi Permission.
+- Gán Role.
+- Thu hồi Role.
+- Cấp quyền tạm thời.
+- Hết hạn quyền tạm thời.
+- Thay đổi phạm vi dữ liệu.
+- Cố truy cập module không được phép.
+
+Nhật ký phải lưu Actor, Target, thời gian, hành động, giá trị trước/sau và lý do nếu có.
+
+Không cho phép tài khoản thông thường tự xóa hoặc sửa nhật ký phân quyền.
+
+## 11. DATABASE VÀ MIGRATION
+
+Khảo sát Database hiện tại và thiết kế các bảng/entity phù hợp.
+
+Có thể cần các cấu trúc:
+
+- Roles.
+- Permissions.
+- RolePermissions.
+- UserRoles.
+- TemporaryRoleAssignments hoặc các trường thời hạn tương đương.
+- PermissionAuditLogs.
+
+Đây là gợi ý về mô hình dữ liệu, không bắt buộc phải tạo đúng tên bảng nếu kiến trúc hiện tại đã có cấu trúc tương đương.
+
+Yêu cầu:
+
+- Quan hệ rõ ràng.
+- Foreign key hợp lý.
+- Index phục vụ truy vấn quyền.
+- Không lưu danh sách Permission dưới dạng chuỗi khó kiểm soát nếu kiến trúc có thể chuẩn hóa.
+- Migration an toàn.
+- Giữ nguyên các tài khoản và dữ liệu cũ.
+- Có cơ chế chuyển đổi quyền hiện tại sang Role mới.
+- Không để tài khoản hiện tại mất quyền truy cập ngoài ý muốn sau migration.
+- Không tự động cấp quyền rộng cho tất cả tài khoản cũ.
+
+Đặc biệt, phải có kế hoạch migration và kiểm thử trước khi áp dụng trên dữ liệu thực tế.
+
+## 12. KIỂM THỬ BẮT BUỘC
+
+Không được chỉ báo Build thành công rồi kết luận hoàn thành.
+
+Phải kiểm tra các tình huống thực tế:
+
+**Test 1 – Nhân viên mặc định**
+- Tạo tài khoản nhân viên mới.
+- Tự động có Role Nhân viên.
+- Không có quyền Đối tác nếu Role Nhân viên không được cấp.
+
+**Test 2 – Chặn truy cập**
+- Nhân viên truy cập URL Đối tác trực tiếp.
+- Gọi API lấy dữ liệu Đối tác.
+- Thử sửa tham số request.
+- Tất cả phải bị từ chối đúng cách.
+
+**Test 3 – Role thứ hai**
+- Cấp thêm Role Kế toán.
+- Kiểm tra quyền tổng hợp.
+- Đảm bảo không vượt quá hai Role.
+
+**Test 4 – Quyền tạm thời**
+- Cấp Role trong thời gian ngắn để kiểm thử.
+- Xác nhận quyền có hiệu lực.
+- Xác nhận tự hết hạn.
+- Kiểm tra quyền sau khi hết hạn.
+- Kiểm tra khi ứng dụng khởi động lại.
+- Kiểm tra khi người dùng vẫn đang đăng nhập.
+
+**Test 5 – Thu hồi quyền**
+- Admin thu hồi Role bổ sung.
+- Người dùng không còn quyền ngay theo cơ chế authorization.
+- Cache và phiên đăng nhập không giữ quyền cũ.
+
+**Test 6 – Bảo vệ Admin**
+- Tài khoản thường không thể tự nâng quyền.
+- Không thể chỉnh sửa hoặc xóa Role Root.
+- Không thể vượt giới hạn hai Role.
+- Không thể tự cấp quyền tạm thời cho bản thân.
+
+**Test 7 – Dữ liệu cũ**
+- Tài khoản cũ vẫn đăng nhập được theo chính sách migration.
+- Dữ liệu nghiệp vụ không bị mất.
+- Không tự ý cấp quyền xem toàn bộ dữ liệu công ty.
+
+## 13. GIỚI HẠN PHẠM VI
+
+Chỉ tập trung vào:
+
+- Quản lý Role.
+- Permission.
+- Gán Role cho tài khoản.
+- Quyền tạm thời tối đa 2 giờ.
+- Authorization Backend.
+- Kiểm soát truy cập dữ liệu.
+- Giao diện quản lý trong Cài đặt.
+- Database và Audit Log liên quan trực tiếp.
+
+Không tự ý:
+- Thiết kế lại toàn bộ Dashboard.
+- Chỉnh sửa module Hợp đồng.
+- Chỉnh sửa chức năng in hợp đồng.
+- Thay đổi giao diện POS ngoài những điểm thực sự cần thiết để bảo vệ dữ liệu.
+- Chỉnh sửa module Nhân sự ngoài luồng gán Role mặc định khi tạo tài khoản.
+- Thay đổi quy trình nghiệp vụ không liên quan.
+- Xóa hoặc thay thế hệ thống Authentication đang hoạt động.
+- Thêm thư viện hoặc framework không cần thiết.
+
+Nếu phát hiện một module khác có lỗ hổng phân quyền liên quan trực tiếp đến yêu cầu này, hãy ghi rõ file, endpoint và lý do trước khi mở rộng phạm vi. Chỉ sửa những điểm thực sự cần thiết để ngăn truy cập trái phép.
+
+## 14. BÁO CÁO KẾT QUẢ
+
+Sau khi thực hiện, báo cáo:
+
+1. Kiến trúc phân quyền đã triển khai.
+2. Danh sách Role và Permission mặc định.
+3. Cơ chế giới hạn tối đa hai Role.
+4. Cơ chế hết hạn quyền tạm thời.
+5. Các API và truy vấn đã được bảo vệ.
+6. Những file đã tạo/sửa.
+7. Migration đã thực hiện.
+8. Các test đã chạy và kết quả thực tế.
+9. Những phần chưa hoàn thành hoặc còn rủi ro.
+
+Không báo cáo đã hoàn thành nếu mới chỉ làm UI hoặc ẩn menu mà Backend vẫn cho phép truy cập dữ liệu.
+
+**MỤC TIÊU CUỐI CÙNG:** TradeFlow phải có một hệ thống Role & Permission thực sự, cho phép Admin kiểm soát chính xác mỗi tài khoản được nhìn thấy dữ liệu gì, được thao tác gì, được cấp quyền vĩnh viễn hay tạm thời. Nhân viên chỉ được tiếp cận đúng phạm vi công việc, không được mặc định nhìn thấy dữ liệu nội bộ của toàn công ty.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-11-09T18:59:58+07:00.
+</ADDITIONAL_METADATA>

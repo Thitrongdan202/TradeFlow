@@ -1,0 +1,89 @@
+Created At: 2026-11-09T18:16:28+07:00
+Completed At: 2026-11-09T18:16:28+07:00
+Showing lines 1-85 of 85
+1: <USER_REQUEST>
+2: # TRADEFLOW — RBAC PERMISSION SYSTEM, ROLE MANAGEMENT, APPROVAL WORKFLOW & AUDIT LOG
+3: 
+4: ## MỤC TIÊU
+5: 
+6: Nâng cấp toàn bộ hệ thống phân quyền TradeFlow ERP.
+7: 
+8: Hiện tại tài khoản nhân viên vẫn nhìn thấy nhiều chức năng trên sidebar dù không có quyền truy cập. Khi bấm vào một số chức năng thì hệ thống trả về 403. Ngoài ra, POS có thể đang bị sai cấu hình quyền và trang đang xuất hiện hai header chồng lên nhau.
+9: 
+10: Tôi muốn xây dựng một hệ thống phân quyền thực sự hoàn chỉnh:
+11: 
+12: 1. Admin có thể tạo và quản lý các role.
+13: 2. Mỗi role được chọn cụ thể những chức năng được nhìn thấy và sử dụng.
+14: 3. Sidebar tự động hiển thị đúng các chức năng được cấp quyền.
+15: 4. Một số thao tác quan trọng phải gửi yêu cầu cho Manager hoặc Admin xác nhận.
+16: 5. Admin luôn nhận được thông báo và theo dõi được mọi hoạt động, kể cả những thao tác đã được Manager phê duyệt.
+17: 6. Lịch sử hệ thống được chia thành các nhóm log riêng để dễ tra cứu.
+18: 7. Phân quyền phải được kiểm tra ở cả UI, route, API và tầng xử lý nghiệp vụ.
+19: 
+20: **Không chỉ sửa giao diện sidebar. Phải kiểm tra và hoàn thiện toàn bộ cơ chế phân quyền thực tế.**
+21: 
+22: ---
+23: 
+24: # I. THIẾT KẾ KIẾN TRÚC PHÂN QUYỀN
+25: 
+26: Sử dụng RBAC (Role-Based Access Control), có thể kết hợp permission-based authorization.
+27: 
+28: Mỗi tài khoản được gán một role.
+29: 
+30: Mỗi role có tập hợp quyền riêng, có thể bao gồm:
+31: 
+32: - Quyền nhìn thấy module.
+33: - Quyền truy cập trang.
+34: - Quyền xem dữ liệu.
+35: - Quyền tạo mới.
+36: - Quyền chỉnh sửa.
+37: - Quyền xóa.
+38: - Quyền xác nhận.
+39: - Quyền xuất dữ liệu.
+40: - Quyền quản lý người dùng.
+41: - Quyền thực hiện thao tác nhạy cảm.
+42: 
+43: Không được hiểu rằng có quyền nhìn t
+44: <truncated 21282 bytes>
+45: sửa hợp đồng/PDF.
+46: - Không thay đổi POS ngoài các phần cần thiết để sửa quyền.
+47: - Không tự cấp thêm quyền cho nhân viên.
+48: - Không làm hỏng dữ liệu tài khoản hiện tại.
+49: - Không commit.
+50: - Không push.
+51: - Không sửa remote repository.
+52: 
+53: Trước khi làm:
+54: 1. Kiểm tra git status.
+55: 2. Bảo toàn tất cả thay đổi local chưa commit.
+56: 3. Xác định đúng file cần chỉnh sửa.
+57: 4. Lập kế hoạch triển khai.
+58: 5. Thực hiện từng nhóm có kiểm soát.
+59: 6. Build và kiểm tra regression.
+60: 
+61: # XIV. BÁO CÁO SAU KHI HOÀN THÀNH
+62: 
+63: Báo cáo rõ:
+64: 
+65: 1. Các nguyên nhân khiến nhân viên nhìn thấy menu nhưng bị 403.
+66: 2. Nguyên nhân POS không truy cập được.
+67: 3. Nguyên nhân header bị render hai lần.
+68: 4. Những permission đã được bổ sung.
+69: 5. Các role mặc định đã được cấu hình.
+70: 6. Những chức năng Admin có thể tùy chỉnh.
+71: 7. Approval Workflow hoạt động ra sao.
+72: 8. Admin nhận được những thông báo nào.
+73: 9. Audit Log được chia thành những nhóm nào.
+74: 10. Những test case đã chạy và kết quả thực tế.
+75: 11. Những chức năng chưa hoàn thành hoặc còn giới hạn.
+76: 
+77: **YÊU CẦU NGHIỆM THU CUỐI CÙNG:**
+78: 
+79: Một nhân viên chỉ nhìn thấy những chức năng mình được giao. Khi được cấp quyền Bán hàng thì phải thực sự vào được POS. Manager có thể quản lý và duyệt các nghiệp vụ trong phạm vi được cấp. HR chỉ thấy dữ liệu nhân sự được phân quyền. Admin/Owner có quyền quản trị tối cao, theo dõi được mọi hoạt động và nhận thông báo kể cả khi Manager là người phê duyệt.
+80: 
+81: Đây phải là hệ thống phân quyền thật sự hoạt động từ database đến giao diện và backend, không phải chỉ ẩn/hiện sidebar.
+82: </USER_REQUEST>
+83: <ADDITIONAL_METADATA>
+84: The current local time is: 2026-11-09T18:08:39+07:00.
+85: </ADDITIONAL_METADATA>
+(no newline at end of file)

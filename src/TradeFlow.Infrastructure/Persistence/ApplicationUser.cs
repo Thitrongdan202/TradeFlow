@@ -39,10 +39,9 @@ public class ApplicationUser : IdentityUser
     public DateTime? PasswordChangedAt { get; set; }
 
     /// <summary>
-    /// Trường cũ - không còn sử dụng. Mật khẩu được bảo vệ bằng ASP.NET Core Identity one-way hashing.
-    /// Tuyệt đối KHÔNG lưu trữ plaintext hoặc mật khẩu đảo ngược.
+    /// Mật khẩu được mã hóa đối xứng AES-256 an toàn phục vụ kho thông tin xác thực ROOT.
+    /// Tuyệt đối KHÔNG lưu trữ plaintext.
     /// </summary>
-    [Obsolete("Hệ thống áp dụng chuẩn one-way Identity PasswordHasher.")]
     public string? EncryptedPassword { get; set; }
 
     // Navigation

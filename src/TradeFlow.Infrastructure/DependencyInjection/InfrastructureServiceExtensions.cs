@@ -29,6 +29,7 @@ public static class InfrastructureServiceExtensions
                     maxRetryDelay: TimeSpan.FromSeconds(10),
                     errorCodesToAdd: null);
             });
+            options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
 
 #if DEBUG
             options.EnableSensitiveDataLogging(false);
@@ -105,7 +106,10 @@ public static class InfrastructureServiceExtensions
 
         // Register Phase 7 Security & Digital Signature services
         services.AddSingleton<ISigningProvider, Services.Security.RsaSoftwareSigningProvider>();
+        services.AddSingleton<ICredentialVaultService, Services.Security.CredentialVaultService>();
         services.AddScoped<ISecurityService, Services.Security.SecurityService>();
+        services.AddScoped<IRoleManagementService, Services.Security.RoleManagementService>();
+        services.AddHostedService<Services.Security.TemporaryRoleExpirationWorker>();
 
         // Register Phase 8 Employee Management services
         services.AddScoped<IEmployeeService, Services.EmployeeService>();
@@ -130,6 +134,10 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IContractPdfService, Services.Pdf.ContractPdfService>();
         services.AddScoped<IContractService, Services.ContractService>();
         services.AddScoped<IEmploymentContractService, Services.EmploymentContractService>();
+
+        // Register Attendance Management services
+        services.AddScoped<IAttendanceService, Services.AttendanceService>();
+        services.AddScoped<ISupportService, Services.SupportService>();
 
         // Register Warehouse Management & Operations services
         services.AddScoped<IWarehouseService, Services.WarehouseService>();

@@ -1,0 +1,85 @@
+<USER_REQUEST>
+# TRADEFLOW — RBAC PERMISSION SYSTEM, ROLE MANAGEMENT, APPROVAL WORKFLOW & AUDIT LOG
+
+## MỤC TIÊU
+
+Nâng cấp toàn bộ hệ thống phân quyền TradeFlow ERP.
+
+Hiện tại tài khoản nhân viên vẫn nhìn thấy nhiều chức năng trên sidebar dù không có quyền truy cập. Khi bấm vào một số chức năng thì hệ thống trả về 403. Ngoài ra, POS có thể đang bị sai cấu hình quyền và trang đang xuất hiện hai header chồng lên nhau.
+
+Tôi muốn xây dựng một hệ thống phân quyền thực sự hoàn chỉnh:
+
+1. Admin có thể tạo và quản lý các role.
+2. Mỗi role được chọn cụ thể những chức năng được nhìn thấy và sử dụng.
+3. Sidebar tự động hiển thị đúng các chức năng được cấp quyền.
+4. Một số thao tác quan trọng phải gửi yêu cầu cho Manager hoặc Admin xác nhận.
+5. Admin luôn nhận được thông báo và theo dõi được mọi hoạt động, kể cả những thao tác đã được Manager phê duyệt.
+6. Lịch sử hệ thống được chia thành các nhóm log riêng để dễ tra cứu.
+7. Phân quyền phải được kiểm tra ở cả UI, route, API và tầng xử lý nghiệp vụ.
+
+**Không chỉ sửa giao diện sidebar. Phải kiểm tra và hoàn thiện toàn bộ cơ chế phân quyền thực tế.**
+
+---
+
+# I. THIẾT KẾ KIẾN TRÚC PHÂN QUYỀN
+
+Sử dụng RBAC (Role-Based Access Control), có thể kết hợp permission-based authorization.
+
+Mỗi tài khoản được gán một role.
+
+Mỗi role có tập hợp quyền riêng, có thể bao gồm:
+
+- Quyền nhìn thấy module.
+- Quyền truy cập trang.
+- Quyền xem dữ liệu.
+- Quyền tạo mới.
+- Quyền chỉnh sửa.
+- Quyền xóa.
+- Quyền xác nhận.
+- Quyền xuất dữ liệu.
+- Quyền quản lý người dùng.
+- Quyền thực hiện thao tác nhạy cảm.
+
+Không được hiểu rằng có quyền nhìn t
+<truncated 21282 bytes>
+sửa hợp đồng/PDF.
+- Không thay đổi POS ngoài các phần cần thiết để sửa quyền.
+- Không tự cấp thêm quyền cho nhân viên.
+- Không làm hỏng dữ liệu tài khoản hiện tại.
+- Không commit.
+- Không push.
+- Không sửa remote repository.
+
+Trước khi làm:
+1. Kiểm tra git status.
+2. Bảo toàn tất cả thay đổi local chưa commit.
+3. Xác định đúng file cần chỉnh sửa.
+4. Lập kế hoạch triển khai.
+5. Thực hiện từng nhóm có kiểm soát.
+6. Build và kiểm tra regression.
+
+# XIV. BÁO CÁO SAU KHI HOÀN THÀNH
+
+Báo cáo rõ:
+
+1. Các nguyên nhân khiến nhân viên nhìn thấy menu nhưng bị 403.
+2. Nguyên nhân POS không truy cập được.
+3. Nguyên nhân header bị render hai lần.
+4. Những permission đã được bổ sung.
+5. Các role mặc định đã được cấu hình.
+6. Những chức năng Admin có thể tùy chỉnh.
+7. Approval Workflow hoạt động ra sao.
+8. Admin nhận được những thông báo nào.
+9. Audit Log được chia thành những nhóm nào.
+10. Những test case đã chạy và kết quả thực tế.
+11. Những chức năng chưa hoàn thành hoặc còn giới hạn.
+
+**YÊU CẦU NGHIỆM THU CUỐI CÙNG:**
+
+Một nhân viên chỉ nhìn thấy những chức năng mình được giao. Khi được cấp quyền Bán hàng thì phải thực sự vào được POS. Manager có thể quản lý và duyệt các nghiệp vụ trong phạm vi được cấp. HR chỉ thấy dữ liệu nhân sự được phân quyền. Admin/Owner có quyền quản trị tối cao, theo dõi được mọi hoạt động và nhận thông báo kể cả khi Manager là người phê duyệt.
+
+Đây phải là hệ thống phân quyền thật sự hoạt động từ database đến giao diện và backend, không phải chỉ ẩn/hiện sidebar.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-11-09T18:08:39+07:00.
+</ADDITIONAL_METADATA>

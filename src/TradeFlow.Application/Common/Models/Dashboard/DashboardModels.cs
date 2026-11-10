@@ -4,9 +4,19 @@ namespace TradeFlow.Application.Common.Models.Dashboard;
 
 public class DashboardKpiModel
 {
+    // Dynamic Period-Specific KPIs
+    public decimal PeriodRevenue { get; set; }
+    public decimal PreviousPeriodRevenue { get; set; }
+    public decimal? RevenueGrowthPercent { get; set; }
+    public string PeriodRevenueLabel { get; set; } = "Doanh thu tháng này";
+    public string PreviousPeriodLabel { get; set; } = "so với tháng trước";
+    public int PeriodOrdersCount { get; set; }
+    public string PeriodOrdersLabel { get; set; } = "đơn trong kỳ";
+    public decimal PeriodItemsSoldCount { get; set; }
+
+    // Standard Monthly / Cumulative Stats
     public decimal MonthRevenue { get; set; }
     public decimal PreviousMonthRevenue { get; set; }
-    public decimal? RevenueGrowthPercent { get; set; }
     public int TodayOrdersCount { get; set; }
     public int MonthOrdersCount { get; set; }
     public int TotalOrdersCount { get; set; }
@@ -17,19 +27,41 @@ public class DashboardKpiModel
     public int ActiveProductsCount { get; set; }
 }
 
+public class DashboardHourlyProductModel
+{
+    public int ProductId { get; set; }
+    public string ProductCode { get; set; } = string.Empty;
+    public string ProductName { get; set; } = string.Empty;
+    public decimal Quantity { get; set; }
+    public decimal TotalAmount { get; set; }
+}
+
 public class DashboardChartPointModel
 {
     public DateTime Date { get; set; }
     public string DateLabel { get; set; } = string.Empty;
+    public string FullDateLabel { get; set; } = string.Empty;
     public decimal Revenue { get; set; }
     public int OrderCount { get; set; }
+    public decimal ItemsSold { get; set; }
+    public int Hour { get; set; }
+    public bool IsPeak { get; set; }
+    public bool IsLowest { get; set; }
+    public List<DashboardHourlyProductModel> ProductsSold { get; set; } = [];
 }
 
 public class DashboardChartDataModel
 {
     public string Period { get; set; } = "30d";
+    public bool IsHourly { get; set; }
+    public string PeriodTitle { get; set; } = string.Empty;
+    public string PeakHourLabel { get; set; } = string.Empty;
+    public decimal PeakHourRevenue { get; set; }
+    public string PeakOrderHourLabel { get; set; } = string.Empty;
+    public int PeakHourlyOrders { get; set; }
     public decimal TotalPeriodRevenue { get; set; }
     public int TotalPeriodOrders { get; set; }
+    public decimal TotalPeriodItemsSold { get; set; }
     public decimal MaxDailyRevenue { get; set; }
     public int MaxDailyOrders { get; set; }
     public List<DashboardChartPointModel> Points { get; set; } = [];

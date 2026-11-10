@@ -1,0 +1,322 @@
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Support
+@using TradeFlow.Domain.Enums
+@implements IDisposable
+
+@inject ISupportService SupportService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<div class="tf-admin-audit-menu-container @(_isOpen ? "is-open" : "")" @onkeydown="HandleKeyDown">
+    <button type="button"
+            class="tf-topbar-audit-pill @(_isOpen && !_isClosing ? "is-active" : "")"
+            title="Quản trị, Nhật ký hệ thống &amp; Trung tâm Hỗ trợ"
+            aria-expanded="@(_isOpen && !_isClosing)"
+            aria-haspopup="true"
+            id="tf-admin-audit-trigger"
+            @onclick="ToggleDropdown">
+        <svg class="tf-audit-btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+            <path d="M9 14l2 2 4-4"></path>
+        </svg>
+        <span class="tf-audit-btn-text">Nhật ký</span>
+        @if (_badgeCount > 0)
+        {
+            <span class="tf-audit-badge-count">@_badgeCount</span>
+        }
+        <svg class="tf-audit-chevron @(_isOpen && !_isClosing ? "is-rotated" : "")" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+    </button>
+
+    @if (_isOpen)
+    {
+        <div class="tf-audit-backdrop @(_isClosing ? "is-closing" : "")" @onclick="CloseDropdown"></div>
+
+        <div id="tf-admin-audit-panel"
+             class="tf-audit-dropdown @(_isClosing ? "is-closing" : "is-opening")"
+             role="dialog"
+             aria-label="Quản trị và Kiểm toán"
+             tabindex="-1"
+             @onclick:stopPropagation="true">
+            <!-- Header -->
+            <div class="tf-audit-dropdown-header">
+                <div class="tf-audit-header-left">
+                    <div class="tf-audit-header-dot"></div>
+                    <h4 class="tf-audit-header-title">QUẢN TRỊ &amp; KIỂM TOÁN</h4>
+                </div>
+                <button type="button" class="tf-audit-close-btn" @onclick="CloseDropdown" title="Đóng panel (Esc)">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Body Scrollable -->
+            <div class="tf-audit-dropdown-body">
+                <!-- Navigation Items -->
+                <div class="tf-audit-nav-group">
+                    <!-- Mục 1: Báo cáo & Hỗ trợ -->
+                    <div class="tf-audit-nav-item" @onclick="OpenSupportManagement" role="button" tabindex="0">
+                        <div class="tf-audit-item-icon tf-icon-support">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
+                                <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
+                            </svg>
+                        </div>
+                        <div class="tf-audit-item-content">
+                            <div class="tf-audit-item-topline">
+                                <span class="tf-audit-item-title">Báo cáo &amp; Hỗ trợ</span>
+                                @if (_newTicketsCount > 0)
+                                {
+                                    <span class="tf-audit-subtle-badge tf-badge-new">@_newTicketsCount mới</span>
+                                }
+                            </div>
+                            <div class="tf-audit-item-desc">Quản lý và tiếp nhận báo cáo từ nhân viên</div>
+                        </div>
+                        <svg class="tf-audit-item-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </div>
+
+                    <!-- Mục 2: Nhật ký hệ thống & Kiểm toán -->
+                    <a href="/cai-dat/nhat-ky-he-thong" class="tf-audit-nav-item" @onclick="CloseDropdown">
+                        <div class="tf-audit-item-icon tf-icon-audit">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                        </div>
+                        <div class="tf-audit-item-content">
+                            <span class="tf-audit-item-title">Nhật ký hệ thống &amp; Kiểm toán</span>
+                            <div class="tf-audit-item-desc">Tra cứu lịch sử bảo mật và thay đổi dữ liệu</div>
+                        </div>
+                        <svg class="tf-audit-item-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </a>
+                </div>
+
+                <!-- Mục 3: Yêu cầu mới cần xử lý (Compact Row List) -->
+                @if (_recentNewTickets.Count > 0)
+                {
+                    <div class="tf-audit-tickets-section">
+                        <div class="tf-audit-section-header">
+                            <div class="tf-audit-section-title">
+                                <span>Yêu cầu mới cần xử lý</span>
+                                <span class="tf-audit-count-pill">@_recentNewTickets.Count</span>
+                            </div>
+                            <button type="button" class="tf-audit-view-all-link" @onclick="OpenSupportManagement">
+                                Xem tất cả
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="tf-audit-compact-list">
+                            @foreach (var t in _recentNewTickets)
+                            {
+                                <div class="tf-audit-compact-row" @onclick="() => OpenSpecificTicket(t.Id)" role="button" tabindex="0">
+                                    <div class="tf-audit-row-header">
+                                        <span class="tf-audit-code-pill">@t.Code</span>
+                                        <div class="tf-audit-badges-group">
+                                            <span class="tf-audit-priority-tag @GetPriorityClass(t.Priority)">@t.PriorityName</span>
+                                            <span class="tf-audit-status-tag">Mới</span>
+                                        </div>
+                                    </div>
+                                    <div class="tf-audit-row-title" title="@t.Title">
+                                        @t.Title
+                                    </div>
+                                    <div class="tf-audit-row-meta">
+                                        <span class="tf-audit-meta-author">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                                <circle cx="12" cy="7" r="4"></circle>
+                                            </svg>
+                                            @(t.SubmitterFullName ?? t.CreatedByUserName)
+                                            @if (!string.IsNullOrEmpty(t.SubmitterDepartment))
+                                            {
+                                                <span class="tf-audit-meta-dept">(@t.SubmitterDepartment)</span>
+                                            }
+                                        </span>
+                                        <span class="tf-audit-meta-sep">•</span>
+                                        <span class="tf-audit-meta-time">@t.CreatedAt.ToLocalTime().ToString("HH:mm dd/MM")</span>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Footer Action -->
+            <div class="tf-audit-dropdown-footer">
+                <button type="button" class="tf-audit-hub-btn" @onclick="OpenSupportManagement">
+                    <span>Mở Trung tâm hỗ trợ đầy đủ</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthStateCascade { get; set; }
+
+    [Parameter]
+    public EventCallback OnOpenSupportModal { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnOpenSpecificTicket { get; set; }
+
+    private bool _isOpen = false;
+    private bool _isClosing = false;
+    private int _badgeCount = 0;
+    private int _newTicketsCount = 0;
+    private List<SupportTicketSummaryDto> _recentNewTickets = new();
+    private ClaimsPrincipal? _user;
+    private CancellationTokenSource? _closeCts;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (AuthStateCascade != null)
+        {
+            var authState = await AuthStateCascade;
+            _user = authState.User;
+            await RefreshBadgeAsync();
+        }
+    }
+
+    private async Task RefreshBadgeAsync()
+    {
+        if (_user == null || _user.Identity?.IsAuthenticated != true) return;
+        try
+        {
+            _badgeCount = await SupportService.GetBadgeCountAsync(_user);
+            var stats = await SupportService.GetStatsAsync(_user);
+            _newTicketsCount = stats.NewTickets;
+        }
+        catch
+        {
+            // Ignore background badge error
+        }
+    }
+
+    private async Task ToggleDropdown()
+    {
+        if (_isOpen && !_isClosing)
+        {
+            await CloseDropdown();
+            return;
+        }
+
+        // Cancel any pending close animation
+        _closeCts?.Cancel();
+        _closeCts = null;
+        _isClosing = false;
+        _isOpen = true;
+
+        // Fetch fresh data in the background so open animation runs seamlessly on Frame 0
+        _ = LoadDropdownDataInBackgroundAsync();
+    }
+
+    private async Task LoadDropdownDataInBackgroundAsync()
+    {
+        if (_user == null) return;
+        try
+        {
+            await RefreshBadgeAsync();
+            var newTickets = await SupportService.GetTicketsAsync(new SupportTicketFilter
+            {
+                Status = SupportStatus.New
+            }, _user);
+            _recentNewTickets = newTickets.Take(4).ToList();
+            if (_isOpen && !_isClosing)
+            {
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch
+        {
+            // Ignore background load error
+        }
+    }
+
+    private async Task CloseDropdown()
+    {
+        if (!_isOpen || _isClosing) return;
+
+        _isClosing = true;
+        _closeCts?.Cancel();
+        _closeCts = new CancellationTokenSource();
+        var token = _closeCts.Token;
+
+        StateHasChanged();
+
+        try
+        {
+            // 140ms duration matching the exit animation
+            await Task.Delay(140, token);
+        }
+        catch (TaskCanceledException)
+        {
+            return; // Cancelled if user toggled open again
+        }
+
+        if (token.IsCancellationRequested) return;
+
+        _isOpen = false;
+        _isClosing = false;
+        StateHasChanged();
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape" && _isOpen && !_isClosing)
+        {
+            await CloseDropdown();
+        }
+    }
+
+    private async Task OpenSupportManagement()
+    {
+        _isOpen = false;
+        _isClosing = false;
+        if (OnOpenSupportModal.HasDelegate)
+        {
+            await OnOpenSupportModal.InvokeAsync();
+        }
+    }
+
+    private async Task OpenSpecificTicket(int ticketId)
+    {
+        _isOpen = false;
+        _isClosing = false;
+        if (OnOpenSpecificTicket.HasDelegate)
+        {
+            await OnOpenSpecificTicket.InvokeAsync(ticketId);
+        }
+    }
+
+    private static string GetPriorityClass(SupportPriority priority) => priority switch
+    {
+        SupportPriority.Urgent => "tf-priority-urgent",
+        SupportPriority.Medium => "tf-priority-medium",
+        _ => "tf-priority-normal"
+    };
+
+    public void Dispose()
+    {
+        _closeCts?.Cancel();
+        _closeCts?.Dispose();
+    }
+}

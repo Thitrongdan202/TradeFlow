@@ -1,0 +1,788 @@
+<USER_REQUEST>
+# TRADEFLOW — RBAC PERMISSION SYSTEM, ROLE MANAGEMENT, APPROVAL WORKFLOW & AUDIT LOG
+
+## MỤC TIÊU
+
+Nâng cấp toàn bộ hệ thống phân quyền TradeFlow ERP.
+
+Hiện tại tài khoản nhân viên vẫn nhìn thấy nhiều chức năng trên sidebar dù không có quyền truy cập. Khi bấm vào một số chức năng thì hệ thống trả về 403. Ngoài ra, POS có thể đang bị sai cấu hình quyền và trang đang xuất hiện hai header chồng lên nhau.
+
+Tôi muốn xây dựng một hệ thống phân quyền thực sự hoàn chỉnh:
+
+1. Admin có thể tạo và quản lý các role.
+2. Mỗi role được chọn cụ thể những chức năng được nhìn thấy và sử dụng.
+3. Sidebar tự động hiển thị đúng các chức năng được cấp quyền.
+4. Một số thao tác quan trọng phải gửi yêu cầu cho Manager hoặc Admin xác nhận.
+5. Admin luôn nhận được thông báo và theo dõi được mọi hoạt động, kể cả những thao tác đã được Manager phê duyệt.
+6. Lịch sử hệ thống được chia thành các nhóm log riêng để dễ tra cứu.
+7. Phân quyền phải được kiểm tra ở cả UI, route, API và tầng xử lý nghiệp vụ.
+
+**Không chỉ sửa giao diện sidebar. Phải kiểm tra và hoàn thiện toàn bộ cơ chế phân quyền thực tế.**
+
+---
+
+# I. THIẾT KẾ KIẾN TRÚC PHÂN QUYỀN
+
+Sử dụng RBAC (Role-Based Access Control), có thể kết hợp permission-based authorization.
+
+Mỗi tài khoản được gán một role.
+
+Mỗi role có tập hợp quyền riêng, có thể bao gồm:
+
+- Quyền nhìn thấy module.
+- Quyền truy cập trang.
+- Quyền xem dữ liệu.
+- Quyền tạo mới.
+- Quyền chỉnh sửa.
+- Quyền xóa.
+- Quyền xác nhận.
+- Quyền xuất dữ liệu.
+- Quyền quản lý người dùng.
+- Quyền thực hiện thao tác nhạy cảm.
+
+Không được hiểu rằng có quyền nhìn thấy một module đồng nghĩa với có toàn bộ quyền bên trong module đó.
+
+Ví dụ:
+
+Một nhân viên có quyền Bán hàng nhưng không có quyền:
+- Xóa hóa đơn đã hoàn tất.
+- Sửa giá bán trái với chính sách.
+- Xem báo cáo doanh thu toàn công ty.
+- Quản lý tài khoản người dùng.
+- Thay đổi cấu hình hệ thống.
+
+Phải tách rõ quyền `View`, `Create`, `Edit`, `Delete`, `Approve`, `Export`, `Manage`.
+
+# II. QUẢN LÝ ROLE TRONG ADMIN
+
+Tạo hoặc hoàn thiện khu vực:
+
+**Cài đặt hệ thống → Quản lý vai trò & Phân quyền**
+
+Chỉ Admin mới có toàn quyền quản lý role và permission.
+
+## 1. Giao diện quản lý role
+
+Hiển thị danh sách:
+
+- Admin / Owner.
+- Manager.
+- HR.
+- Nhân viên.
+- Kế toán.
+- Nhân viên bán hàng.
+- Thủ kho.
+- Các role tùy chỉnh do Admin tạo.
+
+Mỗi role cần có:
+
+- Tên role.
+- Mô tả.
+- Số lượng tài khoản đang sử dụng.
+- Số lượng module được truy cập.
+- Trạng thái.
+- Ngày tạo.
+- Người tạo.
+- Nút xem chi tiết.
+- Nút chỉnh sửa quyền.
+- Nút sao chép role.
+- Nút vô hiệu hóa hoặc xóa nếu hợp lệ.
+
+Không cho xóa role hệ thống khi còn tài khoản sử dụng hoặc khi việc xóa gây mất quyền quản trị.
+
+## 2. Tạo role mới
+
+Khi bấm Tạo vai trò:
+
+Cho phép Admin nhập:
+- Tên vai trò.
+- Mã role.
+- Mô tả.
+- Role mẫu để kế thừa quyền ban đầu nếu cần.
+
+Sau đó hiển thị giao diện chọn quyền theo module.
+
+## 3. Giao diện chọn permission
+
+Không dùng một danh sách checkbox dài và lộn xộn.
+
+Hãy thiết kế dạng bảng hoặc nhóm accordion theo module.
+
+Ví dụ:
+
+**Tổng quan**
+- Xem Dashboard.
+- Xem thống kê cá nhân.
+- Xem thống kê toàn công ty.
+
+**Chấm công**
+- Xem chấm công cá nhân.
+- Vào ca / Ra ca.
+- Xem lịch sử cá nhân.
+- Gửi yêu cầu giải trình.
+- Gửi đơn xin nghỉ phép.
+- Xem lịch sử đơn.
+- Xem chấm công đội nhóm.
+- Quản lý ca làm.
+- Duyệt đơn.
+- Xem báo cáo bảng công.
+- Xuất báo cáo.
+- Quản lý số dư phép.
+
+**Bán hàng**
+- Truy cập POS.
+- Tạo đơn bán hàng.
+- Thêm sản phẩm vào đơn.
+- Thay đổi số lượng.
+- Áp dụng chính sách giá.
+- Xem thông tin khách hàng.
+- Tạo khách hàng.
+- Áp dụng chiết khấu.
+- Hoàn tất thanh toán.
+- Hủy đơn.
+- Hoàn trả hàng.
+- Xem lịch sử bán hàng.
+- Xem báo cáo bán hàng.
+
+**Hóa đơn**
+- Xem hóa đơn.
+- Tạo hóa đơn.
+- Chỉnh sửa hóa đơn.
+- Hủy hóa đơn.
+- Xuất hóa đơn.
+- Quản lý đơn bán hàng.
+
+**Sản phẩm**
+- Xem sản phẩm.
+- Tạo sản phẩm.
+- Chỉnh sửa.
+- Xóa.
+- Quản lý nhóm hàng.
+- Quản lý thuộc tính.
+- Quản lý giá bán.
+
+**Kho hàng**
+- Xem tồn kho.
+- Xem chi tiết kho.
+- Nhập kho.
+- Xuất kho.
+- Điều chuyển kho.
+- Kiểm kê.
+- Điều chỉnh tồn kho.
+- Xem báo cáo kho.
+
+**Đối tác**
+- Xem khách hàng.
+- Quản lý khách hàng.
+- Xem nhà cung cấp.
+- Quản lý nhà cung cấp.
+
+**Hợp đồng**
+- Xem hợp đồng.
+- Tạo hợp đồng.
+- Chỉnh sửa.
+- Gửi duyệt.
+- Phê duyệt.
+- Ký kết hoặc xác nhận theo quy trình.
+- Hủy hợp đồng.
+- Xuất PDF.
+
+**Chứng từ**
+- Xem chứng từ.
+- Tạo chứng từ.
+- Chỉnh sửa.
+- Xóa.
+- Phê duyệt.
+- Xuất dữ liệu.
+
+**Nhân viên**
+- Xem hồ sơ nhân viên.
+- Chỉnh sửa hồ sơ.
+- Thêm nhân viên.
+- Cấp tài khoản.
+- Khóa tài khoản.
+- Xử lý thôi việc.
+- Xem dữ liệu lương.
+- Xem báo cáo nhân sự.
+
+**Cài đặt**
+- Xem cài đặt.
+- Quản lý tài khoản.
+- Quản lý vai trò.
+- Phân quyền.
+- Cấu hình hệ thống.
+- Cấu hình thông báo.
+- Xem Audit Log.
+- Sao lưu và khôi phục.
+- Quản lý bảo mật.
+
+Danh sách trên là khung gợi ý. Phải kiểm tra các module và chức năng thực tế trong source code, không tạo permission cho những chức năng không tồn tại.
+
+Mỗi module có:
+- Checkbox chọn toàn bộ module.
+- Checkbox chọn từng hành động.
+- Trạng thái quyền một phần.
+- Tìm kiếm permission.
+- Nhóm quyền cơ bản và quyền nâng cao.
+
+Có nút Lưu thay đổi và xem trước quyền.
+
+# III. CẤU TRÚC ROLE MẶC ĐỊNH
+
+Thiết lập quyền mặc định hợp lý.
+
+## 1. ADMIN / OWNER — ROOT
+
+Đây là role có quyền cao nhất.
+
+- Toàn quyền hệ thống.
+- Quản lý toàn bộ role.
+- Cấp và thu hồi quyền.
+- Quản lý tài khoản.
+- Xem toàn bộ Audit Log.
+- Nhận tất cả thông báo quan trọng.
+- Xem mọi yêu cầu đang chờ duyệt.
+- Có thể phê duyệt các yêu cầu thuộc phạm vi quản trị.
+- Quản lý cấu hình và bảo mật hệ thống.
+
+Admin là tài khoản Owner/Root, không phải nhân viên thông thường. Không bắt buộc phải có hồ sơ nhân viên hay chấm công.
+
+Không cho role khác tự cấp quyền Admin hoặc tự nâng cấp quyền.
+
+## 2. MANAGER
+
+Manager là cấp quản lý vận hành, có thể quản lý các bộ phận và phê duyệt những yêu cầu được giao.
+
+Quyền có thể bao gồm:
+- Dashboard quản lý.
+- Quản lý hoạt động bán hàng.
+- Quản lý kho theo phạm vi được giao.
+- Theo dõi đội nhóm.
+- Quản lý ca làm.
+- Duyệt một số đơn chấm công và nghỉ phép.
+- Quản lý nhân sự trong phạm vi được cấp.
+- Xem báo cáo hoạt động.
+- Xác nhận một số nghiệp vụ.
+
+Không mặc định có:
+- Quản lý Root/Admin.
+- Thay đổi quyền Admin.
+- Thay đổi cấu hình bảo mật tối cao.
+- Xóa Audit Log.
+- Quản lý toàn bộ hệ thống nếu chưa được cấp.
+
+## 3. HR
+
+HR tập trung vào nhân sự:
+
+- Hồ sơ nhân viên.
+- Chấm công.
+- Lịch sử chấm công.
+- Quản lý ca làm.
+- Theo dõi đội nhóm.
+- Duyệt yêu cầu nhân sự trong phạm vi được giao.
+- Quản lý nghỉ phép.
+- Báo cáo nhân sự.
+- Quản lý hợp đồng lao động nếu được cấp.
+
+HR không tự động được truy cập:
+- POS.
+- Doanh thu bán hàng chi tiết.
+- Kho.
+- Quản lý tài chính.
+- Cài đặt bảo mật.
+- Quản lý role.
+- Dữ liệu Admin/Owner.
+
+## 4. NHÂN VIÊN
+
+Nhân viên chỉ thấy những module được phân công.
+
+Ví dụ một nhân viên bán hàng:
+- Tổng quan cá nhân.
+- Chấm công.
+- Bán hàng POS.
+- Xem đơn hàng của mình nếu được cấp.
+- Xem thông tin cá nhân.
+- Gửi yêu cầu nghỉ phép.
+- Gửi giải trình chấm công.
+
+Không thấy:
+- Cài đặt hệ thống.
+- Quản lý role.
+- Quản lý toàn bộ nhân viên.
+- Báo cáo nhân sự toàn công ty.
+- Hợp đồng B2B.
+- Báo cáo tài chính.
+- Quản lý kho toàn hệ thống nếu không được phân công.
+
+Một nhân viên kho có thể được cấp:
+- Chấm công.
+- Kho hàng.
+- Kiểm kê.
+- Nhập/xuất kho theo quyền.
+- Xem sản phẩm.
+
+Một nhân viên kế toán có thể được cấp:
+- Chấm công.
+- Hóa đơn.
+- Chứng từ.
+- Báo cáo kế toán theo phạm vi.
+- Các chức năng khác nếu được Admin cấp.
+
+**Đây là role mẫu, không được hard-code các quyền này thành giới hạn cứng. Admin phải có khả năng thay đổi quyền theo từng tài khoản hoặc role.**
+
+# IV. SIDEBAR PHẢI TỰ ĐỘNG THEO QUYỀN
+
+Đây là phần cần sửa ngay.
+
+Hiện tại nhân viên nhìn thấy nhiều menu nhưng khi bấm vào lại gặp 403.
+
+Hãy xây dựng sidebar theo permission thực tế.
+
+Quy tắc:
+
+1. Không có quyền xem module thì ẩn hoàn toàn module khỏi sidebar.
+2. Có quyền xem module nhưng chỉ có một số chức năng thì chỉ hiển thị các chức năng được phép.
+3. Không hiển thị submenu trống.
+4. Không hiển thị dấu chevron nếu module không có submenu.
+5. Không hiển thị mục bị cấm chỉ để rồi trả về 403.
+6. Khi quyền bị thu hồi, sidebar phải cập nhật sau khi quyền được đồng bộ.
+7. Không hiển thị menu dựa trên tên role viết cứng.
+
+Nguồn permission phải thống nhất giữa:
+- Sidebar.
+- Route authorization.
+- Component authorization.
+- API authorization.
+- Backend service.
+
+Không được chỉ ẩn menu ở frontend rồi để API không kiểm tra quyền.
+
+## Kiểm tra riêng POS
+
+Tài khoản nhân viên được cấp quyền bán hàng phải truy cập được POS.
+
+Hãy kiểm tra:
+- Permission của route POS.
+- Permission của trang bán hàng.
+- Permission của API sản phẩm.
+- Permission của API khách hàng.
+- Permission tạo đơn.
+- Permission cập nhật số lượng.
+- Permission thanh toán.
+- Permission xem dữ liệu kho liên quan.
+
+Không tự cấp toàn bộ quyền bán hàng chỉ để làm mất lỗi 403.
+
+Chỉ sửa đúng quyền cần thiết và giữ nguyên bảo mật.
+
+# V. APPROVAL WORKFLOW — QUY TRÌNH XÁC NHẬN
+
+Một số thao tác không nên thực hiện trực tiếp mà cần gửi yêu cầu xác nhận.
+
+Tạo cơ chế cấu hình quyền yêu cầu phê duyệt.
+
+Ví dụ:
+
+**Chấm công**
+- Giải trình quên chấm công.
+- Điều chỉnh giờ vào/ra.
+- Xin nghỉ phép.
+- Đổi ca.
+- Điều chỉnh số dư phép.
+
+**Nhân sự**
+- Thôi việc.
+- Điều chỉnh thông tin quan trọng.
+- Cấp tài khoản.
+- Khóa tài khoản.
+- Thay đổi role.
+- Thay đổi quyền.
+
+**Bán hàng**
+- Hủy đơn đã hoàn tất.
+- Hoàn tiền.
+- Chiết khấu vượt hạn mức.
+- Sửa giao dịch đã ghi nhận.
+
+**Kho**
+- Điều chỉnh tồn kho bất thường.
+- Xóa phiếu nhập/xuất đã hoàn tất.
+- Điều chuyển kho đặc biệt.
+
+**Hợp đồng và chứng từ**
+- Phê duyệt hợp đồng.
+- Hủy hợp đồng.
+- Điều chỉnh chứng từ quan trọng.
+
+Danh sách chỉ áp dụng cho chức năng thực sự tồn tại. Không tạo nghiệp vụ giả.
+
+## 1. Luồng yêu cầu
+
+Khi một người không có quyền tự xác nhận thực hiện thao tác cần duyệt:
+
+1. Tạo yêu cầu.
+2. Lưu người yêu cầu.
+3. Lưu thời gian.
+4. Lưu loại yêu cầu.
+5. Lưu dữ liệu trước và dữ liệu đề xuất thay đổi.
+6. Lưu lý do.
+7. Chuyển trạng thái Chờ duyệt.
+8. Gửi thông báo cho người có quyền duyệt.
+9. Gửi thông báo cho Admin để theo dõi.
+
+Không thực hiện thay đổi nghiệp vụ trước khi có phê duyệt hợp lệ.
+
+## 2. Người duyệt
+
+Có thể cấu hình:
+- Manager được duyệt.
+- HR được duyệt một số loại yêu cầu.
+- Admin được duyệt.
+- Một số yêu cầu bắt buộc Admin duyệt.
+- Một số yêu cầu cần Manager và Admin cùng xác nhận nếu chính sách quy định.
+
+Không phải mọi yêu cầu đều cần hai cấp duyệt.
+
+Admin có thể cấu hình quy tắc duyệt theo từng nhóm thao tác.
+
+## 3. Admin luôn nắm tình hình
+
+Đây là yêu cầu bắt buộc.
+
+Dù Manager là người trực tiếp phê duyệt:
+- Admin vẫn nhận thông báo.
+- Admin thấy ai yêu cầu.
+- Admin thấy ai phê duyệt.
+- Admin thấy nội dung yêu cầu.
+- Admin thấy lý do.
+- Admin thấy thời điểm.
+- Admin thấy kết quả.
+- Admin có thể mở lịch sử chi tiết.
+
+Thông báo Admin không đồng nghĩa Admin phải phê duyệt lại mọi yêu cầu mà Manager đã có thẩm quyền xử lý.
+
+Nếu yêu cầu bắt buộc hai cấp duyệt, phải tiếp tục chờ cấp duyệt thứ hai.
+
+## 4. Không tự duyệt yêu cầu của chính mình
+
+Không cho người gửi yêu cầu tự phê duyệt chính yêu cầu của họ, trừ khi có chính sách nghiệp vụ được phê duyệt rõ ràng và hợp lệ.
+
+Không cho người không có quyền truy cập API phê duyệt bằng cách gọi trực tiếp.
+
+# VI. HỆ THỐNG THÔNG BÁO ADMIN
+
+Admin cần có một trung tâm thông báo toàn hệ thống.
+
+Thông báo nên chia nhóm:
+
+- Yêu cầu đang chờ duyệt.
+- Yêu cầu đã được duyệt.
+- Yêu cầu bị từ chối.
+- Thay đổi quyền.
+- Cấp tài khoản.
+- Khóa tài khoản.
+- Thôi việc.
+- Thay đổi dữ liệu nhân sự.
+- Thao tác bán hàng quan trọng.
+- Thay đổi tồn kho.
+- Thay đổi hợp đồng.
+- Đăng nhập bất thường.
+- Lỗi bảo mật.
+- Thay đổi cấu hình hệ thống.
+
+Mỗi thông báo phải có:
+- Tiêu đề.
+- Mô tả.
+- Người thực hiện.
+- Đối tượng bị ảnh hưởng.
+- Thời gian.
+- Trạng thái.
+- Mức độ quan trọng.
+- Nút xem chi tiết.
+
+Có thể đánh dấu đã đọc, chưa đọc và lọc theo nhóm.
+
+Không tạo hàng loạt thông báo trùng lặp cho cùng một sự kiện.
+
+# VII. AUDIT LOG — PHÂN LOẠI LOG THEO TỪNG NHÓM
+
+Không để tất cả hoạt động nằm trong một danh sách hỗn độn như hiện tại.
+
+Tạo giao diện Audit Log chuyên nghiệp cho Admin.
+
+Chia thành các nhóm:
+
+1. Đăng nhập & Phiên làm việc.
+2. Tài khoản & Người dùng.
+3. Vai trò & Phân quyền.
+4. Nhân sự.
+5. Chấm công & Nghỉ phép.
+6. Bán hàng & POS.
+7. Hóa đơn.
+8. Sản phẩm.
+9. Kho hàng.
+10. Đối tác.
+11. Hợp đồng.
+12. Chứng từ.
+13. Cấu hình hệ thống.
+14. Phê duyệt & Từ chối.
+15. Bảo mật & Truy cập.
+
+Mỗi nhóm có bộ lọc riêng.
+
+Ví dụ:
+
+**Vai trò & Phân quyền**
+- Tạo role.
+- Chỉnh sửa role.
+- Thêm permission.
+- Thu hồi permission.
+- Gán role.
+- Thu hồi role.
+
+**Nhân sự**
+- Tạo hồ sơ.
+- Chỉnh sửa hồ sơ.
+- Cấp tài khoản.
+- Khóa tài khoản.
+- Thôi việc.
+
+**Chấm công**
+- Vào ca.
+- Ra ca.
+- Gửi giải trình.
+- Duyệt giải trình.
+- Từ chối giải trình.
+- Duyệt nghỉ phép.
+- Điều chỉnh số dư phép.
+
+**Bán hàng**
+- Tạo đơn.
+- Thanh toán.
+- Hủy đơn.
+- Hoàn tiền.
+- Thay đổi giá.
+- Áp dụng chiết khấu.
+
+## Chi tiết từng log
+
+Mỗi log cần lưu tối thiểu:
+
+- ID sự kiện.
+- Loại sự kiện.
+- Người thực hiện.
+- Role tại thời điểm thực hiện.
+- Đối tượng liên quan.
+- ID đối tượng.
+- Thời gian.
+- Kết quả thành công/thất bại.
+- Dữ liệu trước và sau khi thay đổi nếu phù hợp.
+- Lý do.
+- Người phê duyệt nếu có.
+- IP hoặc thông tin phiên làm việc nếu hệ thống có ghi nhận hợp lệ.
+
+Không lưu mật khẩu, token, thông tin xác thực hoặc dữ liệu bí mật vào log.
+
+Không cho Admin hay Manager chỉnh sửa/xóa log bằng giao diện thông thường. Nếu cần lưu trữ hoặc xử lý dữ liệu log thì phải có cơ chế quản trị riêng và ghi nhận đầy đủ.
+
+Audit Log phải phản ánh sự kiện thực tế, không dùng dữ liệu giả để tạo cảm giác hệ thống đang hoạt động.
+
+# VIII. GIAO DIỆN AUDIT LOG
+
+Thiết kế lại theo hướng dễ đọc:
+
+Phía trên:
+- Tổng số sự kiện.
+- Sự kiện hôm nay.
+- Yêu cầu chờ duyệt.
+- Thao tác quan trọng.
+- Cảnh báo bảo mật.
+
+Bên dưới:
+- Tabs theo nhóm log.
+- Bộ lọc thời gian.
+- Bộ lọc người thực hiện.
+- Bộ lọc role.
+- Bộ lọc trạng thái.
+- Tìm kiếm theo mã đối tượng.
+- Danh sách sự kiện.
+
+Khi click một sự kiện:
+Mở modal hoặc drawer chi tiết, trình bày rõ:
+
+- Ai thực hiện?
+- Thực hiện hành động gì?
+- Trên dữ liệu nào?
+- Khi nào?
+- Vì sao?
+- Dữ liệu trước và sau?
+- Ai xác nhận?
+- Kết quả ra sao?
+
+Không hiển thị những dòng mô tả lỗi font hoặc mã kỹ thuật khó hiểu cho người dùng.
+
+Nếu cần hiển thị mã sự kiện kỹ thuật thì đặt trong phần thông tin nâng cao.
+
+# IX. GIAO DIỆN HEADER VÀ LỖI 403
+
+Trong ảnh hiện tại có header toàn cục ở trên cùng, đồng thời một header thứ hai nằm bên trong trang.
+
+Kiểm tra kiến trúc Layout:
+
+- Chỉ sử dụng một App Shell.
+- Header toàn cục chỉ render một lần.
+- Sidebar chỉ render một lần.
+- Nội dung module nằm trong vùng content chính.
+- Không để page component tự render lại header toàn cục.
+- Không để margin/padding tạo ra một thanh header giả bên trong.
+- Không làm thay đổi vị trí sidebar.
+
+Kiểm tra riêng trang POS của nhân viên để không còn lỗi header lồng nhau.
+
+Đối với 403:
+- Nếu không có quyền: ẩn menu và bảo vệ route.
+- Nếu truy cập trực tiếp URL: hiển thị trang 403 thống nhất.
+- Nếu được cấp quyền: truy cập được chức năng.
+- Nếu quyền thay đổi: làm mới quyền có kiểm soát.
+- Không để người dùng có quyền hợp lệ vẫn bị 403 do các permission không đồng bộ.
+
+# X. BẢO MẬT VÀ TOÀN VẸN PHÂN QUYỀN
+
+Đặc biệt chú ý:
+
+1. Không chỉ kiểm tra quyền trên frontend.
+2. API phải kiểm tra quyền độc lập.
+3. Không tin role hoặc permission gửi từ client.
+4. Không cho nhân viên sửa request để tự nâng cấp role.
+5. Không cho Manager sửa quyền Root.
+6. Không cho người dùng tự phê duyệt yêu cầu của mình.
+7. Khi thay đổi role, phải cập nhật quyền hiệu lực.
+8. Có cơ chế thu hồi phiên hoặc làm mới authorization phù hợp khi quyền bị thu hồi.
+9. Không làm mất tài khoản Admin cuối cùng.
+10. Bảo vệ các role hệ thống khỏi việc xóa hoặc sửa đổi gây mất quyền quản trị.
+11. Kiểm tra dữ liệu theo phạm vi chi nhánh/kho nếu hệ thống có phân vùng dữ liệu.
+
+# XI. KIẾN TRÚC VÀ TÍCH HỢP SOURCE CODE
+
+Trước khi sửa:
+
+- Kiểm tra toàn bộ authentication.
+- Kiểm tra authorization.
+- Kiểm tra database hiện có.
+- Kiểm tra role và permission hiện tại.
+- Kiểm tra App Shell.
+- Kiểm tra Sidebar.
+- Kiểm tra POS.
+- Kiểm tra API và service.
+- Kiểm tra Audit Log.
+- Kiểm tra Approval Workflow.
+
+Tận dụng kiến trúc hiện tại của TradeFlow.
+
+Không tự ý thay framework.
+Không đưa React vào nếu dự án đang sử dụng Razor/Blazor.
+Không tạo hệ thống phân quyền thứ hai song song với hệ thống hiện có.
+
+Nếu cần migration database:
+- Thiết kế migration tương thích dữ liệu cũ.
+- Không xóa role hoặc permission đang sử dụng.
+- Có cơ chế gán quyền mặc định an toàn.
+- Không cấp quyền quá rộng cho tài khoản hiện tại.
+- Có thể rollback khi migration thất bại.
+
+# XII. KIỂM THỬ BẮT BUỘC
+
+Tạo ma trận kiểm thử các role:
+
+**Admin**
+- Thấy tất cả module.
+- Quản lý role.
+- Theo dõi mọi log.
+- Nhận thông báo từ tất cả hoạt động quan trọng.
+- Không cần chấm công.
+
+**Manager**
+- Chỉ thấy module được cấp.
+- Duyệt đúng loại yêu cầu được phân công.
+- Không quản lý được Root/Admin.
+- Mọi thao tác duyệt đều được Admin ghi nhận.
+
+**HR**
+- Thấy module nhân sự và các chức năng được cấp.
+- Không thấy thông tin Admin/Owner.
+- Không truy cập cài đặt tối cao.
+- Báo cáo nhân sự chỉ hiển thị theo quyền.
+
+**Nhân viên bán hàng**
+- Thấy Chấm công và Bán hàng nếu được cấp.
+- Truy cập POS thành công.
+- Không thấy Cài đặt, Hợp đồng B2B hoặc quản trị hệ thống nếu không được cấp.
+- Không truy cập dữ liệu bán hàng ngoài phạm vi.
+
+**Nhân viên kho**
+- Chỉ thấy chức năng kho được phân công.
+- Không thể điều chỉnh dữ liệu ngoài quyền.
+- Không truy cập báo cáo tài chính nếu không được cấp.
+
+Kiểm tra cả:
+- Sidebar.
+- URL trực tiếp.
+- API.
+- Thao tác tạo/sửa/xóa.
+- Phê duyệt.
+- Thông báo Admin.
+- Audit Log.
+- Thu hồi quyền.
+- Đăng xuất và đăng nhập lại.
+- Light Mode và Dark Mode.
+
+# XIII. NGUYÊN TẮC TRIỂN KHAI
+
+Đây là nâng cấp hệ thống phân quyền, không phải lý do để redesign toàn bộ TradeFlow.
+
+- Giữ nguyên nghiệp vụ hiện có.
+- Không tự ý xóa chức năng.
+- Không tự ý tạo dữ liệu nghiệp vụ giả.
+- Không sửa hợp đồng/PDF.
+- Không thay đổi POS ngoài các phần cần thiết để sửa quyền.
+- Không tự cấp thêm quyền cho nhân viên.
+- Không làm hỏng dữ liệu tài khoản hiện tại.
+- Không commit.
+- Không push.
+- Không sửa remote repository.
+
+Trước khi làm:
+1. Kiểm tra git status.
+2. Bảo toàn tất cả thay đổi local chưa commit.
+3. Xác định đúng file cần chỉnh sửa.
+4. Lập kế hoạch triển khai.
+5. Thực hiện từng nhóm có kiểm soát.
+6. Build và kiểm tra regression.
+
+# XIV. BÁO CÁO SAU KHI HOÀN THÀNH
+
+Báo cáo rõ:
+
+1. Các nguyên nhân khiến nhân viên nhìn thấy menu nhưng bị 403.
+2. Nguyên nhân POS không truy cập được.
+3. Nguyên nhân header bị render hai lần.
+4. Những permission đã được bổ sung.
+5. Các role mặc định đã được cấu hình.
+6. Những chức năng Admin có thể tùy chỉnh.
+7. Approval Workflow hoạt động ra sao.
+8. Admin nhận được những thông báo nào.
+9. Audit Log được chia thành những nhóm nào.
+10. Những test case đã chạy và kết quả thực tế.
+11. Những chức năng chưa hoàn thành hoặc còn giới hạn.
+
+**YÊU CẦU NGHIỆM THU CUỐI CÙNG:**
+
+Một nhân viên chỉ nhìn thấy những chức năng mình được giao. Khi được cấp quyền Bán hàng thì phải thực sự vào được POS. Manager có thể quản lý và duyệt các nghiệp vụ trong phạm vi được cấp. HR chỉ thấy dữ liệu nhân sự được phân quyền. Admin/Owner có quyền quản trị tối cao, theo dõi được mọi hoạt động và nhận thông báo kể cả khi Manager là người phê duyệt.
+
+Đây phải là hệ thống phân quyền thật sự hoạt động từ database đến giao diện và backend, không phải chỉ ẩn/hiện sidebar.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-11-09T18:08:39+07:00.
+</ADDITIONAL_METADATA>

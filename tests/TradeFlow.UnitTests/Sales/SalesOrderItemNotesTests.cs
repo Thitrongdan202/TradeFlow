@@ -9,6 +9,7 @@ using TradeFlow.Application.Common.Models.Sales;
 using TradeFlow.Domain.Entities.MasterData;
 using TradeFlow.Domain.Entities.Sales;
 using TradeFlow.Domain.Entities.Settings;
+using TradeFlow.Domain.Enums;
 using TradeFlow.Infrastructure.Persistence;
 using TradeFlow.Infrastructure.Services;
 using Xunit;
@@ -69,7 +70,10 @@ public class SalesOrderItemNotesTests
         var mockCurrentUserService = new Mock<ICurrentUserService>();
         mockCurrentUserService.Setup(s => s.UserId).Returns("test-user-id");
         var mockAuditService = new Mock<IAuditService>();
-        var salesService = new SalesService(context, mockCurrentUserService.Object, mockAuditService.Object);
+        var mockPermService = new Mock<IPermissionService>();
+        mockPermService.Setup(p => p.HasPermissionAsync(It.IsAny<string>(), It.IsAny<ResourceType>(), It.IsAny<PermissionAction>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        var salesService = new SalesService(context, mockCurrentUserService.Object, mockAuditService.Object, mockPermService.Object);
 
         var customer = await context.Customers.FirstAsync();
         var productA = await context.Products.FirstAsync(p => p.Code == "SP-001");
@@ -149,7 +153,10 @@ public class SalesOrderItemNotesTests
         var mockCurrentUserService = new Mock<ICurrentUserService>();
         mockCurrentUserService.Setup(s => s.UserId).Returns("test-user-id");
         var mockAuditService = new Mock<IAuditService>();
-        var salesService = new SalesService(context, mockCurrentUserService.Object, mockAuditService.Object);
+        var mockPermService = new Mock<IPermissionService>();
+        mockPermService.Setup(p => p.HasPermissionAsync(It.IsAny<string>(), It.IsAny<ResourceType>(), It.IsAny<PermissionAction>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        var salesService = new SalesService(context, mockCurrentUserService.Object, mockAuditService.Object, mockPermService.Object);
 
         var customer = await context.Customers.FirstAsync();
         var productA = await context.Products.FirstAsync(p => p.Code == "SP-001");

@@ -32,7 +32,7 @@
     @* ============================================================
        TOP TOOLBAR / HEADER (TradeFlow ERP Design System)
        ============================================================ *@
-    <header class="tf-sales-header">
+    <div class="tf-sales-toolbar tf-sales-header">
         @* Left: Brand Title & Multi-Order Tabs *@
         <div class="tf-sales-header-left">
             <div class="tf-sales-title-group">
@@ -208,7 +208,7 @@
                 </button>
             </div>
         </div>
-    </header>
+    </div>
 
     @* ============================================================
        MAIN WORKSPACE (Quick / Regular / Delivery Modes)
@@ -389,7 +389,7 @@
                                 <div class="tf-order-item-card @(!string.IsNullOrWhiteSpace(item.Note) ? "has-note" : "")">
                                     <div class="tf-item-row-main">
                                         <span class="tf-item-seq">@(itemIndex + 1)</span>
-                                        <button type="button" class="tf-item-del-btn" title="Xóa dòng" @onclick="() => RemoveItem(itemIndex)">
+                                        <button type="button" class="tf-item-del-btn tf-item-trash-btn" title="Xóa sản phẩm khỏi hóa đơn" @onclick:stopPropagation="true" @onclick="() => RemoveItem(itemIndex)">
                                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <polyline points="3 6 5 6 21 6"></polyline>
                                                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -401,7 +401,7 @@
                                             {
                                                 <span class="tf-item-tag-pill">@item.MaterialTag</span>
                                             }
-                                            <button type="button" class="tf-item-info-btn" @onclick="() => ShowProductDetailsAsync(item.ProductId)" title="Xem chi tiết sản phẩm">
+                                            <button type="button" class="tf-item-info-btn" @onclick:stopPropagation="true" @onclick="() => ShowProductDetailsAsync(item.ProductId)" title="Thông tin sản phẩm">
                                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                     <circle cx="12" cy="12" r="10"></circle>
                                                     <line x1="12" y1="16" x2="12" y2="12"></line>
@@ -467,13 +467,13 @@
 
                                     <div class="tf-item-row-sub">
                                         <div class="tf-item-qty-stepper">
-                                            <button type="button" class="tf-mini-step-btn" @onclick="() => UpdateQuantity(item, item.Quantity - 1)">-</button>
+                                            <button type="button" class="tf-mini-step-btn tf-step-minus" @onclick:stopPropagation="true" @onclick="() => UpdateQuantity(item, item.Quantity - 1)" title="Giảm số lượng">−</button>
                                             <input type="number"
                                                    class="tf-mini-step-input"
                                                    value="@item.Quantity"
                                                    min="1"
                                                    @onchange="(e) => OnQuantityChanged(item, e)" />
-                                            <button type="button" class="tf-mini-step-btn" @onclick="() => UpdateQuantity(item, item.Quantity + 1)">+</button>
+                                            <button type="button" class="tf-mini-step-btn tf-step-plus" @onclick:stopPropagation="true" @onclick="() => UpdateQuantity(item, item.Quantity + 1)" title="Tăng số lượng">+</button>
                                         </div>
 
                                         <div class="tf-item-price-view">
@@ -492,7 +492,7 @@
                                         </div>
 
                                         <div class="tf-item-total-view">
-                                            <span class="tf-item-line-total">@item.LineTotal.ToString("N0")</span>
+                                            <strong class="tf-item-line-total">@item.LineTotal.ToString("N0") ₫</strong>
                                         </div>
                                     </div>
                                 </div>
@@ -2817,7 +2817,7 @@
     {
         if (newQty <= 0)
         {
-            ActiveTab.Items.Remove(item);
+            item.Quantity = 1;
         }
         else
         {

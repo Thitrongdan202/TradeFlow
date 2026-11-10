@@ -14,6 +14,7 @@
 @inject IAuditService AuditService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IPermissionService PermissionService
+@inject ICredentialVaultService VaultService
 
 <PageTitle>@(IsEdit ? "Sửa người dùng" : "Thêm người dùng") — TradeFlow</PageTitle>
 
@@ -281,10 +282,40 @@ else
 
         try
         {
+            var currentAdmin = _currentUsername != null ? await UserManager.FindByNameAsync(_currentUsername) : null;
+            var isCurrentAdmin = _currentUsername == "admin" || (currentAdmin != null && (await UserManager.IsInRoleAsync(currentAdmin, "Administrator")));
+
+            if (!_isCurrentUser && _selectedRoles.Contains("Administrator") && !isCurrentAdmin)
+            {
+                _errorMessage = "Bảo vệ ROOT: Chỉ Quản trị viên ROOT mới có quyền cấp vai trò Administrator.";
+                return;
+            }
+
+            // Enforce maximum 2 roles rule and ensure Employee as base role for non-admin
+            if (!_selectedRoles.Contains("Administrator"))
+            {
+                if (!_selectedRoles.Contains("Employee"))
+                {
+                    _selectedRoles.Add("Employee");
+                }
+                if (_selectedRoles.Count > 2)
+                {
+                    _errorMessage = "Một tài khoản chỉ được phép có tối đa 2 vai trò hoạt động cùng lúc (vai trò nền và vai trò bổ sung).";
+                    return;
+                }
+            }
+
             if (IsEdit)
             {
                 var existingUser = await UserManager.FindByIdAsync(Id!);
                 if (existingUser == null) { _errorMessage = "Không tìm thấy người dùng."; return; }
+
+                var targetRoles = await UserManager.GetRolesAsync(existingUser);
+                if ((existingUser.UserName == "admin" || targetRoles.Contains("Administrator")) && !isCurrentAdmin)
+                {
+                    _errorMessage = "Bảo vệ ROOT: Không được phép chỉnh sửa hoặc quản lý tài khoản Quản trị viên (ROOT).";
+                    return;
+                }
 
                 existingUser.FullName = _user.FullName.Trim();
                 existingUser.PhoneNumber = _user.PhoneNumber;
@@ -307,6 +338,10 @@ else
                         _errorMessage = string.Join("; ", passResult.Errors.Select(e => e.Description));
                         return;
                     }
+                    existingUser.EncryptedPassword = VaultService.EncryptPassword(_password);
+                    existingUser.PasswordChangedAt = DateTime.UtcNow;
+                    await UserManager.UpdateSecurityStampAsync(existingUser);
+                    await UserManager.UpdateAsync(existingUser);
                 }
 
                 // Roles
@@ -325,6 +360,8 @@ else
                 _user.Email = _user.Email!.Trim().ToLower();
                 _user.EmailConfirmed = true;
                 _user.CreatedBy = _currentUsername;
+                _user.EncryptedPassword = VaultService.EncryptPassword(_password!);
+                _user.PasswordChangedAt = DateTime.UtcNow;
 
                 var result = await UserManager.CreateAsync(_user, _password!);
                 if (!result.Succeeded)

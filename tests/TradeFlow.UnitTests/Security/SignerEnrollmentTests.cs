@@ -56,6 +56,7 @@ public class SignerEnrollmentTests : IDisposable
             _userManagerMock.Object,
             _signingProvider,
             _auditServiceMock.Object,
+            new Mock<ICredentialVaultService>().Object,
             NullLogger<SecurityService>.Instance);
     }
 

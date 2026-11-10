@@ -22,62 +22,87 @@ public class DashboardAnalyticsService : IDashboardAnalyticsService
         _fileStorage = fileStorage;
     }
 
-    public async Task<DashboardKpiModel> GetKpisAsync(int? warehouseId = null, CancellationToken cancellationToken = default)
+    public Task<DashboardKpiModel> GetKpisAsync(int? warehouseId, CancellationToken cancellationToken = default)
+    {
+        return GetKpisAsync("30d", null, null, warehouseId, cancellationToken);
+    }
+
+    public async Task<DashboardKpiModel> GetKpisAsync(
+        string period = "30d",
+        DateTime? customStart = null,
+        DateTime? customEnd = null,
+        int? warehouseId = null,
+        CancellationToken cancellationToken = default)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
 
-        var now = DateTime.UtcNow;
-        var today = now.Date;
-        var startOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var prevMonthStart = startOfMonth.AddMonths(-1);
-        var prevMonthEnd = startOfMonth.AddTicks(-1);
+        var range = ResolvePeriodRange(period, customStart, customEnd);
+        var utcStart = range.UtcStart;
+        var utcEnd = range.UtcEnd;
+        var prevUtcStart = range.PrevUtcStart;
+        var prevUtcEnd = range.PrevUtcEnd;
 
-        // Revenue this month: check Invoices primary, or confirmed SalesOrders
-        var invoiceMonthRevenue = await db.Invoices
+        // 1. Current Period Revenue
+        var invPeriodRev = await db.Invoices
             .AsNoTracking()
-            .Where(i => i.InvoiceDate >= startOfMonth)
+            .Where(i => i.InvoiceDate >= utcStart && i.InvoiceDate <= utcEnd)
             .SumAsync(i => (decimal?)i.GrandTotal, cancellationToken) ?? 0m;
 
-        var salesOrderMonthRevenue = await db.SalesOrders
+        var ordPeriodRev = await db.SalesOrders
             .AsNoTracking()
-            .Where(o => o.OrderDate >= startOfMonth && o.Status != SalesOrderStatus.Cancelled)
+            .Where(o => o.OrderDate >= utcStart && o.OrderDate <= utcEnd && o.Status != SalesOrderStatus.Cancelled)
             .SumAsync(o => (decimal?)o.GrandTotal, cancellationToken) ?? 0m;
 
-        var monthRevenue = invoiceMonthRevenue > 0 ? invoiceMonthRevenue : salesOrderMonthRevenue;
+        var periodRevenue = invPeriodRev > 0 ? invPeriodRev : ordPeriodRev;
 
-        // Revenue previous month for growth comparison
-        var prevInvoiceRev = await db.Invoices
+        // 2. Previous Period Revenue for growth comparison
+        var prevInvRev = await db.Invoices
             .AsNoTracking()
-            .Where(i => i.InvoiceDate >= prevMonthStart && i.InvoiceDate <= prevMonthEnd)
+            .Where(i => i.InvoiceDate >= prevUtcStart && i.InvoiceDate <= prevUtcEnd)
             .SumAsync(i => (decimal?)i.GrandTotal, cancellationToken) ?? 0m;
 
-        var prevSalesOrderRev = await db.SalesOrders
+        var prevOrdRev = await db.SalesOrders
             .AsNoTracking()
-            .Where(o => o.OrderDate >= prevMonthStart && o.OrderDate <= prevMonthEnd && o.Status != SalesOrderStatus.Cancelled)
+            .Where(o => o.OrderDate >= prevUtcStart && o.OrderDate <= prevUtcEnd && o.Status != SalesOrderStatus.Cancelled)
             .SumAsync(o => (decimal?)o.GrandTotal, cancellationToken) ?? 0m;
 
-        var prevMonthRevenue = prevInvoiceRev > 0 ? prevInvoiceRev : prevSalesOrderRev;
+        var prevPeriodRevenue = prevInvRev > 0 ? prevInvRev : prevOrdRev;
 
         decimal? growthPercent = null;
-        if (prevMonthRevenue > 0)
+        if (prevPeriodRevenue > 0)
         {
-            growthPercent = Math.Round(((monthRevenue - prevMonthRevenue) / prevMonthRevenue) * 100m, 1);
+            growthPercent = Math.Round(((periodRevenue - prevPeriodRevenue) / prevPeriodRevenue) * 100m, 1);
         }
 
-        // Sales Orders count
+        // 3. Current Period Orders Count
+        var periodOrdersCount = await db.SalesOrders
+            .AsNoTracking()
+            .CountAsync(o => o.OrderDate >= utcStart && o.OrderDate <= utcEnd && o.Status != SalesOrderStatus.Cancelled, cancellationToken);
+
+        // 4. Current Period Items Sold
+        var periodItemsSold = await db.SalesOrderItems
+            .AsNoTracking()
+            .Where(item => item.SalesOrder.OrderDate >= utcStart && item.SalesOrder.OrderDate <= utcEnd && item.SalesOrder.Status != SalesOrderStatus.Cancelled)
+            .SumAsync(item => (decimal?)item.Quantity, cancellationToken) ?? 0m;
+
+        // 5. Standard Baseline Metrics (for subtext context)
+        var vnNow = DateTime.UtcNow.AddHours(7);
+        var todayVnStart = DateTime.SpecifyKind(vnNow.Date.AddHours(-7), DateTimeKind.Utc);
+        var thisMonthVnStart = DateTime.SpecifyKind(new DateTime(vnNow.Year, vnNow.Month, 1, 0, 0, 0).AddHours(-7), DateTimeKind.Utc);
+
         var todayOrdersCount = await db.SalesOrders
             .AsNoTracking()
-            .CountAsync(o => o.OrderDate >= today, cancellationToken);
+            .CountAsync(o => o.OrderDate >= todayVnStart && o.Status != SalesOrderStatus.Cancelled, cancellationToken);
 
         var monthOrdersCount = await db.SalesOrders
             .AsNoTracking()
-            .CountAsync(o => o.OrderDate >= startOfMonth, cancellationToken);
+            .CountAsync(o => o.OrderDate >= thisMonthVnStart && o.Status != SalesOrderStatus.Cancelled, cancellationToken);
 
         var totalOrdersCount = await db.SalesOrders
             .AsNoTracking()
             .CountAsync(cancellationToken);
 
-        // Inventory Stock counts
+        // 6. Inventory Stock counts
         var stockQuery = db.InventoryStocks.AsNoTracking();
         if (warehouseId.HasValue)
         {
@@ -96,7 +121,7 @@ public class DashboardAnalyticsService : IDashboardAnalyticsService
             .Distinct()
             .CountAsync(cancellationToken);
 
-        // Active customers & products
+        // 7. Active customers & products
         var activeCustomersCount = await db.Customers
             .AsNoTracking()
             .CountAsync(c => c.IsActive, cancellationToken);
@@ -109,9 +134,17 @@ public class DashboardAnalyticsService : IDashboardAnalyticsService
 
         return new DashboardKpiModel
         {
-            MonthRevenue = monthRevenue,
-            PreviousMonthRevenue = prevMonthRevenue,
+            PeriodRevenue = periodRevenue,
+            PreviousPeriodRevenue = prevPeriodRevenue,
             RevenueGrowthPercent = growthPercent,
+            PeriodRevenueLabel = range.PeriodLabel,
+            PreviousPeriodLabel = range.PrevPeriodLabel,
+            PeriodOrdersCount = periodOrdersCount,
+            PeriodOrdersLabel = range.OrdersLabel,
+            PeriodItemsSoldCount = periodItemsSold,
+
+            MonthRevenue = periodRevenue,
+            PreviousMonthRevenue = prevPeriodRevenue,
             TodayOrdersCount = todayOrdersCount,
             MonthOrdersCount = monthOrdersCount,
             TotalOrdersCount = totalOrdersCount,
@@ -123,109 +156,277 @@ public class DashboardAnalyticsService : IDashboardAnalyticsService
         };
     }
 
-    public async Task<DashboardChartDataModel> GetSalesChartDataAsync(string period = "30d", int? warehouseId = null, CancellationToken cancellationToken = default)
+    public async Task<DashboardChartDataModel> GetSalesChartDataAsync(
+        string period = "30d",
+        DateTime? customStart = null,
+        DateTime? customEnd = null,
+        int? warehouseId = null,
+        CancellationToken cancellationToken = default)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
 
-        var now = DateTime.UtcNow;
-        DateTime startDate;
-        DateTime endDate = now.Date.AddDays(1).AddTicks(-1);
+        var range = ResolvePeriodRange(period, customStart, customEnd);
+        var utcStart = range.UtcStart;
+        var utcEnd = range.UtcEnd;
 
-        switch (period.ToLowerInvariant())
+        if (range.IsHourly)
         {
-            case "7d":
-                startDate = now.Date.AddDays(-6);
-                break;
-            case "this_month":
-                startDate = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-                break;
-            case "30d":
-            default:
-                period = "30d";
-                startDate = now.Date.AddDays(-29);
-                break;
-        }
+            // Query Orders with Items in this 24-hour window
+            var orders = await db.SalesOrders
+                .AsNoTracking()
+                .Include(o => o.Items)
+                .Where(o => o.OrderDate >= utcStart && o.OrderDate <= utcEnd && o.Status != SalesOrderStatus.Cancelled)
+                .ToListAsync(cancellationToken);
 
-        // Query Invoices in range
-        var invoices = await db.Invoices
-            .AsNoTracking()
-            .Where(i => i.InvoiceDate >= startDate && i.InvoiceDate <= endDate)
-            .Select(i => new { Date = i.InvoiceDate.Date, i.GrandTotal })
-            .ToListAsync(cancellationToken);
+            // Query Invoices with Items in this 24-hour window
+            var invoices = await db.Invoices
+                .AsNoTracking()
+                .Include(i => i.Items)
+                .Where(i => i.InvoiceDate >= utcStart && i.InvoiceDate <= utcEnd)
+                .ToListAsync(cancellationToken);
 
-        // Query SalesOrders in range
-        var orders = await db.SalesOrders
-            .AsNoTracking()
-            .Where(o => o.OrderDate >= startDate && o.OrderDate <= endDate && o.Status != SalesOrderStatus.Cancelled)
-            .Select(o => new { Date = o.OrderDate.Date, o.GrandTotal })
-            .ToListAsync(cancellationToken);
+            var points = new List<DashboardChartPointModel>();
+            decimal totalRevenue = 0;
+            int totalOrders = 0;
+            decimal totalItemsSold = 0;
+            decimal maxHourlyRevenue = 0;
+            int maxHourlyOrders = 0;
 
-        // Aggregate by date
-        var invoiceMap = invoices
-            .GroupBy(x => x.Date)
-            .ToDictionary(g => g.Key, g => g.Sum(x => x.GrandTotal));
-
-        var orderMap = orders
-            .GroupBy(x => x.Date)
-            .ToDictionary(g => g.Key, g => new { Count = g.Count(), Revenue = g.Sum(x => x.GrandTotal) });
-
-        var points = new List<DashboardChartPointModel>();
-        var curDate = startDate.Date;
-        decimal totalRevenue = 0;
-        int totalOrders = 0;
-        decimal maxDailyRevenue = 0;
-        int maxDailyOrders = 0;
-
-        while (curDate <= now.Date)
-        {
-            var invRev = invoiceMap.GetValueOrDefault(curDate, 0m);
-            var ordData = orderMap.GetValueOrDefault(curDate, new { Count = 0, Revenue = 0m });
-
-            // If invoices exist on this day, use invoice revenue; else use sales order revenue
-            var dailyRevenue = invRev > 0 ? invRev : ordData.Revenue;
-            var dailyOrders = ordData.Count;
-
-            totalRevenue += dailyRevenue;
-            totalOrders += dailyOrders;
-            if (dailyRevenue > maxDailyRevenue) maxDailyRevenue = dailyRevenue;
-            if (dailyOrders > maxDailyOrders) maxDailyOrders = dailyOrders;
-
-            points.Add(new DashboardChartPointModel
+            for (int h = 0; h < 24; h++)
             {
-                Date = curDate,
-                DateLabel = curDate.ToString("dd/MM"),
-                Revenue = dailyRevenue,
-                OrderCount = dailyOrders
-            });
+                var ordersInHour = orders.Where(o => o.OrderDate.AddHours(7).Hour == h).ToList();
+                var invoicesInHour = invoices.Where(i => i.InvoiceDate.AddHours(7).Hour == h).ToList();
 
-            curDate = curDate.AddDays(1);
+                var invHRev = invoicesInHour.Sum(i => i.GrandTotal);
+                var ordHRev = ordersInHour.Sum(o => o.GrandTotal);
+                var hourlyRev = invHRev > 0 ? invHRev : ordHRev;
+                var hourlyOrders = Math.Max(ordersInHour.Count, invoicesInHour.Count);
+
+                var itemsFromOrders = ordersInHour.SelectMany(o => o.Items).Sum(x => x.Quantity);
+                var itemsFromInvoices = invoicesInHour.SelectMany(i => i.Items).Sum(x => x.Quantity);
+                var hourlyItems = itemsFromOrders > 0 ? itemsFromOrders : itemsFromInvoices;
+
+                var productsInHour = ordersInHour.SelectMany(o => o.Items)
+                    .GroupBy(x => new { x.ProductId, x.ProductCode, x.ProductName })
+                    .Select(g => new DashboardHourlyProductModel
+                    {
+                        ProductId = g.Key.ProductId,
+                        ProductCode = g.Key.ProductCode,
+                        ProductName = g.Key.ProductName,
+                        Quantity = g.Sum(x => x.Quantity),
+                        TotalAmount = g.Sum(x => x.LineTotal)
+                    })
+                    .OrderByDescending(x => x.TotalAmount)
+                    .Take(5)
+                    .ToList();
+
+                if (productsInHour.Count == 0 && invoicesInHour.Count > 0)
+                {
+                    productsInHour = invoicesInHour.SelectMany(i => i.Items)
+                        .GroupBy(x => new { x.ProductId, x.ProductCode, x.ProductName })
+                        .Select(g => new DashboardHourlyProductModel
+                        {
+                            ProductId = g.Key.ProductId ?? 0,
+                            ProductCode = g.Key.ProductCode,
+                            ProductName = g.Key.ProductName,
+                            Quantity = g.Sum(x => x.Quantity),
+                            TotalAmount = g.Sum(x => x.LineTotal)
+                        })
+                        .OrderByDescending(x => x.TotalAmount)
+                        .Take(5)
+                        .ToList();
+                }
+
+                totalRevenue += hourlyRev;
+                totalOrders += hourlyOrders;
+                totalItemsSold += hourlyItems;
+
+                if (hourlyRev > maxHourlyRevenue) maxHourlyRevenue = hourlyRev;
+                if (hourlyOrders > maxHourlyOrders) maxHourlyOrders = hourlyOrders;
+
+                points.Add(new DashboardChartPointModel
+                {
+                    Date = range.VnStart.Date.AddHours(h),
+                    DateLabel = $"{h:D2}:00",
+                    FullDateLabel = $"{h:D2}:00 – {h:D2}:59, {range.VnStart:dd/MM/yyyy}",
+                    Revenue = hourlyRev,
+                    OrderCount = hourlyOrders,
+                    ItemsSold = hourlyItems,
+                    Hour = h,
+                    IsPeak = false,
+                    ProductsSold = productsInHour
+                });
+            }
+
+            string peakHourLabel = "Chưa có giờ cao điểm";
+            decimal peakRev = 0;
+            if (maxHourlyRevenue > 0)
+            {
+                var peakPt = points.OrderByDescending(p => p.Revenue).First();
+                peakPt.IsPeak = true;
+                peakHourLabel = $"{peakPt.Hour:D2}:00 – {peakPt.Hour + 1:D2}:00";
+                peakRev = peakPt.Revenue;
+            }
+
+            string peakOrderHourLabel = string.Empty;
+            int peakHourlyOrders = 0;
+            if (maxHourlyOrders > 0)
+            {
+                var peakOrdPt = points.OrderByDescending(p => p.OrderCount).First();
+                peakOrderHourLabel = $"{peakOrdPt.Hour:D2}:00 – {peakOrdPt.Hour + 1:D2}:00";
+                peakHourlyOrders = peakOrdPt.OrderCount;
+            }
+
+            return new DashboardChartDataModel
+            {
+                Period = period,
+                IsHourly = true,
+                PeriodTitle = range.PeriodLabel,
+                PeakHourLabel = peakHourLabel,
+                PeakHourRevenue = peakRev,
+                PeakOrderHourLabel = peakOrderHourLabel,
+                PeakHourlyOrders = peakHourlyOrders,
+                TotalPeriodRevenue = totalRevenue,
+                TotalPeriodOrders = totalOrders,
+                TotalPeriodItemsSold = totalItemsSold,
+                MaxDailyRevenue = maxHourlyRevenue,
+                MaxDailyOrders = maxHourlyOrders,
+                Points = points
+            };
         }
-
-        return new DashboardChartDataModel
+        else
         {
-            Period = period,
-            TotalPeriodRevenue = totalRevenue,
-            TotalPeriodOrders = totalOrders,
-            MaxDailyRevenue = maxDailyRevenue,
-            MaxDailyOrders = maxDailyOrders,
-            Points = points
-        };
+            // Multi-day aggregation
+            var orders = await db.SalesOrders
+                .AsNoTracking()
+                .Include(o => o.Items)
+                .Where(o => o.OrderDate >= utcStart && o.OrderDate <= utcEnd && o.Status != SalesOrderStatus.Cancelled)
+                .ToListAsync(cancellationToken);
+
+            var invoices = await db.Invoices
+                .AsNoTracking()
+                .Include(i => i.Items)
+                .Where(i => i.InvoiceDate >= utcStart && i.InvoiceDate <= utcEnd)
+                .ToListAsync(cancellationToken);
+
+            var points = new List<DashboardChartPointModel>();
+            var curDate = range.VnStart.Date;
+            var finalDate = range.VnEnd.Date;
+            bool is7Days = (finalDate - curDate).Days == 6;
+
+            decimal totalRevenue = 0;
+            int totalOrders = 0;
+            decimal totalItemsSold = 0;
+            decimal maxDailyRevenue = 0;
+            int maxDailyOrders = 0;
+
+            while (curDate <= finalDate)
+            {
+                var ordersInDay = orders.Where(o => o.OrderDate.AddHours(7).Date == curDate).ToList();
+                var invoicesInDay = invoices.Where(i => i.InvoiceDate.AddHours(7).Date == curDate).ToList();
+
+                var invDRev = invoicesInDay.Sum(i => i.GrandTotal);
+                var ordDRev = ordersInDay.Sum(o => o.GrandTotal);
+                var dailyRevenue = invDRev > 0 ? invDRev : ordDRev;
+                var dailyOrders = Math.Max(ordersInDay.Count, invoicesInDay.Count);
+
+                var itemsFromOrders = ordersInDay.SelectMany(o => o.Items).Sum(x => x.Quantity);
+                var itemsFromInvoices = invoicesInDay.SelectMany(i => i.Items).Sum(x => x.Quantity);
+                var dailyItems = itemsFromOrders > 0 ? itemsFromOrders : itemsFromInvoices;
+
+                var productsInDay = ordersInDay.SelectMany(o => o.Items)
+                    .GroupBy(x => new { x.ProductId, x.ProductCode, x.ProductName })
+                    .Select(g => new DashboardHourlyProductModel
+                    {
+                        ProductId = g.Key.ProductId,
+                        ProductCode = g.Key.ProductCode,
+                        ProductName = g.Key.ProductName,
+                        Quantity = g.Sum(x => x.Quantity),
+                        TotalAmount = g.Sum(x => x.LineTotal)
+                    })
+                    .OrderByDescending(x => x.TotalAmount)
+                    .Take(5)
+                    .ToList();
+
+                totalRevenue += dailyRevenue;
+                totalOrders += dailyOrders;
+                totalItemsSold += dailyItems;
+
+                if (dailyRevenue > maxDailyRevenue) maxDailyRevenue = dailyRevenue;
+                if (dailyOrders > maxDailyOrders) maxDailyOrders = dailyOrders;
+
+                string dateLabel = is7Days 
+                    ? $"{GetVnDayOfWeek(curDate)} · {curDate:dd/MM}"
+                    : curDate.ToString("dd/MM");
+
+                points.Add(new DashboardChartPointModel
+                {
+                    Date = curDate,
+                    DateLabel = dateLabel,
+                    FullDateLabel = curDate.ToString("dddd, dd/MM/yyyy", new CultureInfo("vi-VN")),
+                    Revenue = dailyRevenue,
+                    OrderCount = dailyOrders,
+                    ItemsSold = dailyItems,
+                    Hour = 0,
+                    IsPeak = false,
+                    IsLowest = false,
+                    ProductsSold = productsInDay
+                });
+
+                curDate = curDate.AddDays(1);
+            }
+
+            // Identify peak and lowest revenue days if any sales occurred
+            if (maxDailyRevenue > 0)
+            {
+                var peakPt = points.OrderByDescending(p => p.Revenue).FirstOrDefault();
+                if (peakPt != null) peakPt.IsPeak = true;
+
+                var nonZeroPoints = points.Where(p => p.Revenue > 0).ToList();
+                if (nonZeroPoints.Count > 1)
+                {
+                    var lowestPt = nonZeroPoints.OrderBy(p => p.Revenue).FirstOrDefault();
+                    if (lowestPt != null && lowestPt != peakPt) lowestPt.IsLowest = true;
+                }
+            }
+
+            return new DashboardChartDataModel
+            {
+                Period = period,
+                IsHourly = false,
+                PeriodTitle = range.PeriodLabel,
+                TotalPeriodRevenue = totalRevenue,
+                TotalPeriodOrders = totalOrders,
+                TotalPeriodItemsSold = totalItemsSold,
+                MaxDailyRevenue = maxDailyRevenue,
+                MaxDailyOrders = maxDailyOrders,
+                Points = points
+            };
+        }
     }
 
     public async Task<List<DashboardBestSellingProductModel>> GetBestSellingProductsAsync(
         string period = "30d",
         int limit = 5,
         int? warehouseId = null,
+        DateTime? customStart = null,
+        DateTime? customEnd = null,
         CancellationToken cancellationToken = default)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+
+        var range = ResolvePeriodRange(period, customStart, customEnd);
+        var utcStart = range.UtcStart;
+        var utcEnd = range.UtcEnd;
 
         // Aggregate from SalesOrderItems
         var orderItemsQuery = db.SalesOrderItems
             .AsNoTracking()
             .Include(i => i.Product)
                 .ThenInclude(p => p.Images)
-            .Where(i => i.SalesOrder.Status != SalesOrderStatus.Cancelled);
+            .Where(i => i.SalesOrder.Status != SalesOrderStatus.Cancelled &&
+                        i.SalesOrder.OrderDate >= utcStart &&
+                        i.SalesOrder.OrderDate <= utcEnd);
 
         var grouped = await orderItemsQuery
             .GroupBy(i => new
@@ -366,7 +567,6 @@ public class DashboardAnalyticsService : IDashboardAnalyticsService
 
         var outOfStockCount = Math.Max(0, totalActiveProducts - inStockCount);
 
-        // Low stock alerts: top 5 items with lowest stock > 0 and < 15
         var lowStockAlerts = allStock
             .Where(s => s.Condition == StockCondition.Saleable && s.Quantity < 15 && s.Product != null)
             .OrderBy(s => s.Quantity)
@@ -384,7 +584,6 @@ public class DashboardAnalyticsService : IDashboardAnalyticsService
             })
             .ToList();
 
-        // Warehouse cards
         var warehouseCards = new List<DashboardWarehouseCardModel>();
         foreach (var wh in warehouses)
         {
@@ -443,6 +642,166 @@ public class DashboardAnalyticsService : IDashboardAnalyticsService
 
         return result;
     }
+
+    // =========================================================================
+    // PERIOD & TIMEZONE HELPERS (Asia/Ho_Chi_Minh: UTC+7)
+    // =========================================================================
+
+    private record PeriodRangeResult(
+        DateTime VnStart,
+        DateTime VnEnd,
+        DateTime UtcStart,
+        DateTime UtcEnd,
+        DateTime PrevVnStart,
+        DateTime PrevVnEnd,
+        DateTime PrevUtcStart,
+        DateTime PrevUtcEnd,
+        string PeriodLabel,
+        string PrevPeriodLabel,
+        string OrdersLabel,
+        bool IsHourly
+    );
+
+    private static PeriodRangeResult ResolvePeriodRange(string period, DateTime? customStart, DateTime? customEnd)
+    {
+        var vnNow = DateTime.UtcNow.AddHours(7);
+        DateTime vnStart, vnEnd, prevVnStart, prevVnEnd;
+        string periodLabel, prevPeriodLabel, ordersLabel;
+        bool isHourly = false;
+
+        switch (period.ToLowerInvariant())
+        {
+            case "yesterday":
+                isHourly = true;
+                var vnYest = vnNow.Date.AddDays(-1);
+                vnStart = vnYest;
+                vnEnd = vnYest.AddDays(1).AddTicks(-1);
+                var vnDayBefore = vnYest.AddDays(-1);
+                prevVnStart = vnDayBefore;
+                prevVnEnd = vnDayBefore.AddDays(1).AddTicks(-1);
+                periodLabel = "Doanh thu hôm qua";
+                prevPeriodLabel = "so với hôm kia";
+                ordersLabel = "đơn hôm qua";
+                break;
+
+            case "today":
+                isHourly = true;
+                vnStart = vnNow.Date;
+                vnEnd = vnNow.Date.AddDays(1).AddTicks(-1);
+                var prevDay = vnNow.Date.AddDays(-1);
+                prevVnStart = prevDay;
+                prevVnEnd = prevDay.AddDays(1).AddTicks(-1);
+                periodLabel = "Doanh thu hôm nay";
+                prevPeriodLabel = "so với hôm qua";
+                ordersLabel = "đơn hôm nay";
+                break;
+
+            case "7d":
+                vnStart = vnNow.Date.AddDays(-6);
+                vnEnd = vnNow.Date.AddDays(1).AddTicks(-1);
+                prevVnStart = vnStart.AddDays(-7);
+                prevVnEnd = vnStart.AddTicks(-1);
+                periodLabel = "Doanh thu 7 ngày qua";
+                prevPeriodLabel = "so với 7 ngày trước";
+                ordersLabel = "đơn trong 7 ngày";
+                break;
+
+            case "this_month":
+                vnStart = new DateTime(vnNow.Year, vnNow.Month, 1, 0, 0, 0);
+                int daysThisMonth = DateTime.DaysInMonth(vnNow.Year, vnNow.Month);
+                vnEnd = new DateTime(vnNow.Year, vnNow.Month, daysThisMonth, 23, 59, 59, 999);
+                var lastMonthDate = vnStart.AddMonths(-1);
+                int daysInLastMonth = DateTime.DaysInMonth(lastMonthDate.Year, lastMonthDate.Month);
+                prevVnStart = lastMonthDate;
+                prevVnEnd = new DateTime(lastMonthDate.Year, lastMonthDate.Month, daysInLastMonth, 23, 59, 59, 999);
+                periodLabel = "Doanh thu tháng này";
+                prevPeriodLabel = "so với tháng trước";
+                ordersLabel = "đơn tháng này";
+                break;
+
+            case "last_month":
+                var lmDate = new DateTime(vnNow.Year, vnNow.Month, 1, 0, 0, 0).AddMonths(-1);
+                int daysLm = DateTime.DaysInMonth(lmDate.Year, lmDate.Month);
+                vnStart = lmDate;
+                vnEnd = new DateTime(lmDate.Year, lmDate.Month, daysLm, 23, 59, 59, 999);
+                var lmbDate = lmDate.AddMonths(-1);
+                int daysLmb = DateTime.DaysInMonth(lmbDate.Year, lmbDate.Month);
+                prevVnStart = lmbDate;
+                prevVnEnd = new DateTime(lmbDate.Year, lmbDate.Month, daysLmb, 23, 59, 59, 999);
+                periodLabel = "Doanh thu tháng trước";
+                prevPeriodLabel = "so với tháng trước đó";
+                ordersLabel = "đơn tháng trước";
+                break;
+
+            case "custom":
+                if (customStart.HasValue && customEnd.HasValue)
+                {
+                    vnStart = customStart.Value.Date;
+                    vnEnd = customEnd.Value.Date.AddDays(1).AddTicks(-1);
+                    int durationDays = Math.Max(1, (customEnd.Value.Date - customStart.Value.Date).Days + 1);
+                    prevVnStart = vnStart.AddDays(-durationDays);
+                    prevVnEnd = vnStart.AddTicks(-1);
+                    isHourly = (customStart.Value.Date == customEnd.Value.Date);
+
+                    if (isHourly)
+                    {
+                        periodLabel = $"Doanh thu ngày {vnStart:dd/MM/yyyy}";
+                        prevPeriodLabel = "so với ngày trước";
+                        ordersLabel = $"đơn ngày {vnStart:dd/MM}";
+                    }
+                    else
+                    {
+                        periodLabel = $"Doanh thu ({vnStart:dd/MM} - {customEnd.Value:dd/MM})";
+                        prevPeriodLabel = "so với kỳ trước";
+                        ordersLabel = "đơn trong kỳ";
+                    }
+                }
+                else
+                {
+                    vnStart = vnNow.Date.AddDays(-29);
+                    vnEnd = vnNow.Date.AddDays(1).AddTicks(-1);
+                    prevVnStart = vnStart.AddDays(-30);
+                    prevVnEnd = vnStart.AddTicks(-1);
+                    periodLabel = "Doanh thu 30 ngày qua";
+                    prevPeriodLabel = "so với 30 ngày trước";
+                    ordersLabel = "đơn trong 30 ngày";
+                }
+                break;
+
+            case "30d":
+            default:
+                vnStart = vnNow.Date.AddDays(-29);
+                vnEnd = vnNow.Date.AddDays(1).AddTicks(-1);
+                prevVnStart = vnStart.AddDays(-30);
+                prevVnEnd = vnStart.AddTicks(-1);
+                periodLabel = "Doanh thu 30 ngày qua";
+                prevPeriodLabel = "so với 30 ngày trước";
+                ordersLabel = "đơn trong 30 ngày";
+                break;
+        }
+
+        var utcStart = DateTime.SpecifyKind(vnStart.AddHours(-7), DateTimeKind.Utc);
+        var utcEnd = DateTime.SpecifyKind(vnEnd.AddHours(-7), DateTimeKind.Utc);
+        var prevUtcStart = DateTime.SpecifyKind(prevVnStart.AddHours(-7), DateTimeKind.Utc);
+        var prevUtcEnd = DateTime.SpecifyKind(prevVnEnd.AddHours(-7), DateTimeKind.Utc);
+
+        return new PeriodRangeResult(
+            vnStart, vnEnd, utcStart, utcEnd,
+            prevVnStart, prevVnEnd, prevUtcStart, prevUtcEnd,
+            periodLabel, prevPeriodLabel, ordersLabel, isHourly);
+    }
+
+    private static string GetVnDayOfWeek(DateTime date) => date.DayOfWeek switch
+    {
+        DayOfWeek.Monday => "T2",
+        DayOfWeek.Tuesday => "T3",
+        DayOfWeek.Wednesday => "T4",
+        DayOfWeek.Thursday => "T5",
+        DayOfWeek.Friday => "T6",
+        DayOfWeek.Saturday => "T7",
+        DayOfWeek.Sunday => "CN",
+        _ => ""
+    };
 
     private static string FormatAuditEventTitle(AuditLog log)
     {
@@ -560,7 +919,7 @@ public class DashboardAnalyticsService : IDashboardAnalyticsService
             }
             catch
             {
-                // Fallback to text
+                // Fallback
             }
         }
 

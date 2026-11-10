@@ -346,47 +346,114 @@
     }
 
     /**
-     * Animate dropdown or popover reveal with Motion
+     * Animate dropdown or popover reveal with Motion (or GSAP fallback)
+     * Strictly opacity: 0 -> 1 and subtle translateY: -5px -> 0.
+     * No scale distortion, no bounce, no overshoot.
      * @param {HTMLElement|string} menuEl
+     * @param {Function} [onComplete]
      */
-    function animateDropdown(menuEl) {
+    function animateDropdown(menuEl, onComplete) {
         const menu = typeof menuEl === 'string' ? document.querySelector(menuEl) : menuEl;
-        if (!menu) return;
+        if (!menu) {
+            if (onComplete) onComplete();
+            return;
+        }
 
         if (isReducedMotion()) {
             menu.style.opacity = '1';
             menu.style.transform = 'none';
+            if (onComplete) onComplete();
             return;
         }
+
+        const finish = () => {
+            if (onComplete) onComplete();
+        };
 
         const Motion = getMotion();
         const gsap = getGsap();
 
         if (Motion && typeof Motion.animate === 'function') {
             claimOwnership(menu, 'motion');
-            menu.style.transformOrigin = 'top right';
             const anim = Motion.animate(
                 menu,
                 {
                     opacity: [0, 1],
-                    scaleY: [0.96, 1],
-                    y: [-4, 0]
+                    y: [-5, 0]
                 },
                 {
-                    duration: TOKENS.duration.dropdown,
+                    duration: 0.18,
                     easing: TOKENS.easing.easeOutCubic
                 }
             );
             menu._tfMotionAnim = anim;
-            anim.then(() => {
-                menu.style.transform = '';
-            });
+            anim.then(finish).catch(finish);
         } else if (gsap) {
             claimOwnership(menu, 'gsap');
             gsap.fromTo(menu,
-                { opacity: 0, y: -4, scaleY: 0.96 },
-                { opacity: 1, y: 0, scaleY: 1, transformOrigin: 'top right', duration: 0.18, ease: 'power2.out', clearProps: 'transform' }
+                { opacity: 0, y: -5 },
+                { opacity: 1, y: 0, duration: 0.18, ease: 'power2.out', overwrite: 'auto', onComplete: finish }
             );
+        } else {
+            menu.style.opacity = '1';
+            menu.style.transform = 'none';
+            finish();
+        }
+    }
+
+    /**
+     * Animate dropdown or popover exit with Motion (or GSAP fallback)
+     * Strictly opacity: 1 -> 0 and subtle translateY: 0 -> -4px.
+     * @param {HTMLElement|string} menuEl
+     * @param {Function} [onComplete]
+     */
+    function animateDropdownExit(menuEl, onComplete) {
+        const menu = typeof menuEl === 'string' ? document.querySelector(menuEl) : menuEl;
+        if (!menu) {
+            if (onComplete) onComplete();
+            return;
+        }
+
+        if (isReducedMotion()) {
+            if (onComplete) onComplete();
+            return;
+        }
+
+        const Motion = getMotion();
+        const gsap = getGsap();
+
+        const finish = () => {
+            releaseOwnership(menu);
+            if (onComplete) onComplete();
+        };
+
+        if (Motion && typeof Motion.animate === 'function') {
+            claimOwnership(menu, 'motion');
+            const anim = Motion.animate(
+                menu,
+                {
+                    opacity: [1, 0],
+                    y: [0, -4]
+                },
+                {
+                    duration: 0.14,
+                    easing: TOKENS.easing.easeInQuad
+                }
+            );
+            menu._tfMotionAnim = anim;
+            anim.then(finish).catch(finish);
+        } else if (gsap) {
+            claimOwnership(menu, 'gsap');
+            gsap.to(menu, {
+                opacity: 0,
+                y: -4,
+                duration: 0.14,
+                ease: 'power2.in',
+                overwrite: 'auto',
+                onComplete: finish
+            });
+        } else {
+            finish();
         }
     }
 
@@ -781,8 +848,137 @@
     }
 
     // =========================================================================
-    // 6. GSAP ENGINE DOMAIN: DASHBOARD SEQUENCE, SVG CHARTS, COUNTERS
+    // 6. GSAP & SVG ENGINE: DASHBOARD SEQUENCE, SMOOTH CHART TRANSITIONS, COUNTERS
     // =========================================================================
+
+    // Chart transition state for continuous smooth dataset transitions
+    const _chartTransitionState = {
+        currentPoints: null,
+        animId: null
+    };
+
+    function sampleCurveY(points, x) {
+        if (!points || points.length === 0) return 188.0;
+        if (points.length === 1) return (points[0].y ?? points[0].Y ?? 188.0);
+        const p0 = points[0];
+        const pN = points[points.length - 1];
+        const p0x = p0.x ?? p0.X ?? 55.0;
+        const p0y = p0.y ?? p0.Y ?? 188.0;
+        const pNx = pN.x ?? pN.X ?? 785.0;
+        const pNy = pN.y ?? pN.Y ?? 188.0;
+
+        if (x <= p0x) return p0y;
+        if (x >= pNx) return pNy;
+
+        for (let i = 0; i < points.length - 1; i++) {
+            const cur = points[i];
+            const next = points[i + 1];
+            const curX = cur.x ?? cur.X ?? 0;
+            const nextX = next.x ?? next.X ?? 0;
+            const curY = cur.y ?? cur.Y ?? 188.0;
+            const nextY = next.y ?? next.Y ?? 188.0;
+
+            if (x >= curX && x <= nextX) {
+                const dx = nextX - curX;
+                if (dx <= 0.001) return curY;
+                const t = (x - curX) / dx;
+                return curY + t * (nextY - curY);
+            }
+        }
+        return 188.0;
+    }
+
+    function resampleCurve(points, count = 48, left = 55.0, right = 785.0) {
+        const res = [];
+        for (let i = 0; i < count; i++) {
+            const x = left + (i * (right - left)) / (count - 1);
+            const y = sampleCurveY(points, x);
+            res.push({ x, y });
+        }
+        return res;
+    }
+
+    function buildSmoothPaths(points, bottom = 188.0) {
+        if (!points || points.length === 0) return { lineD: '', areaD: '' };
+        let lineD = 'M ' + points[0].x.toFixed(1) + ' ' + points[0].y.toFixed(1);
+        for (let i = 0; i < points.length - 1; i++) {
+            const p0 = points[i];
+            const p1 = points[i + 1];
+            const midX = ((p0.x + p1.x) / 2).toFixed(1);
+            lineD += ' C ' + midX + ' ' + p0.y.toFixed(1) + ', ' + midX + ' ' + p1.y.toFixed(1) + ', ' + p1.x.toFixed(1) + ' ' + p1.y.toFixed(1);
+        }
+        const areaD = lineD + ' L ' + points[points.length - 1].x.toFixed(1) + ' ' + bottom.toFixed(1) + ' L ' + points[0].x.toFixed(1) + ' ' + bottom.toFixed(1) + ' Z';
+        return { lineD, areaD };
+    }
+
+    /**
+     * Smoothly transitions dashboard SVG chart line and area paths
+     * from current curve to target dataset with 250-450ms cubic easing.
+     * Prevents flicker, DOM destruction, and supports seamless rapid redirection.
+     */
+    function transitionDashboardChart(containerSelector, rawCoords, isInitial = false, duration = 320) {
+        const root = document.querySelector(containerSelector || '.tf-dash-chart-card') || document;
+        const lineEl = root.querySelector('.tf-chart-line-path');
+        const areaEl = root.querySelector('.tf-chart-area-path');
+        if (!lineEl) return;
+
+        duration = typeof duration === 'number' ? duration : 320;
+
+        if (!rawCoords || rawCoords.length === 0) {
+            lineEl.setAttribute('d', '');
+            if (areaEl) areaEl.setAttribute('d', '');
+            _chartTransitionState.currentPoints = null;
+            return;
+        }
+
+        const targetPoints = resampleCurve(rawCoords, 48);
+
+        if (isInitial || !_chartTransitionState.currentPoints) {
+            _chartTransitionState.currentPoints = targetPoints;
+            const paths = buildSmoothPaths(targetPoints);
+            lineEl.setAttribute('d', paths.lineD);
+            if (areaEl) areaEl.setAttribute('d', paths.areaD);
+            return;
+        }
+
+        if (_chartTransitionState.animId) {
+            cancelAnimationFrame(_chartTransitionState.animId);
+            _chartTransitionState.animId = null;
+        }
+
+        const startPoints = _chartTransitionState.currentPoints;
+        const startTime = performance.now();
+
+        function step(now) {
+            const elapsed = now - startTime;
+            const t = Math.min(1, elapsed / duration);
+            // easeOutCubic: rapid initial velocity, soft gentle deceleration
+            const ease = 1 - Math.pow(1 - t, 3);
+
+            const frame = [];
+            for (let i = 0; i < 48; i++) {
+                frame.push({
+                    x: startPoints[i].x,
+                    y: startPoints[i].y + (targetPoints[i].y - startPoints[i].y) * ease
+                });
+            }
+            _chartTransitionState.currentPoints = frame;
+            const p = buildSmoothPaths(frame);
+            lineEl.setAttribute('d', p.lineD);
+            if (areaEl) areaEl.setAttribute('d', p.areaD);
+
+            if (t < 1) {
+                _chartTransitionState.animId = requestAnimationFrame(step);
+            } else {
+                _chartTransitionState.animId = null;
+                _chartTransitionState.currentPoints = targetPoints;
+                const finalP = buildSmoothPaths(targetPoints);
+                lineEl.setAttribute('d', finalP.lineD);
+                if (areaEl) areaEl.setAttribute('d', finalP.areaD);
+            }
+        }
+        _chartTransitionState.animId = requestAnimationFrame(step);
+    }
 
     /**
      * Animate Dashboard components entrance with coordinated GSAP timeline
@@ -1087,6 +1283,7 @@
         animateModalEnter,
         animateModalExit,
         animateDropdown,
+        animateDropdownExit,
         animateTabContent,
         animateFormSwitch,
         animatePageContent,
@@ -1102,12 +1299,19 @@
         // GSAP Engine Domain
         animateDashboardEntrance,
         animateModuleEntrance,
-        animateCounter
+        animateCounter,
+
+        // Dashboard Chart Transition Domain
+        transitionDashboardChart
     };
 
     if (typeof window !== 'undefined') {
         window.TradeFlowMotion = api;
         window.tradeflowMotion = api;
+        window.TradeFlowChart = {
+            render: transitionDashboardChart,
+            transition: transitionDashboardChart
+        };
     }
 
     return api;

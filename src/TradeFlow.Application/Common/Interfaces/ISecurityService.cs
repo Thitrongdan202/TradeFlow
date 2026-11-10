@@ -164,8 +164,12 @@ public interface ISecurityService
     // Employee Offboarding
     Task<OffboardEmployeeResult> OffboardEmployeeAsync(string userId, string reason, string performedBy, CancellationToken cancellationToken = default);
 
-    // Controlled Admin Password Reset
+    // Controlled Admin Password Reset & ROOT Credential Governance
     Task<PasswordResetResult> AdminResetPasswordAsync(string userId, string? performedBy = null, CancellationToken cancellationToken = default);
+    Task<PasswordResetResult> AdminResetPasswordCustomAsync(string userId, string? newPassword, bool isTemporary, bool revokeSessions, string? reason, string performedByAdmin, string? adminVerifyPassword = null, CancellationToken cancellationToken = default);
+    Task<bool> RevokeAllUserSessionsAsync(string userId, string? reason, string performedBy, CancellationToken cancellationToken = default);
+    Task<bool> SetUserStatusAsync(string userId, UserStatus status, string? reason, string performedBy, CancellationToken cancellationToken = default);
+    Task<string?> GetDecryptedUserPasswordAsync(string userId, string performedBy, CancellationToken cancellationToken = default);
 
     // Company Security Settings
     Task<CompanySecuritySettings> GetSecuritySettingsAsync(CancellationToken cancellationToken = default);

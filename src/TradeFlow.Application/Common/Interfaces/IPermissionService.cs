@@ -1,4 +1,4 @@
-﻿using TradeFlow.Domain.Enums;
+using TradeFlow.Domain.Enums;
 
 namespace TradeFlow.Application.Common.Interfaces;
 
@@ -42,4 +42,9 @@ public interface IPermissionService
     /// Xóa toàn bộ bộ nhớ đệm quyền hạn của tất cả người dùng (ví dụ khi cập nhật vai trò).
     /// </summary>
     void InvalidateAllPermissions();
+
+    /// <summary>
+    /// Lấy phạm vi dữ liệu tối đa của người dùng đối với một tài nguyên và hành động cụ thể.
+    /// </summary>
+    Task<DataScope> GetDataScopeAsync(string userId, ResourceType resource, PermissionAction action, CancellationToken cancellationToken = default);
 }

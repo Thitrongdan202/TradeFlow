@@ -21,6 +21,9 @@ public class RolePermission
     /// <summary>Hành động (action)</summary>
     public PermissionAction Action { get; set; }
 
+    /// <summary>Phạm vi dữ liệu (Self, Department, All)</summary>
+    public DataScope Scope { get; set; } = DataScope.All;
+
     /// <summary>Cho phép hay không</summary>
     public bool IsGranted { get; set; } = true;
 

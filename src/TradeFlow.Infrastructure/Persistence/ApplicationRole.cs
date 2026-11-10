@@ -14,6 +14,12 @@ public class ApplicationRole : IdentityRole
     /// <summary>Mô tả vai trò</summary>
     public string? Description { get; set; }
 
+    /// <summary>Màu nhận diện vai trò (mã Hex, ví dụ: #4f46e5)</summary>
+    public string ColorHex { get; set; } = "#4f46e5";
+
+    /// <summary>Biểu tượng vai trò</summary>
+    public string Icon { get; set; } = "shield";
+
     /// <summary>Vai trò hệ thống (không thể xóa)</summary>
     public bool IsSystem { get; set; } = false;
 

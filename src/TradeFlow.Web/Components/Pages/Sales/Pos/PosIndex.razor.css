@@ -262,7 +262,8 @@
 .tf-auto-thumb img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    padding: 2px;
 }
 
 .tf-auto-fallback {
@@ -2859,7 +2860,9 @@
 .tf-pos-card-media img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    padding: 6px;
+    display: block;
 }
 
 .tf-pos-card-price-overlay {
@@ -2955,7 +2958,9 @@
 .tf-pos-list-thumb img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    padding: 3px;
+    display: block;
 }
 
 .tf-pos-list-fallback {
@@ -4984,3 +4989,146 @@ html.dark .tf-checkout-amount {
 }
 
 
+
+
+/* ==========================================================================
+   ENHANCED POS ORDER ITEM & QUANTITY CONTROLS (REQUEST #10)
+   ========================================================================== */
+.tf-item-trash-btn {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 6px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(239, 68, 68, 0.12) !important;
+    color: #ef4444 !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+    cursor: pointer !important;
+    transition: all 0.18s ease !important;
+    flex-shrink: 0 !important;
+}
+
+.tf-item-trash-btn:hover {
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    border-color: #dc2626 !important;
+    transform: scale(1.08) !important;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35) !important;
+}
+
+.tf-item-info-btn {
+    width: 22px !important;
+    height: 22px !important;
+    border-radius: 50% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: transparent !important;
+    color: var(--tf-text-muted, #64748b) !important;
+    border: 1px solid var(--tf-border, #cbd5e1) !important;
+    cursor: pointer !important;
+    transition: all 0.18s ease !important;
+    margin-left: 6px !important;
+    vertical-align: middle !important;
+}
+
+.tf-item-info-btn:hover {
+    color: var(--tf-primary, #2563eb) !important;
+    border-color: var(--tf-primary, #2563eb) !important;
+    background: rgba(37, 99, 235, 0.1) !important;
+    transform: scale(1.1) !important;
+}
+
+.tf-item-qty-stepper {
+    display: inline-flex !important;
+    align-items: center !important;
+    background: var(--tf-bg-card, #ffffff) !important;
+    border: 1.5px solid var(--tf-border, #cbd5e1) !important;
+    border-radius: 6px !important;
+    overflow: hidden !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+.tf-mini-step-btn {
+    width: 28px !important;
+    height: 28px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: none !important;
+    background: transparent !important;
+    color: var(--tf-text-primary, #1e293b) !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+    user-select: none !important;
+}
+
+.tf-mini-step-btn:hover {
+    background: var(--tf-primary-subtle, #eff6ff) !important;
+    color: var(--tf-primary, #2563eb) !important;
+}
+
+.tf-mini-step-btn:active {
+    background: var(--tf-primary, #2563eb) !important;
+    color: #ffffff !important;
+}
+
+.tf-mini-step-input {
+    width: 44px !important;
+    height: 28px !important;
+    text-align: center !important;
+    border: none !important;
+    border-left: 1px solid var(--tf-border, #e2e8f0) !important;
+    border-right: 1px solid var(--tf-border, #e2e8f0) !important;
+    background: transparent !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    color: var(--tf-text-primary, #0f172a) !important;
+    padding: 0 !important;
+    outline: none !important;
+}
+
+.tf-mini-step-input::-webkit-outer-spin-button,
+.tf-mini-step-input::-webkit-inner-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+}
+
+/* Dark Mode Overrides */
+[data-bs-theme="dark"] .tf-item-qty-stepper,
+[data-theme="dark"] .tf-item-qty-stepper {
+    background: #1e222d !important;
+    border-color: #333a4c !important;
+}
+
+[data-bs-theme="dark"] .tf-mini-step-input,
+[data-theme="dark"] .tf-mini-step-input {
+    border-color: #333a4c !important;
+    color: #f1f5f9 !important;
+}
+
+[data-bs-theme="dark"] .tf-mini-step-btn,
+[data-theme="dark"] .tf-mini-step-btn {
+    color: #cbd5e1 !important;
+}
+
+[data-bs-theme="dark"] .tf-mini-step-btn:hover,
+[data-theme="dark"] .tf-mini-step-btn:hover {
+    background: #2a3142 !important;
+    color: #60a5fa !important;
+}
+
+[data-bs-theme="dark"] .tf-item-info-btn,
+[data-theme="dark"] .tf-item-info-btn {
+    border-color: #333a4c !important;
+    color: #94a3b8 !important;
+}
+
+[data-bs-theme="dark"] .tf-item-info-btn:hover,
+[data-theme="dark"] .tf-item-info-btn:hover {
+    border-color: #3b82f6 !important;
+    color: #60a5fa !important;
+}

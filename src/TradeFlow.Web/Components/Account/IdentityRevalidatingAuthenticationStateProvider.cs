@@ -15,7 +15,10 @@ internal sealed class IdentityRevalidatingAuthenticationStateProvider(
         IOptions<IdentityOptions> options)
     : RevalidatingServerAuthenticationStateProvider(loggerFactory)
 {
-    protected override TimeSpan RevalidationInterval => TimeSpan.FromMinutes(30);
+    // Cập nhật kiểm tra SecurityStamp và trạng thái tài khoản mỗi 5 giây
+    // Đảm bảo khi Quản trị viên ROOT thu hồi phiên hoặc khóa/vô hiệu hóa tài khoản,
+    // phiên làm việc của người dùng lập tức bị vô hiệu hóa ngay trên tất cả thiết bị.
+    protected override TimeSpan RevalidationInterval => TimeSpan.FromSeconds(5);
 
     protected override async Task<bool> ValidateAuthenticationStateAsync(
         AuthenticationState authenticationState, CancellationToken cancellationToken)

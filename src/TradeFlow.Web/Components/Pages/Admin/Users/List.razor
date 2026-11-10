@@ -11,6 +11,7 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject IAuditService AuditService
 @inject ISecurityService SecurityService
+@inject ICredentialVaultService VaultService
 @inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Quản lý người dùng — TradeFlow</PageTitle>
@@ -30,7 +31,14 @@
         <h1 class="tf-page-title">Người dùng</h1>
         <p class="tf-page-subtitle">Quản lý tài khoản và phân quyền người dùng</p>
     </div>
-    <div class="tf-page-actions">
+    <div class="tf-page-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a href="/cai-dat/nguoi-dung/bao-mat" class="tf-btn tf-btn-secondary" style="display:flex;align-items:center;gap:6px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <span>Bảo mật &amp; Quản trị mật khẩu ROOT</span>
+        </a>
         <AuthorizeView Policy="Permission:Users:Create">
             <a href="/cai-dat/nguoi-dung/them-moi" class="tf-btn tf-btn-primary">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -79,8 +87,9 @@
                         <th>Tên đăng nhập</th>
                         <th>Họ và tên</th>
                         <th>Vai trò</th>
+                        <th>Mật khẩu hiện tại</th>
                         <th style="text-align:center;">Trạng thái</th>
-                        <th>Đăng nhập cuối</th>
+                        <th>Đổi MK cuối</th>
                         <th style="text-align:right;">Thao tác</th>
                     </tr>
                 </thead>
@@ -112,6 +121,43 @@
                                     <span class="tw-text-slate-400 tw-text-sm">—</span>
                                 }
                             </td>
+                            <td>
+                                <div style="display:flex;align-items:center;gap:6px;">
+                                    @if (_revealedPasswordUserIds.Contains(entry.User.Id))
+                                    {
+                                        var plainPass = VaultService.DecryptPassword(entry.User.EncryptedPassword) ?? "Chưa lưu";
+                                        <span style="font-family:monospace;font-size:12px;font-weight:700;color:var(--tf-text-primary);background:rgba(0,0,0,0.05);padding:2px 6px;border-radius:4px;border:1px solid rgba(0,0,0,0.1);">
+                                            @plainPass
+                                        </span>
+                                        <button type="button"
+                                                class="tf-btn tf-btn-ghost tf-btn-sm"
+                                                style="padding:2px 4px;"
+                                                @onclick="() => ToggleRevealPassword(entry.User.Id)"
+                                                title="Ẩn mật khẩu">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                                                <line x1="1" y1="1" x2="23" y2="23"/>
+                                            </svg>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span style="letter-spacing:2px;color:var(--tf-text-muted);font-size:13px;">••••••••</span>
+                                        @if (_isCurrentUserAdmin)
+                                        {
+                                            <button type="button"
+                                                    class="tf-btn tf-btn-ghost tf-btn-sm"
+                                                    style="padding:2px 4px;color:var(--tf-primary);"
+                                                    @onclick="() => ToggleRevealPassword(entry.User.Id)"
+                                                    title="Nhấn con mắt để xem mật khẩu hiện tại">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                                                </svg>
+                                            </button>
+                                        }
+                                    }
+                                </div>
+                            </td>
                             <td style="text-align:center;">
                                 @if (entry.User.Status == UserStatus.Active)
                                 {
@@ -127,11 +173,15 @@
                                 }
                             </td>
                             <td class="tw-text-slate-500 tw-text-xs">
-                                @(entry.User.LastLoginAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Chưa đăng nhập")
+                                @(entry.User.PasswordChangedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Chưa đổi")
                             </td>
                             <td style="text-align:right;">
                                 <div class="tw-inline-flex tw-gap-1 tw-justify-end tw-flex-wrap">
                                     <AuthorizeView Policy="Permission:Users:Edit">
+                                        <a href="/cai-dat/nguoi-dung/@entry.User.Id/bao-mat"
+                                           class="tf-btn tf-btn-ghost tf-btn-sm tw-text-indigo-600 hover:tw-bg-indigo-50" title="Bảo mật & Đặt lại mật khẩu ROOT">
+                                            Bảo mật
+                                        </a>
                                         <a href="/cai-dat/nguoi-dung/sua/@entry.User.Id"
                                            class="tf-btn tf-btn-ghost tf-btn-sm" title="Sửa">
                                             Sửa
@@ -239,7 +289,17 @@
     private string? _actionMessage;
     private bool _actionSuccess;
     private string? _currentUsername;
+    private bool _isCurrentUserAdmin;
+    private HashSet<string> _revealedPasswordUserIds = new();
     private (string Username, string TempPassword)? _resetPasswordInfo;
+
+    private void ToggleRevealPassword(string userId)
+    {
+        if (_revealedPasswordUserIds.Contains(userId))
+            _revealedPasswordUserIds.Remove(userId);
+        else
+            _revealedPasswordUserIds.Add(userId);
+    }
 
     private bool _showOffboardModal;
     private ApplicationUser? _offboardUser;
@@ -251,6 +311,7 @@
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         _currentUsername = authState.User.Identity?.Name;
+        _isCurrentUserAdmin = _currentUsername == "admin" || authState.User.IsInRole("Administrator");
         await LoadUsersAsync();
     }
 

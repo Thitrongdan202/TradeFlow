@@ -35,26 +35,116 @@
                 </div>
 
                 <div class="tf-dash-header-actions">
-                    @* Period Switcher Pills *@
+                    @* Period Switcher Pills — Exact Order Requested:
+                       1. Hôm qua (yesterday)
+                       2. Hôm nay (today)
+                       3. 7 ngày qua (7d)
+                       4. 30 ngày qua (30d)
+                       5. Tháng này (this_month)
+                       6. Tháng trước (last_month)
+                       7. Tùy chỉnh (custom dropdown) *@
                     <div class="tf-dash-period-pills" role="group" aria-label="Bộ lọc khoảng thời gian">
                         <button type="button" 
+                                class="tf-dash-pill @(_selectedPeriod == "yesterday" ? "is-active" : "")" 
+                                @onclick="@(() => ChangePeriodAsync("yesterday"))">
+                            Hôm qua
+                        </button>
+                        <button type="button" 
+                                class="tf-dash-pill @(_selectedPeriod == "today" ? "is-active" : "")" 
+                                @onclick="@(() => ChangePeriodAsync("today"))">
+                            Hôm nay
+                        </button>
+                        <button type="button" 
                                 class="tf-dash-pill @(_selectedPeriod == "7d" ? "is-active" : "")" 
-                                @onclick="@(() => ChangePeriodAsync("7d"))"
-                                disabled="@_isLoadingChart">
+                                @onclick="@(() => ChangePeriodAsync("7d"))">
                             7 ngày qua
                         </button>
                         <button type="button" 
                                 class="tf-dash-pill @(_selectedPeriod == "30d" ? "is-active" : "")" 
-                                @onclick="@(() => ChangePeriodAsync("30d"))"
-                                disabled="@_isLoadingChart">
+                                @onclick="@(() => ChangePeriodAsync("30d"))">
                             30 ngày qua
                         </button>
                         <button type="button" 
                                 class="tf-dash-pill @(_selectedPeriod == "this_month" ? "is-active" : "")" 
-                                @onclick="@(() => ChangePeriodAsync("this_month"))"
-                                disabled="@_isLoadingChart">
+                                @onclick="@(() => ChangePeriodAsync("this_month"))">
                             Tháng này
                         </button>
+                        <button type="button" 
+                                class="tf-dash-pill @(_selectedPeriod == "last_month" ? "is-active" : "")" 
+                                @onclick="@(() => ChangePeriodAsync("last_month"))">
+                            Tháng trước
+                        </button>
+
+                        @* Custom Date Range Popover/Dropdown Wrap *@
+                        <div class="tf-dash-custom-dropdown-wrap">
+                            <button type="button" 
+                                    class="tf-dash-pill @(_selectedPeriod == "custom" ? "is-active" : "") @(_isCustomDropdownOpen ? "is-dropdown-open" : "")" 
+                                    @onclick="ToggleCustomDropdown"
+                                    title="Tùy chỉnh khoảng thời gian">
+                                <span>@GetCustomButtonLabel()</span>
+                                <svg class="tf-dropdown-chevron @(_isCustomDropdownOpen ? "is-rotated" : "")" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </button>
+
+                            @if (_isCustomDropdownOpen)
+                            {
+                                <div class="tf-popover-backdrop" @onclick="CloseCustomDropdown"></div>
+                                <div class="tf-custom-date-popover" @onclick:stopPropagation="true">
+                                    <div class="tf-popover-header">
+                                        <span class="tf-popover-title">Tùy chỉnh khoảng thời gian</span>
+                                        <button type="button" class="tf-popover-close-btn" @onclick="CloseCustomDropdown" aria-label="Đóng">&times;</button>
+                                    </div>
+
+                                    @* Quick presets *@
+                                    <div class="tf-popover-presets">
+                                        <span class="tf-presets-label">Preset nhanh:</span>
+                                        <div class="tf-presets-chips">
+                                            <button type="button" class="tf-preset-chip" @onclick="@(() => SelectPreset("yesterday"))">Hôm qua</button>
+                                            <button type="button" class="tf-preset-chip" @onclick="@(() => SelectPreset("today"))">Hôm nay</button>
+                                            <button type="button" class="tf-preset-chip" @onclick="@(() => SelectPreset("7d"))">7 ngày</button>
+                                            <button type="button" class="tf-preset-chip" @onclick="@(() => SelectPreset("30d"))">30 ngày</button>
+                                            <button type="button" class="tf-preset-chip" @onclick="@(() => SelectPreset("this_month"))">Tháng này</button>
+                                        </div>
+                                    </div>
+
+                                    @* Date range inputs *@
+                                    <div class="tf-popover-dates">
+                                        <div class="tf-date-field">
+                                            <label class="tf-date-field-label">Từ ngày:</label>
+                                            <input type="date" class="tf-date-field-input" @bind="_tempStartDate" />
+                                        </div>
+                                        <div class="tf-date-field">
+                                            <label class="tf-date-field-label">Đến ngày:</label>
+                                            <input type="date" class="tf-date-field-input" @bind="_tempEndDate" />
+                                        </div>
+                                    </div>
+
+                                    <div class="tf-popover-hint">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                        </svg>
+                                        <span>Chọn cùng một ngày để xem chi tiết 24 giờ.</span>
+                                    </div>
+
+                                    <div class="tf-popover-actions">
+                                        <button type="button" class="tf-btn tf-btn-xs tf-btn-ghost" @onclick="ResetCustomDates">
+                                            Xóa lựa chọn
+                                        </button>
+                                        <div class="tf-popover-actions-right">
+                                            <button type="button" class="tf-btn tf-btn-xs tf-btn-secondary" @onclick="CloseCustomDropdown">
+                                                Hủy
+                                            </button>
+                                            <button type="button" class="tf-btn tf-btn-xs tf-btn-primary" @onclick="ApplyCustomDateDropdownAsync" disabled="@(!_tempStartDate.HasValue || !_tempEndDate.HasValue)">
+                                                Áp dụng
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
                     </div>
 
                     @* Refresh Button *@
@@ -73,9 +163,9 @@
                 </div>
             </div>
 
-            @* Level 1: Modern KPI Grid (4 Cards) *@
+            @* Level 1: Modern KPI Grid (4 Cards) Synchronized with Selected Period *@
             <div class="tf-dash-kpi-grid">
-                @if (_isLoadingKpis)
+                @if (_isInitialLoading && _kpis.PeriodRevenue == 0)
                 {
                     for (int i = 0; i < 4; i++)
                     {
@@ -89,7 +179,7 @@
                     @* Card 1: Doanh thu *@
                     <div class="tf-kpi-card tf-kpi-revenue">
                         <div class="tf-kpi-top">
-                            <span class="tf-kpi-label">Doanh thu tháng này</span>
+                            <span class="tf-kpi-label">@(_kpis.PeriodRevenueLabel ?? "Doanh thu kỳ này")</span>
                             <div class="tf-kpi-icon tf-kpi-icon-emerald">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <line x1="12" y1="1" x2="12" y2="23"></line>
@@ -98,7 +188,7 @@
                             </div>
                         </div>
                         <div class="tf-kpi-value">
-                            @(_kpis.MonthRevenue > 0 ? $"{_kpis.MonthRevenue:N0} ₫" : "0 ₫")
+                            @(_kpis.PeriodRevenue > 0 ? $"{_kpis.PeriodRevenue:N0} ₫" : "0 ₫")
                         </div>
                         <div class="tf-kpi-bottom">
                             @if (_kpis.RevenueGrowthPercent.HasValue)
@@ -110,11 +200,11 @@
                                     </svg>
                                     @(isPositive ? "+" : "")@(_kpis.RevenueGrowthPercent.Value)%
                                 </span>
-                                <span class="tf-kpi-subtext">so với tháng trước</span>
+                                <span class="tf-kpi-subtext">so với @(_kpis.PreviousPeriodLabel ?? "kỳ trước")</span>
                             }
                             else
                             {
-                                <span class="tf-kpi-subtext">Hóa đơn phát hành trong tháng</span>
+                                <span class="tf-kpi-subtext">Hóa đơn phát sinh theo kỳ đã chọn</span>
                             }
                         </div>
                     </div>
@@ -122,7 +212,7 @@
                     @* Card 2: Đơn bán hàng *@
                     <div class="tf-kpi-card tf-kpi-orders">
                         <div class="tf-kpi-top">
-                            <span class="tf-kpi-label">Tổng đơn bán hàng</span>
+                            <span class="tf-kpi-label">@(_kpis.PeriodOrdersLabel ?? "Tổng đơn bán hàng")</span>
                             <div class="tf-kpi-icon tf-kpi-icon-blue">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <circle cx="9" cy="21" r="1"></circle>
@@ -132,12 +222,21 @@
                             </div>
                         </div>
                         <div class="tf-kpi-value">
-                            @_kpis.TotalOrdersCount.ToString("N0") <span class="tf-kpi-unit">đơn</span>
+                            @_kpis.PeriodOrdersCount.ToString("N0") <span class="tf-kpi-unit">đơn</span>
                         </div>
                         <div class="tf-kpi-bottom">
-                            <span class="tf-kpi-subtext">
-                                <strong>@_kpis.TodayOrdersCount</strong> đơn phát sinh hôm nay • <strong>@_kpis.MonthOrdersCount</strong> trong tháng
-                            </span>
+                            @if (_kpis.PeriodItemsSoldCount > 0)
+                            {
+                                <span class="tf-kpi-subtext">
+                                    Tổng <strong>@_kpis.PeriodItemsSoldCount.ToString("N0")</strong> sản phẩm xuất bán
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="tf-kpi-subtext">
+                                    <strong>@_kpis.TodayOrdersCount</strong> đơn hôm nay • <strong>@_kpis.MonthOrdersCount</strong> trong tháng
+                                </span>
+                            }
                         </div>
                     </div>
 
@@ -204,7 +303,7 @@
                 <div class="tf-card tf-dash-section tf-dash-chart-card">
                     <div class="tf-dash-card-header">
                         <div>
-                            <h2 class="tf-dash-card-title">Biểu đồ doanh thu & bán hàng</h2>
+                            <h2 class="tf-dash-card-title">@(_chartData.PeriodTitle ?? "Biểu đồ doanh thu & bán hàng")</h2>
                             <p class="tf-dash-card-subtitle">
                                 Tổng hợp biến động doanh số theo thời gian thực (@GetPeriodLabel(_selectedPeriod))
                             </p>
@@ -215,12 +314,12 @@
                             <div class="tf-dash-metric-switch">
                                 <button type="button" 
                                         class="tf-dash-switch-btn @(_chartMetric == "revenue" ? "is-active" : "")"
-                                        @onclick="@(() => _chartMetric = "revenue")">
+                                        @onclick="@(() => SetChartMetricAsync("revenue"))">
                                     Doanh thu (₫)
                                 </button>
                                 <button type="button" 
                                         class="tf-dash-switch-btn @(_chartMetric == "orders" ? "is-active" : "")"
-                                        @onclick="@(() => _chartMetric = "orders")">
+                                        @onclick="@(() => SetChartMetricAsync("orders"))">
                                     Số đơn hàng
                                 </button>
                             </div>
@@ -236,17 +335,86 @@
                                     <span>Tổng kỳ: <strong>@_chartData.TotalPeriodOrders đơn</strong></span>
                                 }
                             </div>
+
+                            @* Sync indicator during background update *@
+                            @if (_isPeriodSwitching)
+                            {
+                                <div class="tf-chart-sync-indicator" role="status" aria-label="Đang cập nhật">
+                                    <span class="tf-sync-spinner"></span>
+                                    <span class="tf-sync-text">Đang cập nhật...</span>
+                                </div>
+                            }
                         </div>
                     </div>
 
                     <div class="tf-dash-chart-body">
-                        @if (_isLoadingChart)
+                        @* Error Banner if API error occurred *@
+                        @if (!string.IsNullOrEmpty(_chartErrorMessage))
+                        {
+                            <div class="tf-chart-error-banner">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                                <div class="tf-chart-error-content">
+                                    <span class="tf-chart-error-title">Lỗi tải dữ liệu biểu đồ</span>
+                                    <span class="tf-chart-error-desc">@_chartErrorMessage</span>
+                                </div>
+                                <button type="button" class="tf-btn tf-btn-xs tf-btn-secondary" @onclick="@(() => ChangePeriodAsync(_selectedPeriod, _customStartDate, _customEndDate))">
+                                    Thử lại
+                                </button>
+                            </div>
+                        }
+
+                        @* Daily Overview Summary Bar (When in 1-Day Hourly Mode) *@
+                        @if (_chartData.IsHourly && !_isInitialLoading && string.IsNullOrEmpty(_chartErrorMessage))
+                        {
+                            <div class="tf-dash-hourly-summary-bar">
+                                <div class="tf-hourly-summary-item">
+                                    <span class="tf-hsum-label">Doanh thu ngày</span>
+                                    <strong class="tf-hsum-val tf-text-emerald">@_chartData.TotalPeriodRevenue.ToString("N0") ₫</strong>
+                                </div>
+                                <div class="tf-hourly-summary-divider"></div>
+                                <div class="tf-hourly-summary-item">
+                                    <span class="tf-hsum-label">Tổng đơn</span>
+                                    <strong class="tf-hsum-val tf-text-blue">@_chartData.TotalPeriodOrders đơn</strong>
+                                </div>
+                                <div class="tf-hourly-summary-divider"></div>
+                                <div class="tf-hourly-summary-item">
+                                    <span class="tf-hsum-label">Tổng SP bán</span>
+                                    <strong class="tf-hsum-val tf-text-amber">@_chartData.TotalPeriodItemsSold.ToString("N0") món</strong>
+                                </div>
+                                @if (!string.IsNullOrEmpty(_chartData.PeakHourLabel))
+                                {
+                                    <div class="tf-hourly-summary-divider"></div>
+                                    <div class="tf-hourly-summary-item">
+                                        <span class="tf-hsum-label">Đỉnh doanh thu</span>
+                                        <strong class="tf-hsum-val tf-text-amber" title="Doanh thu đỉnh: @_chartData.PeakHourRevenue.ToString("N0") ₫">
+                                            @_chartData.PeakHourLabel (@FormatShortMoney(_chartData.PeakHourRevenue))
+                                        </strong>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(_chartData.PeakOrderHourLabel))
+                                {
+                                    <div class="tf-hourly-summary-divider"></div>
+                                    <div class="tf-hourly-summary-item">
+                                        <span class="tf-hsum-label">Đỉnh số đơn</span>
+                                        <strong class="tf-hsum-val tf-text-purple">
+                                            @_chartData.PeakOrderHourLabel (@_chartData.PeakHourlyOrders đơn)
+                                        </strong>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        @if (_isInitialLoading && _chartData.Points.Count == 0)
                         {
                             <div class="tf-chart-skeleton">
                                 <Skeleton Type="text" Rows="6" />
                             </div>
                         }
-                        else if (_chartData.Points.Count == 0)
+                        else if (_chartData.Points.Count == 0 && !_isPeriodSwitching)
                         {
                             <div class="tf-chart-empty">
                                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -259,8 +427,8 @@
                         }
                         else
                         {
-                            @* High-end SVG Area Chart with interactive Hover *@
-                            <div class="tf-chart-viewport-wrap" @onmouseleave="ClearChartHover">
+                            @* High-end SVG Area Chart with interactive Hover & smooth dataset transitions *@
+                            <div class="tf-chart-viewport-wrap @(_isPeriodSwitching ? "is-syncing" : "")" @onmouseleave="ClearChartHover">
                                 <svg class="tf-chart-svg" viewBox="0 0 800 240" preserveAspectRatio="none" aria-label="Biểu đồ bán hàng">
                                     <defs>
                                         <linearGradient id="tfRevGrad" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -309,6 +477,29 @@
                                         <path d="@lineD" fill="none" stroke="@strokeColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="tf-chart-line-path" />
                                     }
 
+                                    @* Peak & Lowest Day Highlight Markers on Multi-day Line *@
+                                    @if (!_chartData.IsHourly && pointCoords.Count > 1)
+                                    {
+                                        @for (int i = 0; i < pointCoords.Count; i++)
+                                        {
+                                            var ptModel = _chartData.Points[i];
+                                            if (ptModel.IsPeak && ptModel.Revenue > 0)
+                                            {
+                                                var pCoord = pointCoords[i];
+                                                <circle cx="@pCoord.X.ToString("F1", CultureInfo.InvariantCulture)" 
+                                                        cy="@pCoord.Y.ToString("F1", CultureInfo.InvariantCulture)" 
+                                                        r="4.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5" class="tf-chart-peak-marker" />
+                                            }
+                                            else if (ptModel.IsLowest && ptModel.Revenue > 0)
+                                            {
+                                                var pCoord = pointCoords[i];
+                                                <circle cx="@pCoord.X.ToString("F1", CultureInfo.InvariantCulture)" 
+                                                        cy="@pCoord.Y.ToString("F1", CultureInfo.InvariantCulture)" 
+                                                        r="3.5" fill="#94a3b8" stroke="#ffffff" stroke-width="1.5" class="tf-chart-lowest-marker" />
+                                            }
+                                        }
+                                    }
+
                                     @* Active Hover Indicator *@
                                     @if (_hoveredPointIndex.HasValue && _hoveredPointIndex.Value < pointCoords.Count)
                                     {
@@ -339,34 +530,102 @@
 
                                     @* X-axis Date Labels *@
                                     @{
-                                        var step = Math.Max(1, (int)Math.Ceiling(pointCoords.Count / 7.0));
+                                        var step = _chartData.IsHourly ? 3 : Math.Max(1, (int)Math.Ceiling(pointCoords.Count / 7.0));
                                     }
                                     @for (int i = 0; i < pointCoords.Count; i += step)
                                     {
                                         var pt = pointCoords[i];
                                         @((MarkupString)$"<text x=\"{pt.X.ToString("F1", CultureInfo.InvariantCulture)}\" y=\"215\" text-anchor=\"middle\" class=\"tf-chart-axis-text\">{_chartData.Points[i].DateLabel}</text>")
                                     }
+                                    @if ((pointCoords.Count - 1) % step != 0)
+                                    {
+                                        var lastPt = pointCoords[^1];
+                                        @((MarkupString)$"<text x=\"{lastPt.X.ToString("F1", CultureInfo.InvariantCulture)}\" y=\"215\" text-anchor=\"middle\" class=\"tf-chart-axis-text\">{_chartData.Points[^1].DateLabel}</text>")
+                                    }
                                 </svg>
 
-                                @* Floating Rich HTML Tooltip *@
+                                @* Floating Rich HTML Tooltip with Hourly Products Sold Table *@
                                 @if (_hoveredPointIndex.HasValue && _hoveredPointIndex.Value < _chartData.Points.Count)
                                 {
                                     var pt = _chartData.Points[_hoveredPointIndex.Value];
                                     var coords = GetPointCoords(_hoveredPointIndex.Value);
-                                    var leftPercent = Math.Clamp((coords.X / 800.0) * 100.0, 8.0, 92.0);
+                                    var leftPercent = Math.Clamp((coords.X / 800.0) * 100.0, 10.0, 90.0);
 
                                     <div class="tf-chart-tooltip" style="left: @(leftPercent.ToString("F1", CultureInfo.InvariantCulture))%;">
                                         <div class="tf-chart-tooltip-header">
-                                            <span class="tf-chart-tooltip-date">@pt.Date.ToString("dddd, dd/MM/yyyy", new CultureInfo("vi-VN"))</span>
+                                            @if (_chartData.IsHourly)
+                                            {
+                                                <div class="tf-chart-tooltip-time-row">
+                                                    <span class="tf-chart-tooltip-date">Khung giờ: <strong>@pt.DateLabel – @($"{pt.Hour + 1:D2}:00")</strong></span>
+                                                    @if (pt.IsPeak)
+                                                    {
+                                                        <span class="tf-peak-pill-sm">★ Đỉnh doanh thu</span>
+                                                    }
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="tf-chart-tooltip-time-row">
+                                                    <span class="tf-chart-tooltip-date">@pt.FullDateLabel</span>
+                                                    @if (pt.IsPeak)
+                                                    {
+                                                        <span class="tf-peak-pill-sm">★ Đỉnh doanh thu</span>
+                                                    }
+                                                    else if (pt.IsLowest && _chartData.Points.Count > 1 && pt.Revenue > 0)
+                                                    {
+                                                        <span class="tf-lowest-pill-sm">Điểm thấp nhất</span>
+                                                    }
+                                                </div>
+                                            }
                                         </div>
-                                        <div class="tf-chart-tooltip-metric">
-                                            <span class="tf-chart-tooltip-label">Doanh thu:</span>
-                                            <strong class="tf-chart-tooltip-val tf-text-emerald">@pt.Revenue.ToString("N0") ₫</strong>
+
+                                        <div class="tf-chart-tooltip-metrics-grid">
+                                            <div class="tf-chart-tooltip-metric">
+                                                <span class="tf-chart-tooltip-label">Doanh thu:</span>
+                                                <strong class="tf-chart-tooltip-val tf-text-emerald">@pt.Revenue.ToString("N0") ₫</strong>
+                                            </div>
+                                            <div class="tf-chart-tooltip-metric">
+                                                <span class="tf-chart-tooltip-label">Số đơn:</span>
+                                                <strong class="tf-chart-tooltip-val tf-text-blue">@pt.OrderCount đơn</strong>
+                                            </div>
+                                            <div class="tf-chart-tooltip-metric">
+                                                <span class="tf-chart-tooltip-label">Số SP bán:</span>
+                                                <strong class="tf-chart-tooltip-val tf-text-amber">@pt.ItemsSold.ToString("N0") món</strong>
+                                            </div>
                                         </div>
-                                        <div class="tf-chart-tooltip-metric">
-                                            <span class="tf-chart-tooltip-label">Đơn hàng:</span>
-                                            <strong class="tf-chart-tooltip-val tf-text-blue">@pt.OrderCount đơn</strong>
-                                        </div>
+
+                                        @* If Hourly and has products sold, display breakdown table *@
+                                        @if (_chartData.IsHourly && pt.ProductsSold != null && pt.ProductsSold.Count > 0)
+                                        {
+                                            <div class="tf-tooltip-products-section">
+                                                <div class="tf-tooltip-products-title">Sản phẩm xuất bán trong giờ (@pt.ProductsSold.Count):</div>
+                                                <div class="tf-tooltip-table-wrap">
+                                                    <table class="tf-tooltip-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Sản phẩm</th>
+                                                                <th class="tf-th-right">SL</th>
+                                                                <th class="tf-th-right">Thành tiền</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach (var prod in pt.ProductsSold)
+                                                            {
+                                                                <tr>
+                                                                    <td class="tf-td-name" title="@prod.ProductName">@prod.ProductName</td>
+                                                                    <td class="tf-td-right">@prod.Quantity.ToString("N0")</td>
+                                                                    <td class="tf-td-right tf-td-amount">@prod.TotalAmount.ToString("N0") ₫</td>
+                                                                </tr>
+                                                            }
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        }
+                                        else if (_chartData.IsHourly && pt.OrderCount == 0)
+                                        {
+                                            <div class="tf-tooltip-zero-note">Không phát sinh giao dịch trong giờ này</div>
+                                        }
                                     </div>
                                 }
                             </div>
@@ -379,7 +638,7 @@
                     <div class="tf-dash-card-header">
                         <div>
                             <h2 class="tf-dash-card-title">Sản phẩm bán chạy</h2>
-                            <p class="tf-dash-card-subtitle">Top mặt hàng có doanh thu cao nhất</p>
+                            <p class="tf-dash-card-subtitle">Top mặt hàng có doanh thu cao nhất (@GetPeriodLabel(_selectedPeriod))</p>
                         </div>
                         <a href="/danh-muc/san-pham" class="tf-dash-card-link" title="Xem danh mục sản phẩm">
                             Xem tất cả &rarr;
@@ -387,11 +646,11 @@
                     </div>
 
                     <div class="tf-dash-card-body">
-                        @if (_isLoadingBestSelling)
+                        @if (_isInitialLoading && _bestSellingProducts.Count == 0)
                         {
                             <Skeleton Type="text" Rows="5" />
                         }
-                        else if (_bestSellingProducts.Count == 0)
+                        else if (_bestSellingProducts.Count == 0 && !_isPeriodSwitching)
                         {
                             <div class="tf-empty tf-empty-sm">
                                 <div class="tf-empty-icon">
@@ -401,7 +660,7 @@
                                     </svg>
                                 </div>
                                 <div class="tf-empty-title">Chưa có dữ liệu bán chạy</div>
-                                <div class="tf-empty-desc">Sản phẩm sẽ được xếp hạng khi phát sinh đơn hàng.</div>
+                                <div class="tf-empty-desc">Sản phẩm sẽ được xếp hạng khi phát sinh đơn hàng trong kỳ này.</div>
                             </div>
                         }
                         else
@@ -562,22 +821,19 @@
                     </div>
                 </div>
 
-                @* Recent Activities Column (50%) *@
+                @* Recent Activity Column (50%) *@
                 <div class="tf-card tf-dash-section tf-dash-activity-card">
                     <div class="tf-dash-card-header">
                         <div>
-                            <h2 class="tf-dash-card-title">Hoạt động gần đây</h2>
-                            <p class="tf-dash-card-subtitle">Nhật ký kiểm toán & sự kiện nghiệp vụ hệ thống</p>
+                            <h2 class="tf-dash-card-title">Nhật ký hoạt động</h2>
+                            <p class="tf-dash-card-subtitle">Dòng sự kiện kinh doanh thời gian thực</p>
                         </div>
-                        <a href="/cai-dat/nhat-ky-he-thong" class="tf-dash-card-link" title="Xem toàn bộ nhật ký hệ thống">
-                            Tất cả nhật ký &rarr;
-                        </a>
                     </div>
 
                     <div class="tf-dash-card-body">
                         @if (_isLoadingActivities)
                         {
-                            <Skeleton Type="text" Rows="6" />
+                            <Skeleton Type="text" Rows="4" />
                         }
                         else if (_recentActivities.Count == 0)
                         {
@@ -731,17 +987,29 @@
 </AuthorizeView>
 
 @code {
-    private bool _isLoadingKpis = true;
-    private bool _isLoadingChart = true;
-    private bool _isLoadingBestSelling = true;
+    private bool _isInitialLoading = true;
+    private bool _isPeriodSwitching = false;
     private bool _isLoadingWarehouse = true;
     private bool _isLoadingActivities = true;
     private bool _isRefreshing = false;
 
     private string _selectedPeriod = "30d";
+    private string _lastLoadedPeriod = "30d";
     private string _chartMetric = "revenue"; // "revenue" or "orders"
     private int? _hoveredPointIndex = null;
     private string? _currentUserName;
+    private string? _chartErrorMessage;
+
+    // Concurrency control for period switching
+    private CancellationTokenSource? _periodCts;
+    private long _periodRequestSequence = 0;
+
+    // Custom dropdown popover state
+    private bool _isCustomDropdownOpen = false;
+    private DateTime? _customStartDate = DateTime.Today.AddDays(-7);
+    private DateTime? _customEndDate = DateTime.Today;
+    private DateTime? _tempStartDate;
+    private DateTime? _tempEndDate;
 
     private DashboardKpiModel _kpis = new();
     private DashboardChartDataModel _chartData = new();
@@ -767,9 +1035,7 @@
             _warehouseSummary = DashboardState.WarehouseSummary ?? new();
             _recentActivities = DashboardState.EnrichedActivities.ToList();
 
-            _isLoadingKpis = false;
-            _isLoadingChart = false;
-            _isLoadingBestSelling = false;
+            _isInitialLoading = false;
             _isLoadingWarehouse = false;
             _isLoadingActivities = false;
         }
@@ -784,6 +1050,11 @@
             ActivityBroadcaster.OnActivity += HandleActivityBroadcast;
             try
             {
+                var (_, _, coords) = CalculateChartPaths();
+                if (coords.Count > 0)
+                {
+                    await JS.InvokeVoidAsync("TradeFlowMotion.transitionDashboardChart", ".tf-chart-svg", coords, true, 0);
+                }
                 await JS.InvokeVoidAsync("TradeFlowMotion.animateDashboardEntrance", "#tf-dash-root");
             }
             catch
@@ -795,11 +1066,12 @@
 
     private async Task LoadAllDashboardDataAsync()
     {
+        _chartErrorMessage = null;
         try
         {
-            var kpisTask = AnalyticsService.GetKpisAsync();
-            var chartTask = AnalyticsService.GetSalesChartDataAsync(_selectedPeriod);
-            var bestSellingTask = AnalyticsService.GetBestSellingProductsAsync(_selectedPeriod, 5);
+            var kpisTask = AnalyticsService.GetKpisAsync(_selectedPeriod, _customStartDate, _customEndDate);
+            var chartTask = AnalyticsService.GetSalesChartDataAsync(_selectedPeriod, _customStartDate, _customEndDate);
+            var bestSellingTask = AnalyticsService.GetBestSellingProductsAsync(_selectedPeriod, 5, null, _customStartDate, _customEndDate);
             var warehouseTask = AnalyticsService.GetWarehouseOverviewAsync();
             var activitiesTask = AnalyticsService.GetRecentActivitiesAsync(6);
 
@@ -810,6 +1082,7 @@
             _bestSellingProducts = await bestSellingTask;
             _warehouseSummary = await warehouseTask;
             _recentActivities = await activitiesTask;
+            _lastLoadedPeriod = _selectedPeriod;
 
             // Cache to state service
             DashboardState.SetFullState(_kpis, _chartData, _bestSellingProducts, _warehouseSummary, _recentActivities);
@@ -817,43 +1090,213 @@
         catch (Exception ex)
         {
             Console.WriteLine($"[Dashboard Error] {ex.Message}");
+            _chartErrorMessage = "Không thể tải dữ liệu báo cáo. Vui lòng kiểm tra và thử lại.";
         }
         finally
         {
-            _isLoadingKpis = false;
-            _isLoadingChart = false;
-            _isLoadingBestSelling = false;
+            _isInitialLoading = false;
+            _isPeriodSwitching = false;
             _isLoadingWarehouse = false;
             _isLoadingActivities = false;
             _isRefreshing = false;
             StateHasChanged();
+
+            try
+            {
+                var (_, _, coords) = CalculateChartPaths();
+                if (coords.Count > 0)
+                {
+                    await JS.InvokeVoidAsync("TradeFlowMotion.transitionDashboardChart", ".tf-chart-svg", coords, true, 0);
+                }
+            }
+            catch { }
         }
     }
 
-    private async Task ChangePeriodAsync(string period)
+    private async Task ChangePeriodAsync(string period, DateTime? customStart = null, DateTime? customEnd = null)
     {
-        if (_selectedPeriod == period) return;
+        // Avoid duplicate fetch if already displaying this exact period/dates and not currently switching
+        if (_selectedPeriod == period && 
+            period != "custom" && 
+            _lastLoadedPeriod == period && 
+            !_isPeriodSwitching && 
+            _chartData.Points.Count > 0)
+        {
+            return;
+        }
 
         _selectedPeriod = period;
-        _isLoadingChart = true;
+        if (period == "custom")
+        {
+            if (customStart.HasValue) _customStartDate = customStart;
+            if (customEnd.HasValue) _customEndDate = customEnd;
+        }
+        else
+        {
+            _isCustomDropdownOpen = false;
+        }
+
+        _chartErrorMessage = null;
+        _isPeriodSwitching = true;
         _hoveredPointIndex = null;
+
+        // Cancel previous pending request to prevent race conditions
+        _periodCts?.Cancel();
+        _periodCts?.Dispose();
+        _periodCts = new CancellationTokenSource();
+        var ct = _periodCts.Token;
+        var currentSeq = Interlocked.Increment(ref _periodRequestSequence);
+
         StateHasChanged();
 
         try
         {
-            _chartData = await AnalyticsService.GetSalesChartDataAsync(_selectedPeriod);
-            _bestSellingProducts = await AnalyticsService.GetBestSellingProductsAsync(_selectedPeriod, 5);
+            var kpisTask = AnalyticsService.GetKpisAsync(_selectedPeriod, _customStartDate, _customEndDate, cancellationToken: ct);
+            var chartTask = AnalyticsService.GetSalesChartDataAsync(_selectedPeriod, _customStartDate, _customEndDate, cancellationToken: ct);
+            var bestSellingTask = AnalyticsService.GetBestSellingProductsAsync(_selectedPeriod, 5, null, _customStartDate, _customEndDate, cancellationToken: ct);
+
+            await Task.WhenAll(kpisTask, chartTask, bestSellingTask);
+
+            if (ct.IsCancellationRequested || currentSeq != _periodRequestSequence)
+            {
+                return;
+            }
+
+            var newKpis = await kpisTask;
+            var newChartData = await chartTask;
+            var newBestSelling = await bestSellingTask;
+
+            _kpis = newKpis;
+            _chartData = newChartData;
+            _bestSellingProducts = newBestSelling;
+            _lastLoadedPeriod = period;
+
             DashboardState.SetFullState(_kpis, _chartData, _bestSellingProducts, _warehouseSummary, _recentActivities);
+
+            // Trigger smooth continuous chart transition
+            var (_, _, newCoords) = CalculateChartPaths();
+            try
+            {
+                await JS.InvokeVoidAsync("TradeFlowMotion.transitionDashboardChart", ".tf-chart-svg", newCoords, false, 320);
+            }
+            catch { }
+        }
+        catch (OperationCanceledException)
+        {
+            // Cleanly ignored; newer request in flight
+            return;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[Dashboard Period Error] {ex.Message}");
+            if (currentSeq == _periodRequestSequence)
+            {
+                Console.WriteLine($"[Dashboard Period Error] {ex.Message}");
+                _chartErrorMessage = "Không thể tải dữ liệu báo cáo cho khoảng thời gian này.";
+            }
         }
         finally
         {
-            _isLoadingChart = false;
-            StateHasChanged();
+            if (currentSeq == _periodRequestSequence)
+            {
+                _isPeriodSwitching = false;
+                StateHasChanged();
+            }
         }
+    }
+
+    private async Task SetChartMetricAsync(string metric)
+    {
+        if (_chartMetric == metric) return;
+        _chartMetric = metric;
+        _hoveredPointIndex = null;
+        var (_, _, newCoords) = CalculateChartPaths();
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.transitionDashboardChart", ".tf-chart-svg", newCoords, false, 320);
+        }
+        catch { }
+        StateHasChanged();
+    }
+
+    private void ToggleCustomDropdown()
+    {
+        _isCustomDropdownOpen = !_isCustomDropdownOpen;
+        if (_isCustomDropdownOpen)
+        {
+            _tempStartDate = _customStartDate ?? DateTime.Today.AddDays(-7);
+            _tempEndDate = _customEndDate ?? DateTime.Today;
+        }
+    }
+
+    private void CloseCustomDropdown()
+    {
+        _isCustomDropdownOpen = false;
+    }
+
+    private void ResetCustomDates()
+    {
+        var nowVn = DateTime.UtcNow.AddHours(7).Date;
+        _tempStartDate = nowVn;
+        _tempEndDate = nowVn;
+    }
+
+    private void SelectPreset(string preset)
+    {
+        var nowVn = DateTime.UtcNow.AddHours(7).Date;
+        switch (preset)
+        {
+            case "yesterday":
+                _tempStartDate = nowVn.AddDays(-1);
+                _tempEndDate = nowVn.AddDays(-1);
+                break;
+            case "today":
+                _tempStartDate = nowVn;
+                _tempEndDate = nowVn;
+                break;
+            case "7d":
+                _tempStartDate = nowVn.AddDays(-6);
+                _tempEndDate = nowVn;
+                break;
+            case "30d":
+                _tempStartDate = nowVn.AddDays(-29);
+                _tempEndDate = nowVn;
+                break;
+            case "this_month":
+                _tempStartDate = new DateTime(nowVn.Year, nowVn.Month, 1);
+                _tempEndDate = nowVn;
+                break;
+        }
+    }
+
+    private async Task ApplyCustomDateDropdownAsync()
+    {
+        if (!_tempStartDate.HasValue || !_tempEndDate.HasValue) return;
+
+        if (_tempStartDate > _tempEndDate)
+        {
+            var temp = _tempStartDate;
+            _tempStartDate = _tempEndDate;
+            _tempEndDate = temp;
+        }
+
+        _customStartDate = _tempStartDate;
+        _customEndDate = _tempEndDate;
+        _isCustomDropdownOpen = false;
+
+        await ChangePeriodAsync("custom", _customStartDate, _customEndDate);
+    }
+
+    private string GetCustomButtonLabel()
+    {
+        if (_selectedPeriod == "custom" && _customStartDate.HasValue && _customEndDate.HasValue)
+        {
+            if (_customStartDate.Value.Date == _customEndDate.Value.Date)
+            {
+                return _customStartDate.Value.ToString("dd/MM/yyyy");
+            }
+            return $"{_customStartDate.Value:dd/MM} – {_customEndDate.Value:dd/MM/yyyy}";
+        }
+        return "Tùy chỉnh";
     }
 
     private async Task RefreshDataAsync()
@@ -901,6 +1344,14 @@
                     coords);
         }
 
+        // Zero transaction baseline: draw flat horizontal line at bottom
+        bool allZero = _chartMetric == "revenue" ? _chartData.TotalPeriodRevenue == 0 : _chartData.TotalPeriodOrders == 0;
+        if (allZero)
+        {
+            var flatLine = $"M {Inv(coords[0].X)} {Inv(bottom)} L {Inv(coords[^1].X)} {Inv(bottom)}";
+            return (string.Empty, flatLine, coords);
+        }
+
         var lineSb = new System.Text.StringBuilder();
         lineSb.Append($"M {Inv(coords[0].X)} {Inv(coords[0].Y)}");
 
@@ -936,10 +1387,19 @@
         return amount.ToString("N0");
     }
 
-    private static string GetPeriodLabel(string period) => period switch
+    private string GetPeriodLabel(string period) => period switch
     {
+        "yesterday" => "Hôm qua",
+        "today" => "Hôm nay",
         "7d" => "7 ngày qua",
+        "30d" => "30 ngày qua",
         "this_month" => "Tháng này",
+        "last_month" => "Tháng trước",
+        "custom" => _customStartDate.HasValue && _customEndDate.HasValue 
+            ? (_customStartDate.Value.Date == _customEndDate.Value.Date 
+                ? _customStartDate.Value.ToString("dd/MM/yyyy") 
+                : $"{_customStartDate:dd/MM} - {_customEndDate:dd/MM/yyyy}") 
+            : "Tùy chỉnh",
         _ => "30 ngày qua"
     };
 
@@ -1054,5 +1514,7 @@
     public void Dispose()
     {
         ActivityBroadcaster.OnActivity -= HandleActivityBroadcast;
+        _periodCts?.Cancel();
+        _periodCts?.Dispose();
     }
 }

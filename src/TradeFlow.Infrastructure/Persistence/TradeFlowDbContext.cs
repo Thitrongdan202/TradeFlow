@@ -13,6 +13,8 @@ using TradeFlow.Domain.Entities.Employees;
 using TradeFlow.Domain.Entities.Partners;
 using TradeFlow.Domain.Entities.Contracts;
 using TradeFlow.Domain.Entities.Warehouses;
+using TradeFlow.Domain.Entities.Attendance;
+using TradeFlow.Domain.Entities.Support;
 
 namespace TradeFlow.Infrastructure.Persistence;
 
@@ -35,6 +37,7 @@ public class TradeFlowDbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<CompanySettings> CompanySettings => Set<CompanySettings>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+    public DbSet<TemporaryRoleAssignment> TemporaryRoleAssignments => Set<TemporaryRoleAssignment>();
     public DbSet<SystemSequence> SystemSequences => Set<SystemSequence>();
 
     // === Phase 3 — Master Data ===
@@ -97,6 +100,23 @@ public class TradeFlowDbContext
     public DbSet<WarehouseReturnOrderItem> WarehouseReturnOrderItems => Set<WarehouseReturnOrderItem>();
     public DbSet<QuarantinedInventoryItem> QuarantinedInventoryItems => Set<QuarantinedInventoryItem>();
 
+    // === Phân hệ Chấm công & Ca làm việc (Attendance Management) ===
+    public DbSet<WorkShift> WorkShifts => Set<WorkShift>();
+    public DbSet<EmployeeShiftAssignment> EmployeeShiftAssignments => Set<EmployeeShiftAssignment>();
+    public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
+    public DbSet<AttendanceAdjustmentRequest> AttendanceAdjustmentRequests => Set<AttendanceAdjustmentRequest>();
+    public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
+    public DbSet<ShiftChangeRequest> ShiftChangeRequests => Set<ShiftChangeRequest>();
+    public DbSet<AttendancePolicy> AttendancePolicies => Set<AttendancePolicy>();
+    public DbSet<AttendanceAuditLog> AttendanceAuditLogs => Set<AttendanceAuditLog>();
+    public DbSet<LeaveBalanceLedger> LeaveBalanceLedgers => Set<LeaveBalanceLedger>();
+
+    // === Phân hệ Hỗ trợ nội bộ & Báo cáo sự cố (Internal Support System) ===
+    public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>();
+    public DbSet<SupportAttachment> SupportAttachments => Set<SupportAttachment>();
+    public DbSet<SupportComment> SupportComments => Set<SupportComment>();
+    public DbSet<SupportAuditLog> SupportAuditLogs => Set<SupportAuditLog>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -112,6 +132,16 @@ public class TradeFlowDbContext
         modelBuilder.Entity<IdentityUserLogin<string>>().ToTable("UserLogins");
         modelBuilder.Entity<IdentityRoleClaim<string>>().ToTable("RoleClaims");
         modelBuilder.Entity<IdentityUserToken<string>>().ToTable("UserTokens");
+
+        modelBuilder.Entity<TemporaryRoleAssignment>(b =>
+        {
+            b.ToTable("TemporaryRoleAssignments");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.UserId);
+            b.HasIndex(x => x.RoleId);
+            b.HasIndex(x => x.Status);
+            b.HasIndex(x => x.ExpiresAt);
+        });
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

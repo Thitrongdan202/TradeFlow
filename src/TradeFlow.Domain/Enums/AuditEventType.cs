@@ -8,15 +8,22 @@ public enum AuditEventType
     LoginFailed = 2,
     Logout = 3,
 
-    // === Quản lý người dùng ===
+    // === Quản lý người dùng & Bảo mật ROOT ===
     UserCreated = 10,
     UserUpdated = 11,
     UserLocked = 12,
+    AccountLocked = 12,
     UserUnlocked = 13,
+    AccountUnlocked = 13,
     PasswordReset = 14,
     PasswordChanged = 15,
     PasswordViewed = 16,
     PasswordRecoveryRequested = 17,
+    TemporaryPasswordIssued = 18,
+    ForcedPasswordChange = 19,
+    SessionRevoked = 26,
+    AccountDisabled = 27,
+    SuspiciousLogin = 28,
 
     // === Quản lý vai trò ===
     RoleCreated = 20,
@@ -189,5 +196,30 @@ public enum AuditEventType
     EmploymentContractTerminated = 245,
     EmploymentContractCancelled = 246,
     EmploymentContractExportedPdf = 247,
-    EmploymentContractDeleted = 248
+    EmploymentContractDeleted = 248,
+
+    // === Chấm công & Nghỉ phép (Phase 8+) ===
+    AttendanceClockIn = 250,
+    AttendanceClockOut = 251,
+    AttendanceAdjustmentSubmitted = 252,
+    AttendanceAdjustmentApproved = 253,
+    AttendanceAdjustmentRejected = 254,
+    LeaveRequestSubmitted = 255,
+    LeaveRequestApproved = 256,
+    LeaveRequestRejected = 257,
+    LeaveBalanceAdjusted = 258,
+    ShiftChangeSubmitted = 259,
+    ShiftChangeApproved = 260,
+    ShiftChangeRejected = 261,
+
+    // === Phân quyền & Quản lý Truy cập (Custom RBAC & Temporary Access) ===
+    RoleCloned = 265,
+    RolePermissionsUpdated = 266,
+    UserRoleAssigned = 267,
+    UserRoleRevoked = 268,
+    TemporaryRoleGranted = 269,
+    TemporaryRoleRevoked = 270,
+    TemporaryRoleExpired = 271,
+    DataScopeChanged = 272,
+    UnauthorizedAccessAttempt = 273
 }

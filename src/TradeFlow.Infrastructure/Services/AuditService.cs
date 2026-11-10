@@ -82,9 +82,29 @@ public class AuditService : IAuditService
             AuditEventType.ContractFinalized or
             AuditEventType.EmployeeRequestSubmitted or
             AuditEventType.EmployeeRequestApproved or
+            AuditEventType.AttendanceAdjustmentSubmitted or
+            AuditEventType.AttendanceAdjustmentApproved or
+            AuditEventType.AttendanceAdjustmentRejected or
+            AuditEventType.LeaveRequestSubmitted or
+            AuditEventType.LeaveRequestApproved or
+            AuditEventType.LeaveRequestRejected or
+            AuditEventType.ShiftChangeSubmitted or
+            AuditEventType.ShiftChangeApproved or
+            AuditEventType.RoleCreated or
+            AuditEventType.RoleUpdated or
+            AuditEventType.RoleDeleted or
             AuditEventType.WarehouseCreated or
             AuditEventType.PriceListCreated or
-            AuditEventType.PriceListApproved => true,
+            AuditEventType.PriceListApproved or
+            AuditEventType.PasswordReset or
+            AuditEventType.PasswordChanged or
+            AuditEventType.TemporaryPasswordIssued or
+            AuditEventType.ForcedPasswordChange or
+            AuditEventType.SessionRevoked or
+            AuditEventType.AccountDisabled or
+            AuditEventType.SuspiciousLogin or
+            AuditEventType.UserLocked or
+            AuditEventType.UserUnlocked => true,
             _ => false
         };
     }
@@ -111,6 +131,33 @@ public class AuditService : IAuditService
             AuditEventType.WarehouseCreated => "Kho hàng mới được thêm",
             AuditEventType.PriceListCreated => "Bảng giá mới được tạo",
             AuditEventType.PriceListApproved => "Bảng giá đã được duyệt",
+            AuditEventType.AttendanceClockIn => "Chấm công vào ca",
+            AuditEventType.AttendanceClockOut => "Chấm công ra ca",
+            AuditEventType.AttendanceAdjustmentSubmitted => "Yêu cầu điều chỉnh công mới",
+            AuditEventType.AttendanceAdjustmentApproved => "Yêu cầu điều chỉnh công đã duyệt",
+            AuditEventType.AttendanceAdjustmentRejected => "Yêu cầu điều chỉnh công bị từ chối",
+            AuditEventType.LeaveRequestSubmitted => "Đơn xin nghỉ phép mới",
+            AuditEventType.LeaveRequestApproved => "Đơn xin nghỉ phép đã duyệt",
+            AuditEventType.LeaveRequestRejected => "Đơn xin nghỉ phép bị từ chối",
+            AuditEventType.LeaveBalanceAdjusted => "Điều chỉnh số dư phép",
+            AuditEventType.ShiftChangeSubmitted => "Đơn xin đổi ca mới",
+            AuditEventType.ShiftChangeApproved => "Đơn xin đổi ca đã duyệt",
+            AuditEventType.ShiftChangeRejected => "Đơn xin đổi ca bị từ chối",
+            AuditEventType.RoleCreated => "Tạo vai trò mới",
+            AuditEventType.RoleUpdated => "Cập nhật vai trò & quyền",
+            AuditEventType.RoleDeleted => "Xóa vai trò",
+            AuditEventType.PermissionAssigned => "Gán quyền vai trò",
+            AuditEventType.PermissionRevoked => "Thu hồi quyền vai trò",
+            AuditEventType.PasswordReset => "Đặt lại mật khẩu tài khoản",
+            AuditEventType.PasswordChanged => "Mật khẩu tài khoản đã thay đổi",
+            AuditEventType.TemporaryPasswordIssued => "Cấp mật khẩu tạm thời",
+            AuditEventType.ForcedPasswordChange => "Yêu cầu buộc đổi mật khẩu",
+            AuditEventType.SessionRevoked => "Thu hồi phiên đăng nhập",
+            AuditEventType.UserLocked => "Khóa tài khoản người dùng",
+            AuditEventType.UserUnlocked => "Mở khóa tài khoản người dùng",
+            AuditEventType.AccountDisabled => "Vô hiệu hóa tài khoản",
+            AuditEventType.LoginFailed => "Cảnh báo đăng nhập thất bại",
+            AuditEventType.SuspiciousLogin => "Cảnh báo bảo mật: Đăng nhập đáng ngờ",
             _ => "Hoạt động hệ thống mới"
         };
     }
@@ -148,6 +195,9 @@ public class AuditService : IAuditService
             "warehouse" or "warehousevoucher" => "/kho/phieu-kho",
             "employeerequest" or "employee" => "/nhan-vien/duyet-ho-so",
             "pricelist" => "/danh-muc/bang-gia",
+            "attendance" or "attendancerecord" or "attendanceadjustmentrequest" or "leaverequest" or "shiftchangerequest" => "/cham-cong",
+            "role" or "rolepermission" => "/cai-dat/vai-tro",
+            "user" or "applicationuser" => "/cai-dat/nguoi-dung",
             _ => null
         };
     }

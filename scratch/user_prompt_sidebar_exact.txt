@@ -1,0 +1,188 @@
+<USER_REQUEST>
+# REDESIGN TRADEFLOW SIDEBAR – COMPACT ICON RAIL + CONTEXTUAL NAVIGATION PANEL
+
+## 1. MỤC TIÊU
+
+Thiết kế lại hệ thống Sidebar của TradeFlow theo hình ảnh tham khảo được cung cấp.
+
+Định hướng:
+
+- Sidebar chính dạng thanh icon dọc, tiết kiệm diện tích.
+- Khi người dùng nhấn vào một nhóm chức năng, hiển thị một bảng điều hướng riêng bên cạnh Sidebar.
+- Bảng điều hướng chứa đầy đủ các chức năng thuộc nhóm tương ứng.
+- Không tự động bung danh sách chức năng khi rê chuột.
+- Không sử dụng kiểu dropdown/submenu nhiều tầng như hiện tại.
+- Giao diện hiện đại, gọn gàng, chuyên nghiệp, phù hợp ERP.
+
+Đây là thiết kế điều hướng mới cho TradeFlow, không sao chép nguyên giao diện Discord hay bất kỳ sản phẩm nào.
+
+## 2. YÊU CẦU QUAN TRỌNG NHẤT: GIỮ NGUYÊN CƠ CHẾ THU GỌN / MỞ RỘNG
+
+Tôi vừa tự điều chỉnh cơ chế Sidebar thu gọn và mở rộng. Đây là phần đã hoạt động theo mong muốn.
+
+**TUYỆT ĐỐI KHÔNG ĐƯỢC:**
+- Xóa nút thu gọn/mở rộng.
+- Thay đổi chức năng của nút.
+- Thay đổi logic trạng thái đóng/mở hiện tại.
+- Làm mất trạng thái thu gọn khi chuyển trang.
+- Tạo một Sidebar mới thay thế toàn bộ Sidebar cũ.
+- Ghi đè hoặc sửa lại các phần CSS/JS đang điều khiển việc thu gọn/mở rộng nếu không thực sự cần thiết.
+
+Trước khi sửa, phải xác định chính xác cơ chế hiện tại đang hoạt động ở file nào, class nào và state nào.
+
+Hãy bảo toàn cơ chế này. Nếu cần tích hợp thiết kế mới, chỉ bổ sung phần điều hướng bên cạnh, không phá vỡ logic hiện hữu.
+
+## 3. CẤU TRÚC SIDEBAR MỚI
+
+### A. Thanh Sidebar chính
+
+Giữ thanh điều hướng dọc với các icon đại diện cho từng nhóm module.
+
+Ví dụ:
+- Tổng quan.
+- Chấm công.
+- Bán hàng.
+- Sản phẩm.
+- Kho hàng.
+- Đối tác.
+- Nhân sự.
+- Tài liệu.
+- Hợp đồng.
+- Cài đặt.
+
+Phải sử dụng đúng các module đang tồn tại trong TradeFlow, không tự tạo module giả.
+
+Yêu cầu:
+- Icon đồng nhất về kích thước.
+- Khoảng cách giữa các icon hợp lý.
+- Active state rõ ràng.
+- Có tooltip tên module khi cần.
+- Không hiển thị submenu khi hover.
+- Không tự bung menu chỉ vì di chuyển chuột.
+
+### B. Contextual Navigation Panel
+
+Khi người dùng nhấn vào icon một nhóm chức năng, mở một panel riêng nằm bên phải thanh Sidebar.
+
+Ví dụ nhấn Cài đặt:
+
+Hiển thị một bảng có tiêu đề `TRUNG TÂM CÀI ĐẶT`, bên dưới là các nhóm:
+
+- Trung tâm Cài đặt (Hub).
+- Vai trò & Phân quyền.
+- Hệ thống & Thương hiệu.
+- Danh mục & Quy ước.
+- Người dùng & An ninh.
+- Bảo mật & Quản trị ROOT.
+- Nhật ký & Kiểm toán.
+- Dữ liệu & Kiểm soát.
+- Hỗ trợ & Trợ giúp.
+
+Đây là ví dụ lấy từ hình ảnh tham khảo. Hãy đối chiếu với các chức năng thực tế trong source code trước khi hiển thị.
+
+Đối với những module khác, xây dựng nhóm điều hướng tương ứng dựa trên các trang và chức năng đang tồn tại.
+
+### C. Hành vi tương tác
+
+- Click icon nhóm chức năng: mở panel tương ứng.
+- Click icon nhóm khác: chuyển nội dung panel sang nhóm mới.
+- Click mục chức năng: điều hướng đến đúng trang.
+- Đánh dấu mục đang hoạt động.
+- Click lại icon đang mở: đóng panel hoặc xử lý theo trạng thái Sidebar hiện tại một cách nhất quán.
+- Click ra ngoài: đóng panel nếu phù hợp với cơ chế hiện tại.
+- Phím Escape: đóng panel.
+- Hover chỉ hiển thị tooltip, tuyệt đối không tự mở panel.
+
+Panel không được làm thay đổi chiều rộng của nội dung chính hoặc gây xô lệch toàn bộ layout. Ưu tiên hiển thị dạng floating contextual panel cạnh Sidebar, có vị trí ổn định.
+
+## 4. THIẾT KẾ PANEL
+
+Tham khảo cách bố trí trong ảnh:
+
+- Chiều rộng vừa phải, khoảng 300–340px trên desktop.
+- Nền đồng nhất với Dark Mode.
+- Border mảnh.
+- Bo góc vừa phải.
+- Shadow nhẹ để tách biệt với nội dung phía sau.
+- Tiêu đề nhóm ở phía trên.
+- Divider phân cách tiêu đề và danh sách.
+- Các mục điều hướng hiển thị thành từng dòng.
+- Có icon hoặc dấu chấm nhận diện.
+- Active state có nền riêng và màu chữ nổi bật.
+- Nội dung dài phải có khả năng cuộn bên trong panel.
+
+Không tạo panel quá rộng hoặc chiếm phần lớn màn hình.
+
+## 5. KHÔNG ĐƯỢC ĐÁNH ĐỒNG PANEL VỚI DROPDOWN
+
+Thiết kế này là một hệ thống điều hướng theo nhóm chức năng.
+
+Không tạo:
+- Menu thả xuống nhiều tầng.
+- Submenu tự bung khi hover.
+- Hàng loạt popover nhỏ cho từng mục.
+- Panel chồng lên nhau.
+- Các submenu trùng lặp với tab điều hướng bên trong trang.
+
+Mỗi nhóm chức năng có một panel điều hướng riêng, các mục bên trong được sắp xếp có tổ chức.
+
+## 6. RESPONSIVE
+
+Desktop:
+- Giữ Sidebar dọc.
+- Panel xuất hiện cạnh Sidebar.
+- Không làm nội dung chính bị thu hẹp hoặc lệch vị trí ngoài ý muốn.
+
+Tablet:
+- Panel có chiều rộng phù hợp.
+- Không che các thao tác quan trọng.
+
+Mobile:
+- Không cố giữ panel desktop 300–340px.
+- Có thể chuyển thành drawer phù hợp với màn hình nhỏ.
+- Đảm bảo người dùng dễ đóng/mở và chọn chức năng.
+- Không xuất hiện tràn ngang.
+
+## 7. LIGHT MODE / DARK MODE
+
+- Tất cả thành phần phải sử dụng hệ thống theme hiện có.
+- Không hardcode màu chỉ dành cho Dark Mode.
+- Active state, hover, border, shadow và text phải đồng nhất.
+- Không dùng CSS override chồng chéo.
+- Không lạm dụng `!important`.
+
+## 8. PHẠM VI VÀ BẢO TOÀN SOURCE CODE
+
+Chỉ thực hiện việc tái cấu trúc Sidebar và hệ thống điều hướng liên quan trực tiếp.
+
+- Không sửa nghiệp vụ của các module.
+- Không thay đổi quyền truy cập hiện tại.
+- Không thay đổi URL/route hiện tại.
+- Không xóa trang hoặc chức năng.
+- Không chỉnh sửa Dashboard, POS, Hợp đồng, Nhân sự hay các module khác ngoài phần tích hợp điều hướng bắt buộc.
+- Không thay đổi cơ chế thu gọn/mở rộng Sidebar đã có.
+- Không commit hoặc push.
+
+Trước khi chỉnh sửa phải kiểm tra `git status` và `git diff`, bảo toàn toàn bộ thay đổi đang có.
+
+## 9. KIỂM THỬ
+
+Kiểm tra thực tế:
+
+1. Sidebar vẫn thu gọn/mở rộng bình thường.
+2. Khi thu gọn, các icon vẫn hiển thị chính xác.
+3. Nhấn icon mở đúng panel.
+4. Hover không làm panel tự mở.
+5. Chuyển nhóm không tạo nhiều panel chồng lên nhau.
+6. Chọn chức năng điều hướng đúng route cũ.
+7. Active state đúng với trang hiện tại.
+8. Chuyển trang không làm mất trạng thái Sidebar ngoài ý muốn.
+9. Escape và click ngoài hoạt động đúng.
+10. Light Mode và Dark Mode đều hoạt động.
+11. Kiểm tra responsive ở 360px, 390px, 768px, 1024px, 1440px.
+
+**KẾT QUẢ MONG MUỐN:** Sidebar TradeFlow có thanh icon dọc gọn gàng, người dùng chủ động nhấn vào từng nhóm để mở contextual navigation panel chứa đầy đủ chức năng. Không còn tình trạng rê chuột là bung ra hàng loạt submenu. Đặc biệt, cơ chế thu gọn/mở rộng Sidebar hiện tại phải được giữ nguyên tuyệt đối.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-11-09T19:12:06+07:00.
+</ADDITIONAL_METADATA>

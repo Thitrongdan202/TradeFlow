@@ -1,0 +1,623 @@
+/* ==========================================================================
+   TRADEFLOW EXECUTIVE AUDIT & SUPPORT MENU (Redesigned Enterprise SaaS)
+   ========================================================================== */
+
+.tf-admin-audit-menu-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.tf-admin-audit-menu-container.is-open {
+    z-index: 1080;
+}
+
+/* Trigger pill in topbar */
+.tf-topbar-audit-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background-color: var(--tf-surface-subtle, #f8fafc);
+    border: 1px solid var(--tf-border, #e2e8f0);
+    color: var(--tf-text-secondary, #334155);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 160ms cubic-bezier(0.16, 1, 0.3, 1);
+    user-select: none;
+    position: relative;
+    outline: none;
+}
+
+.tf-topbar-audit-pill:hover,
+.tf-topbar-audit-pill.is-active {
+    background-color: var(--tf-surface-hover, #f1f5f9);
+    border-color: #cbd5e1;
+    color: #0284c7;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.tf-audit-btn-icon {
+    color: #0284c7;
+    flex-shrink: 0;
+}
+
+.tf-audit-chevron {
+    color: var(--tf-text-muted, #94a3b8);
+    transition: transform 180ms ease;
+    flex-shrink: 0;
+}
+
+.tf-audit-chevron.is-rotated {
+    transform: rotate(180deg);
+}
+
+.tf-audit-badge-count {
+    background-color: #ef4444;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    line-height: 1.2;
+    box-shadow: 0 1px 2px rgba(239, 68, 68, 0.3);
+}
+
+/* Backdrop */
+.tf-audit-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1079;
+    background: transparent;
+    cursor: default;
+    transition: opacity 140ms ease;
+}
+
+.tf-audit-backdrop.is-closing {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Dropdown Panel — Hardware Accelerated Seamless Open/Close */
+.tf-audit-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 440px;
+    max-width: calc(100vw - 24px);
+    max-height: min(640px, calc(100vh - 84px));
+    background-color: var(--tf-surface, #ffffff);
+    border: 1px solid var(--tf-border, #e2e8f0);
+    border-radius: 14px;
+    box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.16), 0 4px 16px -4px rgba(15, 23, 42, 0.08);
+    z-index: 1080;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform-origin: top right;
+    will-change: opacity, transform;
+}
+
+/* Opening Animation (180ms cubic-bezier: natural, zero-jerk, no scale distortion) */
+.tf-audit-dropdown.is-opening {
+    animation: tfAuditDropdownEnter 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Closing Animation (140ms subtle fade & slide) */
+.tf-audit-dropdown.is-closing {
+    animation: tfAuditDropdownExit 140ms cubic-bezier(0.4, 0, 1, 1) forwards;
+    pointer-events: none;
+}
+
+@keyframes tfAuditDropdownEnter {
+    0% {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes tfAuditDropdownExit {
+    0% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tf-audit-dropdown.is-opening,
+    .tf-audit-dropdown.is-closing {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}
+
+/* Header */
+.tf-audit-dropdown-header {
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--tf-border, #e2e8f0);
+    background-color: var(--tf-surface-subtle, #f8fafc);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+}
+
+.tf-audit-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tf-audit-header-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: #0284c7;
+}
+
+.tf-audit-header-title {
+    margin: 0;
+    font-size: 0.78125rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--tf-text-secondary, #475569);
+}
+
+.tf-audit-close-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--tf-text-muted, #94a3b8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 140ms ease;
+}
+
+.tf-audit-close-btn:hover {
+    background-color: var(--tf-surface-hover, #f1f5f9);
+    color: var(--tf-text-primary, #0f172a);
+}
+
+/* Scrollable Body */
+.tf-audit-dropdown-body {
+    padding: 10px 14px;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Navigation items group */
+.tf-audit-nav-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.tf-audit-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 12px;
+    border-radius: 9px;
+    cursor: pointer;
+    text-decoration: none;
+    color: var(--tf-text-primary, #0f172a);
+    transition: background-color 140ms ease;
+    user-select: none;
+}
+
+.tf-audit-nav-item:hover {
+    background-color: var(--tf-surface-subtle, #f8fafc);
+}
+
+.tf-audit-item-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.tf-icon-support {
+    background-color: rgba(2, 132, 199, 0.08);
+    color: #0284c7;
+}
+
+.tf-icon-audit {
+    background-color: rgba(100, 116, 139, 0.1);
+    color: #475569;
+}
+
+.tf-audit-item-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.tf-audit-item-topline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.tf-audit-item-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--tf-text-primary, #0f172a);
+    line-height: 1.3;
+}
+
+.tf-audit-item-desc {
+    font-size: 0.75rem;
+    color: var(--tf-text-muted, #64748b);
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tf-audit-item-arrow {
+    color: var(--tf-text-muted, #cbd5e1);
+    transition: transform 140ms ease, color 140ms ease;
+    flex-shrink: 0;
+}
+
+.tf-audit-nav-item:hover .tf-audit-item-arrow {
+    color: #0284c7;
+    transform: translateX(2px);
+}
+
+.tf-audit-subtle-badge {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 6px;
+    letter-spacing: 0.02em;
+}
+
+.tf-badge-new {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+/* Recent Tickets Section */
+.tf-audit-tickets-section {
+    border-top: 1px solid var(--tf-border, #e2e8f0);
+    padding-top: 10px;
+}
+
+.tf-audit-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px 8px 4px;
+}
+
+.tf-audit-section-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--tf-text-muted, #64748b);
+}
+
+.tf-audit-count-pill {
+    background-color: var(--tf-surface-hover, #f1f5f9);
+    color: var(--tf-text-secondary, #475569);
+    font-size: 0.6875rem;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    font-weight: 700;
+}
+
+.tf-audit-view-all-link {
+    background: transparent;
+    border: none;
+    color: #0284c7;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    transition: color 140ms ease;
+}
+
+.tf-audit-view-all-link:hover {
+    color: #0369a1;
+    text-decoration: underline;
+}
+
+/* Compact list with subtle dividers */
+.tf-audit-compact-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.tf-audit-compact-row {
+    padding: 9px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 140ms ease;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.tf-audit-compact-row:last-child {
+    border-bottom: none;
+}
+
+.tf-audit-compact-row:hover {
+    background-color: rgba(2, 132, 199, 0.04);
+}
+
+.tf-audit-row-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.tf-audit-code-pill {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: #0284c7;
+    background-color: rgba(2, 132, 199, 0.08);
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+.tf-audit-badges-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.tf-audit-priority-tag {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+.tf-priority-urgent {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+.tf-priority-medium {
+    background-color: #fef3c7;
+    color: #b45309;
+}
+
+.tf-priority-normal {
+    background-color: #f1f5f9;
+    color: #475569;
+}
+
+.tf-audit-status-tag {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background-color: #e0f2fe;
+    color: #0284c7;
+}
+
+.tf-audit-row-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--tf-text-primary, #0f172a);
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tf-audit-row-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.71875rem;
+    color: var(--tf-text-muted, #64748b);
+    margin-top: 3px;
+}
+
+.tf-audit-meta-author {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 500;
+}
+
+.tf-audit-meta-dept {
+    color: var(--tf-text-muted, #94a3b8);
+}
+
+.tf-audit-meta-sep {
+    color: var(--tf-text-muted, #cbd5e1);
+}
+
+.tf-audit-meta-time {
+    color: var(--tf-text-muted, #64748b);
+}
+
+/* Footer Action */
+.tf-audit-dropdown-footer {
+    padding: 9px 14px;
+    background-color: var(--tf-surface-subtle, #f8fafc);
+    border-top: 1px solid var(--tf-border, #e2e8f0);
+    flex-shrink: 0;
+}
+
+.tf-audit-hub-btn {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--tf-border, #e2e8f0);
+    background-color: var(--tf-surface, #ffffff);
+    color: var(--tf-text-primary, #0f172a);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 140ms ease;
+}
+
+.tf-audit-hub-btn:hover {
+    background-color: var(--tf-surface-hover, #f1f5f9);
+    border-color: #cbd5e1;
+    color: #0284c7;
+}
+
+/* ==========================================================================
+   DARK MODE ADAPTATIONS
+   ========================================================================== */
+
+[data-bs-theme="dark"] .tf-topbar-audit-pill {
+    background-color: #1e293b;
+    border-color: #334155;
+    color: #cbd5e1;
+}
+
+[data-bs-theme="dark"] .tf-topbar-audit-pill:hover,
+[data-bs-theme="dark"] .tf-topbar-audit-pill.is-active {
+    background-color: #334155;
+    border-color: #475569;
+    color: #38bdf8;
+}
+
+[data-bs-theme="dark"] .tf-audit-dropdown {
+    background-color: #1e293b;
+    border-color: #334155;
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.4), 0 4px 16px -4px rgba(0, 0, 0, 0.25);
+}
+
+[data-bs-theme="dark"] .tf-audit-dropdown-header,
+[data-bs-theme="dark"] .tf-audit-dropdown-footer {
+    background-color: #0f172a;
+    border-color: #334155;
+}
+
+[data-bs-theme="dark"] .tf-audit-header-title {
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .tf-audit-close-btn:hover {
+    background-color: #334155;
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .tf-audit-nav-item:hover {
+    background-color: #243248;
+}
+
+[data-bs-theme="dark"] .tf-icon-audit {
+    background-color: rgba(255, 255, 255, 0.06);
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .tf-icon-support {
+    background-color: rgba(56, 189, 248, 0.12);
+    color: #38bdf8;
+}
+
+[data-bs-theme="dark"] .tf-audit-item-title {
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .tf-audit-item-desc {
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .tf-audit-tickets-section {
+    border-color: #334155;
+}
+
+[data-bs-theme="dark"] .tf-audit-compact-row {
+    border-color: rgba(51, 65, 85, 0.6);
+}
+
+[data-bs-theme="dark"] .tf-audit-compact-row:hover {
+    background-color: #243248;
+}
+
+[data-bs-theme="dark"] .tf-audit-row-title {
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .tf-audit-hub-btn {
+    background-color: #1e293b;
+    border-color: #334155;
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .tf-audit-hub-btn:hover {
+    background-color: #243248;
+    border-color: #475569;
+    color: #38bdf8;
+}
+
+[data-bs-theme="dark"] .tf-priority-urgent {
+    background-color: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+}
+
+[data-bs-theme="dark"] .tf-priority-medium {
+    background-color: rgba(245, 158, 11, 0.2);
+    color: #fcd34d;
+}
+
+[data-bs-theme="dark"] .tf-priority-normal {
+    background-color: #334155;
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .tf-audit-status-tag {
+    background-color: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .tf-audit-dropdown {
+        position: fixed !important;
+        top: 60px !important;
+        left: 10px !important;
+        right: 10px !important;
+        width: auto !important;
+        max-width: none !important;
+        max-height: calc(100vh - 72px) !important;
+    }
+}

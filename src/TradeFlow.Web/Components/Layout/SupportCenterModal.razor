@@ -1,0 +1,1753 @@
+@rendermode InteractiveServer
+@using System.IO
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Support
+@using TradeFlow.Domain.Entities.Support
+@using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
+
+@inject ISupportService SupportService
+@inject NavigationManager Nav
+@inject IDbContextFactory<TradeFlowDbContext> DbFactory
+@inject IJSRuntime JS
+
+@if (_isOpen)
+{
+    <div id="tf-support-overlay" class="tf-support-overlay is-active" @onclick="Close">
+        <div id="tf-support-dialog" class="tf-support-dialog" @onclick:stopPropagation="true" role="dialog" aria-modal="true" aria-labelledby="tf-support-modal-title">
+            
+            <!-- HEADER -->
+            <div class="tf-support-header">
+                <div class="tf-support-header-left">
+                    <div class="tf-support-icon-wrap">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
+                            <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
+                        </svg>
+                    </div>
+                    <div class="tf-support-title-group">
+                        <h2 id="tf-support-modal-title">Trung tâm hỗ trợ TradeFlow</h2>
+                        <p>Gửi báo cáo lỗi, sự cố hệ thống hoặc yêu cầu hỗ trợ đến bộ phận quản lý.</p>
+                    </div>
+                </div>
+                <button type="button" class="tf-support-close-btn" @onclick="Close" title="Đóng cửa sổ (Esc)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- TAB SWITCHER -->
+            <div class="tf-support-tabs-bar">
+                @if (_canManage)
+                {
+                    <button type="button"
+                            class="tf-support-tab-btn @(_activeTab == "manage" ? "is-active" : "")"
+                            @onclick='() => SwitchTab("manage")'>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                            <line x1="8" y1="21" x2="16" y2="21"></line>
+                            <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                        <span>Tiếp nhận &amp; Xử lý</span>
+                        @if (_stats != null && _stats.NewTickets > 0)
+                        {
+                            <span class="tf-support-tab-badge tf-badge-danger">@_stats.NewTickets</span>
+                        }
+                    </button>
+                }
+
+                <button type="button"
+                        class="tf-support-tab-btn @(_activeTab == "my-tickets" ? "is-active" : "")"
+                        @onclick='() => SwitchTab("my-tickets")'>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                    </svg>
+                    <span>Báo cáo của tôi</span>
+                    @if (_myTickets.Count > 0)
+                    {
+                        <span class="tf-support-tab-badge tf-badge-neutral">@_myTickets.Count</span>
+                    }
+                </button>
+
+                <button type="button"
+                        class="tf-support-tab-btn @(_activeTab == "create" ? "is-active" : "")"
+                        @onclick='() => SwitchTab("create")'>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>Gửi báo cáo mới</span>
+                </button>
+
+                @if (_activeTab == "detail" && _currentTicket != null)
+                {
+                    <div class="tf-support-tab-btn is-active tf-tab-detail-pill">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        <span>Chi tiết: @_currentTicket.Code</span>
+                    </div>
+                }
+            </div>
+
+            <!-- BODY -->
+            <div id="tf-support-body" class="tf-support-body">
+                <!-- Global Alerts -->
+                @if (!string.IsNullOrEmpty(_successMessage))
+                {
+                    <div class="tf-support-banner tf-banner-success">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        <div class="tf-banner-text">
+                            <div class="tf-banner-headline">@_successMessage</div>
+                            @if (!string.IsNullOrEmpty(_successCode))
+                            {
+                                <div class="tf-banner-subline">
+                                    Mã yêu cầu: <span class="tf-code-badge">@_successCode</span>. Bộ phận phụ trách đã nhận được thông báo và sẽ phản hồi sớm nhất.
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="tf-support-banner tf-banner-error">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <div class="tf-banner-text">@_errorMessage</div>
+                    </div>
+                }
+
+                <!-- TAB 1: FORM GỬI BÁO CÁO MỚI -->
+                @if (_activeTab == "create")
+                {
+                    <form @onsubmit="SubmitTicketAsync" class="tf-support-create-form">
+                        <div class="tf-support-form-grid">
+                            <div class="tf-support-form-group">
+                                <label class="tf-support-label">Loại yêu cầu <span class="required">*</span></label>
+                                <select class="tf-support-select" @bind="_category">
+                                    <option value="@SupportCategory.SystemError">Lỗi hệ thống</option>
+                                    <option value="@SupportCategory.OperationError">Lỗi thao tác</option>
+                                    <option value="@SupportCategory.UiDisplayError">Lỗi hiển thị giao diện</option>
+                                    <option value="@SupportCategory.DataInaccurate">Dữ liệu không chính xác</option>
+                                    <option value="@SupportCategory.FeatureInaccessible">Không truy cập được chức năng</option>
+                                    <option value="@SupportCategory.UsageSupport">Yêu cầu hỗ trợ sử dụng</option>
+                                    <option value="@SupportCategory.ImprovementProposal">Đề xuất cải tiến</option>
+                                    <option value="@SupportCategory.Other">Khác</option>
+                                </select>
+                            </div>
+
+                            <div class="tf-support-form-group">
+                                <label class="tf-support-label">Module liên quan <span class="required">*</span></label>
+                                <select class="tf-support-select" @bind="_module">
+                                    <option value="@SupportRelatedModule.Attendance">Chấm công</option>
+                                    <option value="@SupportRelatedModule.Sales">Bán hàng / POS</option>
+                                    <option value="@SupportRelatedModule.Invoices">Hóa đơn</option>
+                                    <option value="@SupportRelatedModule.Products">Sản phẩm &amp; Bảng giá</option>
+                                    <option value="@SupportRelatedModule.Warehouse">Kho hàng &amp; Tồn kho</option>
+                                    <option value="@SupportRelatedModule.Partners">Đối tác / Khách hàng</option>
+                                    <option value="@SupportRelatedModule.Contracts">Hợp đồng</option>
+                                    <option value="@SupportRelatedModule.Documents">Chứng từ</option>
+                                    <option value="@SupportRelatedModule.Employees">Nhân sự</option>
+                                    <option value="@SupportRelatedModule.Settings">Cài đặt &amp; Quản trị</option>
+                                    <option value="@SupportRelatedModule.Other">Khác</option>
+                                </select>
+                            </div>
+
+                            <div class="tf-support-form-group full-width">
+                                <label class="tf-support-label">Tiêu đề báo cáo <span class="required">*</span></label>
+                                <input type="text"
+                                       class="tf-support-input"
+                                       placeholder="Tóm tắt ngắn gọn vấn đề (ví dụ: Không thể lưu đơn bán hàng số DH-0021)"
+                                       @bind="_title"
+                                       maxlength="250"
+                                       required />
+                            </div>
+
+                            <div class="tf-support-form-group full-width">
+                                <label class="tf-support-label">Mô tả chi tiết <span class="required">*</span></label>
+                                <textarea class="tf-support-textarea"
+                                          placeholder="Vui lòng nêu rõ:&#10;• Bạn vừa thực hiện thao tác gì?&#10;• Kết quả thực tế đang xảy ra là gì?&#10;• Kết quả bạn mong muốn?&#10;• Các bước để tái hiện lại lỗi?"
+                                          @bind="_description"
+                                          required></textarea>
+                            </div>
+
+                            <div class="tf-support-form-group">
+                                <label class="tf-support-label">Mức độ ưu tiên</label>
+                                <select class="tf-support-select" @bind="_priority">
+                                    <option value="@SupportPriority.Normal">Bình thường (Tiêu chuẩn)</option>
+                                    <option value="@SupportPriority.Medium">Cần xử lý sớm (Trong ngày)</option>
+                                    <option value="@SupportPriority.Urgent">Khẩn cấp (Ảnh hưởng toàn hệ thống)</option>
+                                </select>
+                            </div>
+
+                            <div class="tf-support-form-group">
+                                <label class="tf-support-label">Trang / Route gửi yêu cầu</label>
+                                <input type="text" class="tf-support-input tf-input-readonly" @bind="_currentRoute" readonly title="Tự động nhận diện từ màn hình đang làm việc" />
+                            </div>
+
+                            <!-- Upload Dropzone -->
+                            <div class="tf-support-form-group full-width">
+                                <label class="tf-support-label">Tệp đính kèm (Ảnh chụp màn hình, PDF, Excel, Log, ...)</label>
+                                <div class="tf-support-dropzone">
+                                    <div class="tf-support-dropzone-icon">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="17 8 12 3 7 8"></polyline>
+                                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                                        </svg>
+                                    </div>
+                                    <div class="tf-support-dropzone-text">Kéo thả tệp vào đây hoặc nhấn để chọn từ thiết bị</div>
+                                    <div class="tf-support-dropzone-hint">Cho phép PNG, JPG, WEBP, PDF, DOCX, XLSX, CSV, TXT, LOG (Tối đa 5 tệp, 10MB/tệp)</div>
+                                    <InputFile OnChange="HandleFileSelected" multiple class="tf-support-file-input" />
+                                </div>
+
+                                @if (!string.IsNullOrEmpty(_fileError))
+                                {
+                                    <div class="tf-field-error">@_fileError</div>
+                                }
+
+                                @if (_selectedFiles.Count > 0)
+                                {
+                                    <div class="tf-support-file-grid">
+                                        @foreach (var file in _selectedFiles)
+                                        {
+                                            <div class="tf-support-file-card">
+                                                <div class="tf-support-file-preview">
+                                                    @if (file.PreviewUrl != null)
+                                                    {
+                                                        <img src="@file.PreviewUrl" class="tf-file-thumb" alt="Preview" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="tf-file-ext-badge">@file.Extension</div>
+                                                    }
+                                                </div>
+                                                <div class="tf-support-file-info">
+                                                    <span class="tf-support-file-name" title="@file.FileName">@file.FileName</span>
+                                                    <span class="tf-support-file-size">@file.FormattedSize</span>
+                                                </div>
+                                                <button type="button" class="tf-support-file-remove" @onclick="() => RemoveFile(file)" title="Gỡ tệp này">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="tf-support-form-actions">
+                            <button type="button" class="tf-support-btn tf-btn-ghost" @onclick="Close">Hủy</button>
+                            <button type="submit" class="tf-support-btn tf-btn-primary" disabled="@_isSubmitting">
+                                @if (_isSubmitting)
+                                {
+                                    <span class="tf-spinner-sm"></span>
+                                    <span>Đang gửi báo cáo...</span>
+                                }
+                                else
+                                {
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                    </svg>
+                                    <span>Gửi báo cáo</span>
+                                }
+                            </button>
+                        </div>
+                    </form>
+                }
+
+                <!-- TAB 2: BÁO CÁO CỦA TÔI -->
+                @if (_activeTab == "my-tickets")
+                {
+                    @if (_myTickets.Count == 0)
+                    {
+                        <div class="tf-support-empty-state">
+                            <div class="tf-empty-icon">
+                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                </svg>
+                            </div>
+                            <h3>Bạn chưa gửi báo cáo nào</h3>
+                            <p>Khi gặp trục trặc kỹ thuật hoặc cần hướng dẫn, hãy bấm "Gửi báo cáo mới" để gửi yêu cầu đến quản trị viên.</p>
+                            <button type="button" class="tf-support-btn tf-btn-primary" @onclick='() => SwitchTab("create")'>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                                <span>Tạo báo cáo đầu tiên</span>
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="tf-support-table-container">
+                            <div class="tf-support-table-header">
+                                <div class="tf-col-title">MÃ &amp; TIÊU ĐỀ</div>
+                                <div class="tf-col-module">PHÂN LOẠI &amp; MODULE</div>
+                                <div class="tf-col-priority">ƯU TIÊN</div>
+                                <div class="tf-col-status">TRẠNG THÁI</div>
+                                <div class="tf-col-time">THỜI GIAN</div>
+                            </div>
+
+                            <div class="tf-support-table-body">
+                                @foreach (var t in _myTickets)
+                                {
+                                    <div class="tf-support-table-row" @onclick="() => ViewTicketDetailAsync(t.Id)" role="button" tabindex="0">
+                                        <div class="tf-col-title">
+                                            <div class="tf-row-primary">
+                                                <span class="tf-code-badge">@t.Code</span>
+                                                <span class="tf-ticket-title" title="@t.Title">@t.Title</span>
+                                            </div>
+                                            <div class="tf-row-chips">
+                                                @if (t.AttachmentCount > 0)
+                                                {
+                                                    <span class="tf-chip-pill" title="@t.AttachmentCount tệp đính kèm">📎 @t.AttachmentCount</span>
+                                                }
+                                                @if (t.CommentCount > 0)
+                                                {
+                                                    <span class="tf-chip-pill" title="@t.CommentCount phản hồi">💬 @t.CommentCount</span>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <div class="tf-col-module">
+                                            <span class="tf-cat-name">@t.CategoryName</span>
+                                            <span class="tf-mod-badge">@t.RelatedModuleName</span>
+                                        </div>
+
+                                        <div class="tf-col-priority">
+                                            <span class="tf-priority-pill @GetPriorityClass(t.Priority)">@t.PriorityName</span>
+                                        </div>
+
+                                        <div class="tf-col-status">
+                                            <span class="tf-status-pill @GetStatusBadgeClass(t.Status)">@t.StatusName</span>
+                                        </div>
+
+                                        <div class="tf-col-time">
+                                            <span class="tf-time-text">@t.CreatedAt.ToLocalTime().ToString("HH:mm dd/MM/yyyy")</span>
+                                            <svg class="tf-row-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="9 18 15 12 9 6"></polyline>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+
+                <!-- TAB 3: TIẾP NHẬN & XỬ LÝ (MANAGER & ADMIN) -->
+                @if (_activeTab == "manage")
+                {
+                    <!-- Sleek KPI Strip (Compact status toolbar & Quick Filter, not bulky cards!) -->
+                    @if (_stats != null)
+                    {
+                        <div class="tf-support-kpi-strip">
+                            <button type="button"
+                                    class="tf-kpi-pill @(_filterStatus == null ? "is-active" : "")"
+                                    @onclick="() => QuickFilterStatus(null)"
+                                    title="Bỏ lọc trạng thái (Hiển thị tất cả)">
+                                <span class="tf-kpi-label">Tổng báo cáo</span>
+                                <span class="tf-kpi-number">@_stats.TotalTickets</span>
+                            </button>
+
+                            <button type="button"
+                                    class="tf-kpi-pill tf-kpi-new @(_filterStatus == SupportStatus.New ? "is-active" : "")"
+                                    @onclick="() => QuickFilterStatus(SupportStatus.New)"
+                                    title="Lọc báo cáo Mới gửi">
+                                <span class="tf-kpi-dot dot-new"></span>
+                                <span class="tf-kpi-label">Mới gửi</span>
+                                <span class="tf-kpi-number">@_stats.NewTickets</span>
+                            </button>
+
+                            <button type="button"
+                                    class="tf-kpi-pill tf-kpi-prog @(_filterStatus == SupportStatus.InProgress ? "is-active" : "")"
+                                    @onclick="() => QuickFilterStatus(SupportStatus.InProgress)"
+                                    title="Lọc báo cáo Đang xử lý">
+                                <span class="tf-kpi-dot dot-prog"></span>
+                                <span class="tf-kpi-label">Đang xử lý</span>
+                                <span class="tf-kpi-number">@_stats.InProgressTickets</span>
+                            </button>
+
+                            <button type="button"
+                                    class="tf-kpi-pill tf-kpi-wait @(_filterStatus == SupportStatus.WaitingForCustomer ? "is-active" : "")"
+                                    @onclick="() => QuickFilterStatus(SupportStatus.WaitingForCustomer)"
+                                    title="Lọc báo cáo Chờ phản hồi">
+                                <span class="tf-kpi-dot dot-wait"></span>
+                                <span class="tf-kpi-label">Chờ phản hồi</span>
+                                <span class="tf-kpi-number">@_stats.WaitingCustomerTickets</span>
+                            </button>
+
+                            <button type="button"
+                                    class="tf-kpi-pill tf-kpi-res @(_filterStatus == SupportStatus.Resolved ? "is-active" : "")"
+                                    @onclick="() => QuickFilterStatus(SupportStatus.Resolved)"
+                                    title="Lọc báo cáo Đã giải quyết">
+                                <span class="tf-kpi-dot dot-res"></span>
+                                <span class="tf-kpi-label">Đã giải quyết</span>
+                                <span class="tf-kpi-number">@_stats.ResolvedTickets</span>
+                            </button>
+                        </div>
+                    }
+
+                    <!-- Unified Horizontal Toolbar: Search + Advanced Filter Popover + Sort -->
+                    <div class="tf-support-toolbar">
+                        <!-- 1. Search Box -->
+                        <div class="tf-search-input-wrap">
+                            <svg class="tf-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <input type="text"
+                                   class="tf-support-search"
+                                   placeholder="Tìm kiếm theo mã, tiêu đề, người gửi..."
+                                   value="@_searchKeyword"
+                                   @oninput="HandleSearchInput" />
+                            @if (!string.IsNullOrEmpty(_searchKeyword))
+                            {
+                                <button type="button" class="tf-search-clear-btn" @onclick="ClearSearchAsync" title="Xóa từ khóa">
+                                    &times;
+                                </button>
+                            }
+                        </div>
+
+                        <!-- 2. Advanced Filter Popover Button & Anchor -->
+                        <div class="tf-popover-anchor">
+                            <button type="button"
+                                    class="tf-filter-trigger-btn @(_showFilterPopover ? "is-open" : "") @(ActiveFilterCount > 0 ? "has-filters" : "")"
+                                    @onclick="ToggleFilterPopover"
+                                    title="Mở bộ lọc nâng cao">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="4" y1="21" x2="4" y2="14"></line>
+                                    <line x1="4" y1="10" x2="4" y2="3"></line>
+                                    <line x1="12" y1="21" x2="12" y2="12"></line>
+                                    <line x1="12" y1="8" x2="12" y2="3"></line>
+                                    <line x1="20" y1="21" x2="20" y2="16"></line>
+                                    <line x1="20" y1="12" x2="20" y2="3"></line>
+                                    <line x1="1" y1="14" x2="7" y2="14"></line>
+                                    <line x1="9" y1="8" x2="15" y2="8"></line>
+                                    <line x1="17" y1="16" x2="23" y2="16"></line>
+                                </svg>
+                                <span>Bộ lọc</span>
+                                @if (ActiveFilterCount > 0)
+                                {
+                                    <span class="tf-filter-active-count">@ActiveFilterCount</span>
+                                }
+                                <svg class="tf-filter-chevron @(_showFilterPopover ? "is-rotated" : "")" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </button>
+
+                            <!-- Advanced Filter Popover Panel -->
+                            @if (_showFilterPopover)
+                            {
+                                <div class="tf-popover-backdrop" @onclick="CloseFilterPopover"></div>
+
+                                <div class="tf-filter-popover" @onclick:stopPropagation="true">
+                                    <div class="tf-popover-header">
+                                        <div class="tf-popover-title-wrap">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#0284c7;">
+                                                <line x1="4" y1="21" x2="4" y2="14"></line>
+                                                <line x1="4" y1="10" x2="4" y2="3"></line>
+                                                <line x1="12" y1="21" x2="12" y2="12"></line>
+                                                <line x1="12" y1="8" x2="12" y2="3"></line>
+                                                <line x1="20" y1="21" x2="20" y2="16"></line>
+                                                <line x1="20" y1="12" x2="20" y2="3"></line>
+                                                <line x1="1" y1="14" x2="7" y2="14"></line>
+                                                <line x1="9" y1="8" x2="15" y2="8"></line>
+                                                <line x1="17" y1="16" x2="23" y2="16"></line>
+                                            </svg>
+                                            <span class="tf-popover-title">Bộ lọc nâng cao</span>
+                                        </div>
+                                        <button type="button" class="tf-popover-close-btn" @onclick="CloseFilterPopover">&times;</button>
+                                    </div>
+
+                                    <div class="tf-popover-body">
+                                        <div class="tf-popover-grid">
+                                            <!-- 1. Loại báo cáo -->
+                                            <div class="tf-popover-field">
+                                                <label class="tf-popover-label">Loại báo cáo</label>
+                                                <select class="tf-support-select tf-popover-select" @bind="_filterCategory" @bind:after="FilterTicketsAsync">
+                                                    <option value="">Tất cả phân loại</option>
+                                                    <option value="@SupportCategory.SystemError">Lỗi hệ thống</option>
+                                                    <option value="@SupportCategory.OperationError">Lỗi thao tác</option>
+                                                    <option value="@SupportCategory.UiDisplayError">Lỗi giao diện</option>
+                                                    <option value="@SupportCategory.DataInaccurate">Dữ liệu không chính xác</option>
+                                                    <option value="@SupportCategory.FeatureInaccessible">Không truy cập được chức năng</option>
+                                                    <option value="@SupportCategory.UsageSupport">Yêu cầu hỗ trợ sử dụng</option>
+                                                    <option value="@SupportCategory.ImprovementProposal">Đề xuất cải tiến</option>
+                                                    <option value="@SupportCategory.Other">Khác</option>
+                                                </select>
+                                            </div>
+
+                                            <!-- 2. Module liên quan -->
+                                            <div class="tf-popover-field">
+                                                <label class="tf-popover-label">Phân hệ / Module</label>
+                                                <select class="tf-support-select tf-popover-select" @bind="_filterModule" @bind:after="FilterTicketsAsync">
+                                                    <option value="">Tất cả module</option>
+                                                    <option value="@SupportRelatedModule.Attendance">Chấm công</option>
+                                                    <option value="@SupportRelatedModule.Sales">Bán hàng / POS</option>
+                                                    <option value="@SupportRelatedModule.Invoices">Hóa đơn</option>
+                                                    <option value="@SupportRelatedModule.Products">Sản phẩm &amp; Bảng giá</option>
+                                                    <option value="@SupportRelatedModule.Warehouse">Kho hàng &amp; Tồn kho</option>
+                                                    <option value="@SupportRelatedModule.Partners">Đối tác / Khách hàng</option>
+                                                    <option value="@SupportRelatedModule.Contracts">Hợp đồng</option>
+                                                    <option value="@SupportRelatedModule.Documents">Chứng từ</option>
+                                                    <option value="@SupportRelatedModule.Employees">Nhân sự</option>
+                                                    <option value="@SupportRelatedModule.Settings">Cài đặt &amp; Quản trị</option>
+                                                    <option value="@SupportRelatedModule.Other">Khác</option>
+                                                </select>
+                                            </div>
+
+                                            <!-- 3. Mức độ ưu tiên -->
+                                            <div class="tf-popover-field">
+                                                <label class="tf-popover-label">Mức độ ưu tiên</label>
+                                                <select class="tf-support-select tf-popover-select" @bind="_filterPriority" @bind:after="FilterTicketsAsync">
+                                                    <option value="">Tất cả mức độ</option>
+                                                    <option value="@SupportPriority.Normal">Bình thường</option>
+                                                    <option value="@SupportPriority.Medium">Cần xử lý sớm</option>
+                                                    <option value="@SupportPriority.Urgent">Khẩn cấp</option>
+                                                </select>
+                                            </div>
+
+                                            <!-- 4. Thời gian gửi -->
+                                            <div class="tf-popover-field">
+                                                <label class="tf-popover-label">Thời gian gửi</label>
+                                                <select class="tf-support-select tf-popover-select" @bind="_datePreset" @bind:after="FilterTicketsAsync">
+                                                    <option value="all">Tất cả thời gian</option>
+                                                    <option value="today">Hôm nay</option>
+                                                    <option value="7days">7 ngày qua</option>
+                                                    <option value="30days">30 ngày qua</option>
+                                                    <option value="custom">Tùy chỉnh khoảng ngày...</option>
+                                                </select>
+                                            </div>
+
+                                            @if (_datePreset == "custom")
+                                            {
+                                                <div class="tf-popover-field full-width" style="display:flex;gap:8px;align-items:center;">
+                                                    <div style="flex:1;">
+                                                        <label class="tf-popover-label" style="font-size:11px;">Từ ngày</label>
+                                                        <input type="date" class="tf-support-input tf-popover-date" @bind="_customFromDate" @bind:after="FilterTicketsAsync" />
+                                                    </div>
+                                                    <div style="flex:1;">
+                                                        <label class="tf-popover-label" style="font-size:11px;">Đến ngày</label>
+                                                        <input type="date" class="tf-support-input tf-popover-date" @bind="_customToDate" @bind:after="FilterTicketsAsync" />
+                                                    </div>
+                                                </div>
+                                            }
+
+                                            <!-- 5. Người phụ trách / Người xử lý -->
+                                            <div class="tf-popover-field">
+                                                <label class="tf-popover-label">Người xử lý</label>
+                                                <select class="tf-support-select tf-popover-select" @bind="_filterAssigneeId" @bind:after="FilterTicketsAsync">
+                                                    <option value="">Tất cả người xử lý</option>
+                                                    <option value="unassigned">Chưa phân công</option>
+                                                    @foreach (var u in _assignableUsers)
+                                                    {
+                                                        <option value="@u.Id">@(u.FullName ?? u.UserName)</option>
+                                                    }
+                                                </select>
+                                            </div>
+
+                                            <!-- 6. Người gửi -->
+                                            <div class="tf-popover-field">
+                                                <label class="tf-popover-label">Người gửi</label>
+                                                <select class="tf-support-select tf-popover-select" @bind="_filterSubmitterId" @bind:after="FilterTicketsAsync">
+                                                    <option value="">Tất cả người gửi</option>
+                                                    @foreach (var u in _assignableUsers)
+                                                    {
+                                                        <option value="@u.Id">@(u.FullName ?? u.UserName)</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="tf-popover-footer">
+                                        <button type="button" class="tf-popover-reset-btn" @onclick="ResetAdvancedFiltersAsync">
+                                            Xóa bộ lọc
+                                        </button>
+                                        <button type="button" class="tf-support-btn tf-btn-primary tf-btn-sm" @onclick="CloseFilterPopover">
+                                            Áp dụng
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- 3. Sort Order Dropdown -->
+                        <div class="tf-sort-wrap">
+                            <select class="tf-support-select tf-sort-select" @bind="_sortBy" @bind:after="FilterTicketsAsync" title="Sắp xếp danh sách">
+                                <option value="created_desc">Mới nhất trước</option>
+                                <option value="created_asc">Cũ nhất trước</option>
+                                <option value="priority_desc">Ưu tiên cao trước</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Active Filter Chips Strip -->
+                    @if (HasAnyActiveChips)
+                    {
+                        <div class="tf-active-chips-strip">
+                            <span class="tf-chips-label">Đang lọc:</span>
+
+                            @if (_filterStatus.HasValue)
+                            {
+                                <span class="tf-filter-chip">
+                                    <span>Trạng thái: @_filterStatus.Value.ToDisplayName()</span>
+                                    <button type="button" @onclick='() => RemoveFilterChip("status")' title="Xóa điều kiện này">&times;</button>
+                                </span>
+                            }
+
+                            @if (_filterCategory.HasValue)
+                            {
+                                <span class="tf-filter-chip">
+                                    <span>Loại: @_filterCategory.Value.ToDisplayName()</span>
+                                    <button type="button" @onclick='() => RemoveFilterChip("category")' title="Xóa điều kiện này">&times;</button>
+                                </span>
+                            }
+
+                            @if (_filterModule.HasValue)
+                            {
+                                <span class="tf-filter-chip">
+                                    <span>Module: @_filterModule.Value.ToDisplayName()</span>
+                                    <button type="button" @onclick='() => RemoveFilterChip("module")' title="Xóa điều kiện này">&times;</button>
+                                </span>
+                            }
+
+                            @if (_filterPriority.HasValue)
+                            {
+                                <span class="tf-filter-chip">
+                                    <span>Ưu tiên: @_filterPriority.Value.ToDisplayName()</span>
+                                    <button type="button" @onclick='() => RemoveFilterChip("priority")' title="Xóa điều kiện này">&times;</button>
+                                </span>
+                            }
+
+                            @if (_datePreset != "all")
+                            {
+                                <span class="tf-filter-chip">
+                                    <span>Thời gian: @GetDatePresetLabel()</span>
+                                    <button type="button" @onclick='() => RemoveFilterChip("date")' title="Xóa điều kiện này">&times;</button>
+                                </span>
+                            }
+
+                            @if (!string.IsNullOrEmpty(_filterAssigneeId))
+                            {
+                                <span class="tf-filter-chip">
+                                    <span>Phụ trách: @GetAssigneeLabel()</span>
+                                    <button type="button" @onclick='() => RemoveFilterChip("assignee")' title="Xóa điều kiện này">&times;</button>
+                                </span>
+                            }
+
+                            @if (!string.IsNullOrEmpty(_filterSubmitterId))
+                            {
+                                <span class="tf-filter-chip">
+                                    <span>Người gửi: @GetSubmitterLabel()</span>
+                                    <button type="button" @onclick='() => RemoveFilterChip("submitter")' title="Xóa điều kiện này">&times;</button>
+                                </span>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(_searchKeyword))
+                            {
+                                <span class="tf-filter-chip">
+                                    <span>Từ khóa: "@_searchKeyword"</span>
+                                    <button type="button" @onclick='() => RemoveFilterChip("keyword")' title="Xóa từ khóa">&times;</button>
+                                </span>
+                            }
+
+                            <button type="button" class="tf-chips-clear-all-btn" @onclick="ResetFiltersAsync" title="Xóa toàn bộ các điều kiện lọc">
+                                Xóa tất cả
+                            </button>
+                        </div>
+                    }
+
+                    <!-- Management Table (Data Rows) -->
+                    @if (_manageTickets.Count == 0)
+                    {
+                        <div class="tf-support-empty-state">
+                            <div class="tf-empty-icon">
+                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                            </div>
+                            <h3>Không tìm thấy báo cáo phù hợp</h3>
+                            <p>Không có bản ghi nào khớp với điều kiện lọc hiện tại. Thử thay đổi từ khóa hoặc bộ lọc trạng thái.</p>
+                            @if (HasAnyActiveChips)
+                            {
+                                <button type="button" class="tf-support-btn tf-btn-ghost tf-btn-sm" style="margin-top:6px;" @onclick="ResetFiltersAsync">
+                                    Đặt lại toàn bộ bộ lọc
+                                </button>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="tf-support-table-container">
+                            <div class="tf-support-table-header tf-manage-grid">
+                                <div class="tf-col-title">MÃ &amp; TIÊU ĐỀ</div>
+                                <div class="tf-col-author">NGƯỜI GỬI / PHÒNG BAN</div>
+                                <div class="tf-col-module">PHÂN LOẠI &amp; MODULE</div>
+                                <div class="tf-col-priority">ƯU TIÊN</div>
+                                <div class="tf-col-status">TRẠNG THÁI</div>
+                                <div class="tf-col-time">THỜI GIAN</div>
+                            </div>
+
+                            <div class="tf-support-table-body">
+                                @foreach (var t in _manageTickets)
+                                {
+                                    <div class="tf-support-table-row tf-manage-grid" @onclick="() => ViewTicketDetailAsync(t.Id)" role="button" tabindex="0">
+                                        <div class="tf-col-title">
+                                            <div class="tf-row-primary">
+                                                <span class="tf-code-badge">@t.Code</span>
+                                                <span class="tf-ticket-title" title="@t.Title">@t.Title</span>
+                                            </div>
+                                            <div class="tf-row-chips">
+                                                @if (t.AttachmentCount > 0)
+                                                {
+                                                    <span class="tf-chip-pill" title="@t.AttachmentCount tệp đính kèm">📎 @t.AttachmentCount</span>
+                                                }
+                                                @if (t.CommentCount > 0)
+                                                {
+                                                    <span class="tf-chip-pill" title="@t.CommentCount phản hồi">💬 @t.CommentCount</span>
+                                                }
+                                                @if (!string.IsNullOrEmpty(t.AssignedToFullName))
+                                                {
+                                                    <span class="tf-chip-assignee" title="Người phụ trách">👤 @t.AssignedToFullName</span>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <div class="tf-col-author">
+                                            <span class="tf-author-name">@(t.SubmitterFullName ?? t.CreatedByUserName)</span>
+                                            <span class="tf-author-dept">
+                                                @(t.SubmitterRole ?? "Nhân viên")
+                                                @if (!string.IsNullOrEmpty(t.SubmitterDepartment))
+                                                {
+                                                    <span>• Phòng @t.SubmitterDepartment</span>
+                                                }
+                                            </span>
+                                        </div>
+
+                                        <div class="tf-col-module">
+                                            <span class="tf-cat-name">@t.CategoryName</span>
+                                            <span class="tf-mod-badge">@t.RelatedModuleName</span>
+                                        </div>
+
+                                        <div class="tf-col-priority">
+                                            <span class="tf-priority-pill @GetPriorityClass(t.Priority)">@t.PriorityName</span>
+                                        </div>
+
+                                        <div class="tf-col-status">
+                                            <span class="tf-status-pill @GetStatusBadgeClass(t.Status)">@t.StatusName</span>
+                                        </div>
+
+                                        <div class="tf-col-time">
+                                            <span class="tf-time-text">@t.CreatedAt.ToLocalTime().ToString("HH:mm dd/MM/yyyy")</span>
+                                            <svg class="tf-row-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="9 18 15 12 9 6"></polyline>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+
+                <!-- TAB 4: CHI TIẾT & TRAO ĐỔI (DETAIL VIEW) -->
+                @if (_activeTab == "detail" && _currentTicket != null)
+                {
+                    <div class="tf-detail-view-container">
+                        <!-- Navigation & Badges Bar -->
+                        <div class="tf-detail-topbar">
+                            <button type="button" class="tf-support-btn tf-btn-ghost tf-btn-back" @onclick='() => SwitchTab(_canManage ? "manage" : "my-tickets")'>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                                    <polyline points="12 19 5 12 12 5"></polyline>
+                                </svg>
+                                <span>Quay lại danh sách</span>
+                            </button>
+
+                            <div class="tf-detail-tags">
+                                <span class="tf-code-badge tf-code-large">@_currentTicket.Code</span>
+                                <span class="tf-status-pill @GetStatusBadgeClass(_currentTicket.Status)">@_currentTicket.StatusName</span>
+                                <span class="tf-priority-pill @GetPriorityClass(_currentTicket.Priority)">@_currentTicket.PriorityName</span>
+                            </div>
+                        </div>
+
+                        <!-- Action Toolbar for Manager / Admin -->
+                        @if (_canManage)
+                        {
+                            <div class="tf-detail-action-bar">
+                                <div class="tf-action-buttons-group">
+                                    <span class="tf-action-group-label">Thao tác:</span>
+                                    @if (_currentTicket.Status == SupportStatus.New)
+                                    {
+                                        <button type="button" class="tf-support-btn tf-btn-primary tf-btn-sm" @onclick="() => QuickUpdateStatusAsync(SupportStatus.Acknowledged)">
+                                            Tiếp nhận
+                                        </button>
+                                    }
+                                    @if (_currentTicket.Status != SupportStatus.InProgress && _currentTicket.Status != SupportStatus.Resolved && _currentTicket.Status != SupportStatus.Closed)
+                                    {
+                                        <button type="button" class="tf-support-btn tf-btn-outline tf-btn-sm" @onclick="() => QuickUpdateStatusAsync(SupportStatus.InProgress)">
+                                            Bắt đầu xử lý
+                                        </button>
+                                    }
+                                    @if (_currentTicket.Status != SupportStatus.Resolved && _currentTicket.Status != SupportStatus.Closed)
+                                    {
+                                        <button type="button" class="tf-support-btn tf-btn-success tf-btn-sm" @onclick="() => QuickUpdateStatusAsync(SupportStatus.Resolved)">
+                                            Đánh dấu Đã giải quyết
+                                        </button>
+                                    }
+                                    @if (_currentTicket.Status != SupportStatus.Rejected && _currentTicket.Status != SupportStatus.Closed)
+                                    {
+                                        <button type="button" class="tf-support-btn tf-btn-danger tf-btn-sm" @onclick="PromptRejectModal">
+                                            Từ chối tiếp nhận
+                                        </button>
+                                    }
+                                </div>
+
+                                <div class="tf-assign-group">
+                                    <span class="tf-action-group-label">Phân công:</span>
+                                    <select class="tf-support-select tf-select-assign" @bind="_selectedAssigneeId" @bind:after="ExecuteAssignTicketAsync">
+                                        <option value="">-- Chọn người xử lý --</option>
+                                        @foreach (var u in _assignableUsers)
+                                        {
+                                            <option value="@u.Id">@(u.FullName ?? u.UserName)</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        }
+                        else if (_currentTicket.Status == SupportStatus.Resolved)
+                        {
+                            <!-- Submitter Confirm Resolution -->
+                            <div class="tf-support-banner tf-banner-confirm-resolve">
+                                <div class="tf-confirm-text">
+                                    <strong>Sự cố đã được đánh dấu Đã giải quyết.</strong> Vui lòng xác nhận nếu vấn đề đã được khắc phục hoàn toàn.
+                                </div>
+                                <button type="button" class="tf-support-btn tf-btn-success tf-btn-sm" @onclick="() => QuickUpdateStatusAsync(SupportStatus.Closed)">
+                                    Xác nhận &amp; Đóng yêu cầu
+                                </button>
+                            </div>
+                        }
+
+                        <!-- Meta Info Strip (Clean 4-cell layout) -->
+                        <div class="tf-detail-meta-grid">
+                            <div class="tf-meta-cell">
+                                <div class="tf-meta-label">Người gửi</div>
+                                <div class="tf-meta-val">
+                                    <strong>@_currentTicket.SubmitterFullName</strong>
+                                    <span class="tf-meta-sub">(@_currentTicket.SubmitterRole@(!string.IsNullOrEmpty(_currentTicket.SubmitterDepartment) ? $" - {_currentTicket.SubmitterDepartment}" : ""))</span>
+                                </div>
+                            </div>
+
+                            <div class="tf-meta-cell">
+                                <div class="tf-meta-label">Thời điểm gửi</div>
+                                <div class="tf-meta-val">
+                                    <span>@_currentTicket.CreatedAt.ToLocalTime().ToString("HH:mm:ss • dd/MM/yyyy")</span>
+                                </div>
+                            </div>
+
+                            <div class="tf-meta-cell">
+                                <div class="tf-meta-label">Phân loại &amp; Module</div>
+                                <div class="tf-meta-val">
+                                    <span>@_currentTicket.CategoryName • <strong>@_currentTicket.RelatedModuleName</strong></span>
+                                    @if (!string.IsNullOrEmpty(_currentTicket.CurrentRoute))
+                                    {
+                                        <span class="tf-meta-route" title="Route gửi báo cáo">(@_currentTicket.CurrentRoute)</span>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="tf-meta-cell">
+                                <div class="tf-meta-label">Người phụ trách</div>
+                                <div class="tf-meta-val">
+                                    @if (!string.IsNullOrEmpty(_currentTicket.AssignedToFullName))
+                                    {
+                                        <span class="tf-assignee-highlight">👤 @_currentTicket.AssignedToFullName</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="tf-unassigned-text">Chưa phân công</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ticket Content Card -->
+                        <div class="tf-detail-content-card">
+                            <h3 class="tf-detail-content-title">@_currentTicket.Title</h3>
+                            <div class="tf-detail-content-body">
+                                @_currentTicket.Description
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(_currentTicket.RejectionReason))
+                        {
+                            <div class="tf-support-banner tf-banner-rejection">
+                                <div class="tf-rejection-label">Lý do từ chối:</div>
+                                <div class="tf-rejection-text">@_currentTicket.RejectionReason</div>
+                            </div>
+                        }
+
+                        <!-- Attachments Section -->
+                        @if (_currentTicket.Attachments.Count > 0)
+                        {
+                            <div class="tf-detail-attachments-section">
+                                <h4 class="tf-section-subtitle">TỆP ĐÍNH KÈM (@_currentTicket.Attachments.Count)</h4>
+                                <div class="tf-attachments-gallery">
+                                    @foreach (var att in _currentTicket.Attachments)
+                                    {
+                                        <a href="@att.DownloadUrl" target="_blank" download class="tf-attachment-card" title="Nhấn để xem hoặc tải xuống">
+                                            <div class="tf-att-icon-box">
+                                                @if (att.IsImage)
+                                                {
+                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                                        <polyline points="21 15 16 10 5 21"></polyline>
+                                                    </svg>
+                                                }
+                                                else
+                                                {
+                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                                    </svg>
+                                                }
+                                            </div>
+                                            <div class="tf-att-info">
+                                                <span class="tf-att-filename">@att.OriginalFileName</span>
+                                                <span class="tf-att-meta">@att.FormattedSize • Tải về</span>
+                                            </div>
+                                        </a>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        <!-- Discussion Timeline -->
+                        <div class="tf-detail-thread-section">
+                            <h4 class="tf-section-subtitle">TRAO ĐỔI &amp; PHẢN HỒI (@_currentTicket.Comments.Count)</h4>
+
+                            @if (_currentTicket.Comments.Count == 0)
+                            {
+                                <div class="tf-thread-empty">
+                                    Chưa có trao đổi nào cho báo cáo này. Nhập phản hồi bên dưới để gửi trao đổi.
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="tf-thread-messages">
+                                    @foreach (var c in _currentTicket.Comments)
+                                    {
+                                        <div class="tf-thread-msg @(c.IsInternalNote ? "is-internal-note" : "")">
+                                            <div class="tf-msg-header">
+                                                <div class="tf-msg-author-info">
+                                                    <span class="tf-msg-author-name">@c.AuthorFullName</span>
+                                                    <span class="tf-msg-author-role">@c.AuthorRole</span>
+                                                    @if (c.IsInternalNote)
+                                                    {
+                                                        <span class="tf-internal-pill">🔒 Ghi chú nội bộ</span>
+                                                    }
+                                                </div>
+                                                <span class="tf-msg-time">@c.CreatedAt.ToLocalTime().ToString("HH:mm • dd/MM/yyyy")</span>
+                                            </div>
+
+                                            <div class="tf-msg-content">@c.Content</div>
+
+                                            @if (c.Attachments.Count > 0)
+                                            {
+                                                <div class="tf-msg-attachments">
+                                                    @foreach (var a in c.Attachments)
+                                                    {
+                                                        <a href="@a.DownloadUrl" target="_blank" download class="tf-msg-att-pill">
+                                                            📎 @a.OriginalFileName (@a.FormattedSize)
+                                                        </a>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+
+                            <!-- Reply Form Card -->
+                            <div class="tf-reply-card">
+                                <h5 class="tf-reply-title">Gửi phản hồi / Bổ sung thông tin</h5>
+                                <textarea class="tf-support-textarea tf-reply-textarea"
+                                          placeholder="Nhập nội dung phản hồi, hướng dẫn khắc phục hoặc yêu cầu bổ sung thông tin..."
+                                          @bind="_replyText"></textarea>
+
+                                <div class="tf-reply-footer">
+                                    <div>
+                                        @if (_canManage)
+                                        {
+                                            <label class="tf-internal-toggle">
+                                                <input type="checkbox" @bind="_replyIsInternal" />
+                                                <span>Ghi chú nội bộ (chỉ Manager &amp; Admin thấy)</span>
+                                            </label>
+                                        }
+                                    </div>
+
+                                    <button type="button"
+                                            class="tf-support-btn tf-btn-primary"
+                                            disabled="@(_isSubmittingReply || string.IsNullOrWhiteSpace(_replyText))"
+                                            @onclick="SubmitReplyAsync">
+                                        @if (_isSubmittingReply)
+                                        {
+                                            <span class="tf-spinner-sm"></span>
+                                            <span>Đang gửi...</span>
+                                        }
+                                        else
+                                        {
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                            </svg>
+                                            <span>Gửi phản hồi</span>
+                                        }
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Reject Modal Prompt -->
+@if (_showRejectModal)
+{
+    <div class="tf-support-overlay is-active tf-submodal-overlay">
+        <div class="tf-support-dialog tf-reject-dialog" @onclick:stopPropagation="true">
+            <div class="tf-support-header">
+                <div class="tf-support-header-left">
+                    <div class="tf-reject-icon-box">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                        </svg>
+                    </div>
+                    <h3 class="tf-reject-title">Từ chối tiếp nhận yêu cầu</h3>
+                </div>
+                <button type="button" class="tf-support-close-btn" @onclick="() => _showRejectModal = false">&times;</button>
+            </div>
+            <div class="tf-support-body">
+                <p class="tf-reject-desc">
+                    Vui lòng nêu rõ lý do từ chối để thông báo minh bạch cho người gửi yêu cầu.
+                </p>
+                <textarea class="tf-support-textarea"
+                          style="min-height:95px;"
+                          placeholder="Ví dụ: Vấn đề không thuộc phạm vi hệ thống TradeFlow, vui lòng liên hệ bộ phận IT hạ tầng..."
+                          @bind="_rejectionReasonInput"></textarea>
+            </div>
+            <div class="tf-support-form-actions" style="border-top:1px solid var(--tf-border,#e2e8f0);padding:12px 18px;margin:0;">
+                <button type="button" class="tf-support-btn tf-btn-ghost" @onclick="() => _showRejectModal = false">Hủy</button>
+                <button type="button" class="tf-support-btn tf-btn-danger" @onclick="ExecuteRejectTicketAsync">Xác nhận từ chối</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthStateCascade { get; set; }
+
+    private bool _isOpen = false;
+    private string _activeTab = "create"; // create, my-tickets, manage, detail
+    private bool _canManage = false;
+    private ClaimsPrincipal? _user;
+
+    // Form inputs
+    private SupportCategory _category = SupportCategory.SystemError;
+    private SupportRelatedModule _module = SupportRelatedModule.Other;
+    private string _title = string.Empty;
+    private string _description = string.Empty;
+    private SupportPriority _priority = SupportPriority.Normal;
+    private string _currentRoute = string.Empty;
+    private List<LocalUploadFile> _selectedFiles = new();
+    private string? _fileError;
+    private bool _isSubmitting = false;
+    private string? _errorMessage;
+    private string? _successMessage;
+    private string? _successCode;
+
+    // Lists and detail
+    private List<SupportTicketSummaryDto> _myTickets = new();
+    private List<SupportTicketSummaryDto> _manageTickets = new();
+    private SupportStatsDto? _stats;
+    private SupportTicketDetailDto? _currentTicket;
+    private List<ApplicationUser> _assignableUsers = new();
+    private string? _selectedAssigneeId;
+
+    // Management filters
+    private string _searchKeyword = string.Empty;
+    private SupportStatus? _filterStatus;
+    private SupportCategory? _filterCategory;
+    private SupportRelatedModule? _filterModule;
+    private SupportPriority? _filterPriority;
+    private string _datePreset = "all"; // all, today, 7days, 30days, custom
+    private DateTime? _customFromDate;
+    private DateTime? _customToDate;
+    private string? _filterAssigneeId;
+    private string? _filterSubmitterId;
+    private string _sortBy = "created_desc"; // created_desc, created_asc, priority_desc
+    private bool _showFilterPopover = false;
+    private System.Threading.Timer? _searchDebounceTimer;
+
+    // Discussion reply
+    private string _replyText = string.Empty;
+    private bool _replyIsInternal = false;
+    private bool _isSubmittingReply = false;
+
+    // Reject prompt
+    private bool _showRejectModal = false;
+    private string _rejectionReasonInput = string.Empty;
+
+    private int ActiveFilterCount
+    {
+        get
+        {
+            int count = 0;
+            if (_filterCategory.HasValue) count++;
+            if (_filterModule.HasValue) count++;
+            if (_filterPriority.HasValue) count++;
+            if (_datePreset != "all") count++;
+            if (!string.IsNullOrEmpty(_filterAssigneeId)) count++;
+            if (!string.IsNullOrEmpty(_filterSubmitterId)) count++;
+            return count;
+        }
+    }
+
+    private bool HasAnyActiveChips =>
+        ActiveFilterCount > 0
+        || _filterStatus.HasValue
+        || !string.IsNullOrWhiteSpace(_searchKeyword);
+
+    public void Open(string? tab = null, int? ticketId = null)
+    {
+        _isOpen = true;
+        _successMessage = null;
+        _errorMessage = null;
+        _fileError = null;
+
+        AutoDetectCurrentRouteAndModule();
+
+        if (ticketId.HasValue && ticketId.Value > 0)
+        {
+            _activeTab = "detail";
+            _ = ViewTicketDetailAsync(ticketId.Value);
+        }
+        else if (!string.IsNullOrEmpty(tab))
+        {
+            _activeTab = tab;
+        }
+        else
+        {
+            _activeTab = _canManage ? "manage" : "create";
+        }
+
+        _ = RefreshDataAsync();
+        StateHasChanged();
+        _ = TriggerModalEnterAnimation();
+    }
+
+    public void Close()
+    {
+        _ = CloseWithAnimationAsync();
+    }
+
+    private async Task CloseWithAnimationAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("TradeFlowMotion.animateModalExit", "#tf-support-dialog", "#tf-support-overlay");
+        }
+        catch { }
+
+        _isOpen = false;
+        _showRejectModal = false;
+        _showFilterPopover = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task TriggerModalEnterAnimation()
+    {
+        try
+        {
+            await Task.Delay(25);
+            await JS.InvokeVoidAsync("TradeFlowMotion.animateModalEnter", "#tf-support-dialog", "#tf-support-overlay");
+        }
+        catch { }
+    }
+
+    private async Task TriggerTabAnimation()
+    {
+        try
+        {
+            await Task.Delay(20);
+            await JS.InvokeVoidAsync("TradeFlowMotion.animateTabContent", "#tf-support-body");
+        }
+        catch { }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (AuthStateCascade != null)
+        {
+            var authState = await AuthStateCascade;
+            _user = authState.User;
+            _canManage = _user.IsInRole("Administrator")
+                      || _user.IsInRole("Manager")
+                      || (_user.Identity?.Name?.Equals("admin", StringComparison.OrdinalIgnoreCase) == true);
+        }
+    }
+
+    private void AutoDetectCurrentRouteAndModule()
+    {
+        string uri = Nav.Uri;
+        var path = new Uri(uri).AbsolutePath.ToLowerInvariant();
+        _currentRoute = path;
+
+        if (path.StartsWith("/cham-cong")) _module = SupportRelatedModule.Attendance;
+        else if (path.StartsWith("/ban-hang") || path.StartsWith("/pos")) _module = SupportRelatedModule.Sales;
+        else if (path.StartsWith("/hoa-don")) _module = SupportRelatedModule.Invoices;
+        else if (path.StartsWith("/danh-muc/san-pham") || path.StartsWith("/bang-gia")) _module = SupportRelatedModule.Products;
+        else if (path.StartsWith("/kho")) _module = SupportRelatedModule.Warehouse;
+        else if (path.StartsWith("/doi-tac")) _module = SupportRelatedModule.Partners;
+        else if (path.StartsWith("/hop-dong")) _module = SupportRelatedModule.Contracts;
+        else if (path.StartsWith("/tai-lieu")) _module = SupportRelatedModule.Documents;
+        else if (path.StartsWith("/nhan-vien")) _module = SupportRelatedModule.Employees;
+        else if (path.StartsWith("/cai-dat") || path.StartsWith("/admin")) _module = SupportRelatedModule.Settings;
+        else _module = SupportRelatedModule.Other;
+    }
+
+    private async Task SwitchTab(string tab)
+    {
+        _activeTab = tab;
+        _errorMessage = null;
+        _successMessage = null;
+        _showFilterPopover = false;
+        await RefreshDataAsync();
+        _ = TriggerTabAnimation();
+    }
+
+    private async Task RefreshDataAsync()
+    {
+        if (_user == null && AuthStateCascade != null)
+        {
+            var authState = await AuthStateCascade;
+            _user = authState.User;
+            _canManage = _user.IsInRole("Administrator")
+                      || _user.IsInRole("Manager")
+                      || (_user.Identity?.Name?.Equals("admin", StringComparison.OrdinalIgnoreCase) == true);
+        }
+        if (_user == null) return;
+
+        try
+        {
+            // My tickets
+            _myTickets = await SupportService.GetTicketsAsync(new SupportTicketFilter { OnlyMine = true }, _user);
+
+            // Management list
+            if (_canManage)
+            {
+                _stats = await SupportService.GetStatsAsync(_user);
+                await FilterTicketsAsync();
+
+                // Load assignable users (Admins and Managers)
+                await using var context = await DbFactory.CreateDbContextAsync();
+                _assignableUsers = await context.Users
+                    .AsNoTracking()
+                    .Where(u => u.Status == Domain.Enums.UserStatus.Active)
+                    .OrderBy(u => u.FullName ?? u.UserName)
+                    .ToListAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi tải dữ liệu: " + ex.Message;
+        }
+        finally
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void ToggleFilterPopover()
+    {
+        _showFilterPopover = !_showFilterPopover;
+    }
+
+    private void CloseFilterPopover()
+    {
+        _showFilterPopover = false;
+    }
+
+    private void HandleSearchInput(ChangeEventArgs e)
+    {
+        _searchKeyword = e.Value?.ToString() ?? string.Empty;
+        _searchDebounceTimer?.Dispose();
+        _searchDebounceTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(FilterTicketsAsync);
+        }, null, 250, Timeout.Infinite);
+    }
+
+    private async Task ClearSearchAsync()
+    {
+        _searchKeyword = string.Empty;
+        await FilterTicketsAsync();
+    }
+
+    private async Task QuickFilterStatus(SupportStatus? status)
+    {
+        _filterStatus = status;
+        await FilterTicketsAsync();
+    }
+
+    private async Task RemoveFilterChip(string chipType)
+    {
+        switch (chipType)
+        {
+            case "status":
+                _filterStatus = null;
+                break;
+            case "category":
+                _filterCategory = null;
+                break;
+            case "module":
+                _filterModule = null;
+                break;
+            case "priority":
+                _filterPriority = null;
+                break;
+            case "date":
+                _datePreset = "all";
+                _customFromDate = null;
+                _customToDate = null;
+                break;
+            case "assignee":
+                _filterAssigneeId = null;
+                break;
+            case "submitter":
+                _filterSubmitterId = null;
+                break;
+            case "keyword":
+                _searchKeyword = string.Empty;
+                break;
+        }
+        await FilterTicketsAsync();
+    }
+
+    private async Task ResetAdvancedFiltersAsync()
+    {
+        _filterCategory = null;
+        _filterModule = null;
+        _filterPriority = null;
+        _datePreset = "all";
+        _customFromDate = null;
+        _customToDate = null;
+        _filterAssigneeId = null;
+        _filterSubmitterId = null;
+        await FilterTicketsAsync();
+    }
+
+    private async Task ResetFiltersAsync()
+    {
+        _searchKeyword = string.Empty;
+        _filterStatus = null;
+        _filterCategory = null;
+        _filterModule = null;
+        _filterPriority = null;
+        _datePreset = "all";
+        _customFromDate = null;
+        _customToDate = null;
+        _filterAssigneeId = null;
+        _filterSubmitterId = null;
+        _sortBy = "created_desc";
+        _showFilterPopover = false;
+        await FilterTicketsAsync();
+    }
+
+    private (DateTime? from, DateTime? to) ResolveDateRange()
+    {
+        var now = DateTime.UtcNow;
+        var todayStart = DateTime.UtcNow.Date;
+        return _datePreset switch
+        {
+            "today" => (todayStart, now),
+            "7days" => (now.AddDays(-7), now),
+            "30days" => (now.AddDays(-30), now),
+            "custom" => (_customFromDate?.ToUniversalTime(), _customToDate?.ToUniversalTime().AddDays(1).AddTicks(-1)),
+            _ => (null, null)
+        };
+    }
+
+    private string GetDatePresetLabel() => _datePreset switch
+    {
+        "today" => "Hôm nay",
+        "7days" => "7 ngày qua",
+        "30days" => "30 ngày qua",
+        "custom" => $"{_customFromDate:dd/MM} - {_customToDate:dd/MM}",
+        _ => "Tất cả"
+    };
+
+    private string GetAssigneeLabel()
+    {
+        if (_filterAssigneeId == "unassigned") return "Chưa phân công";
+        var user = _assignableUsers.FirstOrDefault(u => u.Id == _filterAssigneeId);
+        return user?.FullName ?? user?.UserName ?? _filterAssigneeId ?? "Đã chọn";
+    }
+
+    private string GetSubmitterLabel()
+    {
+        var user = _assignableUsers.FirstOrDefault(u => u.Id == _filterSubmitterId);
+        return user?.FullName ?? user?.UserName ?? _filterSubmitterId ?? "Đã chọn";
+    }
+
+    private async Task FilterTicketsAsync()
+    {
+        if (_user == null || !_canManage) return;
+
+        var (fromDate, toDate) = ResolveDateRange();
+
+        var filter = new SupportTicketFilter
+        {
+            SearchKeyword = _searchKeyword,
+            Status = _filterStatus,
+            Category = _filterCategory,
+            RelatedModule = _filterModule,
+            Priority = _filterPriority,
+            FromDate = fromDate,
+            ToDate = toDate,
+            AssignedToUserId = _filterAssigneeId,
+            CreatedByUserId = _filterSubmitterId,
+            SortBy = _sortBy
+        };
+
+        _manageTickets = await SupportService.GetTicketsAsync(filter, _user);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        _fileError = null;
+        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".png", ".jpg", ".jpeg", ".webp", ".gif",
+            ".pdf", ".docx", ".xlsx", ".txt", ".log", ".csv"
+        };
+
+        foreach (var file in e.GetMultipleFiles(5))
+        {
+            if (_selectedFiles.Count >= 5)
+            {
+                _fileError = "Chỉ được đính kèm tối đa 5 tệp cho mỗi báo cáo.";
+                break;
+            }
+
+            var ext = Path.GetExtension(file.Name);
+            if (string.IsNullOrEmpty(ext) || !allowed.Contains(ext))
+            {
+                _fileError = $"Tệp '{file.Name}' có định dạng không được hỗ trợ.";
+                continue;
+            }
+
+            if (file.Size > 10 * 1024 * 1024)
+            {
+                _fileError = $"Tệp '{file.Name}' vượt quá giới hạn 10MB.";
+                continue;
+            }
+
+            try
+            {
+                using var stream = file.OpenReadStream(10 * 1024 * 1024);
+                using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms);
+                byte[] bytes = ms.ToArray();
+
+                string? previewUrl = null;
+                if (file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+                {
+                    previewUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(bytes)}";
+                }
+
+                _selectedFiles.Add(new LocalUploadFile
+                {
+                    FileName = file.Name,
+                    ContentType = file.ContentType,
+                    SizeBytes = file.Size,
+                    Data = bytes,
+                    PreviewUrl = previewUrl,
+                    Extension = ext.TrimStart('.').ToUpperInvariant()
+                });
+            }
+            catch (Exception ex)
+            {
+                _fileError = $"Không thể tải tệp '{file.Name}': {ex.Message}";
+            }
+        }
+    }
+
+    private void RemoveFile(LocalUploadFile file)
+    {
+        _selectedFiles.Remove(file);
+    }
+
+    private async Task SubmitTicketAsync()
+    {
+        if (_user == null) return;
+        if (string.IsNullOrWhiteSpace(_title))
+        {
+            _errorMessage = "Vui lòng nhập tiêu đề báo cáo.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(_description))
+        {
+            _errorMessage = "Vui lòng nhập mô tả chi tiết vấn đề.";
+            return;
+        }
+
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            var cmd = new CreateSupportTicketCommand
+            {
+                Category = _category,
+                RelatedModule = _module,
+                Title = _title,
+                Description = _description,
+                Priority = _priority,
+                CurrentRoute = _currentRoute,
+                Files = _selectedFiles.Select(f => new SupportFileUploadDto
+                {
+                    FileName = f.FileName,
+                    ContentType = f.ContentType,
+                    FileSizeBytes = f.SizeBytes,
+                    Data = f.Data
+                }).ToList()
+            };
+
+            var ticket = await SupportService.CreateTicketAsync(cmd, _user);
+
+            _successMessage = "Đã gửi yêu cầu hỗ trợ thành công.";
+            _successCode = ticket.Code;
+
+            // Reset form
+            _title = string.Empty;
+            _description = string.Empty;
+            _selectedFiles.Clear();
+
+            // Refresh lists
+            await RefreshDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi khi gửi yêu cầu: " + ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task ViewTicketDetailAsync(int ticketId)
+    {
+        if (_user == null && AuthStateCascade != null)
+        {
+            var authState = await AuthStateCascade;
+            _user = authState.User;
+        }
+        if (_user == null) return;
+        try
+        {
+            _currentTicket = await SupportService.GetTicketByIdAsync(ticketId, _user);
+            if (_currentTicket != null)
+            {
+                _selectedAssigneeId = _currentTicket.AssignedToUserId;
+                _activeTab = "detail";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Không thể xem chi tiết yêu cầu: " + ex.Message;
+        }
+        finally
+        {
+            await InvokeAsync(StateHasChanged);
+            _ = TriggerTabAnimation();
+        }
+    }
+
+    private async Task QuickUpdateStatusAsync(SupportStatus newStatus)
+    {
+        if (_user == null || _currentTicket == null) return;
+        try
+        {
+            await SupportService.UpdateTicketStatusAsync(new UpdateSupportTicketStatusCommand
+            {
+                TicketId = _currentTicket.Id,
+                NewStatus = newStatus
+            }, _user);
+
+            await ViewTicketDetailAsync(_currentTicket.Id);
+            await RefreshDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi cập nhật trạng thái: " + ex.Message;
+        }
+    }
+
+    private void PromptRejectModal()
+    {
+        _rejectionReasonInput = string.Empty;
+        _showRejectModal = true;
+    }
+
+    private async Task ExecuteRejectTicketAsync()
+    {
+        if (_user == null || _currentTicket == null) return;
+        if (string.IsNullOrWhiteSpace(_rejectionReasonInput))
+        {
+            _errorMessage = "Vui lòng nhập lý do từ chối.";
+            return;
+        }
+
+        try
+        {
+            await SupportService.UpdateTicketStatusAsync(new UpdateSupportTicketStatusCommand
+            {
+                TicketId = _currentTicket.Id,
+                NewStatus = SupportStatus.Rejected,
+                ReasonOrNotes = _rejectionReasonInput.Trim()
+            }, _user);
+
+            _showRejectModal = false;
+            await ViewTicketDetailAsync(_currentTicket.Id);
+            await RefreshDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi từ chối yêu cầu: " + ex.Message;
+        }
+    }
+
+    private async Task ExecuteAssignTicketAsync()
+    {
+        if (_user == null || _currentTicket == null || string.IsNullOrEmpty(_selectedAssigneeId)) return;
+        try
+        {
+            await SupportService.AssignTicketAsync(new AssignSupportTicketCommand
+            {
+                TicketId = _currentTicket.Id,
+                AssignToUserId = _selectedAssigneeId
+            }, _user);
+
+            await ViewTicketDetailAsync(_currentTicket.Id);
+            await RefreshDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi phân công: " + ex.Message;
+        }
+    }
+
+    private async Task SubmitReplyAsync()
+    {
+        if (_user == null || _currentTicket == null || string.IsNullOrWhiteSpace(_replyText)) return;
+
+        _isSubmittingReply = true;
+        try
+        {
+            await SupportService.AddCommentAsync(new AddSupportCommentCommand
+            {
+                TicketId = _currentTicket.Id,
+                Content = _replyText,
+                IsInternalNote = _replyIsInternal
+            }, _user);
+
+            _replyText = string.Empty;
+            _replyIsInternal = false;
+            await ViewTicketDetailAsync(_currentTicket.Id);
+            await RefreshDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Lỗi gửi phản hồi: " + ex.Message;
+        }
+        finally
+        {
+            _isSubmittingReply = false;
+        }
+    }
+
+    private static string GetStatusBadgeClass(SupportStatus status) => status switch
+    {
+        SupportStatus.New => "tf-status-new",
+        SupportStatus.Acknowledged => "tf-status-ack",
+        SupportStatus.InProgress => "tf-status-prog",
+        SupportStatus.WaitingForCustomer => "tf-status-wait",
+        SupportStatus.Resolved => "tf-status-res",
+        SupportStatus.Closed => "tf-status-closed",
+        SupportStatus.Rejected => "tf-status-rej",
+        _ => "tf-status-new"
+    };
+
+    private static string GetPriorityClass(SupportPriority priority) => priority switch
+    {
+        SupportPriority.Urgent => "tf-priority-urgent",
+        SupportPriority.Medium => "tf-priority-medium",
+        _ => "tf-priority-normal"
+    };
+
+    private class LocalUploadFile
+    {
+        public string FileName { get; set; } = string.Empty;
+        public string ContentType { get; set; } = string.Empty;
+        public long SizeBytes { get; set; }
+        public byte[] Data { get; set; } = [];
+        public string? PreviewUrl { get; set; }
+        public string Extension { get; set; } = string.Empty;
+
+        public string FormattedSize
+        {
+            get
+            {
+                if (SizeBytes < 1024) return $"{SizeBytes} B";
+                if (SizeBytes < 1024 * 1024) return $"{SizeBytes / 1024.0:F1} KB";
+                return $"{SizeBytes / (1024.0 * 1024.0):F2} MB";
+            }
+        }
+    }
+}

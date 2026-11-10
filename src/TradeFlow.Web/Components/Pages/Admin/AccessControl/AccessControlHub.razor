@@ -1,0 +1,1859 @@
+@page "/cai-dat/phan-quyen"
+@page "/cai-dat/phan-quyen/{ActiveTab}"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using TradeFlow.Application.Common.Interfaces
+@using TradeFlow.Application.Common.Models.Security
+@using TradeFlow.Domain.Entities.Security
+@using TradeFlow.Domain.Enums
+@using TradeFlow.Infrastructure.Persistence
+@attribute [Authorize(Roles = "Administrator")]
+
+@inject IRoleManagementService RoleService
+@inject RoleManager<ApplicationRole> RoleManager
+@inject UserManager<ApplicationUser> UserManager
+@inject TradeFlowDbContext DbContext
+@inject IPermissionService PermissionService
+@inject IAuditService AuditService
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Quản lý quyền truy cập &amp; Phân quyền — TradeFlow</PageTitle>
+
+<div class="tf-access-control-hub">
+    @* Page Header *@
+    <div class="tf-page-header">
+        <div class="tf-page-header-left">
+            <div class="tf-breadcrumb">
+                <a href="/cai-dat" class="tf-breadcrumb-link">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                    Cài đặt
+                </a>
+                <span class="tf-breadcrumb-sep">/</span>
+                <span class="tf-breadcrumb-current">Quản lý quyền truy cập</span>
+            </div>
+            <h1 class="tf-page-title">Quản lý quyền truy cập &amp; Phân quyền</h1>
+            <p class="tf-page-subtitle">Hệ thống phân quyền tùy biến (Custom RBAC), cấp quyền tạm thời tối đa 2 giờ và bảo vệ an ninh dữ liệu doanh nghiệp</p>
+        </div>
+        <div class="tf-page-header-actions">
+            <button type="button" class="tf-btn tf-btn-warning" @onclick="OpenGrantTemporaryModal" title="Cấp quyền tạm thời tối đa 2 giờ">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span>+ Cấp quyền tạm thời</span>
+            </button>
+            <button type="button" class="tf-btn tf-btn-primary" @onclick="OpenCreateRoleModal">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>+ Tạo vai trò mới</span>
+            </button>
+        </div>
+    </div>
+
+    @* Notification Banners *@
+    @if (!string.IsNullOrEmpty(_alertMessage))
+    {
+        <div class="tf-hub-alert @(_alertSuccess ? "tf-hub-alert-success" : "tf-hub-alert-error")">
+            <div class="tf-hub-alert-content">
+                @if (_alertSuccess)
+                {
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                }
+                else
+                {
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                }
+                <span>@_alertMessage</span>
+            </div>
+            <button type="button" class="tf-hub-alert-close" @onclick="() => _alertMessage = null">&times;</button>
+        </div>
+    }
+
+    @* Navigation Tabs Bar *@
+    <div class="tf-hub-tabs-container">
+        <nav class="tf-hub-tabs-nav">
+            <button type="button" class="tf-hub-tab-btn @(CurrentTab == "overview" ? "active" : "")" @onclick="@(() => SwitchTab("overview"))">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                <span>Tổng quan</span>
+            </button>
+            <button type="button" class="tf-hub-tab-btn @(CurrentTab == "roles" ? "active" : "")" @onclick="@(() => SwitchTab("roles"))">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                <span>Quản lý Role</span>
+                <span class="tf-hub-tab-badge">@(_roles?.Count ?? 0)</span>
+            </button>
+            <button type="button" class="tf-hub-tab-btn @(CurrentTab == "matrix" ? "active" : "")" @onclick="@(() => SwitchTab("matrix"))">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                <span>Ma trận quyền</span>
+            </button>
+            <button type="button" class="tf-hub-tab-btn @(CurrentTab == "accounts" ? "active" : "")" @onclick="@(() => SwitchTab("accounts"))">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                <span>Tài khoản &amp; Role</span>
+                <span class="tf-hub-tab-badge">@(_accountAssignments?.Count ?? 0)</span>
+            </button>
+            <button type="button" class="tf-hub-tab-btn @(CurrentTab == "temporary" ? "active" : "")" @onclick="@(() => SwitchTab("temporary"))">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span>Quyền tạm thời (Tối đa 2h)</span>
+                @if ((_overview?.ActiveTemporaryRoles ?? 0) > 0)
+                {
+                    <span class="tf-hub-tab-badge active-pulse">@_overview!.ActiveTemporaryRoles</span>
+                }
+            </button>
+            <button type="button" class="tf-hub-tab-btn @(CurrentTab == "audit" ? "active" : "")" @onclick="@(() => SwitchTab("audit"))">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                <span>Nhật ký phân quyền</span>
+            </button>
+        </nav>
+    </div>
+
+    @* Content Area per Tab *@
+    <div class="tf-hub-content">
+        @if (_isLoading)
+        {
+            <div class="tf-hub-loading-state">
+                <div class="tf-spinner"></div>
+                <p>Đang tải dữ liệu phân quyền bảo mật...</p>
+            </div>
+        }
+        else
+        {
+            @* ========================================================================= *@
+            @* TAB 1: TỔNG QUAN PHÂN QUYỀN *@
+            @* ========================================================================= *@
+            @if (CurrentTab == "overview")
+            {
+                <div class="tf-overview-container">
+                    @* KPI Stat Cards *@
+                    <div class="tf-kpi-grid">
+                        <div class="tf-kpi-card">
+                            <div class="tf-kpi-icon-wrap" style="background:#eef2ff; color:#4f46e5;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                            </div>
+                            <div class="tf-kpi-info">
+                                <span class="tf-kpi-label">Tổng số vai trò</span>
+                                <span class="tf-kpi-value">@(_overview?.TotalRoles ?? 0)</span>
+                                <span class="tf-kpi-sub">Bao gồm 1 vai trò hệ thống Root</span>
+                            </div>
+                        </div>
+
+                        <div class="tf-kpi-card">
+                            <div class="tf-kpi-icon-wrap" style="background:#ecfdf5; color:#059669;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                            </div>
+                            <div class="tf-kpi-info">
+                                <span class="tf-kpi-label">Tài khoản đã phân quyền</span>
+                                <span class="tf-kpi-value">@(_overview?.TotalAssignedUsers ?? 0)</span>
+                                <span class="tf-kpi-sub">Tối đa 2 vai trò / tài khoản</span>
+                            </div>
+                        </div>
+
+                        <div class="tf-kpi-card">
+                            <div class="tf-kpi-icon-wrap" style="background:#fffbeb; color:#d97706;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            </div>
+                            <div class="tf-kpi-info">
+                                <span class="tf-kpi-label">Quyền tạm thời đang hiệu lực</span>
+                                <span class="tf-kpi-value text-amber">@(_overview?.ActiveTemporaryRoles ?? 0)</span>
+                                <span class="tf-kpi-sub">Giới hạn tối đa 2 giờ, tự thu hồi</span>
+                            </div>
+                        </div>
+
+                        <div class="tf-kpi-card">
+                            <div class="tf-kpi-icon-wrap" style="background:#fef2f2; color:#dc2626;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                            </div>
+                            <div class="tf-kpi-info">
+                                <span class="tf-kpi-label">Quyền cần chú ý</span>
+                                <span class="tf-kpi-value text-red">@(_overview?.AttentionPermissionsCount ?? 0)</span>
+                                <span class="tf-kpi-sub">Xóa dữ liệu, Phân quyền, Ghi đè giá</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Security Model Notice Banner *@
+                    <div class="tf-hub-policy-card">
+                        <div class="tf-policy-card-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        </div>
+                        <div class="tf-policy-card-body">
+                            <h3 class="tf-policy-title">Mô hình Phân quyền Đa tầng &amp; Bảo vệ Dữ liệu Doanh nghiệp</h3>
+                            <ul class="tf-policy-list">
+                                <li><strong>Quy tắc 2 vai trò:</strong> Mỗi tài khoản được cấp tối đa 2 vai trò đang hoạt động (Vai trò nền <code>Nhân viên</code> mặc định + 1 vai trò bổ sung vĩnh viễn hoặc tạm thời).</li>
+                                <li><strong>Cấp quyền tạm thời an toàn:</strong> Thời hạn tối đa cứng <strong>2 giờ (120 phút)</strong>. Backend tự động vô hiệu hóa quyền chính xác kể cả khi người dùng vẫn đang mở trình duyệt hoặc ứng dụng khởi động lại.</li>
+                                <li><strong>Bảo vệ dữ liệu Đối tác (Khách hàng &amp; Nhà cung cấp):</strong> Không chỉ ẩn menu. Chặn toàn diện Route, Service truy vấn, Autocomplete và Excel Export nếu tài khoản không được cấp quyền.</li>
+                                <li><strong>Bảo vệ Quản trị viên Root:</strong> Vai trò Administrator có toàn quyền hệ thống, không thể bị xóa hoặc vô hiệu hóa bởi bất kỳ tài khoản nào.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    @* Recent Activities Table *@
+                    <div class="tf-card tf-hub-recent-card">
+                        <div class="tf-card-header">
+                            <div class="tf-card-title-wrap">
+                                <h2 class="tf-card-title">Hoạt động phân quyền gần đây</h2>
+                                <span class="tf-card-subtitle">Nhật ký truy vết thao tác cấp, sửa, sao chép và thu hồi vai trò</span>
+                            </div>
+                            <button type="button" class="tf-btn tf-btn-sm tf-btn-secondary" @onclick="@(() => SwitchTab("audit"))">Xem toàn bộ nhật ký &rarr;</button>
+                        </div>
+                        <div class="tf-table-wrap">
+                            <table class="tf-table">
+                                <thead>
+                                    <tr>
+                                        <th>Thời gian (GMT+7)</th>
+                                        <th>Người thực hiện</th>
+                                        <th>Hành động</th>
+                                        <th>Đối tượng</th>
+                                        <th>Chi tiết / Lý do</th>
+                                        <th>Kết quả</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (_overview?.RecentActivities?.Any() == true)
+                                    {
+                                        @foreach (var act in _overview.RecentActivities)
+                                        {
+                                            <tr>
+                                                <td class="text-mono" style="white-space:nowrap; font-size:12.5px;">@FormatVietnamTime(act.Timestamp)</td>
+                                                <td><span class="tf-user-badge">@act.Actor</span></td>
+                                                <td><span class="tf-event-badge">@act.EventTypeName</span></td>
+                                                <td class="font-semibold">@act.Target</td>
+                                                <td class="tf-table-cell-desc">@act.Description</td>
+                                                <td>
+                                                    @if (act.Succeeded)
+                                                    {
+                                                        <span class="tf-status-pill tf-status-success">Thành công</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="tf-status-pill tf-status-danger">Từ chối</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr>
+                                            <td colspan="6" class="tf-table-empty">Chưa có hoạt động phân quyền nào được ghi nhận.</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @* ========================================================================= *@
+            @* TAB 2: QUẢN LÝ ROLE *@
+            @* ========================================================================= *@
+            @if (CurrentTab == "roles")
+            {
+                <div class="tf-roles-container">
+                    <div class="tf-toolbar-row">
+                        <div class="tf-search-box">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input type="text" placeholder="Tìm theo tên vai trò, mô tả..." @bind="_rolesSearchTerm" @bind:event="oninput" @bind:after="FilterRoles" />
+                        </div>
+                        <div class="tf-toolbar-actions">
+                            <select class="tf-select" @bind="_rolesStatusFilter" @bind:after="FilterRoles">
+                                <option value="all">Tất cả trạng thái</option>
+                                <option value="active">Đang hoạt động</option>
+                                <option value="inactive">Đã vô hiệu hóa</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="tf-role-cards-grid">
+                        @if (_filteredRoles?.Any() == true)
+                        {
+                            @foreach (var r in _filteredRoles)
+                            {
+                                <div class="tf-role-card @(r.IsSystem ? "system-role" : "") @(!r.IsActive ? "inactive-role" : "")">
+                                    <div class="tf-role-card-top">
+                                        <div class="tf-role-badge-cluster">
+                                            <span class="tf-role-color-dot" style="background-color: @r.ColorHex;"></span>
+                                            <div class="tf-role-icon-box" style="color: @r.ColorHex; background-color: @r.ColorHex; opacity:0.15;">
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                            </div>
+                                            <div>
+                                                <h3 class="tf-role-title">@r.Name</h3>
+                                                @if (r.IsSystem)
+                                                {
+                                                    <span class="tf-system-badge">HỆ THỐNG / ROOT</span>
+                                                }
+                                            </div>
+                                        </div>
+                                        <div>
+                                            @if (r.IsActive)
+                                            {
+                                                <span class="tf-status-pill tf-status-success">Hoạt động</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="tf-status-pill tf-status-slate">Vô hiệu hóa</span>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    <p class="tf-role-description">@(string.IsNullOrWhiteSpace(r.Description) ? "Không có mô tả chi tiết." : r.Description)</p>
+
+                                    <div class="tf-role-stats-row">
+                                        <div class="tf-role-stat-item">
+                                            <span class="tf-role-stat-num">@r.GrantedPermissionsCount</span>
+                                            <span class="tf-role-stat-lbl">Quyền được cấp</span>
+                                        </div>
+                                        <div class="tf-role-stat-item">
+                                            <span class="tf-role-stat-num">@r.ActiveUsersCount</span>
+                                            <span class="tf-role-stat-lbl">Tài khoản sử dụng</span>
+                                        </div>
+                                        <div class="tf-role-stat-item">
+                                            <span class="tf-role-stat-num text-mono" style="font-size:12px;">@FormatDate(r.CreatedAt)</span>
+                                            <span class="tf-role-stat-lbl">Ngày tạo</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="tf-role-actions-row">
+                                        <button type="button" class="tf-btn tf-btn-sm tf-btn-primary" @onclick="@(() => ConfigureRolePermissions(r.Id))" title="Cấu hình ma trận quyền">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                                            <span>Quyền hạn</span>
+                                        </button>
+                                        <button type="button" class="tf-btn tf-btn-sm tf-btn-secondary" @onclick="@(() => OpenEditRoleModal(r))" title="Chỉnh sửa thông tin vai trò">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                            <span>Sửa</span>
+                                        </button>
+                                        <button type="button" class="tf-btn tf-btn-sm tf-btn-secondary" @onclick="@(() => OpenCloneRoleModal(r))" title="Sao chép vai trò này">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                            <span>Nhân bản</span>
+                                        </button>
+
+                                        @if (!r.IsSystem)
+                                        {
+                                            <button type="button" class="tf-btn tf-btn-sm @(r.IsActive ? "tf-btn-outline-slate" : "tf-btn-outline-success")" @onclick="@(() => ToggleRoleStatus(r.Id, !r.IsActive))" title="@(r.IsActive ? "Vô hiệu hóa vai trò" : "Kích hoạt lại vai trò")">
+                                                @(r.IsActive ? "Tắt" : "Bật")
+                                            </button>
+                                            <button type="button" class="tf-btn tf-btn-sm tf-btn-danger-outline" @onclick="@(() => ConfirmDeleteRole(r))" disabled="@(r.ActiveUsersCount > 0)" title="@(r.ActiveUsersCount > 0 ? "Không thể xóa vai trò đang có tài khoản sử dụng" : "Xóa vai trò")">
+                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="tf-empty-state-card">
+                                <p>Không tìm thấy vai trò nào phù hợp với bộ lọc.</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            @* ========================================================================= *@
+            @* TAB 3: MA TRẬN QUYỀN TRUY CẬP *@
+            @* ========================================================================= *@
+            @if (CurrentTab == "matrix")
+            {
+                <div class="tf-matrix-container">
+                    <div class="tf-matrix-header-bar">
+                        <div class="tf-matrix-role-selector-wrap">
+                            <label class="tf-label">Chọn vai trò cần cấu hình:</label>
+                            <select class="tf-select-role-main" value="@_selectedRoleIdForMatrix" @onchange="OnMatrixRoleChanged">
+                                @if (_roles != null)
+                                {
+                                    @foreach (var r in _roles)
+                                    {
+                                        <option value="@r.Id">@r.Name @(r.IsSystem ? "(Hệ thống Root)" : "")</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="tf-matrix-header-info">
+                            <span class="tf-badge tf-badge-info">Đã chọn: <strong>@_selectedRoleMatrixPermissions.Count(p => p.IsGranted)</strong> quyền</span>
+                            <button type="button" class="tf-btn tf-btn-primary" @onclick="SaveMatrixPermissionsAsync" disabled="@_isSavingMatrix">
+                                @if (_isSavingMatrix)
+                                {
+                                    <div class="tf-spinner tf-spinner-sm"></div>
+                                    <span>Đang lưu...</span>
+                                }
+                                else
+                                {
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                                    <span>Lưu thay đổi ma trận</span>
+                                }
+                            </button>
+                        </div>
+                    </div>
+
+                    @* Module Filter / Search *@
+                    <div class="tf-toolbar-row" style="margin-bottom: 1rem;">
+                        <div class="tf-search-box" style="max-width: 400px;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input type="text" placeholder="Tìm tài nguyên hoặc quyền hạn..." @bind="_matrixSearchTerm" @bind:event="oninput" />
+                        </div>
+                        <div class="tf-matrix-legend">
+                            <span class="tf-legend-item"><span class="tf-legend-dot dot-granted"></span> Được cấp</span>
+                            <span class="tf-legend-item"><span class="tf-legend-dot dot-sensitive"></span> Quyền nhạy cảm (Cần chú ý)</span>
+                        </div>
+                    </div>
+
+                    @* Module Groups Accordion *@
+                    <div class="tf-matrix-modules-wrap">
+                        @foreach (var grp in _moduleGroups)
+                        {
+                            bool isGrpExpanded = IsGroupExpanded(grp.GroupName);
+                            var filteredResources = grp.Resources
+                                .Where(r => string.IsNullOrWhiteSpace(_matrixSearchTerm)
+                                         || r.Title.Contains(_matrixSearchTerm, StringComparison.OrdinalIgnoreCase)
+                                         || grp.GroupName.Contains(_matrixSearchTerm, StringComparison.OrdinalIgnoreCase))
+                                .ToList();
+
+                            if (!filteredResources.Any()) continue;
+
+                            <div class="tf-module-group-card">
+                                <div class="tf-module-group-header" @onclick="@(() => ToggleGroupExpanded(grp.GroupName))">
+                                    <div class="tf-group-header-left">
+                                        <svg class="tf-group-chevron @(isGrpExpanded ? "expanded" : "")" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                        <h3 class="tf-group-title">@grp.GroupName</h3>
+                                        <span class="tf-group-count">(@filteredResources.Count tài nguyên)</span>
+                                    </div>
+                                    <div class="tf-group-header-actions" @onclick:stopPropagation="true">
+                                        <button type="button" class="tf-btn tf-btn-xs tf-btn-secondary" @onclick="@(() => SelectAllGroupPermissions(grp, true))">Chọn tất cả</button>
+                                        <button type="button" class="tf-btn tf-btn-xs tf-btn-secondary" @onclick="@(() => SelectAllGroupPermissions(grp, false))">Bỏ chọn</button>
+                                    </div>
+                                </div>
+
+                                @if (isGrpExpanded)
+                                {
+                                    <div class="tf-module-group-body">
+                                        <div class="tf-matrix-table-wrap">
+                                            <table class="tf-matrix-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="min-width: 220px;">Tài nguyên &amp; Mô tả</th>
+                                                        <th>Xem</th>
+                                                        <th>Chi tiết</th>
+                                                        <th>Tạo mới</th>
+                                                        <th>Sửa</th>
+                                                        <th>Xóa</th>
+                                                        <th>Xuất</th>
+                                                        <th>In</th>
+                                                        <th>Duyệt</th>
+                                                        <th>Từ chối</th>
+                                                        <th>Cấu hình</th>
+                                                        <th style="min-width: 130px;">Phạm vi dữ liệu</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var resMeta in filteredResources)
+                                                    {
+                                                        <tr>
+                                                            <td class="tf-res-col">
+                                                                <div class="tf-res-title">@resMeta.Title</div>
+                                                                <div class="tf-res-code text-mono">@resMeta.Resource.ToString()</div>
+                                                            </td>
+                                                            <td class="text-center">@RenderActionToggle(resMeta.Resource, PermissionAction.View)</td>
+                                                            <td class="text-center">@RenderActionToggle(resMeta.Resource, PermissionAction.ViewDetail)</td>
+                                                            <td class="text-center">@RenderActionToggle(resMeta.Resource, PermissionAction.Create)</td>
+                                                            <td class="text-center">@RenderActionToggle(resMeta.Resource, PermissionAction.Edit)</td>
+                                                            <td class="text-center">@RenderActionToggle(resMeta.Resource, PermissionAction.Delete, isSensitive: true)</td>
+                                                            <td class="text-center">@RenderActionToggle(resMeta.Resource, PermissionAction.Export, isSensitive: true)</td>
+                                                            <td class="text-center">@RenderActionToggle(resMeta.Resource, PermissionAction.Print)</td>
+                                                            <td class="text-center">@RenderActionToggle(resMeta.Resource, PermissionAction.Approve)</td>
+                                                            <td class="text-center">@RenderActionToggle(resMeta.Resource, PermissionAction.Reject)</td>
+                                                            <td class="text-center">@RenderActionToggle(resMeta.Resource, PermissionAction.ManageConfig, isSensitive: true)</td>
+                                                            <td>
+                                                                <select class="tf-scope-select" value="@GetResourceScope(resMeta.Resource)" @onchange="@((ChangeEventArgs e) => SetResourceScope(resMeta.Resource, e))">
+                                                                    <option value="@((int)DataScope.Self)">Bản thân</option>
+                                                                    <option value="@((int)DataScope.Department)">Phòng ban</option>
+                                                                    <option value="@((int)DataScope.All)">Toàn công ty</option>
+                                                                </select>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            @* ========================================================================= *@
+            @* TAB 4: QUẢN LÝ TÀI KHOẢN VÀ ROLE *@
+            @* ========================================================================= *@
+            @if (CurrentTab == "accounts")
+            {
+                <div class="tf-accounts-container">
+                    <div class="tf-toolbar-row">
+                        <div class="tf-search-box">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input type="text" placeholder="Tìm tài khoản, tên nhân viên, email..." @bind="_accountsSearchTerm" @bind:event="oninput" @bind:after="FilterAccounts" />
+                        </div>
+                        <div class="tf-toolbar-actions">
+                            <select class="tf-select" @bind="_accountsRoleFilter" @bind:after="FilterAccounts">
+                                <option value="">Tất cả vai trò</option>
+                                @if (_roles != null)
+                                {
+                                    @foreach (var r in _roles)
+                                    {
+                                        <option value="@r.Name">@r.Name</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="tf-accounts-policy-notice">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                        <span><strong>Nguyên tắc 2 Role:</strong> Mỗi tài khoản có tối đa 2 Role đang hoạt động. Role 1 là Role nền (<code>Nhân viên</code>). Role 2 có thể là vĩnh viễn hoặc tạm thời (tối đa 2 giờ).</span>
+                    </div>
+
+                    <div class="tf-table-wrap">
+                        <table class="tf-table">
+                            <thead>
+                                <tr>
+                                    <th>Tài khoản &amp; Nhân sự</th>
+                                    <th>Phòng ban</th>
+                                    <th>Role 1 (Nền mặc định)</th>
+                                    <th>Role 2 (Bổ sung)</th>
+                                    <th>Chế độ Role 2</th>
+                                    <th>Thời hạn (nếu tạm thời)</th>
+                                    <th style="text-align: right;">Thao tác quản trị</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (_filteredAccountAssignments?.Any() == true)
+                                {
+                                    @foreach (var acc in _filteredAccountAssignments)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="tf-user-cell">
+                                                    <div class="tf-user-avatar">@(acc.UserName.Length >= 2 ? acc.UserName.Substring(0, 2).ToUpper() : "TF")</div>
+                                                    <div>
+                                                        <div class="tf-user-name">@acc.UserName</div>
+                                                        <div class="tf-user-sub">@(string.IsNullOrWhiteSpace(acc.FullName) ? acc.Email : acc.FullName)</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>@(acc.DepartmentName ?? "—")</td>
+                                            <td>
+                                                <span class="tf-role-pill" style="border-left: 3px solid @acc.BaseRoleColor;">@acc.BaseRoleName</span>
+                                            </td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(acc.SecondaryRoleName))
+                                                {
+                                                    <span class="tf-role-pill" style="border-left: 3px solid @acc.SecondaryRoleColor;">@acc.SecondaryRoleName</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted" style="font-size:12.5px;">Chưa gán</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(acc.SecondaryRoleName))
+                                                {
+                                                    if (acc.IsSecondaryTemporary)
+                                                    {
+                                                        <span class="tf-status-pill tf-status-amber">Tạm thời</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="tf-status-pill tf-status-success">Vĩnh viễn</span>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <span>—</span>
+                                                }
+                                            </td>
+                                            <td class="text-mono" style="font-size:12.5px;">
+                                                @if (acc.IsSecondaryTemporary && acc.SecondaryExpiresAt.HasValue)
+                                                {
+                                                    <span title="Hết hạn lúc: @FormatVietnamTime(acc.SecondaryExpiresAt.Value)">
+                                                        @FormatVietnamTime(acc.SecondaryExpiresAt.Value)
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span>—</span>
+                                                }
+                                            </td>
+                                            <td style="text-align: right;">
+                                                @if (acc.UserName == "admin" || acc.BaseRoleName == "Administrator")
+                                                {
+                                                    <span class="tf-status-pill tf-status-slate" title="Tài khoản Root có toàn quyền hệ thống">Root Protected</span>
+                                                }
+                                                else
+                                                {
+                                                    <div class="tf-row-actions">
+                                                        @if (string.IsNullOrEmpty(acc.SecondaryRoleName))
+                                                        {
+                                                            <button type="button" class="tf-btn tf-btn-xs tf-btn-secondary" @onclick="@(() => OpenAssignSecondaryModal(acc))">
+                                                                + Gán Role 2
+                                                            </button>
+                                                            <button type="button" class="tf-btn tf-btn-xs tf-btn-warning" @onclick="@(() => OpenGrantTemporaryForUserModal(acc))">
+                                                                + Cấp tạm thời
+                                                            </button>
+                                                        }
+                                                        else
+                                                        {
+                                                            @if (acc.IsSecondaryTemporary && acc.TemporaryAssignmentId.HasValue)
+                                                            {
+                                                                <button type="button" class="tf-btn tf-btn-xs tf-btn-danger-outline" @onclick="@(() => RevokeTemporaryAssignment(acc.TemporaryAssignmentId.Value))">
+                                                                    Thu hồi tạm thời
+                                                                </button>
+                                                            }
+                                                            else
+                                                            {
+                                                                <button type="button" class="tf-btn tf-btn-xs tf-btn-danger-outline" @onclick="@(() => RemoveSecondaryRole(acc.UserId))">
+                                                                    Gỡ Role 2
+                                                                </button>
+                                                            }
+                                                        }
+                                                    </div>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="7" class="tf-table-empty">Không tìm thấy tài khoản nào phù hợp.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+
+            @* ========================================================================= *@
+            @* TAB 5: QUYỀN TRUY CẬP TẠM THỜI *@
+            @* ========================================================================= *@
+            @if (CurrentTab == "temporary")
+            {
+                <div class="tf-temporary-container">
+                    <div class="tf-temp-hero-banner">
+                        <div class="tf-temp-hero-left">
+                            <div class="tf-temp-clock-icon">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            </div>
+                            <div>
+                                <h3 class="tf-temp-hero-title">Cơ chế Cấp Quyền Tạm Thời Bền Vững (Giới hạn tối đa 2 giờ)</h3>
+                                <p class="tf-temp-hero-desc">Quyền tạm thời tự động hết hạn và thu hồi tại tầng Backend Database qua Background Service (chạy mỗi 15s) và kiểm tra thời gian thực. Hỗ trợ khởi động lại máy chủ mà không mất trạng thái.</p>
+                            </div>
+                        </div>
+                        <button type="button" class="tf-btn tf-btn-warning" @onclick="OpenGrantTemporaryModal">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            <span>+ Cấp quyền tạm thời</span>
+                        </button>
+                    </div>
+
+                    <div class="tf-table-wrap">
+                        <table class="tf-table">
+                            <thead>
+                                <tr>
+                                    <th>Tài khoản được cấp</th>
+                                    <th>Vai trò được cấp</th>
+                                    <th>Lý do cấp quyền</th>
+                                    <th>Thời điểm bắt đầu (GMT+7)</th>
+                                    <th>Hết hạn lúc (GMT+7)</th>
+                                    <th>Thời lượng</th>
+                                    <th>Người cấp</th>
+                                    <th>Trạng thái</th>
+                                    <th style="text-align: right;">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (_temporaryAssignments?.Any() == true)
+                                {
+                                    @foreach (var t in _temporaryAssignments)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="font-semibold">@t.UserName</div>
+                                                <div class="text-muted" style="font-size:12px;">@t.FullName</div>
+                                            </td>
+                                            <td>
+                                                <span class="tf-role-pill" style="border-left: 3px solid @t.RoleColor;">@t.RoleName</span>
+                                            </td>
+                                            <td class="tf-table-cell-desc">@t.Reason</td>
+                                            <td class="text-mono" style="font-size:12.5px;">@FormatVietnamTime(t.StartsAt)</td>
+                                            <td class="text-mono" style="font-size:12.5px;">@FormatVietnamTime(t.ExpiresAt)</td>
+                                            <td><span class="tf-badge tf-badge-slate">@t.DurationMinutes phút</span></td>
+                                            <td><span class="tf-user-badge">@t.GrantedBy</span></td>
+                                            <td>
+                                                @switch (t.Status)
+                                                {
+                                                    case TemporaryRoleAssignmentStatus.Active:
+                                                        <span class="tf-status-pill tf-status-success active-pulse">Đang hiệu lực</span>
+                                                        break;
+                                                    case TemporaryRoleAssignmentStatus.Pending:
+                                                        <span class="tf-status-pill tf-status-amber">Chờ hiệu lực</span>
+                                                        break;
+                                                    case TemporaryRoleAssignmentStatus.Expired:
+                                                        <span class="tf-status-pill tf-status-slate">Đã hết hạn</span>
+                                                        break;
+                                                    case TemporaryRoleAssignmentStatus.Revoked:
+                                                        <span class="tf-status-pill tf-status-danger">Đã thu hồi</span>
+                                                        break;
+                                                }
+                                            </td>
+                                            <td style="text-align: right;">
+                                                @if (t.Status == TemporaryRoleAssignmentStatus.Active || t.Status == TemporaryRoleAssignmentStatus.Pending)
+                                                {
+                                                    <button type="button" class="tf-btn tf-btn-xs tf-btn-danger-outline" @onclick="@(() => RevokeTemporaryAssignment(t.Id))">
+                                                        Thu hồi ngay
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted" style="font-size:12px;">Đã kết thúc</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="9" class="tf-table-empty">Chưa có lượt cấp quyền tạm thời nào trong hệ thống.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+
+            @* ========================================================================= *@
+            @* TAB 6: NHẬT KÝ PHÂN QUYỀN *@
+            @* ========================================================================= *@
+            @if (CurrentTab == "audit")
+            {
+                <div class="tf-audit-container">
+                    <div class="tf-toolbar-row">
+                        <div class="tf-search-box">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input type="text" placeholder="Tìm kiếm nhật ký theo người thực hiện, đối tượng, lý do..." @bind="_auditSearchTerm" @bind:event="oninput" @bind:after="FilterAuditLogs" />
+                        </div>
+                    </div>
+
+                    <div class="tf-table-wrap">
+                        <table class="tf-table">
+                            <thead>
+                                <tr>
+                                    <th>Thời gian (GMT+7)</th>
+                                    <th>Người thực hiện</th>
+                                    <th>Hành động</th>
+                                    <th>Đối tượng</th>
+                                    <th>Chi tiết &amp; Lý do</th>
+                                    <th>Kết quả</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (_filteredAuditLogs?.Any() == true)
+                                {
+                                    @foreach (var l in _filteredAuditLogs)
+                                    {
+                                        <tr>
+                                            <td class="text-mono" style="white-space:nowrap; font-size:12.5px;">@FormatVietnamTime(l.OccurredAt)</td>
+                                            <td><span class="tf-user-badge">@l.PerformedBy</span></td>
+                                            <td><span class="tf-event-badge">@l.EventType.ToString()</span></td>
+                                            <td class="font-semibold">@l.TargetEntity: @l.TargetId</td>
+                                            <td class="tf-table-cell-desc">@l.Details</td>
+                                            <td>
+                                                @if (l.Details?.Contains("từ chối", StringComparison.OrdinalIgnoreCase) == true)
+                                                {
+                                                    <span class="tf-status-pill tf-status-danger">Từ chối</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="tf-status-pill tf-status-success">Thành công</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="6" class="tf-table-empty">Không tìm thấy nhật ký phân quyền phù hợp.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@* ========================================================================= *@
+@* MODAL 1: TẠO VAI TRÒ MỚI *@
+@* ========================================================================= *@
+@if (_showCreateRoleModal)
+{
+    <div class="tf-modal-backdrop" @onclick="CloseCreateRoleModal"></div>
+    <div class="tf-modal tf-modal-md" role="dialog">
+        <div class="tf-modal-header">
+            <h3 class="tf-modal-title">Tạo vai trò phân quyền mới</h3>
+            <button type="button" class="tf-modal-close" @onclick="CloseCreateRoleModal">&times;</button>
+        </div>
+        <div class="tf-modal-body">
+            @if (!string.IsNullOrEmpty(_modalError))
+            {
+                <div class="tf-alert tf-alert-error" style="margin-bottom:12px;">@_modalError</div>
+            }
+            <div class="tf-form-group">
+                <label class="tf-form-label">Tên vai trò <span class="text-red">*</span></label>
+                <input type="text" class="tf-input" placeholder="Ví dụ: Kiểm soát viên nội bộ, Trợ lý kinh doanh..." @bind="_createRoleCmd.Name" />
+            </div>
+            <div class="tf-form-group">
+                <label class="tf-form-label">Mô tả nhiệm vụ &amp; chức trách</label>
+                <textarea class="tf-textarea" rows="2" placeholder="Mô tả phạm vi trách nhiệm và mục đích của vai trò..." @bind="_createRoleCmd.Description"></textarea>
+            </div>
+            <div class="tf-form-row">
+                <div class="tf-form-group">
+                    <label class="tf-form-label">Màu nhận diện</label>
+                    <div class="tf-color-swatches">
+                        @foreach (var c in _colorPresets)
+                        {
+                            <button type="button" class="tf-swatch @(_createRoleCmd.ColorHex == c ? "selected" : "")" style="background-color: @c;" @onclick="@(() => _createRoleCmd.ColorHex = c)"></button>
+                        }
+                    </div>
+                </div>
+                <div class="tf-form-group">
+                    <label class="tf-form-label">Biểu tượng</label>
+                    <select class="tf-select" @bind="_createRoleCmd.Icon">
+                        <option value="shield">Khiên bảo vệ (Shield)</option>
+                        <option value="users">Nhóm nhân sự (Users)</option>
+                        <option value="user-check">Phê duyệt (User Check)</option>
+                        <option value="shopping-cart">Bán hàng (Cart)</option>
+                        <option value="truck">Mua hàng (Truck)</option>
+                        <option value="archive">Kho hàng (Archive)</option>
+                        <option value="calculator">Kế toán (Calculator)</option>
+                        <option value="globe">Xuất nhập khẩu (Globe)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="tf-form-group">
+                <label class="tf-form-label">Kế thừa quyền ban đầu từ vai trò mẫu (Tùy chọn)</label>
+                <select class="tf-select" @bind="_createRoleCmd.InheritFromRoleId">
+                    <option value="">-- Không kế thừa (Bắt đầu với 0 quyền) --</option>
+                    @if (_roles != null)
+                    {
+                        @foreach (var r in _roles)
+                        {
+                            <option value="@r.Id">Kế thừa từ: @r.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="tf-modal-footer">
+            <button type="button" class="tf-btn tf-btn-secondary" @onclick="CloseCreateRoleModal">Hủy bỏ</button>
+            <button type="button" class="tf-btn tf-btn-primary" @onclick="SubmitCreateRoleAsync" disabled="@_isSubmittingModal">Tạo vai trò</button>
+        </div>
+    </div>
+}
+
+@* ========================================================================= *@
+@* MODAL 2: SAO CHÉP VAI TRÒ (CLONE) *@
+@* ========================================================================= *@
+@if (_showCloneRoleModal && _cloneSourceRole != null)
+{
+    <div class="tf-modal-backdrop" @onclick="() => _showCloneRoleModal = false"></div>
+    <div class="tf-modal tf-modal-md" role="dialog">
+        <div class="tf-modal-header">
+            <h3 class="tf-modal-title">Sao chép vai trò: @_cloneSourceRole.Name</h3>
+            <button type="button" class="tf-modal-close" @onclick="() => _showCloneRoleModal = false">&times;</button>
+        </div>
+        <div class="tf-modal-body">
+            @if (!string.IsNullOrEmpty(_modalError))
+            {
+                <div class="tf-alert tf-alert-error" style="margin-bottom:12px;">@_modalError</div>
+            }
+            <p class="text-muted" style="margin-bottom:12px; font-size:13.5px;">Vai trò mới sẽ được sao chép toàn bộ <strong>@_cloneSourceRole.GrantedPermissionsCount quyền</strong> từ <strong>@_cloneSourceRole.Name</strong>.</p>
+            <div class="tf-form-group">
+                <label class="tf-form-label">Tên vai trò mới <span class="text-red">*</span></label>
+                <input type="text" class="tf-input" placeholder="Nhập tên vai trò mới..." @bind="_cloneNewName" />
+            </div>
+            <div class="tf-form-group">
+                <label class="tf-form-label">Mô tả vai trò mới</label>
+                <textarea class="tf-textarea" rows="2" placeholder="Mô tả vai trò..." @bind="_cloneNewDesc"></textarea>
+            </div>
+        </div>
+        <div class="tf-modal-footer">
+            <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showCloneRoleModal = false">Hủy bỏ</button>
+            <button type="button" class="tf-btn tf-btn-primary" @onclick="SubmitCloneRoleAsync" disabled="@_isSubmittingModal">Sao chép vai trò</button>
+        </div>
+    </div>
+}
+
+@* ========================================================================= *@
+@* MODAL 3: CẤP QUYỀN TẠM THỜI (TỐI ĐA 2 GIỜ) *@
+@* ========================================================================= *@
+@if (_showGrantTemporaryModal)
+{
+    <div class="tf-modal-backdrop" @onclick="() => _showGrantTemporaryModal = false"></div>
+    <div class="tf-modal tf-modal-md" role="dialog">
+        <div class="tf-modal-header" style="border-bottom: 2px solid #f59e0b;">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <h3 class="tf-modal-title">Cấp quyền truy cập tạm thời</h3>
+            </div>
+            <button type="button" class="tf-modal-close" @onclick="() => _showGrantTemporaryModal = false">&times;</button>
+        </div>
+        <div class="tf-modal-body">
+            @if (!string.IsNullOrEmpty(_modalError))
+            {
+                <div class="tf-alert tf-alert-error" style="margin-bottom:12px;">@_modalError</div>
+            }
+
+            <div class="tf-alert tf-alert-info" style="margin-bottom:14px; font-size:13px; line-height:1.5;">
+                <strong>Giới hạn an toàn:</strong> Thời hạn cấp quyền tối đa là <strong>2 giờ (120 phút)</strong>. Sau thời hạn, quyền bổ sung tự động thu hồi ngay tại Backend mà không cần người dùng đăng xuất.
+            </div>
+
+            <div class="tf-form-group">
+                <label class="tf-form-label">Tài khoản được cấp quyền <span class="text-red">*</span></label>
+                <select class="tf-select" @bind="_grantTempCmd.UserId">
+                    <option value="">-- Chọn tài khoản người dùng --</option>
+                    @if (_accountAssignments != null)
+                    {
+                        @foreach (var u in _accountAssignments.Where(a => a.UserName != "admin"))
+                        {
+                            <option value="@u.UserId">@u.UserName (@u.FullName) — Role 1: @u.BaseRoleName @(!string.IsNullOrEmpty(u.SecondaryRoleName) ? $"[Đã có Role 2: {u.SecondaryRoleName}]" : "")</option>
+                        }
+                    }
+                </select>
+            </div>
+
+            <div class="tf-form-group">
+                <label class="tf-form-label">Vai trò muốn cấp tạm thời <span class="text-red">*</span></label>
+                <select class="tf-select" @bind="_grantTempCmd.RoleId">
+                    <option value="">-- Chọn vai trò --</option>
+                    @if (_roles != null)
+                    {
+                        @foreach (var r in _roles.Where(r => !r.IsSystem && r.Name != "Administrator"))
+                        {
+                            <option value="@r.Id">@r.Name (@r.GrantedPermissionsCount quyền)</option>
+                        }
+                    }
+                </select>
+            </div>
+
+            <div class="tf-form-group">
+                <label class="tf-form-label">Thời hạn cấp quyền (Tối đa 120 phút) <span class="text-red">*</span></label>
+                <div style="display:flex; gap:8px; margin-bottom:8px;">
+                    <button type="button" class="tf-btn tf-btn-xs @(_grantTempCmd.DurationMinutes == 15 ? "tf-btn-primary" : "tf-btn-secondary")" @onclick="@(() => _grantTempCmd.DurationMinutes = 15)">15 phút</button>
+                    <button type="button" class="tf-btn tf-btn-xs @(_grantTempCmd.DurationMinutes == 30 ? "tf-btn-primary" : "tf-btn-secondary")" @onclick="@(() => _grantTempCmd.DurationMinutes = 30)">30 phút</button>
+                    <button type="button" class="tf-btn tf-btn-xs @(_grantTempCmd.DurationMinutes == 60 ? "tf-btn-primary" : "tf-btn-secondary")" @onclick="@(() => _grantTempCmd.DurationMinutes = 60)">60 phút (1h)</button>
+                    <button type="button" class="tf-btn tf-btn-xs @(_grantTempCmd.DurationMinutes == 90 ? "tf-btn-primary" : "tf-btn-secondary")" @onclick="@(() => _grantTempCmd.DurationMinutes = 90)">90 phút</button>
+                    <button type="button" class="tf-btn tf-btn-xs @(_grantTempCmd.DurationMinutes == 120 ? "tf-btn-primary" : "tf-btn-secondary")" @onclick="@(() => _grantTempCmd.DurationMinutes = 120)">120 phút (2h max)</button>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="number" class="tf-input" min="5" max="120" style="width:120px;" @bind="_grantTempCmd.DurationMinutes" />
+                    <span class="text-muted" style="font-size:13px;">phút (hết hạn lúc: <strong>@FormatVietnamTime(DateTime.UtcNow.AddMinutes(_grantTempCmd.DurationMinutes))</strong>)</span>
+                </div>
+            </div>
+
+            <div class="tf-form-group">
+                <label class="tf-form-label">Lý do cấp quyền tạm thời <span class="text-red">*</span></label>
+                <textarea class="tf-textarea" rows="2" placeholder="Ví dụ: Xử lý đơn hàng gấp thay cho quản lý kho nghỉ phép; Đối soát hóa đơn cuối tháng..." @bind="_grantTempCmd.Reason"></textarea>
+            </div>
+        </div>
+        <div class="tf-modal-footer">
+            <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showGrantTemporaryModal = false">Hủy bỏ</button>
+            <button type="button" class="tf-btn tf-btn-warning" @onclick="SubmitGrantTemporaryAsync" disabled="@_isSubmittingModal">Xác nhận cấp quyền</button>
+        </div>
+    </div>
+}
+
+@* ========================================================================= *@
+@* MODAL 4: GÁN ROLE BỔ SUNG (VĨNH VIỄN) *@
+@* ========================================================================= *@
+@if (_showAssignSecondaryModal && _selectedAccountForSecondary != null)
+{
+    <div class="tf-modal-backdrop" @onclick="() => _showAssignSecondaryModal = false"></div>
+    <div class="tf-modal tf-modal-md" role="dialog">
+        <div class="tf-modal-header">
+            <h3 class="tf-modal-title">Gán vai trò bổ sung vĩnh viễn</h3>
+            <button type="button" class="tf-modal-close" @onclick="() => _showAssignSecondaryModal = false">&times;</button>
+        </div>
+        <div class="tf-modal-body">
+            @if (!string.IsNullOrEmpty(_modalError))
+            {
+                <div class="tf-alert tf-alert-error" style="margin-bottom:12px;">@_modalError</div>
+            }
+            <p class="text-muted" style="margin-bottom:12px; font-size:13.5px;">
+                Tài khoản: <strong>@_selectedAccountForSecondary.UserName</strong> (@_selectedAccountForSecondary.FullName)<br />
+                Vai trò nền hiện tại: <span class="tf-role-pill">@_selectedAccountForSecondary.BaseRoleName</span>
+            </p>
+            <div class="tf-form-group">
+                <label class="tf-form-label">Chọn vai trò thứ hai <span class="text-red">*</span></label>
+                <select class="tf-select" @bind="_selectedSecondaryRoleId">
+                    <option value="">-- Chọn vai trò bổ sung --</option>
+                    @if (_roles != null)
+                    {
+                        @foreach (var r in _roles.Where(r => !r.IsSystem && r.Name != _selectedAccountForSecondary.BaseRoleName))
+                        {
+                            <option value="@r.Id">@r.Name (@r.GrantedPermissionsCount quyền)</option>
+                        }
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="tf-modal-footer">
+            <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showAssignSecondaryModal = false">Hủy bỏ</button>
+            <button type="button" class="tf-btn tf-btn-primary" @onclick="SubmitAssignSecondaryAsync" disabled="@_isSubmittingModal">Gán vai trò</button>
+        </div>
+    </div>
+}
+
+@* ========================================================================= *@
+@* MODAL 5: CHỈNH SỬA VAI TRÒ *@
+@* ========================================================================= *@
+@if (_showEditRoleModal && _editRoleCmd != null)
+{
+    <div class="tf-modal-backdrop" @onclick="() => _showEditRoleModal = false"></div>
+    <div class="tf-modal tf-modal-md" role="dialog">
+        <div class="tf-modal-header">
+            <h3 class="tf-modal-title">Chỉnh sửa thông tin vai trò</h3>
+            <button type="button" class="tf-modal-close" @onclick="() => _showEditRoleModal = false">&times;</button>
+        </div>
+        <div class="tf-modal-body">
+            @if (!string.IsNullOrEmpty(_modalError))
+            {
+                <div class="tf-alert tf-alert-error" style="margin-bottom:12px;">@_modalError</div>
+            }
+            <div class="tf-form-group">
+                <label class="tf-form-label">Tên vai trò <span class="text-red">*</span></label>
+                <input type="text" class="tf-input" @bind="_editRoleCmd.Name" />
+            </div>
+            <div class="tf-form-group">
+                <label class="tf-form-label">Mô tả</label>
+                <textarea class="tf-textarea" rows="2" @bind="_editRoleCmd.Description"></textarea>
+            </div>
+            <div class="tf-form-row">
+                <div class="tf-form-group">
+                    <label class="tf-form-label">Màu nhận diện</label>
+                    <div class="tf-color-swatches">
+                        @foreach (var c in _colorPresets)
+                        {
+                            <button type="button" class="tf-swatch @(_editRoleCmd.ColorHex == c ? "selected" : "")" style="background-color: @c;" @onclick="@(() => _editRoleCmd.ColorHex = c)"></button>
+                        }
+                    </div>
+                </div>
+                <div class="tf-form-group">
+                    <label class="tf-form-label">Biểu tượng</label>
+                    <select class="tf-select" @bind="_editRoleCmd.Icon">
+                        <option value="shield">Khiên bảo vệ (Shield)</option>
+                        <option value="users">Nhóm nhân sự (Users)</option>
+                        <option value="user-check">Phê duyệt (User Check)</option>
+                        <option value="shopping-cart">Bán hàng (Cart)</option>
+                        <option value="truck">Mua hàng (Truck)</option>
+                        <option value="archive">Kho hàng (Archive)</option>
+                        <option value="calculator">Kế toán (Calculator)</option>
+                        <option value="globe">Xuất nhập khẩu (Globe)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="tf-modal-footer">
+            <button type="button" class="tf-btn tf-btn-secondary" @onclick="() => _showEditRoleModal = false">Hủy bỏ</button>
+            <button type="button" class="tf-btn tf-btn-primary" @onclick="SubmitEditRoleAsync" disabled="@_isSubmittingModal">Lưu thay đổi</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string? ActiveTab { get; set; }
+
+    private string CurrentTab => string.IsNullOrWhiteSpace(ActiveTab) ? "overview" : (ActiveTab.Equals("users", StringComparison.OrdinalIgnoreCase) ? "accounts" : ActiveTab.ToLowerInvariant());
+
+    private bool _isLoading = true;
+    private string? _alertMessage;
+    private bool _alertSuccess = true;
+    private string _currentUsername = "admin";
+
+    // Overview state
+    private RoleOverviewDto? _overview;
+
+    // Roles state
+    private List<RoleListItemDto>? _roles;
+    private List<RoleListItemDto>? _filteredRoles;
+    private string _rolesSearchTerm = string.Empty;
+    private string _rolesStatusFilter = "all";
+
+    // Matrix state
+    private string? _selectedRoleIdForMatrix;
+    private List<RolePermissionItemDto> _selectedRoleMatrixPermissions = [];
+    private Dictionary<ResourceType, DataScope> _resourceScopes = [];
+    private HashSet<string> _expandedGroups = ["Quản trị hệ thống", "Danh mục chính", "Bảng giá & Kinh doanh"];
+    private string _matrixSearchTerm = string.Empty;
+    private bool _isSavingMatrix = false;
+
+    // Accounts state
+    private List<UserRoleAssignmentDto>? _accountAssignments;
+    private List<UserRoleAssignmentDto>? _filteredAccountAssignments;
+    private string _accountsSearchTerm = string.Empty;
+    private string _accountsRoleFilter = string.Empty;
+
+    // Temporary grants state
+    private List<TemporaryRoleAssignmentItemDto>? _temporaryAssignments;
+
+    // Audit logs state
+    private List<TradeFlow.Domain.Entities.Users.AuditLog>? _auditLogs;
+    private List<TradeFlow.Domain.Entities.Users.AuditLog>? _filteredAuditLogs;
+    private string _auditSearchTerm = string.Empty;
+
+    // Modal controls
+    private bool _showCreateRoleModal = false;
+    private CreateRoleCommand _createRoleCmd = new();
+    private bool _showEditRoleModal = false;
+    private UpdateRoleCommand? _editRoleCmd;
+    private bool _showCloneRoleModal = false;
+    private RoleListItemDto? _cloneSourceRole;
+    private string _cloneNewName = string.Empty;
+    private string? _cloneNewDesc;
+    private bool _showGrantTemporaryModal = false;
+    private GrantTemporaryRoleCommand _grantTempCmd = new();
+    private bool _showAssignSecondaryModal = false;
+    private UserRoleAssignmentDto? _selectedAccountForSecondary;
+    private string _selectedSecondaryRoleId = string.Empty;
+    private string? _modalError;
+    private bool _isSubmittingModal = false;
+
+    private readonly string[] _colorPresets =
+    [
+        "#4f46e5", "#059669", "#d97706", "#dc2626",
+        "#8b5cf6", "#ec4899", "#06b6d4", "#64748b"
+    ];
+
+    private record ResourceMeta(ResourceType Resource, string Title);
+    private record ModuleGroupMeta(string GroupName, List<ResourceMeta> Resources);
+
+    private readonly List<ModuleGroupMeta> _moduleGroups =
+    [
+        new("Quản trị hệ thống", [
+            new(ResourceType.Users, "Người dùng & Tài khoản"),
+            new(ResourceType.Roles, "Vai trò & Phân quyền"),
+            new(ResourceType.CompanySettings, "Cài đặt công ty & Thương hiệu"),
+            new(ResourceType.AuditLog, "Nhật ký hệ thống & Kiểm toán"),
+            new(ResourceType.TechnicalSupport, "Hỗ trợ kỹ thuật từ xa")
+        ]),
+        new("Danh mục chính", [
+            new(ResourceType.Products, "Sản phẩm & Hàng hóa"),
+            new(ResourceType.ProductCategories, "Danh mục sản phẩm"),
+            new(ResourceType.UnitOfMeasures, "Đơn vị tính"),
+            new(ResourceType.Currencies, "Loại tiền & Tỷ giá"),
+            new(ResourceType.Customers, "Khách hàng (Đối tác)"),
+            new(ResourceType.Suppliers, "Nhà cung cấp (Đối tác)"),
+            new(ResourceType.Warehouses, "Kho hàng & Địa điểm")
+        ]),
+        new("Bảng giá & Kinh doanh", [
+            new(ResourceType.PriceLists, "Bảng giá sản phẩm"),
+            new(ResourceType.Quotations, "Báo giá thương mại"),
+            new(ResourceType.SalesOrders, "Đơn bán hàng"),
+            new(ResourceType.Invoices, "Hóa đơn VAT & Bán lẻ"),
+            new(ResourceType.Documents, "Tài liệu & Chứng từ")
+        ]),
+        new("An ninh & Chữ ký số", [
+            new(ResourceType.Security, "An ninh & Bảo mật hệ thống"),
+            new(ResourceType.DigitalSignatures, "Chữ ký số RSA & Người ký")
+        ]),
+        new("Nhân sự & Chấm công", [
+            new(ResourceType.Employees, "Hồ sơ nhân viên"),
+            new(ResourceType.EmployeeRequests, "Yêu cầu thêm nhân viên"),
+            new(ResourceType.Departments, "Phòng ban cơ cấu"),
+            new(ResourceType.Positions, "Chức danh & Vị trí"),
+            new(ResourceType.Attendance, "Chấm công & Điểm danh"),
+            new(ResourceType.Accounts, "Quản lý tài khoản đăng nhập")
+        ]),
+        new("Hợp đồng & Phụ lục", [
+            new(ResourceType.Contracts, "Hợp đồng thương mại & B2B"),
+            new(ResourceType.EmploymentContracts, "Hợp đồng lao động nhân sự")
+        ])
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _currentUsername = authState.User.Identity?.Name ?? "admin";
+        await LoadHubDataAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!_isLoading)
+        {
+            await RefreshActiveTabAsync();
+        }
+    }
+
+    private async Task LoadHubDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _overview = await RoleService.GetOverviewAsync();
+            _roles = await RoleService.GetRolesAsync();
+            FilterRoles();
+
+            if (!string.IsNullOrEmpty(_selectedRoleIdForMatrix))
+            {
+                await LoadMatrixForRoleAsync(_selectedRoleIdForMatrix);
+            }
+            else if (_roles.Any())
+            {
+                var targetRole = _roles.FirstOrDefault(r => r.Name == "Sales") ?? _roles.First();
+                _selectedRoleIdForMatrix = targetRole.Id;
+                await LoadMatrixForRoleAsync(_selectedRoleIdForMatrix);
+            }
+
+            _accountAssignments = await RoleService.GetUserRoleAssignmentsAsync();
+            FilterAccounts();
+
+            _temporaryAssignments = await RoleService.GetTemporaryRoleAssignmentsAsync();
+
+            // Load audit logs filtered for RBAC
+            await LoadAuditLogsAsync();
+        }
+        catch (Exception ex)
+        {
+            _alertMessage = "Lỗi khi tải dữ liệu phân quyền: " + ex.Message;
+            _alertSuccess = false;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task RefreshActiveTabAsync()
+    {
+        if (CurrentTab == "overview")
+        {
+            _overview = await RoleService.GetOverviewAsync();
+        }
+        else if (CurrentTab == "roles")
+        {
+            _roles = await RoleService.GetRolesAsync();
+            FilterRoles();
+        }
+        else if (CurrentTab == "matrix" && !string.IsNullOrEmpty(_selectedRoleIdForMatrix))
+        {
+            await LoadMatrixForRoleAsync(_selectedRoleIdForMatrix);
+        }
+        else if (CurrentTab == "accounts")
+        {
+            _accountAssignments = await RoleService.GetUserRoleAssignmentsAsync();
+            FilterAccounts();
+        }
+        else if (CurrentTab == "temporary")
+        {
+            _temporaryAssignments = await RoleService.GetTemporaryRoleAssignmentsAsync();
+        }
+        else if (CurrentTab == "audit")
+        {
+            await LoadAuditLogsAsync();
+        }
+    }
+
+    private async Task LoadAuditLogsAsync()
+    {
+        var rbacTypes = new[]
+        {
+            AuditEventType.RoleCreated,
+            AuditEventType.RoleUpdated,
+            AuditEventType.RoleDeleted,
+            AuditEventType.RoleCloned,
+            AuditEventType.RolePermissionsUpdated,
+            AuditEventType.UserRoleAssigned,
+            AuditEventType.UserRoleRevoked,
+            AuditEventType.TemporaryRoleGranted,
+            AuditEventType.TemporaryRoleRevoked,
+            AuditEventType.TemporaryRoleExpired,
+            AuditEventType.DataScopeChanged,
+            AuditEventType.UnauthorizedAccessAttempt
+        };
+
+        _auditLogs = await DbContext.AuditLogs
+            .AsNoTracking()
+            .Where(a => rbacTypes.Contains(a.EventType))
+            .OrderByDescending(a => a.OccurredAt)
+            .Take(100)
+            .ToListAsync();
+
+        FilterAuditLogs();
+    }
+
+    private void SwitchTab(string tab)
+    {
+        _alertMessage = null;
+        Nav.NavigateTo($"/cai-dat/phan-quyen/{tab}");
+    }
+
+    private void FilterRoles()
+    {
+        if (_roles == null) return;
+        var query = _roles.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(_rolesSearchTerm))
+        {
+            var term = _rolesSearchTerm.Trim();
+            query = query.Where(r => r.Name.Contains(term, StringComparison.OrdinalIgnoreCase) || (r.Description != null && r.Description.Contains(term, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        if (_rolesStatusFilter == "active")
+            query = query.Where(r => r.IsActive);
+        else if (_rolesStatusFilter == "inactive")
+            query = query.Where(r => !r.IsActive);
+
+        _filteredRoles = query.ToList();
+    }
+
+    private void FilterAccounts()
+    {
+        if (_accountAssignments == null) return;
+        var query = _accountAssignments.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(_accountsSearchTerm))
+        {
+            var term = _accountsSearchTerm.Trim();
+            query = query.Where(a => a.UserName.Contains(term, StringComparison.OrdinalIgnoreCase)
+                                  || a.FullName.Contains(term, StringComparison.OrdinalIgnoreCase)
+                                  || a.Email.Contains(term, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(_accountsRoleFilter))
+        {
+            query = query.Where(a => string.Equals(a.BaseRoleName, _accountsRoleFilter, StringComparison.OrdinalIgnoreCase)
+                                  || string.Equals(a.SecondaryRoleName, _accountsRoleFilter, StringComparison.OrdinalIgnoreCase));
+        }
+
+        _filteredAccountAssignments = query.ToList();
+    }
+
+    private void FilterAuditLogs()
+    {
+        if (_auditLogs == null) return;
+        var query = _auditLogs.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(_auditSearchTerm))
+        {
+            var term = _auditSearchTerm.Trim();
+            query = query.Where(l => l.PerformedBy.Contains(term, StringComparison.OrdinalIgnoreCase)
+                                  || (l.Details != null && l.Details.Contains(term, StringComparison.OrdinalIgnoreCase))
+                                  || (l.TargetId != null && l.TargetId.Contains(term, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        _filteredAuditLogs = query.ToList();
+    }
+
+    private async Task ConfigureRolePermissions(string roleId)
+    {
+        _selectedRoleIdForMatrix = roleId;
+        await LoadMatrixForRoleAsync(roleId);
+        SwitchTab("matrix");
+    }
+
+    private async Task OnMatrixRoleChanged(ChangeEventArgs e)
+    {
+        var roleId = e.Value?.ToString();
+        if (!string.IsNullOrEmpty(roleId))
+        {
+            _selectedRoleIdForMatrix = roleId;
+            await LoadMatrixForRoleAsync(roleId);
+        }
+    }
+
+    private async Task LoadMatrixForRoleAsync(string roleId)
+    {
+        var perms = await RoleService.GetRolePermissionsAsync(roleId);
+        _selectedRoleMatrixPermissions = perms;
+
+        _resourceScopes.Clear();
+        foreach (var p in perms)
+        {
+            if (!_resourceScopes.ContainsKey(p.Resource) || _resourceScopes[p.Resource] < p.Scope)
+            {
+                _resourceScopes[p.Resource] = p.Scope;
+            }
+        }
+    }
+
+    private bool IsGroupExpanded(string groupName) => _expandedGroups.Contains(groupName);
+
+    private void ToggleGroupExpanded(string groupName)
+    {
+        if (_expandedGroups.Contains(groupName))
+            _expandedGroups.Remove(groupName);
+        else
+            _expandedGroups.Add(groupName);
+    }
+
+    private void SelectAllGroupPermissions(ModuleGroupMeta group, bool grant)
+    {
+        var actions = new[]
+        {
+            PermissionAction.View, PermissionAction.ViewDetail, PermissionAction.Create,
+            PermissionAction.Edit, PermissionAction.Delete, PermissionAction.Export,
+            PermissionAction.Print, PermissionAction.Approve, PermissionAction.Reject,
+            PermissionAction.ManageConfig
+        };
+
+        foreach (var res in group.Resources)
+        {
+            var scope = _resourceScopes.GetValueOrDefault(res.Resource, DataScope.All);
+            foreach (var act in actions)
+            {
+                var existing = _selectedRoleMatrixPermissions.FirstOrDefault(p => p.Resource == res.Resource && p.Action == act);
+                if (existing != null)
+                {
+                    existing.IsGranted = grant;
+                    existing.Scope = scope;
+                }
+                else if (grant)
+                {
+                    _selectedRoleMatrixPermissions.Add(new RolePermissionItemDto
+                    {
+                        Resource = res.Resource,
+                        Action = act,
+                        IsGranted = true,
+                        Scope = scope
+                    });
+                }
+            }
+        }
+    }
+
+    private RenderFragment RenderActionToggle(ResourceType resource, PermissionAction action, bool isSensitive = false) => builder =>
+    {
+        var perm = _selectedRoleMatrixPermissions.FirstOrDefault(p => p.Resource == resource && p.Action == action);
+        bool isGranted = perm?.IsGranted ?? false;
+
+        builder.OpenElement(0, "label");
+        builder.AddAttribute(1, "class", $"tf-toggle-wrap {(isSensitive ? "sensitive-perm" : "")}");
+
+        builder.OpenElement(2, "input");
+        builder.AddAttribute(3, "type", "checkbox");
+        builder.AddAttribute(4, "checked", isGranted);
+        builder.AddAttribute(5, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, (e) => ToggleSinglePermission(resource, action, e)));
+        builder.CloseElement(); // input
+
+        builder.OpenElement(6, "span");
+        builder.AddAttribute(7, "class", "tf-toggle-slider");
+        builder.CloseElement(); // span
+
+        if (isSensitive)
+        {
+            builder.OpenElement(8, "span");
+            builder.AddAttribute(9, "class", "tf-sensitive-flag");
+            builder.AddAttribute(10, "title", "Quyền thao tác nhạy cảm");
+            builder.AddContent(11, "!");
+            builder.CloseElement();
+        }
+
+        builder.CloseElement(); // label
+    };
+
+    private void ToggleSinglePermission(ResourceType resource, PermissionAction action, ChangeEventArgs e)
+    {
+        bool granted = (bool)(e.Value ?? false);
+        var perm = _selectedRoleMatrixPermissions.FirstOrDefault(p => p.Resource == resource && p.Action == action);
+        var scope = _resourceScopes.GetValueOrDefault(resource, DataScope.All);
+
+        if (perm != null)
+        {
+            perm.IsGranted = granted;
+            perm.Scope = scope;
+        }
+        else if (granted)
+        {
+            _selectedRoleMatrixPermissions.Add(new RolePermissionItemDto
+            {
+                Resource = resource,
+                Action = action,
+                IsGranted = true,
+                Scope = scope
+            });
+        }
+    }
+
+    private int GetResourceScope(ResourceType resource)
+    {
+        return (int)_resourceScopes.GetValueOrDefault(resource, DataScope.All);
+    }
+
+    private void SetResourceScope(ResourceType resource, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int val))
+        {
+            var scope = (DataScope)val;
+            _resourceScopes[resource] = scope;
+            foreach (var p in _selectedRoleMatrixPermissions.Where(p => p.Resource == resource))
+            {
+                p.Scope = scope;
+            }
+        }
+    }
+
+    private async Task SaveMatrixPermissionsAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedRoleIdForMatrix)) return;
+
+        _isSavingMatrix = true;
+        try
+        {
+            var (success, error) = await RoleService.UpdateRolePermissionsAsync(
+                _selectedRoleIdForMatrix,
+                _selectedRoleMatrixPermissions.Where(p => p.IsGranted).ToList(),
+                _currentUsername
+            );
+
+            if (success)
+            {
+                _alertMessage = "Đã lưu ma trận phân quyền thành công và xóa bộ nhớ cache phân quyền!";
+                _alertSuccess = true;
+                _roles = await RoleService.GetRolesAsync();
+                FilterRoles();
+            }
+            else
+            {
+                _alertMessage = error ?? "Lỗi khi lưu quyền.";
+                _alertSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _alertMessage = "Lỗi khi lưu ma trận quyền: " + ex.Message;
+            _alertSuccess = false;
+        }
+        finally
+        {
+            _isSavingMatrix = false;
+        }
+    }
+
+    // Modal Actions
+    private void OpenCreateRoleModal()
+    {
+        _createRoleCmd = new CreateRoleCommand();
+        _modalError = null;
+        _showCreateRoleModal = true;
+    }
+
+    private void CloseCreateRoleModal() => _showCreateRoleModal = false;
+
+    private async Task SubmitCreateRoleAsync()
+    {
+        _isSubmittingModal = true;
+        _modalError = null;
+        try
+        {
+            var (success, error, newRoleId) = await RoleService.CreateRoleAsync(_createRoleCmd, _currentUsername);
+            if (success)
+            {
+                _showCreateRoleModal = false;
+                _alertMessage = $"Tạo vai trò '{_createRoleCmd.Name}' thành công!";
+                _alertSuccess = true;
+                await LoadHubDataAsync();
+            }
+            else
+            {
+                _modalError = error;
+            }
+        }
+        catch (Exception ex)
+        {
+            _modalError = "Lỗi: " + ex.Message;
+        }
+        finally
+        {
+            _isSubmittingModal = false;
+        }
+    }
+
+    private void OpenEditRoleModal(RoleListItemDto role)
+    {
+        _editRoleCmd = new UpdateRoleCommand
+        {
+            Id = role.Id,
+            Name = role.Name,
+            Description = role.Description,
+            ColorHex = role.ColorHex,
+            Icon = role.Icon,
+            IsActive = role.IsActive
+        };
+        _modalError = null;
+        _showEditRoleModal = true;
+    }
+
+    private async Task SubmitEditRoleAsync()
+    {
+        if (_editRoleCmd == null) return;
+        _isSubmittingModal = true;
+        _modalError = null;
+        try
+        {
+            var (success, error) = await RoleService.UpdateRoleAsync(_editRoleCmd, _currentUsername);
+            if (success)
+            {
+                _showEditRoleModal = false;
+                _alertMessage = "Cập nhật thông tin vai trò thành công!";
+                _alertSuccess = true;
+                await LoadHubDataAsync();
+            }
+            else
+            {
+                _modalError = error;
+            }
+        }
+        catch (Exception ex)
+        {
+            _modalError = "Lỗi: " + ex.Message;
+        }
+        finally
+        {
+            _isSubmittingModal = false;
+        }
+    }
+
+    private void OpenCloneRoleModal(RoleListItemDto role)
+    {
+        _cloneSourceRole = role;
+        _cloneNewName = $"{role.Name} (Bản sao)";
+        _cloneNewDesc = $"Bản sao từ {role.Name}";
+        _modalError = null;
+        _showCloneRoleModal = true;
+    }
+
+    private async Task SubmitCloneRoleAsync()
+    {
+        if (_cloneSourceRole == null) return;
+        _isSubmittingModal = true;
+        _modalError = null;
+        try
+        {
+            var (success, error, newId) = await RoleService.CloneRoleAsync(_cloneSourceRole.Id, _cloneNewName, _cloneNewDesc, _currentUsername);
+            if (success)
+            {
+                _showCloneRoleModal = false;
+                _alertMessage = $"Sao chép vai trò '{_cloneNewName}' thành công!";
+                _alertSuccess = true;
+                await LoadHubDataAsync();
+            }
+            else
+            {
+                _modalError = error;
+            }
+        }
+        catch (Exception ex)
+        {
+            _modalError = "Lỗi: " + ex.Message;
+        }
+        finally
+        {
+            _isSubmittingModal = false;
+        }
+    }
+
+    private async Task ToggleRoleStatus(string roleId, bool isActive)
+    {
+        var (success, error) = await RoleService.ToggleRoleStatusAsync(roleId, isActive, _currentUsername);
+        if (success)
+        {
+            _alertMessage = $"Đã {(isActive ? "kích hoạt" : "vô hiệu hóa")} vai trò!";
+            _alertSuccess = true;
+            await LoadHubDataAsync();
+        }
+        else
+        {
+            _alertMessage = error;
+            _alertSuccess = false;
+        }
+    }
+
+    private async Task ConfirmDeleteRole(RoleListItemDto role)
+    {
+        var (success, error) = await RoleService.DeleteRoleAsync(role.Id, _currentUsername);
+        if (success)
+        {
+            _alertMessage = $"Xóa vai trò '{role.Name}' thành công!";
+            _alertSuccess = true;
+            await LoadHubDataAsync();
+        }
+        else
+        {
+            _alertMessage = error;
+            _alertSuccess = false;
+        }
+    }
+
+    // Temporary Access Modal
+    private void OpenGrantTemporaryModal()
+    {
+        _grantTempCmd = new GrantTemporaryRoleCommand
+        {
+            DurationMinutes = 60
+        };
+        _modalError = null;
+        _showGrantTemporaryModal = true;
+    }
+
+    private void OpenGrantTemporaryForUserModal(UserRoleAssignmentDto user)
+    {
+        _grantTempCmd = new GrantTemporaryRoleCommand
+        {
+            UserId = user.UserId,
+            DurationMinutes = 60
+        };
+        _modalError = null;
+        _showGrantTemporaryModal = true;
+    }
+
+    private async Task SubmitGrantTemporaryAsync()
+    {
+        _isSubmittingModal = true;
+        _modalError = null;
+        try
+        {
+            var (success, error) = await RoleService.GrantTemporaryRoleAsync(_grantTempCmd, _currentUsername);
+            if (success)
+            {
+                _showGrantTemporaryModal = false;
+                _alertMessage = $"Cấp quyền tạm thời thành công trong {_grantTempCmd.DurationMinutes} phút!";
+                _alertSuccess = true;
+                await LoadHubDataAsync();
+            }
+            else
+            {
+                _modalError = error;
+            }
+        }
+        catch (Exception ex)
+        {
+            _modalError = "Lỗi: " + ex.Message;
+        }
+        finally
+        {
+            _isSubmittingModal = false;
+        }
+    }
+
+    private async Task RevokeTemporaryAssignment(int assignmentId)
+    {
+        var (success, error) = await RoleService.RevokeTemporaryRoleAsync(assignmentId, _currentUsername);
+        if (success)
+        {
+            _alertMessage = "Đã thu hồi quyền tạm thời thành công!";
+            _alertSuccess = true;
+            await LoadHubDataAsync();
+        }
+        else
+        {
+            _alertMessage = error;
+            _alertSuccess = false;
+        }
+    }
+
+    // Assign Secondary Role (Permanent) Modal
+    private void OpenAssignSecondaryModal(UserRoleAssignmentDto acc)
+    {
+        _selectedAccountForSecondary = acc;
+        _selectedSecondaryRoleId = string.Empty;
+        _modalError = null;
+        _showAssignSecondaryModal = true;
+    }
+
+    private async Task SubmitAssignSecondaryAsync()
+    {
+        if (_selectedAccountForSecondary == null || string.IsNullOrEmpty(_selectedSecondaryRoleId))
+        {
+            _modalError = "Vui lòng chọn vai trò bổ sung.";
+            return;
+        }
+
+        _isSubmittingModal = true;
+        _modalError = null;
+        try
+        {
+            var (success, error) = await RoleService.AssignSecondaryRoleAsync(
+                _selectedAccountForSecondary.UserId,
+                _selectedSecondaryRoleId,
+                _currentUsername
+            );
+
+            if (success)
+            {
+                _showAssignSecondaryModal = false;
+                _alertMessage = "Gán vai trò bổ sung vĩnh viễn thành công!";
+                _alertSuccess = true;
+                await LoadHubDataAsync();
+            }
+            else
+            {
+                _modalError = error;
+            }
+        }
+        catch (Exception ex)
+        {
+            _modalError = "Lỗi: " + ex.Message;
+        }
+        finally
+        {
+            _isSubmittingModal = false;
+        }
+    }
+
+    private async Task RemoveSecondaryRole(string userId)
+    {
+        var (success, error) = await RoleService.RemoveSecondaryRoleAsync(userId, _currentUsername);
+        if (success)
+        {
+            _alertMessage = "Đã thu hồi vai trò bổ sung thành công!";
+            _alertSuccess = true;
+            await LoadHubDataAsync();
+        }
+        else
+        {
+            _alertMessage = error;
+            _alertSuccess = false;
+        }
+    }
+
+    private static string FormatVietnamTime(DateTime utcTime)
+    {
+        var vnTime = TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.SpecifyKind(utcTime, DateTimeKind.Utc),
+            TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")
+        );
+        return vnTime.ToString("dd/MM/yyyy HH:mm:ss");
+    }
+
+    private static string FormatDate(DateTime utcTime)
+    {
+        var vnTime = TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.SpecifyKind(utcTime, DateTimeKind.Utc),
+            TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")
+        );
+        return vnTime.ToString("dd/MM/yyyy");
+    }
+}

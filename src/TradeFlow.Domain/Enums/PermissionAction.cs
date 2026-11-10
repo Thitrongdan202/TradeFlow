@@ -25,5 +25,20 @@ public enum PermissionAction
     Export = 7,
 
     /// <summary>Ghi đè giá</summary>
-    OverridePrice = 8
+    OverridePrice = 8,
+
+    /// <summary>Xem chi tiết</summary>
+    ViewDetail = 9,
+
+    /// <summary>In tài liệu</summary>
+    Print = 10,
+
+    /// <summary>Từ chối</summary>
+    Reject = 11,
+
+    /// <summary>Quản lý cấu hình</summary>
+    ManageConfig = 12,
+
+    /// <summary>Quản lý quyền</summary>
+    ManagePermissions = 13
 }

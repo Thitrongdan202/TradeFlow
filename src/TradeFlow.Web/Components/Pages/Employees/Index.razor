@@ -13,6 +13,7 @@
 
 @inject IEmployeeService EmployeeService
 @inject IEmployeeAccountService EmployeeAccountService
+@inject IFileStorageService FileStorageService
 @inject TradeFlowDbContext DbContext
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
@@ -402,7 +403,15 @@
                                     </td>
                                     <td style="text-align:center; padding:6px 0;">
                                         <div class="tf-emp-avatar">
-                                            @GetInitials(emp.FullName)
+                                            @if (!string.IsNullOrWhiteSpace(emp.AvatarPath))
+                                            {
+                                                <img src="@(emp.AvatarPath.StartsWith("/") ? emp.AvatarPath : "/" + emp.AvatarPath)" alt="@emp.FullName" class="tf-emp-avatar-img" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
+                                                <span class="tf-emp-avatar-fallback" style="display:none;">@GetInitials(emp.FullName)</span>
+                                            }
+                                            else
+                                            {
+                                                <span>@GetInitials(emp.FullName)</span>
+                                            }
                                         </div>
                                     </td>
                                     <td>
@@ -599,7 +608,44 @@
                                                 <div class="tf-emp-expanded-header">
                                                     <div style="display:flex; align-items:center; gap:16px;">
                                                         <div class="tf-emp-avatar-lg">
-                                                            @GetInitials(emp.FullName)
+                                                            @if (isEditing)
+                                                            {
+                                                                <div class="tf-emp-avatar-edit-wrap">
+                                                                    @if (!string.IsNullOrWhiteSpace(_inlineEditModel?.AvatarPath))
+                                                                    {
+                                                                        <img src="@(_inlineEditModel.AvatarPath.StartsWith("/") ? _inlineEditModel.AvatarPath : "/" + _inlineEditModel.AvatarPath)" alt="@emp.FullName" class="tf-emp-avatar-img" />
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <span class="tf-emp-avatar-fallback">@GetInitials(emp.FullName)</span>
+                                                                    }
+                                                                    <label class="tf-emp-avatar-badge-btn" title="Thay đổi ảnh đại diện">
+                                                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                                                            <circle cx="12" cy="13" r="4"></circle>
+                                                                        </svg>
+                                                                        <InputFile OnChange="HandleInlineAvatarUploadAsync" accept="image/png,image/jpeg,image/webp,image/jpg" style="display:none;" />
+                                                                    </label>
+                                                                    @if (!string.IsNullOrWhiteSpace(_inlineEditModel?.AvatarPath))
+                                                                    {
+                                                                        <button type="button" class="tf-emp-avatar-remove-btn" title="Xóa ảnh" @onclick="RemoveInlineAvatar">
+                                                                            ✕
+                                                                        </button>
+                                                                    }
+                                                                </div>
+                                                            }
+                                                            else
+                                                            {
+                                                                @if (!string.IsNullOrWhiteSpace(emp.AvatarPath))
+                                                                {
+                                                                    <img src="@(emp.AvatarPath.StartsWith("/") ? emp.AvatarPath : "/" + emp.AvatarPath)" alt="@emp.FullName" class="tf-emp-avatar-img" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
+                                                                    <span class="tf-emp-avatar-fallback" style="display:none;">@GetInitials(emp.FullName)</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span>@GetInitials(emp.FullName)</span>
+                                                                }
+                                                            }
                                                         </div>
                                                         <div>
                                                             <div style="display:flex; align-items:center; gap:10px;">
@@ -1662,6 +1708,55 @@
     {
         _editingEmployeeId = null;
         _inlineEditModel = null;
+    }
+
+    private async Task HandleInlineAvatarUploadAsync(InputFileChangeEventArgs e)
+    {
+        if (_inlineEditModel == null) return;
+        var file = e.File;
+        if (file == null) return;
+
+        if (file.Size > 5 * 1024 * 1024)
+        {
+            _notificationMessage = "Dung lượng ảnh vượt quá giới hạn 5MB.";
+            _notificationIsSuccess = false;
+            return;
+        }
+
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+        var ext = Path.GetExtension(file.Name).ToLowerInvariant();
+        if (!allowedExtensions.Contains(ext))
+        {
+            _notificationMessage = "Chỉ chấp nhận file ảnh định dạng JPG, JPEG, PNG hoặc WebP.";
+            _notificationIsSuccess = false;
+            return;
+        }
+
+        try
+        {
+            using var stream = file.OpenReadStream(5 * 1024 * 1024);
+            var savedPath = await FileStorageService.SaveFileAsync(stream, file.Name, file.ContentType, "employees");
+            _inlineEditModel.AvatarPath = savedPath;
+            _notificationMessage = "Đã tải ảnh đại diện thành công. Nhấn 'Lưu thay đổi' để hoàn tất.";
+            _notificationIsSuccess = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _notificationMessage = $"Lỗi khi tải ảnh: {ex.Message}";
+            _notificationIsSuccess = false;
+        }
+    }
+
+    private void RemoveInlineAvatar()
+    {
+        if (_inlineEditModel != null)
+        {
+            _inlineEditModel.AvatarPath = null;
+            _notificationMessage = "Đã gỡ ảnh đại diện. Nhấn 'Lưu thay đổi' để hoàn tất.";
+            _notificationIsSuccess = true;
+            StateHasChanged();
+        }
     }
 
     private async Task SaveInlineEdit()

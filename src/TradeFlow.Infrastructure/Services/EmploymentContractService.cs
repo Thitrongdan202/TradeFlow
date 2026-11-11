@@ -1018,6 +1018,7 @@ public class EmploymentContractService : IEmploymentContractService
             try
             {
                 dto.Clauses = JsonSerializer.Deserialize<List<EmploymentContractClauseDto>>(entity.CustomClausesJson) ?? new();
+                EmploymentContractClauseDefaults.NormalizeArticleNumbersIfDuplicate(dto.Clauses);
             }
             catch
             {

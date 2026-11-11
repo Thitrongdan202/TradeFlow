@@ -1282,10 +1282,14 @@
             if (clause.IsOptional)
             {
                 model.Clauses.RemoveAt(index);
-                // Renumber display order
+                // Renumber display order and sequential article numbers
                 for (int i = 0; i < model.Clauses.Count; i++)
                 {
                     model.Clauses[i].DisplayOrder = i + 1;
+                    if (model.Clauses[i].ArticleNumber?.Trim().StartsWith("Điều", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        model.Clauses[i].ArticleNumber = $"Điều {i + 1}";
+                    }
                 }
             }
         }

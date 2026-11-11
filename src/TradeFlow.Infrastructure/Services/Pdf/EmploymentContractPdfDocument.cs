@@ -25,14 +25,14 @@ public class EmploymentContractPdfDocument : IDocument
     public void Compose(IDocumentContainer container)
     {
         const float baseFontSize = 12.5f;
-        const float lineHeight = 1.22f;
+        const float lineHeight = 1.20f;
 
         container.Page(page =>
         {
             page.Size(PageSizes.A4);
-            // Lề chuẩn A4: Trên 20mm, Dưới 20mm, Trái 28mm, Phải 20mm
-            page.MarginTop(20f, Unit.Millimetre);
-            page.MarginBottom(20f, Unit.Millimetre);
+            // Lề chuẩn A4: Trên 18mm, Dưới 16mm, Trái 28mm, Phải 20mm
+            page.MarginTop(18f, Unit.Millimetre);
+            page.MarginBottom(16f, Unit.Millimetre);
             page.MarginLeft(28f, Unit.Millimetre);
             page.MarginRight(20f, Unit.Millimetre);
             page.PageColor(Colors.White);
@@ -54,7 +54,7 @@ public class EmploymentContractPdfDocument : IDocument
 
         container.Column(col =>
         {
-            col.Spacing(4);
+            col.Spacing(2f);
 
             // ==========================================
             // 1. QUỐC HIỆU, TIÊU NGỮ, ĐỊA ĐIỂM - NGÀY THÁNG, TÊN & SỐ HỢP ĐỒNG (TRANG ĐẦU)
@@ -64,44 +64,44 @@ public class EmploymentContractPdfDocument : IDocument
                 headerCol.Item().AlignCenter().Column(c =>
                 {
                     c.Item().AlignCenter().Text("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM").FontSize(12.5f).Bold();
-                    c.Item().PaddingTop(2).AlignCenter().Text("Độc lập - Tự do - Hạnh phúc").FontSize(13f).Bold();
-                    c.Item().PaddingTop(3).AlignCenter().Width(145).LineHorizontal(1f).LineColor(Colors.Black);
-                    c.Item().PaddingTop(5).AlignCenter().Text($"{place}, ngày {_contract.ContractDate:dd} tháng {_contract.ContractDate:MM} năm {_contract.ContractDate:yyyy}")
+                    c.Item().PaddingTop(1.5f).AlignCenter().Text("Độc lập - Tự do - Hạnh phúc").FontSize(13f).Bold();
+                    c.Item().PaddingTop(2f).AlignCenter().Width(145).LineHorizontal(1f).LineColor(Colors.Black);
+                    c.Item().PaddingTop(3f).AlignCenter().Text($"{place}, ngày {_contract.ContractDate:dd} tháng {_contract.ContractDate:MM} năm {_contract.ContractDate:yyyy}")
                         .FontSize(12f).Italic();
                 });
 
-                headerCol.Item().PaddingTop(10).AlignCenter().Column(c =>
+                headerCol.Item().PaddingTop(6f).AlignCenter().Column(c =>
                 {
                     var titleText = string.IsNullOrWhiteSpace(_contract.Title)
                         ? "HỢP ĐỒNG LAO ĐỘNG"
                         : _contract.Title.Trim().ToUpperInvariant();
                     c.Item().AlignCenter().Text(titleText).FontSize(15f).Bold();
-                    c.Item().PaddingTop(3).AlignCenter().Text($"Số: {_contract.ContractNumber}").FontSize(12.5f).Bold();
+                    c.Item().PaddingTop(2f).AlignCenter().Text($"Số: {_contract.ContractNumber}").FontSize(12.5f).Bold();
                 });
             });
 
             // ==========================================
             // 2. CĂN CỨ PHÁP LÝ (IN NGHIÊNG ĐÚNG QUY CHUẨN)
             // ==========================================
-            col.Item().PaddingTop(6).Column(c =>
+            col.Item().PaddingTop(3f).Column(c =>
             {
-                c.Spacing(2);
+                c.Spacing(1f);
                 c.Item().Text("- Căn cứ Bộ luật Lao động số 45/2019/QH14 ngày 20/11/2019 (Điều 14 về hình thức hợp đồng lao động, Điều 21 về nội dung hợp đồng lao động) và các văn bản sửa đổi, bổ sung;").Italic().FontSize(12f).Justify();
                 c.Item().Text("- Căn cứ Nghị định số 145/2020/NĐ-CP của Chính phủ và Thông tư số 10/2020/TT-BLĐTBXH hướng dẫn chi tiết về nội dung hợp đồng lao động;").Italic().FontSize(12f).Justify();
                 c.Item().Text("- Căn cứ Luật Giao dịch điện tử số 20/2023/QH15 và các quy định về giao kết hợp đồng lao động điện tử;").Italic().FontSize(12f).Justify();
                 c.Item().Text("- Căn cứ nhu cầu sử dụng lao động của Doanh nghiệp và sự thỏa thuận tự nguyện của hai bên.").Italic().FontSize(12f).Justify();
             });
 
-            col.Item().PaddingTop(5).Text(
+            col.Item().PaddingTop(2f).Text(
                 $"Hôm nay, ngày {_contract.ContractDate:dd} tháng {_contract.ContractDate:MM} năm {_contract.ContractDate:yyyy}, tại {place}, chúng tôi gồm có:")
                 .FontSize(baseFontSize).Justify();
 
             // ==========================================
             // 3. BÊN A: NGƯỜI SỬ DỤNG LAO ĐỘNG
             // ==========================================
-            col.Item().PaddingTop(4).ShowEntire().Column(a =>
+            col.Item().PaddingTop(2f).ShowEntire().Column(a =>
             {
-                a.Spacing(2);
+                a.Spacing(1f);
                 a.Item().Text(t =>
                 {
                     t.Span("BÊN A (NGƯỜI SỬ DỤNG LAO ĐỘNG): ").Bold();
@@ -135,9 +135,9 @@ public class EmploymentContractPdfDocument : IDocument
             // ==========================================
             // 4. BÊN B: NGƯỜI LAO ĐỘNG
             // ==========================================
-            col.Item().PaddingTop(4).ShowEntire().Column(b =>
+            col.Item().PaddingTop(2f).ShowEntire().Column(b =>
             {
-                b.Spacing(2);
+                b.Spacing(1f);
                 b.Item().Text(t =>
                 {
                     t.Span("BÊN B (NGƯỜI LAO ĐỘNG): ").Bold();
@@ -207,7 +207,7 @@ public class EmploymentContractPdfDocument : IDocument
                 }
             });
 
-            col.Item().PaddingTop(4).Text(
+            col.Item().PaddingTop(2f).Text(
                 "Cùng thỏa thuận ký kết Hợp đồng lao động và cam kết làm đúng những điều khoản sau đây:")
                 .Italic().Justify();
 
@@ -218,7 +218,9 @@ public class EmploymentContractPdfDocument : IDocument
                 ? _contract.Clauses.OrderBy(c => c.DisplayOrder).ToList()
                 : EmploymentContractClauseDefaults.GenerateDefaultClauses(_contract);
 
-            col.Item().PaddingTop(2).Column(clauseCol =>
+            EmploymentContractClauseDefaults.NormalizeArticleNumbersIfDuplicate(clausesToRender);
+
+            col.Item().PaddingTop(2f).Column(clauseCol =>
             {
                 foreach (var clause in clausesToRender)
                 {
@@ -243,7 +245,7 @@ public class EmploymentContractPdfDocument : IDocument
             bool showEmployeeSig = _includeSignatures && _contract.EmployeeSignedAt.HasValue;
             bool showEmployerSig = _includeSignatures && _contract.EmployerSignedAt.HasValue;
 
-            col.Item().ShowEntire().PaddingTop(14).Column(sigRoot =>
+            col.Item().ShowEntire().PaddingTop(8f).Column(sigRoot =>
             {
                 sigRoot.Item().Row(sigRow =>
                 {
@@ -274,7 +276,7 @@ public class EmploymentContractPdfDocument : IDocument
                         }
                         else
                         {
-                            sigCol.Item().Height(68);
+                            sigCol.Item().Height(46);
                             sigCol.Item().AlignCenter().Text(_contract.EmployeeFullName).FontSize(12f).Bold();
                         }
                     });
@@ -307,7 +309,7 @@ public class EmploymentContractPdfDocument : IDocument
                         }
                         else
                         {
-                            sigCol.Item().Height(68);
+                            sigCol.Item().Height(46);
                             sigCol.Item().AlignCenter().Text(_contract.EmployerRepresentativeName).FontSize(12f).Bold();
                             if (!string.IsNullOrWhiteSpace(_contract.EmployerRepresentativePosition))
                                 sigCol.Item().AlignCenter().Text(_contract.EmployerRepresentativePosition).FontSize(10f).Italic();

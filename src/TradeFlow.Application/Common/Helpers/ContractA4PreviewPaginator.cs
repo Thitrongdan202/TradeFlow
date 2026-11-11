@@ -37,10 +37,10 @@ public sealed class ContractPreviewPage
 
 public static class ContractA4PreviewPaginator
 {
-    // A4 Portrait (297mm height - 20mm top - 20mm bottom - 10mm footer = 247mm usable height).
-    // At 12.5pt Times New Roman with 1.22 line-height (~5.4mm per line), calibrated for 43 lines capacity.
-    private const double MaxLinesPerPage = 43.0;
-    private const double CharsPerLine = 72.0;
+    // A4 Portrait (297mm height - 18mm top - 16mm bottom - 10mm footer = 253mm usable height).
+    // At 12.5pt Times New Roman with 1.22 line-height (~5.4mm per line), calibrated for 44.5 lines capacity.
+    private const double MaxLinesPerPage = 44.5;
+    private const double CharsPerLine = 84.0;
 
     public static List<ContractPreviewPage> PaginateCommercialContract(
         ContractDto contract,
@@ -160,13 +160,16 @@ public static class ContractA4PreviewPaginator
             new ContractPreviewRenderBlock
             {
                 Kind = ContractPreviewBlockKind.DocumentHeaderAndParties,
-                EstimatedLines = 24.0
+                EstimatedLines = 22.0
             }
         };
 
         var clausesToRender = contract.Clauses != null && contract.Clauses.Any()
             ? contract.Clauses.OrderBy(c => c.DisplayOrder).ToList()
             : EmploymentContractClauseDefaults.GenerateDefaultClauses(contract);
+
+        // Defensive normalization to prevent any duplicate article numbering
+        EmploymentContractClauseDefaults.NormalizeArticleNumbersIfDuplicate(clausesToRender);
 
         foreach (var clause in clausesToRender)
         {
@@ -182,7 +185,7 @@ public static class ContractA4PreviewPaginator
         blocks.Add(new ContractPreviewRenderBlock
         {
             Kind = ContractPreviewBlockKind.SignatureSection,
-            EstimatedLines = 9.5
+            EstimatedLines = 7.5
         });
 
         return DistributeBlocksIntoPages(blocks);
@@ -201,7 +204,7 @@ public static class ContractA4PreviewPaginator
                 Kind = ContractPreviewBlockKind.ClauseHeadingAndFirstParagraph,
                 ClauseHeading = heading,
                 Paragraph = null,
-                EstimatedLines = 1.8
+                EstimatedLines = 1.35
             });
             return;
         }
@@ -216,7 +219,7 @@ public static class ContractA4PreviewPaginator
             Kind = ContractPreviewBlockKind.ClauseHeadingAndFirstParagraph,
             ClauseHeading = heading,
             Paragraph = paragraphs[0],
-            EstimatedLines = 1.6 + firstParaLines
+            EstimatedLines = 1.15 + firstParaLines
         });
 
         for (int i = 1; i < paragraphs.Count; i++)
@@ -312,9 +315,9 @@ public static class ContractA4PreviewPaginator
     private static double EstimateParagraphLines(ContractParagraphBlock para)
     {
         int chars = (para.BulletPrefix?.Length ?? 0) + para.Spans.Sum(s => s.Text.Length);
-        double effectiveWidth = CharsPerLine - (para.IndentLevel * 4.0);
-        double rawLines = Math.Max(1.0, Math.Ceiling(chars / effectiveWidth));
-        return rawLines + 0.35; // paragraph spacing
+        double effectiveWidth = CharsPerLine - (para.IndentLevel * 2.0);
+        double rawLines = Math.Max(1.0, Math.Ceiling((double)(chars - 6) / effectiveWidth));
+        return rawLines + 0.15; // paragraph spacing
     }
 
     private static List<ContractPreviewPage> DistributeBlocksIntoPages(List<ContractPreviewRenderBlock> blocks)

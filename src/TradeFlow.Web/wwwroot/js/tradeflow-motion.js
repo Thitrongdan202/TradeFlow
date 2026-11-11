@@ -477,6 +477,9 @@
         const el = typeof contentEl === 'string' ? document.querySelector(contentEl) : contentEl;
         if (!el) return;
 
+        // Reset scroll position cleanly when switching tabs
+        el.scrollTop = 0;
+
         if (isReducedMotion()) {
             el.style.opacity = '1';
             el.style.transform = 'none';
@@ -491,8 +494,8 @@
             const anim = Motion.animate(
                 el,
                 {
-                    opacity: [0.35, 1],
-                    y: [6, 0]
+                    opacity: [0.4, 1],
+                    y: [3, 0]
                 },
                 {
                     duration: TOKENS.duration.tab,
@@ -506,7 +509,7 @@
         } else if (gsap) {
             claimOwnership(el, 'gsap');
             gsap.fromTo(el,
-                { opacity: 0.35, y: 6 },
+                { opacity: 0.4, y: 3 },
                 { opacity: 1, y: 0, duration: 0.16, ease: 'power2.out', clearProps: 'transform' }
             );
         }

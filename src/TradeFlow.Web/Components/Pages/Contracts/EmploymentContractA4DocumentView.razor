@@ -257,7 +257,7 @@
         width: 210mm;
         max-width: 100%;
         min-height: 297mm;
-        padding: 20mm 20mm 18mm 28mm;
+        padding: 18mm 20mm 16mm 28mm;
         background-color: #ffffff !important;
         color: #000000 !important;
         box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.14), 0 0 0 1px rgba(15, 23, 42, 0.08);
@@ -292,9 +292,13 @@
         flex: 1 1 auto;
     }
 
+    .tf-a4-page-body > :first-child {
+        margin-top: 0 !important;
+    }
+
     .tf-doc-header-p1 {
         text-align: center;
-        margin-bottom: 10px;
+        margin-bottom: 6px;
     }
 
     .tf-doc-nat-country {
@@ -325,8 +329,8 @@
     }
 
     .tf-doc-title-area {
-        margin-top: 12px;
-        margin-bottom: 8px;
+        margin-top: 8px;
+        margin-bottom: 6px;
         text-align: center;
     }
 
@@ -342,38 +346,38 @@
     .tf-doc-contract-no {
         font-size: 12.5pt;
         font-weight: 700;
-        margin-top: 3px;
+        margin-top: 2px;
     }
 
     .tf-doc-legal-basis {
         font-size: 12pt;
         font-style: italic;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
     }
 
     .tf-doc-basis-line {
-        margin-bottom: 2px;
+        margin-bottom: 1.5px;
         text-align: justify;
     }
 
     .tf-doc-opening-line {
-        margin: 6px 0;
+        margin: 4px 0;
         text-align: justify;
     }
 
     .tf-doc-party-section {
-        margin-top: 6px;
-        margin-bottom: 6px;
+        margin-top: 4px;
+        margin-bottom: 4px;
     }
 
     .tf-doc-party-heading {
         font-size: 12.5pt;
         font-weight: 700;
-        margin-bottom: 2px;
+        margin-bottom: 1.5px;
     }
 
     .tf-doc-party-row {
-        margin-bottom: 2px;
+        margin-bottom: 1.5px;
         text-align: justify;
     }
 
@@ -386,11 +390,11 @@
 
     .tf-doc-transition-line {
         font-style: italic;
-        margin: 6px 0;
+        margin: 4px 0;
     }
 
     .tf-doc-clause-head-first {
-        margin-top: 8px;
+        margin-top: 6px;
         page-break-inside: avoid;
         break-inside: avoid;
     }
@@ -398,7 +402,7 @@
     .tf-doc-clause-title {
         font-size: 12.5pt;
         font-weight: 700;
-        margin-bottom: 3px;
+        margin-bottom: 2px;
         text-align: left;
     }
 
@@ -406,7 +410,7 @@
         font-size: 12.5pt;
         line-height: 1.22;
         text-align: justify;
-        margin-bottom: 3px;
+        margin-bottom: 2px;
     }
 
     .tf-doc-indent-1 {
@@ -426,7 +430,7 @@
     }
 
     .tf-doc-sig-section {
-        margin-top: 18px;
+        margin-top: 10px;
         page-break-inside: avoid;
         break-inside: avoid;
     }
@@ -462,7 +466,7 @@
     }
 
     .tf-doc-sig-blank-space {
-        height: 76px;
+        height: 48px;
     }
 
     .tf-doc-sig-printed-name {
@@ -548,6 +552,29 @@
     .tf-a4-footer-right {
         font-size: 9.2pt !important;
         color: #475569 !important;
+    }
+
+    @@media print {
+        @@page {
+            size: A4 portrait;
+            margin: 18mm 20mm 16mm 28mm !important;
+        }
+        .tf-a4-stage-wrapper {
+            padding: 0 !important;
+            gap: 0 !important;
+        }
+        .tf-a4-page {
+            padding: 0 !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            min-height: auto !important;
+            page-break-after: always;
+            break-after: page;
+        }
+        .tf-a4-page:last-child {
+            page-break-after: avoid;
+            break-after: avoid;
+        }
     }
 </style>
 

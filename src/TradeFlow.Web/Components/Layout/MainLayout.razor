@@ -86,7 +86,7 @@
                 </a>
 
                 @* Quick Action: Interactive Notifications Menu *@
-                <NotificationMenu />
+                <NotificationMenu OnOpenSupport='(ticketId) => _supportModal?.Open("detail", ticketId)' />
 
                 <div class="tf-topbar-divider"></div>
 

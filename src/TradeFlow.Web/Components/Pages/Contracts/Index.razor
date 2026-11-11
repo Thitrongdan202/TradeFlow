@@ -865,6 +865,20 @@
                 await JS.InvokeVoidAsync("TradeFlowMotion.animateModuleEntrance", ".tf-contracts-page");
             }
             catch { }
+
+            try
+            {
+                var uri = new Uri(Nav.Uri);
+                var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+                if (query.TryGetValue("contractId", out var cIdVal) && int.TryParse(cIdVal, out int targetContractId) && targetContractId > 0)
+                {
+                    if (empDetailModal != null)
+                    {
+                        await OpenEmploymentDetail(targetContractId);
+                    }
+                }
+            }
+            catch { }
         }
     }
 

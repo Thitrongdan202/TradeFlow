@@ -9,8 +9,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using TradeFlow.Application.Common.Interfaces;
+using TradeFlow.Application.Common.Models.Attendance;
 using TradeFlow.Application.Common.Models.Employees;
 using TradeFlow.Application.Common.Models.Notifications;
+using TradeFlow.Application.Common.Models.Support;
 using TradeFlow.Domain.Entities.Employees;
 using TradeFlow.Domain.Entities.Pricing;
 using TradeFlow.Domain.Entities.Support;
@@ -46,9 +48,12 @@ public class NotificationService : INotificationService
             readSet ??= new HashSet<string>();
 
             bool isAdmin = user?.IsInRole("Administrator") ?? false;
+            bool isManager = user?.IsInRole("Manager") ?? false;
             bool hasEmployeeApprovePermission = isAdmin || (user != null && (user.HasClaim("Permission", "Permission:EmployeeRequests:Approve") || user.HasClaim("Permission", "EmployeeRequests:Approve")));
             bool hasPriceListApprovePermission = isAdmin || (user != null && (user.HasClaim("Permission", "Permission:Pricing:Edit") || user.HasClaim("Permission", "Pricing:Edit")));
             bool hasAttendanceApprovePermission = isAdmin || (user != null && (user.HasClaim("Permission", "Permission:Attendance:Approve") || user.HasClaim("Permission", "Attendance:Approve")));
+            bool hasContractSignPermission = isAdmin || (user != null && (user.HasClaim("Permission", "Permission:Contracts:Sign") || user.HasClaim("Permission", "Contracts:Sign")));
+            bool hasSupportManagePermission = isAdmin || isManager || (user != null && (user.HasClaim("Permission", "Permission:Support:Manage") || user.HasClaim("Permission", "Support:Manage")));
 
             var result = new List<SystemNotificationDto>();
 
@@ -246,7 +251,7 @@ public class NotificationService : INotificationService
                         Type = "approval",
                         CreatedAt = req.CreatedAt,
                         IsRead = readSet.Contains(id),
-                        TargetUrl = "/cham-cong",
+                        TargetUrl = $"/cham-cong?tab=approvals&subtab=adjustment&id={req.Id}",
                         ActionButtonText = "Xem đơn chờ duyệt",
                         IsApprovalRequest = true,
                         RequestType = "AttendanceAdjustment",
@@ -285,7 +290,7 @@ public class NotificationService : INotificationService
                         Type = "approval",
                         CreatedAt = req.CreatedAt,
                         IsRead = readSet.Contains(id),
-                        TargetUrl = "/cham-cong",
+                        TargetUrl = $"/cham-cong?tab=approvals&subtab=leave&id={req.Id}",
                         ActionButtonText = "Xem đơn nghỉ phép",
                         IsApprovalRequest = true,
                         RequestType = "LeaveRequest",
@@ -299,9 +304,52 @@ public class NotificationService : INotificationService
                     });
                 }
 
-                // 2c. Support Tickets (New tickets for Manager/Admin, feedback/replies for Submitter)
-                bool isManager = user?.IsInRole("Manager") ?? false;
-                if (isAdmin || isManager)
+                // 2d. Pending Shift Change Requests
+                var pendingShifts = await context.ShiftChangeRequests
+                    .AsNoTracking()
+                    .Include(r => r.Employee)
+                    .Include(r => r.CurrentWorkShift)
+                    .Include(r => r.ProposedWorkShift)
+                    .Where(r => r.Status == AttendanceRequestStatus.Pending)
+                    .OrderByDescending(r => r.CreatedAt)
+                    .Take(limit)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var req in pendingShifts)
+                {
+                    string id = $"appr_shift_{req.Id}";
+                    bool isSelf = !string.IsNullOrEmpty(currentUserName) &&
+                        ((req.Employee != null && (string.Equals(req.Employee.FullName, currentUserName, StringComparison.OrdinalIgnoreCase) || string.Equals(req.Employee.Code, currentUserName, StringComparison.OrdinalIgnoreCase))) ||
+                         string.Equals(req.Employee?.UserId, userId, StringComparison.OrdinalIgnoreCase));
+                    bool canApprove = hasAttendanceApprovePermission && !isSelf;
+
+                    string curShift = req.CurrentWorkShift?.Name ?? "Ca hiện tại";
+                    string newShift = req.ProposedWorkShift?.Name ?? "Ca đề xuất";
+
+                    result.Add(new SystemNotificationDto
+                    {
+                        Id = id,
+                        Title = $"Đổi ca làm việc: {req.Employee?.FullName ?? "Nhân viên"}",
+                        Message = $"Đơn xin chuyển ca ngày {req.TargetDate:dd/MM/yyyy} ({curShift} → {newShift}) do {req.Employee?.FullName} gửi: {req.Reason}",
+                        Type = "approval",
+                        CreatedAt = req.CreatedAt,
+                        IsRead = readSet.Contains(id),
+                        TargetUrl = $"/cham-cong?tab=approvals&subtab=shift&id={req.Id}",
+                        ActionButtonText = "Xem đơn đổi ca",
+                        IsApprovalRequest = true,
+                        RequestType = "ShiftChangeRequest",
+                        RequestTypeName = "Đổi ca làm việc",
+                        EntityId = req.Id,
+                        RequestCode = $"DC-{req.Id:D4}",
+                        Requester = req.Employee?.FullName ?? "Nhân viên",
+                        Status = "Chờ duyệt",
+                        CanApprove = canApprove,
+                        IsSelfRequest = isSelf
+                    });
+                }
+
+                // 2e. Support Tickets (New tickets for Manager/Admin, feedback/replies for Submitter)
+                if (hasSupportManagePermission)
                 {
                     var newTickets = await context.SupportTickets
                         .AsNoTracking()
@@ -331,7 +379,7 @@ public class NotificationService : INotificationService
                             RequestCode = t.Code,
                             Requester = t.SubmitterFullName ?? t.CreatedByUserName,
                             Status = "Mới gửi",
-                            CanApprove = true
+                            CanApprove = hasSupportManagePermission
                         });
                     }
                 }
@@ -369,6 +417,132 @@ public class NotificationService : INotificationService
                             Status = statusDesc
                         });
                     }
+                }
+
+                // 2f. Pending Commercial Contracts awaiting signature
+                var pendingContracts = await context.Contracts
+                    .AsNoTracking()
+                    .Where(c => c.Status == ContractStatus.PendingSignature)
+                    .OrderByDescending(c => c.CreatedAt)
+                    .Take(limit)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var c in pendingContracts)
+                {
+                    string id = $"contr_sign_{c.Id}";
+                    result.Add(new SystemNotificationDto
+                    {
+                        Id = id,
+                        Title = $"Hợp đồng chờ ký số: {c.ContractNumber}",
+                        Message = $"Hợp đồng '{c.Title}' ({c.TotalAmount:#,##0} đ) đang chờ ký kết và số hóa.",
+                        Type = "approval",
+                        CreatedAt = c.CreatedAt,
+                        IsRead = readSet.Contains(id),
+                        TargetUrl = $"/hop-dong/{c.Id}",
+                        ActionButtonText = "Xem ký hợp đồng",
+                        IsApprovalRequest = false,
+                        RequestType = "CommercialContract",
+                        RequestTypeName = "Hợp đồng thương mại",
+                        EntityId = c.Id,
+                        RequestCode = c.ContractNumber,
+                        Requester = c.CreatedBy ?? "Phòng kinh doanh",
+                        Status = "Chờ ký số",
+                        CanApprove = hasContractSignPermission
+                    });
+                }
+
+                // 2g. Pending Employment Contracts awaiting signature
+                var pendingEmpContracts = await context.EmploymentContracts
+                    .AsNoTracking()
+                    .Where(c => c.Status == EmploymentContractStatus.PendingSignature)
+                    .OrderByDescending(c => c.CreatedAt)
+                    .Take(limit)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var c in pendingEmpContracts)
+                {
+                    string id = $"emp_contr_sign_{c.Id}";
+                    result.Add(new SystemNotificationDto
+                    {
+                        Id = id,
+                        Title = $"HĐ lao động chờ ký số: {c.ContractNumber}",
+                        Message = $"Hợp đồng lao động của nhân sự {c.EmployeeFullName} ({c.JobTitle}) đang chờ hoàn tất chữ ký số.",
+                        Type = "approval",
+                        CreatedAt = c.CreatedAt,
+                        IsRead = readSet.Contains(id),
+                        TargetUrl = $"/hop-dong?tab=employment&contractId={c.Id}",
+                        ActionButtonText = "Mở ký HĐLĐ",
+                        IsApprovalRequest = false,
+                        RequestType = "EmploymentContract",
+                        RequestTypeName = "Hợp đồng lao động",
+                        EntityId = c.Id,
+                        RequestCode = c.ContractNumber,
+                        Requester = c.CreatedBy ?? "Phòng nhân sự",
+                        Status = "Chờ ký số",
+                        CanApprove = hasContractSignPermission
+                    });
+                }
+
+                // 2h. Pending Invoices
+                var pendingInvoices = await context.Invoices
+                    .AsNoTracking()
+                    .Where(i => i.Status == InvoiceStatus.Pending)
+                    .OrderByDescending(i => i.CreatedAt)
+                    .Take(limit)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var inv in pendingInvoices)
+                {
+                    string id = $"inv_pending_{inv.Id}";
+                    result.Add(new SystemNotificationDto
+                    {
+                        Id = id,
+                        Title = $"Hóa đơn chờ xử lý: {inv.InvoiceNumber}",
+                        Message = $"Hóa đơn #{inv.InvoiceNumber} trị giá {inv.GrandTotal:#,##0} đ đang chờ xử lý.",
+                        Type = "system",
+                        CreatedAt = inv.CreatedAt,
+                        IsRead = readSet.Contains(id),
+                        TargetUrl = $"/hoa-don/chi-tiet/{inv.Id}",
+                        ActionButtonText = "Xem hóa đơn",
+                        IsApprovalRequest = false,
+                        RequestType = "Invoice",
+                        RequestTypeName = "Hóa đơn",
+                        EntityId = inv.Id,
+                        RequestCode = inv.InvoiceNumber,
+                        Requester = inv.CreatedBy ?? "Kế toán",
+                        Status = "Chờ thanh toán"
+                    });
+                }
+
+                // 2i. Draft Sales Orders
+                var draftOrders = await context.SalesOrders
+                    .AsNoTracking()
+                    .Where(o => o.Status == SalesOrderStatus.Draft)
+                    .OrderByDescending(o => o.CreatedAt)
+                    .Take(limit)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var ord in draftOrders)
+                {
+                    string id = $"ord_draft_{ord.Id}";
+                    result.Add(new SystemNotificationDto
+                    {
+                        Id = id,
+                        Title = $"Đơn bán hàng bản nháp: {ord.Code}",
+                        Message = $"Đơn hàng {ord.Code} của khách hàng {ord.CustomerName} đang ở trạng thái bản nháp.",
+                        Type = "order",
+                        CreatedAt = ord.CreatedAt,
+                        IsRead = readSet.Contains(id),
+                        TargetUrl = $"/ban-hang/don-ban-hang/chi-tiet/{ord.Id}",
+                        ActionButtonText = "Xem đơn bán",
+                        IsApprovalRequest = false,
+                        RequestType = "SalesOrder",
+                        RequestTypeName = "Đơn bán hàng",
+                        EntityId = ord.Id,
+                        RequestCode = ord.Code,
+                        Requester = ord.CreatedBy ?? "Kinh doanh",
+                        Status = "Bản nháp"
+                    });
                 }
 
                 // 3. Query actual system events from AuditLog (e.g. system backups, security events, user creation, approvals)
@@ -570,6 +744,140 @@ public class NotificationService : INotificationService
             await MarkAsReadAsync(notificationId, user, cancellationToken);
             return true;
         }
+        else if (notificationId.StartsWith("appr_adj_") && int.TryParse(notificationId.Replace("appr_adj_", ""), out int adjId))
+        {
+            bool hasPermission = isAdmin || user.HasClaim("Permission", "Permission:Attendance:Approve") || user.HasClaim("Permission", "Attendance:Approve");
+            if (!hasPermission)
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền phê duyệt giải trình chấm công.");
+            }
+
+            var attendanceService = _serviceProvider?.GetService(typeof(IAttendanceService)) as IAttendanceService;
+            if (attendanceService != null)
+            {
+                string reviewerUserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.Identity.Name ?? "system";
+                await attendanceService.ReviewAdjustmentRequestAsync(reviewerUserId, new ReviewRequestCommand
+                {
+                    RequestId = adjId,
+                    IsApproved = true,
+                    ReviewNotes = "Phê duyệt nhanh từ thanh thông báo"
+                }, cancellationToken);
+            }
+            else
+            {
+                var req = await context.AttendanceAdjustmentRequests.FirstOrDefaultAsync(r => r.Id == adjId, cancellationToken);
+                if (req != null)
+                {
+                    req.Status = AttendanceRequestStatus.Approved;
+                    req.ReviewedByUserName = currentUserName;
+                    req.ReviewedAt = DateTime.UtcNow;
+                    await context.SaveChangesAsync(cancellationToken);
+                }
+            }
+
+            await MarkAsReadAsync(notificationId, user, cancellationToken);
+            return true;
+        }
+        else if (notificationId.StartsWith("appr_leave_") && int.TryParse(notificationId.Replace("appr_leave_", ""), out int leaveId))
+        {
+            bool hasPermission = isAdmin || user.HasClaim("Permission", "Permission:Attendance:Approve") || user.HasClaim("Permission", "Attendance:Approve");
+            if (!hasPermission)
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền phê duyệt đơn nghỉ phép.");
+            }
+
+            var attendanceService = _serviceProvider?.GetService(typeof(IAttendanceService)) as IAttendanceService;
+            if (attendanceService != null)
+            {
+                string reviewerUserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.Identity.Name ?? "system";
+                await attendanceService.ReviewLeaveRequestAsync(reviewerUserId, new ReviewRequestCommand
+                {
+                    RequestId = leaveId,
+                    IsApproved = true,
+                    ReviewNotes = "Phê duyệt nhanh từ thanh thông báo"
+                }, cancellationToken);
+            }
+            else
+            {
+                var req = await context.LeaveRequests.FirstOrDefaultAsync(r => r.Id == leaveId, cancellationToken);
+                if (req != null)
+                {
+                    req.Status = AttendanceRequestStatus.Approved;
+                    req.ReviewedByUserName = currentUserName;
+                    req.ReviewedAt = DateTime.UtcNow;
+                    await context.SaveChangesAsync(cancellationToken);
+                }
+            }
+
+            await MarkAsReadAsync(notificationId, user, cancellationToken);
+            return true;
+        }
+        else if (notificationId.StartsWith("appr_shift_") && int.TryParse(notificationId.Replace("appr_shift_", ""), out int shiftId))
+        {
+            bool hasPermission = isAdmin || user.HasClaim("Permission", "Permission:Attendance:Approve") || user.HasClaim("Permission", "Attendance:Approve");
+            if (!hasPermission)
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền phê duyệt đơn đổi ca làm việc.");
+            }
+
+            var attendanceService = _serviceProvider?.GetService(typeof(IAttendanceService)) as IAttendanceService;
+            if (attendanceService != null)
+            {
+                string reviewerUserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.Identity.Name ?? "system";
+                await attendanceService.ReviewShiftChangeRequestAsync(reviewerUserId, new ReviewRequestCommand
+                {
+                    RequestId = shiftId,
+                    IsApproved = true,
+                    ReviewNotes = "Phê duyệt nhanh từ thanh thông báo"
+                }, cancellationToken);
+            }
+            else
+            {
+                var req = await context.ShiftChangeRequests.FirstOrDefaultAsync(r => r.Id == shiftId, cancellationToken);
+                if (req != null)
+                {
+                    req.Status = AttendanceRequestStatus.Approved;
+                    req.ReviewedByUserName = currentUserName;
+                    req.ReviewedAt = DateTime.UtcNow;
+                    await context.SaveChangesAsync(cancellationToken);
+                }
+            }
+
+            await MarkAsReadAsync(notificationId, user, cancellationToken);
+            return true;
+        }
+        else if (notificationId.StartsWith("supp_new_") && int.TryParse(notificationId.Replace("supp_new_", ""), out int ticketId))
+        {
+            bool hasPermission = isAdmin || user.IsInRole("Manager") || user.HasClaim("Permission", "Permission:Support:Manage") || user.HasClaim("Permission", "Support:Manage");
+            if (!hasPermission)
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền tiếp nhận báo cáo hỗ trợ.");
+            }
+
+            var supportService = _serviceProvider?.GetService(typeof(ISupportService)) as ISupportService;
+            if (supportService != null)
+            {
+                await supportService.UpdateTicketStatusAsync(new UpdateSupportTicketStatusCommand
+                {
+                    TicketId = ticketId,
+                    NewStatus = SupportStatus.Acknowledged,
+                    ReasonOrNotes = "Đã tiếp nhận xử lý từ thanh thông báo hệ thống."
+                }, user, cancellationToken);
+            }
+            else
+            {
+                var ticket = await context.SupportTickets.FirstOrDefaultAsync(t => t.Id == ticketId, cancellationToken);
+                if (ticket != null)
+                {
+                    ticket.Status = SupportStatus.Acknowledged;
+                    ticket.UpdatedAt = DateTime.UtcNow;
+                    await context.SaveChangesAsync(cancellationToken);
+                }
+            }
+
+            await MarkAsReadAsync(notificationId, user, cancellationToken);
+            return true;
+        }
 
         return false;
     }
@@ -641,6 +949,144 @@ public class NotificationService : INotificationService
                     pl.Status = PriceListStatus.Cancelled;
                     pl.UpdatedAt = DateTime.UtcNow;
                     pl.UpdatedBy = currentUserName;
+                    await context.SaveChangesAsync(cancellationToken);
+                }
+            }
+
+            await MarkAsReadAsync(notificationId, user, cancellationToken);
+            return true;
+        }
+        else if (notificationId.StartsWith("appr_adj_") && int.TryParse(notificationId.Replace("appr_adj_", ""), out int adjId))
+        {
+            bool hasPermission = isAdmin || user.HasClaim("Permission", "Permission:Attendance:Approve") || user.HasClaim("Permission", "Attendance:Approve");
+            if (!hasPermission)
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền từ chối giải trình chấm công.");
+            }
+
+            var attendanceService = _serviceProvider?.GetService(typeof(IAttendanceService)) as IAttendanceService;
+            if (attendanceService != null)
+            {
+                string reviewerUserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.Identity.Name ?? "system";
+                await attendanceService.ReviewAdjustmentRequestAsync(reviewerUserId, new ReviewRequestCommand
+                {
+                    RequestId = adjId,
+                    IsApproved = false,
+                    ReviewNotes = !string.IsNullOrWhiteSpace(reason) ? reason : "Từ chối duyệt qua thanh thông báo"
+                }, cancellationToken);
+            }
+            else
+            {
+                var req = await context.AttendanceAdjustmentRequests.FirstOrDefaultAsync(r => r.Id == adjId, cancellationToken);
+                if (req != null)
+                {
+                    req.Status = AttendanceRequestStatus.Rejected;
+                    req.ReviewedByUserName = currentUserName;
+                    req.ReviewedAt = DateTime.UtcNow;
+                    req.ReviewNotes = reason;
+                    await context.SaveChangesAsync(cancellationToken);
+                }
+            }
+
+            await MarkAsReadAsync(notificationId, user, cancellationToken);
+            return true;
+        }
+        else if (notificationId.StartsWith("appr_leave_") && int.TryParse(notificationId.Replace("appr_leave_", ""), out int leaveId))
+        {
+            bool hasPermission = isAdmin || user.HasClaim("Permission", "Permission:Attendance:Approve") || user.HasClaim("Permission", "Attendance:Approve");
+            if (!hasPermission)
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền từ chối đơn nghỉ phép.");
+            }
+
+            var attendanceService = _serviceProvider?.GetService(typeof(IAttendanceService)) as IAttendanceService;
+            if (attendanceService != null)
+            {
+                string reviewerUserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.Identity.Name ?? "system";
+                await attendanceService.ReviewLeaveRequestAsync(reviewerUserId, new ReviewRequestCommand
+                {
+                    RequestId = leaveId,
+                    IsApproved = false,
+                    ReviewNotes = !string.IsNullOrWhiteSpace(reason) ? reason : "Từ chối duyệt qua thanh thông báo"
+                }, cancellationToken);
+            }
+            else
+            {
+                var req = await context.LeaveRequests.FirstOrDefaultAsync(r => r.Id == leaveId, cancellationToken);
+                if (req != null)
+                {
+                    req.Status = AttendanceRequestStatus.Rejected;
+                    req.ReviewedByUserName = currentUserName;
+                    req.ReviewedAt = DateTime.UtcNow;
+                    req.ReviewNotes = reason;
+                    await context.SaveChangesAsync(cancellationToken);
+                }
+            }
+
+            await MarkAsReadAsync(notificationId, user, cancellationToken);
+            return true;
+        }
+        else if (notificationId.StartsWith("appr_shift_") && int.TryParse(notificationId.Replace("appr_shift_", ""), out int shiftId))
+        {
+            bool hasPermission = isAdmin || user.HasClaim("Permission", "Permission:Attendance:Approve") || user.HasClaim("Permission", "Attendance:Approve");
+            if (!hasPermission)
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền từ chối đơn đổi ca làm việc.");
+            }
+
+            var attendanceService = _serviceProvider?.GetService(typeof(IAttendanceService)) as IAttendanceService;
+            if (attendanceService != null)
+            {
+                string reviewerUserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.Identity.Name ?? "system";
+                await attendanceService.ReviewShiftChangeRequestAsync(reviewerUserId, new ReviewRequestCommand
+                {
+                    RequestId = shiftId,
+                    IsApproved = false,
+                    ReviewNotes = !string.IsNullOrWhiteSpace(reason) ? reason : "Từ chối duyệt qua thanh thông báo"
+                }, cancellationToken);
+            }
+            else
+            {
+                var req = await context.ShiftChangeRequests.FirstOrDefaultAsync(r => r.Id == shiftId, cancellationToken);
+                if (req != null)
+                {
+                    req.Status = AttendanceRequestStatus.Rejected;
+                    req.ReviewedByUserName = currentUserName;
+                    req.ReviewedAt = DateTime.UtcNow;
+                    req.ReviewNotes = reason;
+                    await context.SaveChangesAsync(cancellationToken);
+                }
+            }
+
+            await MarkAsReadAsync(notificationId, user, cancellationToken);
+            return true;
+        }
+        else if (notificationId.StartsWith("supp_new_") && int.TryParse(notificationId.Replace("supp_new_", ""), out int ticketId))
+        {
+            bool hasPermission = isAdmin || user.IsInRole("Manager") || user.HasClaim("Permission", "Permission:Support:Manage") || user.HasClaim("Permission", "Support:Manage");
+            if (!hasPermission)
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền từ chối tiếp nhận báo cáo hỗ trợ.");
+            }
+
+            var supportService = _serviceProvider?.GetService(typeof(ISupportService)) as ISupportService;
+            if (supportService != null)
+            {
+                await supportService.UpdateTicketStatusAsync(new UpdateSupportTicketStatusCommand
+                {
+                    TicketId = ticketId,
+                    NewStatus = SupportStatus.Rejected,
+                    ReasonOrNotes = !string.IsNullOrWhiteSpace(reason) ? reason : "Từ chối tiếp nhận qua thanh thông báo"
+                }, user, cancellationToken);
+            }
+            else
+            {
+                var ticket = await context.SupportTickets.FirstOrDefaultAsync(t => t.Id == ticketId, cancellationToken);
+                if (ticket != null)
+                {
+                    ticket.Status = SupportStatus.Rejected;
+                    ticket.RejectionReason = !string.IsNullOrWhiteSpace(reason) ? reason : "Từ chối tiếp nhận qua thanh thông báo";
+                    ticket.UpdatedAt = DateTime.UtcNow;
                     await context.SaveChangesAsync(cancellationToken);
                 }
             }

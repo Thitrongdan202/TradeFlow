@@ -2392,10 +2392,8 @@
                                             {
 
                                                 @foreach (var adj in GetFilteredAdjustments())
-
                                                 {
-
-                                                    <tr>
+                                                    <tr class="@(QueryRequestId == adj.Id ? "tf-row-highlight" : "")" id="@($"req-adj-{adj.Id}")">
 
                                                         <td>
 
@@ -2513,10 +2511,8 @@
                                             {
 
                                                 @foreach (var l in GetFilteredLeaves())
-
                                                 {
-
-                                                    <tr>
+                                                    <tr class="@(QueryRequestId == l.Id ? "tf-row-highlight" : "")" id="@($"req-leave-{l.Id}")">
 
                                                         <td>
 
@@ -2634,10 +2630,8 @@
                                             {
 
                                                 @foreach (var sc in GetFilteredShifts())
-
                                                 {
-
-                                                    <tr>
+                                                    <tr class="@(QueryRequestId == sc.Id ? "tf-row-highlight" : "")" id="@($"req-shift-{sc.Id}")">
 
                                                         <td>
 
@@ -5020,8 +5014,16 @@
 
 
     [SupplyParameterFromQuery(Name = "view")]
-
     public string? QueryView { get; set; }
+
+    [SupplyParameterFromQuery(Name = "tab")]
+    public string? QueryTab { get; set; }
+
+    [SupplyParameterFromQuery(Name = "subtab")]
+    public string? QuerySubTab { get; set; }
+
+    [SupplyParameterFromQuery(Name = "id")]
+    public int? QueryRequestId { get; set; }
 
 
 
@@ -5269,18 +5271,46 @@
 
 
 
-        if (!string.IsNullOrWhiteSpace(QueryView))
-
+        if (!string.IsNullOrWhiteSpace(QueryTab))
         {
-
+            _currentTab = QueryTab.ToLower();
+        }
+        else if (!string.IsNullOrWhiteSpace(QueryView))
+        {
             _currentTab = QueryView.ToLower();
-
         }
 
-
+        if (!string.IsNullOrWhiteSpace(QuerySubTab))
+        {
+            _apprSubTab = QuerySubTab.ToLower();
+        }
 
         await LoadDataAsync();
+    }
 
+    protected override async Task OnParametersSetAsync()
+    {
+        bool tabChanged = false;
+        if (!string.IsNullOrWhiteSpace(QueryTab) && _currentTab != QueryTab.ToLower())
+        {
+            _currentTab = QueryTab.ToLower();
+            tabChanged = true;
+        }
+        else if (!string.IsNullOrWhiteSpace(QueryView) && _currentTab != QueryView.ToLower())
+        {
+            _currentTab = QueryView.ToLower();
+            tabChanged = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(QuerySubTab) && _apprSubTab != QuerySubTab.ToLower())
+        {
+            _apprSubTab = QuerySubTab.ToLower();
+        }
+
+        if (tabChanged && !_isLoading)
+        {
+            await LoadDataAsync();
+        }
     }
 
 

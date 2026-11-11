@@ -38,9 +38,9 @@ public static class ContractPdfRichTextExtensions
         blocks = NormalizeFirstBlockForPagination(blocks);
 
         // 1. Heading + First Paragraph together in ShowEntire() to prevent orphan clause headings at page bottom
-        column.Item().PaddingTop(4.5f).ShowEntire().Column(headAndFirst =>
+        column.Item().PaddingTop(3.2f).ShowEntire().Column(headAndFirst =>
         {
-            headAndFirst.Item().PaddingBottom(1.5f).Text(text =>
+            headAndFirst.Item().PaddingBottom(1.0f).Text(text =>
             {
                 text.DefaultTextStyle(x => x.FontSize(headingFontSize).LineHeight(lineHeight));
                 text.Span(clauseHeading).Bold();
@@ -56,7 +56,7 @@ public static class ContractPdfRichTextExtensions
             var totalChars = block.Spans.Sum(s => s.Text.Length);
 
             // Short sub-clauses (< 320 chars) stay intact; very long paragraphs can wrap across page breaks naturally
-            var itemContainer = column.Item().PaddingTop(1.8f);
+            var itemContainer = column.Item().PaddingTop(1.2f);
             if (totalChars <= 320)
             {
                 itemContainer = itemContainer.ShowEntire();

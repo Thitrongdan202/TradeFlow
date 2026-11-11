@@ -29,15 +29,17 @@
 .tf-support-dialog {
     background-color: var(--tf-surface, #ffffff);
     color: var(--tf-text-primary, #0f172a);
-    width: 92vw;
-    max-width: 980px;
-    max-height: 88vh;
+    width: min(1440px, 92vw);
+    height: min(880px, 88vh);
+    min-height: min(600px, calc(100vh - 32px));
+    max-height: calc(100vh - 32px);
     border-radius: 16px;
     box-shadow: 0 24px 50px -12px rgba(15, 23, 42, 0.22), 0 4px 16px -4px rgba(15, 23, 42, 0.08);
     border: 1px solid var(--tf-border, #e2e8f0);
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    position: relative;
     will-change: transform, opacity;
 }
 
@@ -57,6 +59,8 @@
     border-bottom: 1px solid var(--tf-border, #e2e8f0);
     background-color: var(--tf-surface, #ffffff);
     flex-shrink: 0;
+    min-height: 64px;
+    box-sizing: border-box;
 }
 
 .tf-support-header-left {
@@ -124,14 +128,19 @@
     background-color: var(--tf-surface-subtle, #f8fafc);
     border-bottom: 1px solid var(--tf-border, #e2e8f0);
     flex-shrink: 0;
+    min-height: 50px;
+    box-sizing: border-box;
     overflow-x: auto;
 }
 
 .tf-support-tab-btn {
-    padding: 6px 13px;
+    height: 34px;
+    box-sizing: border-box;
+    padding: 0 13px;
     border-radius: 8px;
     font-size: 0.8125rem;
     font-weight: 600;
+    line-height: 1;
     color: var(--tf-text-secondary, #64748b);
     background: transparent;
     border: 1px solid transparent;
@@ -139,9 +148,10 @@
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    transition: all 160ms cubic-bezier(0.16, 1, 0.3, 1);
+    transition: background-color 160ms cubic-bezier(0.16, 1, 0.3, 1), color 160ms cubic-bezier(0.16, 1, 0.3, 1), border-color 160ms cubic-bezier(0.16, 1, 0.3, 1);
     white-space: nowrap;
     user-select: none;
+    outline: none;
 }
 
 .tf-support-tab-btn:hover {
@@ -156,10 +166,19 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
+.tf-support-tab-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.35);
+}
+
 .tf-tab-detail-pill {
+    height: 34px;
+    box-sizing: border-box;
+    line-height: 1;
     cursor: default;
     background-color: rgba(2, 132, 199, 0.08) !important;
     border-color: rgba(2, 132, 199, 0.2) !important;
+    color: #0284c7 !important;
 }
 
 .tf-support-tab-badge {
@@ -187,7 +206,10 @@
 .tf-support-body {
     padding: 16px 20px;
     overflow-y: auto;
-    flex: 1;
+    overflow-x: hidden;
+    flex: 1 1 0;
+    min-height: 0;
+    scrollbar-gutter: stable;
 }
 
 /* Banners & Alerts */
@@ -985,6 +1007,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
+    min-height: 320px;
     gap: 8px;
 }
 
@@ -2720,6 +2744,8 @@
     .tf-support-dialog {
         width: 100vw;
         max-width: 100%;
+        height: min(92vh, calc(100vh - 20px));
+        min-height: 480px;
         max-height: 94vh;
         border-radius: 16px 16px 0 0;
         transform: translateY(100%);

@@ -305,4 +305,31 @@ public static class EmploymentContractClauseDefaults
 
         return list;
     }
+
+    /// <summary>
+    /// Đảm bảo tính tuần tự của số Điều (Điều 1, Điều 2...) khi hợp đồng có điều khoản bị trùng hoặc lệch số.
+    /// Giữ nguyên tiêu đề và toàn bộ nội dung pháp lý.
+    /// </summary>
+    public static void NormalizeArticleNumbersIfDuplicate(List<EmploymentContractClauseDto>? clauses)
+    {
+        if (clauses == null || clauses.Count == 0) return;
+
+        var articleNumbers = clauses
+            .Select(c => c.ArticleNumber?.Trim())
+            .Where(a => !string.IsNullOrEmpty(a))
+            .ToList();
+
+        bool hasDuplicates = articleNumbers.Count != articleNumbers.Distinct(StringComparer.OrdinalIgnoreCase).Count();
+        if (hasDuplicates)
+        {
+            for (int i = 0; i < clauses.Count; i++)
+            {
+                if (string.IsNullOrWhiteSpace(clauses[i].ArticleNumber) ||
+                    clauses[i].ArticleNumber.Trim().StartsWith("Điều", StringComparison.OrdinalIgnoreCase))
+                {
+                    clauses[i].ArticleNumber = $"Điều {i + 1}";
+                }
+            }
+        }
+    }
 }
